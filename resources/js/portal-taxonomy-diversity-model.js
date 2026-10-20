@@ -9,15 +9,41 @@ const ETAPAS_DIVERSIDAD=[
     {orden:15,nombre:'Género'},{orden:18,nombre:'Especie'},
 ];
 
-/** El zoom habilita rangos formales, independientemente de los huecos del linaje. */
-export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles,ordenInicial=ordenRaiz){
+function etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial){
     const encontrado=ETAPAS_DIVERSIDAD.findIndex(n=>n.orden>=Math.max(ordenRaiz,ordenInicial));
     // La vista general abre Clase y Orden juntos. Una selección más específica
     // comienza en su propio rango y nunca fabrica categorías intermedias.
     const inicial=encontrado<0?ETAPAS_DIVERSIDAD.length-1:Math.max(1,encontrado);
-    const pasos=Math.max(0,Math.floor(Math.log(Math.max(1,Number.isFinite(zoom)?zoom:1))/Math.log(1.6)+1e-6));
-    const etapas=ETAPAS_DIVERSIDAD.filter((etapa,i)=>i>=inicial&&(i===inicial||!disponibles||disponibles.some(orden=>orden>(ETAPAS_DIVERSIDAD[i-1]?.orden??-1)&&orden<=etapa.orden)));
+    return ETAPAS_DIVERSIDAD.filter((etapa,i)=>i>=inicial&&(i===inicial||!disponibles||disponibles.some(orden=>orden>(ETAPAS_DIVERSIDAD[i-1]?.orden??-1)&&orden<=etapa.orden)));
+}
+
+/** El zoom habilita rangos formales, independientemente de los huecos del linaje. */
+export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles,ordenInicial=ordenRaiz){
+    const etapas=etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial);
+    // El primer encuadre es 0,5×. Cada paso de 1,6 abre un rango desde ahí:
+    // 0,5 Orden, 0,8 Suborden, 1,28 Familia... No esperar hasta 1,6×.
+    const pasos=Math.max(0,Math.floor(Math.log(Math.max(1,(Number.isFinite(zoom)?zoom:.5)/.5))/Math.log(1.6)+1e-6));
     return etapas[Math.min(etapas.length-1,pasos)];
+}
+
+export function limiteZoomRangosDiversidad(ordenRaiz,disponibles,ordenInicial=ordenRaiz){
+    return .5*1.6**(etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial).length-1);
+}
+
+/** Abrir rangos no debe expulsar la copa de la pantalla. Durante esa apertura
+ * la cámara crece suavemente; una vez expuesto el último rango vuelve al zoom
+ * geométrico completo. Las funciones inversas conservan gestos acumulados.
+ */
+export function escalaCamaraDiversidad(zoom,limite=.5){
+    zoom=Math.max(.5,Number.isFinite(zoom)?zoom:.5);limite=Math.max(.5,limite);
+    const apertura=.5*(Math.min(zoom,limite)/.5)**.12;
+    return apertura*Math.max(1,zoom/limite);
+}
+
+export function zoomSemanticoDiversidad(escala,limite=.5){
+    escala=Math.max(.5,Number.isFinite(escala)?escala:.5);limite=Math.max(.5,limite);
+    const apertura=.5*(limite/.5)**.12;
+    return escala<=apertura ? .5*(escala/.5)**(1/.12) : limite*escala/apertura;
 }
 
 /** Radio en píxeles CSS: contar especies identificadas, nunca ejemplares ni
@@ -51,7 +77,7 @@ export function zoomRaizDiversidad(camara,raiz,factor,{min=0,max=Infinity}={}){
  * rangos abiertos dentro del área útil. Resuelve los límites en perspectiva;
  * no usa las cajas de descendientes que todavía deben permanecer cerrados.
  */
-export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,direccion=[.22,.16,1]}={}){
+export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,direccion=[.22,.16,1],reserva=1.05}={}){
     const longitud=Math.hypot(...direccion),d=direccion.map(v=>v/longitud),lateral=Math.hypot(d[0],d[2]);
     const derecha=[d[2]/lateral,0,-d[0]/lateral],arriba=[-d[1]*d[0]/lateral,lateral,-d[1]*d[2]/lateral];
     const t=Math.tan(38*Math.PI/360),aspecto=ancho/alto,raiz=[arbol.posiciones[0],arbol.posiciones[1],arbol.profundidad[0]];
@@ -65,7 +91,7 @@ export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,dire
         distancia=Math.max(distancia,z+1,z+Math.abs(x)/(t*aspecto*bordeX),
             (y+bordeSuperior*t*z)/(k+bordeSuperior*t),(y+bordeInferior*t*z)/(k+bordeInferior*t));
     }
-    distancia*=1.05;
+    distancia*=reserva;
     const centro=raiz.map((v,j)=>v+arriba[j]*k*distancia),posicion=centro.map((v,j)=>v+d[j]*distancia);
     return {centro,posicion,distancia};
 }

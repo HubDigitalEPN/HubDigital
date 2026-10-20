@@ -8,16 +8,8 @@
         <flux:label for="matriz-dwc">Tabla Darwin Core (.xlsx)</flux:label>
         <input id="matriz-dwc" type="file" wire:model="archivoMatriz" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full rounded border border-border bg-surface p-3 text-sm" aria-describedby="matriz-dwc-ayuda" />
         <p id="matriz-dwc-ayuda" class="text-xs text-text-secondary">Máximo 10 MB. Puedes reemplazar el archivo; una carga rechazada conserva los datos guardados anteriormente.</p>
-        <flux:error name="archivoMatriz" />
     </flux:field>
     <p wire:loading wire:target="archivoMatriz" role="status" class="text-sm text-science-blue">Cargando y validando el Excel…</p>
-    @if($errorMatriz !== '')
-        <div role="alert" class="rounded border border-error/40 bg-error/5 p-3 text-sm text-error">
-            <strong>Carga rechazada</strong><p>{{ $errorMatriz }}</p>
-            @foreach($camposObligatoriosVacios as $vacio)<p>{{ $vacio['fila'] }} · {{ $vacio['campo'] }}</p>@endforeach
-            <p>Corrige el archivo y vuelve a subirlo.</p>
-        </div>
-    @endif
     @if($matrizId)
         <div class="rounded border border-border bg-surface p-4">
             <p class="font-semibold text-blue-navy">{{ $archivoMatrizNombre ?: 'Matriz guardada' }} · {{ number_format($totalRegistros, 0, ',', '.') }} registros</p>

@@ -23,6 +23,7 @@
 <div class="space-y-6 p-4 sm:p-6 max-w-5xl">
     <div>
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Columnas de la tabla</flux:heading>
+        <flux:button class="mt-3" :href="route('prestamos.curador.matriz.columnas')">Configurar columnas de la matriz de depósito</flux:button>
     </div>
 
     @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif

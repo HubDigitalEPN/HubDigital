@@ -74,7 +74,6 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Services\InvalidarFirmaSo
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\AsistenteDocumentalDepositos;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
  * Componente Livewire para el registro de una solicitud de depósito o donación.
@@ -2387,19 +2386,31 @@ final class RegistroSolicitudDeposito extends Component
     {
         abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->exists(), 403);
-        $catalogo = app(CatalogoCuraduriaPort::class);
-        $campos = array_values(array_unique(['scientificName',
-            ...$catalogo->camposCriticos($this->solicitudId),
-            ...$catalogo->camposRecomendados($this->solicitudId)]));
+        $columnas = app(\Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort::class)->leer()['columnas'];
 
-        return response()->streamDownload(static function () use ($campos): void {
+        return response()->streamDownload(static function () use ($columnas): void {
             $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
             try {
                 $hoja = $libro->getActiveSheet();
                 $hoja->setTitle('Darwin Core');
-                $hoja->fromArray([$campos]);
+                foreach ($columnas as $i => $columna) {
+                    $hoja->setCellValueExplicit([$i + 1, 1], $columna['cabecera'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                    if ($columna['requisito'] === 'obligatorio') {
+                        $hoja->getStyle([$i + 1, 1])->getFill()->setFillType('solid')->getStartColor()->setARGB('FFFFC000');
+                    }
+                }
                 $hoja->freezePane('A2');
                 $hoja->getStyle('1:1')->getFont()->setBold(true);
+                $guia = $libro->createSheet();
+                $guia->setTitle('Guía de campos');
+                $guia->fromArray([['Cabecera', 'Campo', 'Requisito', 'Descripción', 'Excepción']]);
+                foreach ($columnas as $i => $columna) {
+                    $valores = [$columna['cabecera'], $columna['campo'], $columna['requisito'], $columna['descripcion'],
+                        ($columna['excepcion_campo'] ?? '') !== '' ? 'No exigir si '.$columna['excepcion_campo'].' = '.$columna['excepcion_valor'] : ''];
+                    foreach ($valores as $j => $valor) $guia->setCellValueExplicit([$j + 1, $i + 2], $valor, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                }
+                $guia->freezePane('A2');
+                $libro->setActiveSheetIndex(0);
                 (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
             } finally {
                 $libro->disconnectWorksheets();
@@ -2415,13 +2426,19 @@ final class RegistroSolicitudDeposito extends Component
         abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->exists(), 403);
 
-        $this->validate(
-            ['archivoMatriz' => 'file|mimes:xlsx|max:10240'],
-            [
-                'archivoMatriz.mimes' => 'Solo se admiten archivos .xlsx',
-                'archivoMatriz.max' => 'El archivo no debe superar los 10 MB.',
-            ]
-        );
+        try {
+            $this->validate(
+                ['archivoMatriz' => 'file|mimes:xlsx|max:10240'],
+                [
+                    'archivoMatriz.mimes' => 'Solo se admiten archivos .xlsx',
+                    'archivoMatriz.max' => 'El archivo no debe superar los 10 MB.',
+                ]
+            );
+        } catch (\Illuminate\Validation\ValidationException $error) {
+            $this->rechazarMatriz($error->validator->errors()->first());
+            $this->resetErrorBag('archivoMatriz');
+            return;
+        }
 
         $this->errorMatriz = '';
         $this->camposObligatoriosVacios = [];
@@ -2430,29 +2447,31 @@ final class RegistroSolicitudDeposito extends Component
         // Nunca borrar la matriz anterior por seleccionar otro archivo.
         try {
             $parseado = $this->parsearXlsx($this->archivoMatriz);
+        } catch (\DomainException $error) {
+            $this->rechazarMatriz($error->getMessage());
+            return;
         } catch (\Throwable $error) {
             report($error);
-            $this->errorMatriz = 'No se pudo leer el Excel. Comprueba que sea un archivo .xlsx válido.';
+            $this->rechazarMatriz('No se pudo leer el Excel. Comprueba que sea un archivo .xlsx válido.');
             return;
         }
         $campos = $parseado['campos'];
         $registros = $parseado['registros'];
         if ($registros === []) {
-            $this->errorMatriz = 'El Excel debe incluir la cabecera scientificName y al menos una fila de datos.';
+            $this->rechazarMatriz('El Excel debe incluir las cabeceras de la matriz y al menos una fila de datos.');
             return;
         }
         foreach ($registros as $numeroRegistro => $registro) {
             if (trim((string) ($registro['scientificName'] ?? '')) === '') {
-                $this->errorMatriz = 'El registro '.($numeroRegistro + 1).' no contiene scientificName. Completa el nombre científico y vuelve a subir el Excel.';
+                $this->rechazarMatriz('El registro '.($numeroRegistro + 1).' no contiene un nombre científico. Completa su clasificación y vuelve a subir el Excel.');
                 return;
             }
         }
 
         $this->camposDwCPresentes = $campos;
 
-        $catalogo = app(CatalogoCuraduriaPort::class);
-        $this->camposDwCCriticos = $catalogo->camposCriticos($this->solicitudId ?? '');
-        $this->camposDwCRecomendados = $catalogo->camposRecomendados($this->solicitudId ?? '');
+        $this->camposDwCCriticos = $parseado['criticos'];
+        $this->camposDwCRecomendados = $parseado['recomendados'];
 
         $cargar = app(CargarMatrizEspeciesHandler::class);
 
@@ -2465,20 +2484,17 @@ final class RegistroSolicitudDeposito extends Component
                 registros: $registros,
             ));
         } catch (CamposDwCFaltantesException $e) {
-            $this->errorMatriz = $e->getMessage();
+            $this->rechazarMatriz($e->getMessage());
             $this->camposDwCRecomendadosFaltantes = array_values(array_filter(
                 $this->camposDwCRecomendados,
                 fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
             ));
-            $this->matrizCargada = true;
-
             return;
         } catch (CamposObligatoriosVaciosException $e) {
             // Campos obligatorios (críticos) con celdas vacías: se bloquea la carga
             // y se listan las filas/campos para que el depositante los complete.
-            $this->errorMatriz = $e->getMessage();
+            $this->rechazarMatriz($e->getMessage());
             $this->camposObligatoriosVacios = $e->violaciones();
-            $this->matrizCargada = true;
 
             return;
         }
@@ -2872,51 +2888,13 @@ final class RegistroSolicitudDeposito extends Component
      */
     private function parsearXlsx(mixed $archivo): array
     {
-        $spreadsheet = IOFactory::load($archivo->getRealPath());
-        $filas = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        return app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\LectorMatrizDeposito::class)->leer($archivo->getRealPath());
+    }
 
-        if (empty($filas)) {
-            return ['campos' => [], 'registros' => []];
-        }
-
-        // Buscar la fila de cabeceras DwC: la primera que contenga 'scientificName'.
-        // Esto permite que el XLSX tenga filas de título o encabezados decorativos antes.
-        $indiceCabecera = null;
-        foreach ($filas as $i => $fila) {
-            $valores = array_map(fn ($v) => trim((string) $v), $fila);
-            if (in_array('scientificName', $valores, true)) {
-                $indiceCabecera = $i;
-                break;
-            }
-        }
-
-        if ($indiceCabecera === null) {
-            return ['campos' => [], 'registros' => []];
-        }
-
-        $campos = array_map(fn ($c) => trim((string) $c), $filas[$indiceCabecera]);
-        $filasData = array_slice($filas, $indiceCabecera + 1);
-
-        $registros = [];
-        foreach ($filasData as $fila) {
-            $valores = array_map(fn ($v) => trim((string) $v), $fila);
-            if (empty(array_filter($valores))) {
-                continue;
-            }
-            $registro = [];
-            foreach ($campos as $j => $campo) {
-                if ($campo === '') {
-                    continue;
-                }
-                $registro[$campo] = $valores[$j] ?? '';
-            }
-            $registros[] = $registro;
-        }
-
-        return [
-            'campos' => array_values(array_filter($campos)),
-            'registros' => $registros,
-        ];
+    private function rechazarMatriz(string $mensaje): void
+    {
+        $this->errorMatriz = $mensaje;
+        $this->mostrarToast($mensaje, 'error');
     }
 
     /**

@@ -1,0 +1,1112 @@
+{
+  "version": "laboratorio-invertebrados-v2",
+  "columnas": [
+    {
+      "campo": "occurrenceID",
+      "cabecera": "occurrenceID",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Número único de catálogo. Uso interno.   Código asignado por el Curador del Laboratorio o responsable del ingreso de información en el Catálogo digital. Nota: para envío a IPT el ' - ' se reemplaza por ' : '",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "oldCode",
+      "cabecera": "oldCode",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Código antiguo, secundario, o en desuso, pero que está asociado a determiandos registros para referencia o rastreo.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "recordNumber",
+      "cabecera": "recordNumber",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Código de campo o de investigador. Cuando proporcionado, obligatorio debe estar compuesto por cuatro letras y números. Ejemplo:  ABCD0001, JPSL0002, etc.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "origin",
+      "cabecera": "origin",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Se coloca 'research' cuando los especímenes han sido recolectados como parte de un proyecto de investigación. Si fueron recolectados como parte de una consultoría, colocar 'consulting'",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "#actaRecepcion",
+      "cabecera": "#actaRecepcion",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Acta generada por el sistema al final del proceso de depósito de especímenes.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "individualCount",
+      "cabecera": "invidualCount",
+      "alias": [
+        "invidualCount"
+      ],
+      "requisito": "obligatorio",
+      "descripcion": "Número de individuos por frasco (preservados en etanol), alfiler o placa. En caso de frascos con un número indeterminado de especímenes, colocar 'indet'. Estos casos aplican para muestras de colectas masivas, ejemplo, Malaise, fumigación.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "comment",
+      "cabecera": "comment",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Comentarios generales en relación a cada registro.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "typeStatus",
+      "cabecera": "typeStatus",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Según aplique, opciones (en Latín): 'holotypus', 'paratypus', 'allotypus', 'lectotypus', etc. Nota: si el espécimen no corresponde a ninguna categoría, dejar vacío este campo.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "typeNotes",
+      "cabecera": "typeNotes",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Reservado únicamente para material  tipo",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "cardexLiquidColCode",
+      "cabecera": "cardexLiquidColCode",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Código para seguimiento y monitoreo de colecciones temporales.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "researchPermit",
+      "cabecera": "researchPermit",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Permiso de recolección o de investigación emitido por el Ministerio de Ambiente y Energía. Favor colocar únicamente el número. Ejemplo: MAATE-DZ3-OTP-VS-RVS-2024-002",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "transportPermit",
+      "cabecera": "transportPermit",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Permiso de movilización emitido por el Ministerior de Ambiente y Energía. Aplica únicamente para especímenes recolectados fuera de Pichincha. Favor colocar únicamente el número. Ejemplo: MAATE-DZ3-OTP-VS-MOV-2024-10",
+      "formato": "texto",
+      "excepcion_campo": "stateProvince",
+      "excepcion_valor": "Pichincha"
+    },
+    {
+      "campo": "export/importAuthorization",
+      "cabecera": "export/importAuthorization",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Solo si aplica, colocar el número asignado por la institución de gobierno encargada de la emisión del permiso de salida o ingreso del material biológico, según corresponda en cada país.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "specimenNotes",
+      "cabecera": "specimenNotes",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Notas generales sobre el/los especímenes.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "locatedAt",
+      "cabecera": "locatedAt",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Institución que actualmente tiene propiedad sobre material, y en donde se encuentra actualmente depositado.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "prior Owner",
+      "cabecera": "prior Owner",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Institución que, previamente a ser depositada en el MEPN, mantenía la propiedad sobre el material.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "type",
+      "cabecera": "type",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "language",
+      "cabecera": "language",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "license",
+      "cabecera": "license",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "rightsHolder",
+      "cabecera": "rightsHolder",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "accessRights",
+      "cabecera": "accessRights",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "institutionID",
+      "cabecera": "institutionID",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "collectionID",
+      "cabecera": "collectionID",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "institutionCode",
+      "cabecera": "institutionCode",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "collectionCode",
+      "cabecera": "collectionCode",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "datasetName",
+      "cabecera": "datasetName",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Colocar el nombre del set de datos o proyecto mediante el cual se recolectaron los especímenes. Generalmente, en casos de proyectos de consultoría, se coloca el nombre del proyecto. Cuando los especímenes fueron recolectados como parte de un proyecto de investigación del Laboratorio de Invertebrados, Ecuela Politécnica Nacional, o en el marco de colaboración de la EPN con otras instituciones, se coloca 'Colección de Invertebrados MEPN'.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "ownerInstitutionCode",
+      "cabecera": "ownerInstitutionCode",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "informationWithheld",
+      "cabecera": "informationWithheld",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Información sensible que no se aconseja divulgar al público en general. Ejemplo: especie en peligro de extinción cuyas poblaciones se encuentran en un área en litigio.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "basisOfRecord",
+      "cabecera": "basisofRecord",
+      "alias": [
+        "basisofRecord"
+      ],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "samplingProtocol",
+      "cabecera": "samplingProtocol",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Método mediante el cuál los especímenes fueron recolectados en el campo. Cuando son palabras compuestas, favor colocar guión medio. Ejemplo: hand_net, hand_litter, leaf_litter.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "recordedBy",
+      "cabecera": "recordedBy",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Nombre de quien, o quienes, recolectaron los especímenes. Cuando dos o más personas, separar con \" | \" (barra). Colocar únicamente la inicial de un nombre. Cuando dos apellidos, colocar guión medio.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "otherCatalogNumbers",
+      "cabecera": "otherCatalogNumbers",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "occurrenceStatus",
+      "cabecera": "occurrenceStatus",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Indica si el material está presente, o no, en la colección. Actualmente hay tres opciones: 'present', 'loaned', 'missing'.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "taxonID",
+      "cabecera": "taxonID",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Número de identificación único del taxón. Aplica en todas las categorías taxonómicas, sin embargo, es conveniente colocarlo únicamente cuando la identificación es a nivel de: orden, familia, género o especie, según corresponda.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "kingdom",
+      "cabecera": "kingdom",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "phylum",
+      "cabecera": "phylum",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "class",
+      "cabecera": "class",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "order",
+      "cabecera": "order",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "suborder",
+      "cabecera": "suborder",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "family",
+      "cabecera": "family",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "subfamily",
+      "cabecera": "subfamily",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "tribe",
+      "cabecera": "tribe",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "genus",
+      "cabecera": "genus",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "clade",
+      "cabecera": "clade",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "specificEpithet",
+      "cabecera": "specificEpithet",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Favor ingresar únicamente cuando se tiene certeza de la identificación a nivel de especie.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "infraspecificEpithet",
+      "cabecera": "iInfraspecificEpithet",
+      "alias": [
+        "iInfraspecificEpithet"
+      ],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "scientificName",
+      "cabecera": "scientificName",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "taxonRank",
+      "cabecera": "taxonRank",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Colocar la categoría taxonómica según el nivel de identificación alcanzada. Si es hasta: clase, colocar 'class'; orden ->'order'; familia -> 'family'; género -> 'genus'; especie -> 'species'",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "identificationQualifier",
+      "cabecera": "identificationQualifier",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "identificationRemarks",
+      "cabecera": "identificationRemarks",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Notas sobre la identifiación del espécmen.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "identifiedBy",
+      "cabecera": "identifiedBy",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Nombre de quien identificó el especímen. Aplica únicamente cuando la identificación es a nivel de especie. Si la identificación es hasta género, familia o superiores, favor NO colocar nada.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "dateIdentified",
+      "cabecera": "dateDetermined",
+      "alias": [
+        "dateDetermined"
+      ],
+      "requisito": "obligatorio",
+      "descripcion": "Fecha de identifición de la especie. Puede ser mes y año, o únicamente año.",
+      "formato": "fecha",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "scientificNameAuthorship",
+      "cabecera": "scientificNameAuthorship",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Colocar el nombre del autor(es) de la descripción de la especie. Favor verificar esta información en bases de datos taxonómicas de referencia, por ejemplo, Catalogue of Life, GBIF, Zoobank.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "vernacularName",
+      "cabecera": "vernacularName",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Nombre común de la especie o del  grupo (género, subfamilia o familia) al que representa. Ejemplo: el nombre común de Dynastes hercules es escarabajo rinoceronte, pero en general, los dinástinos se conocen como escarabajos cornudos o rinocerontes.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "nomenclaturalCode",
+      "cabecera": "nomenclaturalCode",
+      "alias": [],
+      "requisito": "predeterminado",
+      "descripcion": "campo por defecto, información siempre visible en base de datos para funcionarios",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "sex",
+      "cabecera": "sex",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Sexo del espécimen.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "lifeStage",
+      "cabecera": "lifeStage",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Estadío biológico del espécimen. Opciones: 'adult' = adulto; 'juvenile' = juvenil; 'larva' o 'nymph' = estado larvario o inmaduro. Nota: 'larva' y 'juvenile'  aplican, generalmente, para insectos terrestres; 'nymph' aplica para artrópodos acuáticos.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "caste",
+      "cabecera": "caste",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Aplica únicamente para insectos sociales, .e.g., hormigas, termitas, abejas. Opciones: worker, gyne (reproductor hembra), male (reproductor macho), soldier.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "typECaste",
+      "cabecera": "typECaste",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "preparations",
+      "cabecera": "preparations",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Modo de preservación de los especímenes. Opciones: 'dry_pin' = montado en alfiler; 'ethanol' = preservado en alcohol; 'slide' = preservado en porta objetos de vidrio.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "disposition",
+      "cabecera": "disposition",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Ubicación del espécimen dentro de la institución. Opciones: 'in_collection' = espécimen está ubicado en la colección principal; 'teporal_collection' = espécimen está en la colección temporal; 'office_researcher' = espécimen está siendo examinado en ofina del investigador.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "eventDate",
+      "cabecera": "eventDate",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Primer día del evento de recolección del espécimen en el campo. En general, es suficiente con colocar cualquier día del evento de recolección en el que fue recolectado el espécimen. Favor utilizar el formato yyyy/mm/dd",
+      "formato": "fecha",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "datecollectedEnd",
+      "cabecera": "datecollectedEnd",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Ultimo día del evento de recolección del espécimen en el campo. Favor utilizar el formato yyyy/mm/dd",
+      "formato": "fecha",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "eventTime",
+      "cabecera": "eventTime",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "year",
+      "cabecera": "year",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "month",
+      "cabecera": "month",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "day",
+      "cabecera": "day",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "continent",
+      "cabecera": "continent",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "country",
+      "cabecera": "country",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "countryCode",
+      "cabecera": "countryCode",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "Favor colocar únicamente dos letras. Por ejemplo, si es 'Ecuador' se coloca 'EC', si es 'Brasil', se coloca 'BR'.  Revisar estándares en manual Darwin Core.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "stateProvince",
+      "cabecera": "stateProvince",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Colocar la región u organización político-administratica que sucede inmediatamente a 'país', según corresponda. Nota: en varios países esta región político-administrativa puede ser  provincia, estado o departamento.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "municipality",
+      "cabecera": "municipality",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "locality",
+      "cabecera": "localityName",
+      "alias": [
+        "localityName"
+      ],
+      "requisito": "obligatorio",
+      "descripcion": "Localidad específica en donde fue recolectado el espécimen. Esta puede ser simple, ejemplo, 'Quito, Parque Metropolitano del norte', o compuesta, ejemplo, 'Tena, Reserva Jatun Sacha, sendero Oso de Anteojos'.  En general, es altamente recomendado colocar en este campo la localidad macro, ejemplo, 'Quito', seguida del sitio específico en donde se encontró el espécimen, ejemplo, 'Reserva Jatun Sacha, sendero Oso de Anteojos'. Otros ejemplos: 'Parque Nacional Iguazú, 3 km N Aeropuerto Cataratas Iguazú'; '",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "localityNotes",
+      "cabecera": "localityNotes",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "localityCode",
+      "cabecera": "localityCode",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimLocality",
+      "cabecera": "verbatimLocality",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "minimumElevationInMeters",
+      "cabecera": "minimumElevationInMeters",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Elevación del sitio específico (localityName) en donde se recolectó el espécimen.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "elevationMaxError",
+      "cabecera": "elevationMaxError",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "maximumElevationInMeters",
+      "cabecera": "maximumElevationInMeters",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimElevation",
+      "cabecera": "verbatimElevation",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimDepth",
+      "cabecera": "verbatimDepth",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "decimalLatitude",
+      "cabecera": "decimalLatitude",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Colocar latitud en formato de grados decimales. Favor tener en cuenta el signo de orientación geográfica: si es latitud sur, se coloca el signo '-', si es norte, se coloca el número directamente. Importante: el separador de decimanles siempre con '.' (punto), no con ',' (coma). Favor verificar que este campo esté en formato de número.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "decimalLongitude",
+      "cabecera": "decimalLongitude",
+      "alias": [],
+      "requisito": "obligatorio",
+      "descripcion": "Colocar longitud en formato de grados decimales. Favor tener en cuenta el signo de orientación geográfica: si es hemisferio occidental, se coloca el signo '-', si es oriental, se coloca el número directamente. Importante: el separador de decimanles siempre con '.' (punto), no con ',' (coma). Favor verificar que este campo esté en formato de número.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "latLonMaxError",
+      "cabecera": "latLonMaxError",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Error, en metros. Aplica únicamente cuando la georeferenciación proporcionada no es exacta, o cuando las coordenadas han sido obtenidas mediante búsqueda en fuentes en internet, ejemplo, Google Earth.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "geodeticDatum",
+      "cabecera": "geodeticDatum",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "El sistema World Geodetic System de 1984 (WGS84), es el usado normalmente.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimLatitude",
+      "cabecera": "verbatimLatitude",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimLongitude",
+      "cabecera": "verbatimLongitude",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimCoordinateSystem",
+      "cabecera": "verbatimCoordinateSystem",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "verbatimSRS",
+      "cabecera": "verbatimSRS",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "biome",
+      "cabecera": "biome",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "habitat",
+      "cabecera": "habitat",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Se recomienda utilizar esquemas de clasificación ampliamente utilizados/difundidos en la literatura, ejemplo, lista roja de la UICN, o el International Institute for Applied Systems Analysis (IIASA).",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "microhabitat",
+      "cabecera": "microhabitat",
+      "alias": [],
+      "requisito": "opcional",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "occurrenceRemarks",
+      "cabecera": "occurrenceRemarks",
+      "alias": [],
+      "requisito": "recomendado",
+      "descripcion": "Información adicional relacionada con la localidad específica en donde se recolectaron los especímenes.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "loanNo.",
+      "cabecera": "loanNo.",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Número de acta de depósito en formato  preestablecido.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "loanTo/Museum",
+      "cabecera": "loanTo/Museum",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Colocar nombres y apellido, seguidos de la institución de afiliación de la persona que recibió (beneficiario) del préstamo o donación (=préstamo permanente).",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "loanType",
+      "cabecera": "loanType",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Tipo de préstamo, actuamente hay dos opciones: 'temporal', 'permanent'.",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "loanDate",
+      "cabecera": "loanDate",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Fecha en la que se hizo efectivo el préstamo. Favor colocar en formato yyyy/mm/dd",
+      "formato": "fecha",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "detailsLoan",
+      "cabecera": "detailsLoan",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Información adicional relacionada con el préstamo, ejemplo, 'especímenes para estudo doctorado revisión taxonómica del género Hypoponera'",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "returnDate",
+      "cabecera": "returnDate",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Fecha de retorno de los especímenes. Favor colocar en formato yyyy/mm/dd",
+      "formato": "fecha",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "statusLoan",
+      "cabecera": "statusLoan",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Dos opciones: 'pending return', 'restuned'",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "DNANotes",
+      "cabecera": "DNANotes",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Información general sobre estudios genéticos, ejemplo, 'barcoded', 'barcode failed', 'CO1,   wingless genes sequenced'",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "biogeographicRegion",
+      "cabecera": "biogeographicRegion",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "recordCreatedBy,month-year",
+      "cabecera": "recordCreatedBy,month-year",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Nombre de la persona que ingresó los datos del espécimen. Favor color fecha en formato mmm-yyyy",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "Endemic",
+      "cabecera": "Endemic",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Unicamente cuando la especie es endémica de regiones determinadas, ejemplo, 'endemic, Galápagos, Floreana', 'endemic, Ecuadorian Andes'",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "Responsible researcher or applicant for export",
+      "cabecera": "Responsible researcher or applicant for export",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    },
+    {
+      "campo": "IPT_upload",
+      "cabecera": "IPT_upload",
+      "alias": [],
+      "requisito": "interno",
+      "descripcion": "Unicamente cuando los especímenes han sido enviados al IPT para procesamiento y posterior publicación en GBIF",
+      "formato": "texto",
+      "excepcion_campo": "",
+      "excepcion_valor": ""
+    }
+  ],
+  "etiquetas_guia": [
+    "Clave",
+    "campo obligatorio",
+    "campo opcional, caso aplique, se agradece el aporte",
+    "campo opcional",
+    "uso interno",
+    "información del campo por defecto"
+  ],
+  "identificacion": [
+    [
+      "scientificName"
+    ],
+    [
+      "genus",
+      "specificEpithet",
+      "infraspecificEpithet"
+    ],
+    [
+      "genus",
+      "specificEpithet"
+    ],
+    [
+      "genus"
+    ],
+    [
+      "family"
+    ],
+    [
+      "order"
+    ],
+    [
+      "class"
+    ],
+    [
+      "phylum"
+    ]
+  ]
+}

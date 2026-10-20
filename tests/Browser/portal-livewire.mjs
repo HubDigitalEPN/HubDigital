@@ -314,16 +314,17 @@ try {
     await visible("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle==='Familia' && document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Familia','El siguiente acercamiento habilita el rango posterior a los dos descendientes iniciales; el recorte conserva sólo la corona visible.');
+    assert.ok(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangosDibujados.split(',').includes('Familia')"),'El acercamiento dibuja yemas de Familia, además de habilitar su rango.');
     assert.ok(await evaluar("document.querySelector('.portal-diversity-scene').classList.contains('is-expanded')"),'El primer zoom amplía el árbol automáticamente.');
     assert.ok(await evaluar(`(() => {const bs=[...document.querySelectorAll('.portal-diversity-fullscreen-controls button')],rs=bs.map(b=>b.getBoundingClientRect());return bs.length===4&&bs.every(b=>b.checkVisibility())&&!bs[0].disabled&&bs[0].getAttribute('aria-label').startsWith('Volver al padre')&&bs[1].getAttribute('aria-label').startsWith('Alejar')&&bs[2].getAttribute('aria-label').startsWith('Acercar')&&bs[3].getAttribute('aria-label').startsWith('Salir')&&rs.slice(1).every((r,i)=>rs[i].right<=r.left)&&rs.every(r=>r.top===rs[0].top);})()`),'Padre, menos, más y salir están accesibles y alineados en pantalla completa.');
     const posicionRaiz=()=>evaluar("(() => {const s=document.querySelector('.portal-diversity-scene');return {x:Number(s.dataset.raizX),y:Number(s.dataset.raizY),clave:s.dataset.raiz};})()");
     const raizAmpliada=await posicionRaiz();
     const comprobarAncla=async(antes)=>{const despues=await posicionRaiz();assert.equal(despues.clave,antes.clave);assert.ok(Math.hypot(despues.x-antes.x,despues.y-antes.y)<1,'La raíz conserva exactamente su posición mientras crecen las ramas. '+JSON.stringify({antes,despues}));};
     await evaluar("document.querySelector('[aria-label=\"Acercar árbol en pantalla completa\"]').click()");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
-    assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>2);
+    assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))-1.28)<.001);
     await comprobarAncla(raizAmpliada);
     await evaluar("document.querySelector('[aria-label=\"Alejar árbol en pantalla completa\"]').click()");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
-    assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))-1.6)<.001,'Los dos controles de pantalla completa modifican el mismo zoom.');
+    assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))-.8)<.001,'Los dos controles de pantalla completa modifican el mismo zoom.');
     await comprobarAncla(raizAmpliada);
     await evaluar("document.querySelector('[aria-label=\"Volver al padre de la rama en pantalla completa\"]').click()");
     await visible("document.querySelector('.portal-diversity-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));await reposo();
@@ -336,7 +337,11 @@ try {
         await evaluar(`document.querySelector('.portal-diversity-canvas').dispatchEvent(new WheelEvent('wheel',{deltaY:${-120*Math.log(hasta/desde)/Math.log(1.6)},bubbles:true,cancelable:true}))`);
         await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");await comprobarAncla(raizGeneral);
         assert.ok(Math.abs(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))-hasta)<.001);
+        assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),hasta<.8?'Orden':'Suborden','El acercamiento desde 0,5× descubre Suborden, además de cambiar el encuadre.');
     }
+    await evaluar(`document.querySelector('.portal-diversity-canvas').dispatchEvent(new WheelEvent('wheel',{deltaY:${-120*Math.log(1.28)/Math.log(1.6)},bubbles:true,cancelable:true}))`);
+    await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");await comprobarAncla(raizGeneral);
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Familia');
     await evaluar("document.querySelector('.portal-diversity-fullscreen-exit').click()");
     await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");await reposo();
     const raizNormal=await posicionRaiz();
@@ -350,7 +355,7 @@ try {
     await comprobarAncla(raizNormal);
     assert.ok(await evaluar("(() => {const d=document.querySelector('.portal-diversity-scene').dataset;return Number(d.zoom)>1000&&d.rangoDetalle==='Especie'&&Number(d.ramasDibujadas)<160&&Number(d.cacheTroncos)<=256&&Number(d.drawCalls)<=2;})()"),'El zoom extremo mantiene el anclaje, los rangos abiertos y el presupuesto gráfico.');
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
-    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'1.000');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'0.500');
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Orden','Alejar vuelve a ocultar los rangos posteriores.');
     const raizAntesRueda=await posicionRaiz();
     await evaluar(`(() => {const el=[...document.querySelectorAll('.portal-diversity-label')].find(e=>!e.classList.contains('is-selected')),canvas=document.querySelector('.portal-diversity-canvas'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new WheelEvent('wheel',{deltaY:-120,clientX:r.left+Number(el.dataset.puntoX)*r.width/canvas.clientWidth,clientY:r.top+Number(el.dataset.puntoY)*r.height/canvas.clientHeight,bubbles:true,cancelable:true}));})()`);
@@ -836,6 +841,18 @@ try {
     await visible("document.querySelector('.atlas-dashboard .leaflet-pane')"); await reposo();
     // Visitante sin sesión: mapa público desde ambos motores, también dentro
     // de la expansión CSS y del top layer nativo. Los registros siguen ausentes.
+    await conexion.send('Page.navigate',{url:origen+'/prestamos/curador/matriz-columnas'});
+    await visible("document.querySelector('[data-matriz-config] .hub-ig tbody tr')");await reposo();
+    assert.equal(await evaluar("document.querySelectorAll('[data-matriz-config] .hub-ig tbody tr').length"),106);
+    await evaluar("(() => {const i=document.querySelector('input[placeholder=\"Nombre, cabecera, alias o requisito\"]');i.value='dateDetermined';i.dispatchEvent(new Event('input',{bubbles:true}));})()");
+    await visible("document.querySelectorAll('[data-matriz-config] .hub-ig tbody tr').length===1");await reposo();
+    await evaluar("document.querySelector('[data-matriz-config] .hub-ig tbody button').click()");
+    await visible("Boolean(document.querySelector('[data-matriz-config] dialog[open]'))");await reposo();
+    assert.ok(await evaluar("document.querySelector('[data-matriz-config] dialog[open]').contains(document.activeElement)"),'Editar una columna lleva el foco al formulario modal del curador.');
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await visible("!document.querySelector('[data-matriz-config] dialog[open]')");
+    await reposo();
     await conexion.send('Network.clearBrowserCookies');
     await conexion.send('Page.navigate',{url});
     await visible("document.querySelector('a[href$=\"/login\"]') && document.querySelector('.atlas-map .leaflet-pane')");await reposo();

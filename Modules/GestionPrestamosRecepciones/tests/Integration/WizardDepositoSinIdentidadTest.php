@@ -162,7 +162,11 @@ test('el avance guarda un detalle sin localidad y permite revisar editar y reanu
 test('el paso de carga sustituye el formulario por Excel y conserva la matriz ante un archivo rechazado y al reanudar', function (): void {
     [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
     $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
-    $fila = $componente->get('registroNativo');
+    $fila = array_replace($componente->get('registroNativo'), [
+        'phylum' => 'Arthropoda', 'class' => 'Insecta', 'order' => 'Hymenoptera',
+        'family' => 'Formicidae', 'genus' => 'Atta', 'specificEpithet' => 'cephalotes',
+        'taxonRank' => 'species', 'locality' => 'Quito', 'minimumElevationInMeters' => 2800,
+    ]);
     $subida = static function (array $filas): \Illuminate\Http\UploadedFile {
         $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $ruta = tempnam(sys_get_temp_dir(), 'dwc-');
@@ -182,6 +186,8 @@ test('el paso de carga sustituye el formulario por Excel y conserva la matriz an
     $matriz = $componente->get('matrizId');
     expect($modelo->fresh()->extraccion_metadatos['matriz_fuente'])->toBe('excel');
     $componente->set('archivoMatriz', $subida([['scientificName' => 'Atta cephalotes']]))
+        ->assertDispatched('show-toast', fn ($evento, $datos) => $datos['variant'] === 'error' && str_contains($datos['message'], 'obligatorios'))
+        ->assertDontSee('Campos obligatorios sin completar')->assertDontSee('Carga rechazada')
         ->call('guardarPasoCinco')->assertSet('paso', 7)->assertSet('matrizId', $matriz);
     expect($componente->get('errorMatriz'))->not->toBe('');
     expect(RegistroEspecimenEloquentModel::where('matriz_id', $matriz)->count())->toBe(1);
@@ -193,6 +199,18 @@ test('el paso de carga sustituye el formulario por Excel y conserva la matriz an
     Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id])
         ->assertSet('fuenteMatriz', 'excel')->call('retroceder')->assertSet('paso', 7)
         ->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8)->assertSet('totalRegistros', 2);
+});
+
+test('el depositante sube la plantilla v2 original en el penúltimo paso y solo se guarda el registro de ejemplo', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
+    $archivo = \Illuminate\Http\UploadedFile::fake()->createWithContent('Plantilla laboratorio v2.xlsx',
+        file_get_contents(base_path('tests/Fixtures/plantilla-laboratorio-invertebrados-v2.xlsx')));
+    $componente->set('archivoMatriz', $archivo)->assertHasNoErrors()->assertSet('errorMatriz', '')
+        ->assertSet('totalRegistros', 1)->assertSet('fuenteMatriz', 'excel')->assertSet('paso', 7);
+    expect($componente->instance()->pasoVisible())->toBe(6);
+    $filas = RegistroEspecimenEloquentModel::where('matriz_id', $componente->get('matrizId'))->get();
+    expect($filas)->toHaveCount(1)->and($filas[0]->datos_dwc['scientificName'])->toBe('Lycomedes_hirtipes');
 });
 
 test('un detalle inválido conserva la matriz anterior y puede corregirse sin otro botón', function (): void {

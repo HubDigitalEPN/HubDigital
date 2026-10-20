@@ -1,7 +1,7 @@
 import {Box3, BufferAttribute, BufferGeometry, Color, DirectionalLight, Frustum, HemisphereLight, InstancedMesh, LineBasicMaterial, LineSegments,
     Matrix4, MeshStandardMaterial, MOUSE, Object3D, PerspectiveCamera, Scene, SphereGeometry, TOUCH, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {aperturaRamaDiversidad,crearArbolDiversidad,detalleTaxonomicoDiversidad,encuadreRaizDiversidad,radioYemaDiversidad,seleccionarDetalleDiversidad,zoomRaizDiversidad} from './portal-taxonomy-diversity-model';
+import {aperturaRamaDiversidad,crearArbolDiversidad,detalleTaxonomicoDiversidad,encuadreRaizDiversidad,escalaCamaraDiversidad,limiteZoomRangosDiversidad,radioYemaDiversidad,seleccionarDetalleDiversidad,zoomRaizDiversidad,zoomSemanticoDiversidad} from './portal-taxonomy-diversity-model';
 import {rangoVisual3D,resumenTaxon3D} from './portal-taxonomy-three-ranks';
 import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
 import {crearLeyendaTaxonomica} from './portal-taxonomy-tooltip';
@@ -56,7 +56,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
     let indice,arbol,fuente,raiz,ancho=1,alto=1,base=1,maxZoom=4096,radioArbol=1,rangosPresentes=[],rangosNodos=[];
     let frame=null,destruido=false,activo=true,elegido=0,resaltado='',hijoTeclado=-1,puntos=[],pulsacion=null,destino=null,firma='',revision=0,limiteRango=3;
     let dimensionado=false,ampliado=false,ampliacionAutomatica=true,fullscreenPendiente=false;
-    let focoZoom=0,rangoInicial=0,encuadreAutomatico=true;
+    let focoZoom=0,rangoInicial=0,limiteZoomRangos=.5,encuadreAutomatico=true;
     const dialogo=elemento.closest('dialog'),toques=new Map();
     const escuchar=(el,tipo,fn,opciones={})=>el.addEventListener(tipo,fn,{...opciones,signal:abort.signal});
     const color=valor=>{if(!colores.has(valor))colores.set(valor,new Color(valor));return colores.get(valor);};
@@ -70,7 +70,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
         focoZoom=i;encuadreAutomatico=i===0;
         const bounds=cajaClado(i).clone();
         if(!i){
-            bounds.makeEmpty();const inicial=detalleTaxonomicoDiversidad(rangosNodos[0],1,rangosPresentes,rangoInicial).orden;
+            bounds.makeEmpty();const inicial=detalleTaxonomicoDiversidad(rangosNodos[0],.5,rangosPresentes,rangoInicial).orden;
             let expuestos=0;
             for(let j=0;j<arbol.claves.length;j++)if(j===0||rangosNodos[j]<=inicial){bounds.expandByPoint(posicion(j));expuestos++;}
             // Si la selección es una Clase/Familia individual, reservar el
@@ -83,12 +83,12 @@ export function crearEscenaDiversidad(elemento,acciones) {
         const direccion=animado||conservarOrientacion?camara.position.clone().sub(orbit.target).normalize():new Vector3(.22,.16,1).normalize();
         const objetivo={posicion:centro.clone().addScaledVector(direccion,distancia),centro};
         if(!i){
-            const inicial=detalleTaxonomicoDiversidad(rangosNodos[0],1,rangosPresentes,rangoInicial).orden;
+            const inicial=detalleTaxonomicoDiversidad(rangosNodos[0],.5,rangosPresentes,rangoInicial).orden;
             const pie=ampliado?leyenda.offsetHeight+instrucciones.offsetHeight:0;
-            const encuadre=encuadreRaizDiversidad(arbol,inicial,ancho,alto,{inferior:70+pie,direccion:direccion.toArray()});
+            const encuadre=encuadreRaizDiversidad(arbol,inicial,ancho,alto,{inferior:70+pie,direccion:direccion.toArray(),reserva:rangoInicial===rangosNodos[0]?1.4:1.2});
             objetivo.centro.fromArray(encuadre.centro);objetivo.posicion.fromArray(encuadre.posicion);distancia=encuadre.distancia;
         }
-        if(!i){base=distancia;radioArbol=Math.max(50,tamano.length());maxZoom=Math.max(4096,Math.min(1e7,80/arbol.separacion));orbit.minDistance=base/maxZoom;orbit.maxDistance=base*2;}
+        if(!i){base=distancia*.5;radioArbol=Math.max(50,tamano.length());maxZoom=Math.max(4096,Math.min(1e7,80/arbol.separacion));limiteZoomRangos=limiteZoomRangosDiversidad(rangosNodos[0],rangosPresentes,rangoInicial);orbit.minDistance=base/escalaCamaraDiversidad(maxZoom,limiteZoomRangos);orbit.maxDistance=base*2;}
         if(animado&&!reducido.matches)destino=objetivo;else{destino=null;camara.position.copy(objetivo.posicion);orbit.target.copy(centro);orbit.update();}
         marco.dataset.animando=String(Boolean(destino));tooltip.ocultar();programar();
     }
@@ -97,7 +97,10 @@ export function crearEscenaDiversidad(elemento,acciones) {
         if(!arbol||!Number.isFinite(factor)||factor<=0)return;
         if(factor>1&&ampliacionAutomatica&&!ampliado)ampliarAutomaticamente();
         const centro=destino?.centro||orbit.target,origen=destino?.posicion||camara.position;
-        const objetivo=zoomRaizDiversidad({centro:centro.toArray(),posicion:origen.toArray()},posicion(0).toArray(),factor,{min:orbit.minDistance,max:orbit.maxDistance});
+        const escalaActual=base/origen.distanceTo(centro),zoomActual=zoomSemanticoDiversidad(escalaActual,limiteZoomRangos);
+        const zoomObjetivo=Math.max(.5,Math.min(maxZoom,zoomActual*factor));
+        const factorCamara=escalaCamaraDiversidad(zoomObjetivo,limiteZoomRangos)/escalaActual;
+        const objetivo=zoomRaizDiversidad({centro:centro.toArray(),posicion:origen.toArray()},posicion(0).toArray(),factorCamara,{min:orbit.minDistance,max:orbit.maxDistance});
         focoZoom=0;
         destino={centro:new Vector3(...objetivo.centro),posicion:new Vector3(...objetivo.posicion)};
         Object.assign(marco.dataset,{yemaZoom:arbol.claves[focoZoom],registrosYema:String(arbol.registros[focoZoom])});
@@ -140,8 +143,8 @@ export function crearEscenaDiversidad(elemento,acciones) {
             if(camara.position.distanceTo(destino.posicion)<Math.max(.0000001,camara.position.distanceTo(orbit.target)*.0004)){camara.position.copy(destino.posicion);orbit.target.copy(destino.centro);destino=null;}
             orbit.update();
         }
-        const distancia=camara.position.distanceTo(orbit.target);camara.near=Math.max(1e-9,distancia*.00003);camara.far=distancia+radioArbol*5;camara.updateProjectionMatrix();camara.updateMatrixWorld();
-        const detalle=detalleTaxonomicoDiversidad(rangosNodos[0],base/distancia,rangosPresentes,rangoInicial);limiteRango=detalle.orden;
+        const distancia=camara.position.distanceTo(orbit.target),factor=zoomSemanticoDiversidad(base/distancia,limiteZoomRangos);camara.near=Math.max(1e-9,distancia*.00003);camara.far=distancia+radioArbol*5;camara.updateProjectionMatrix();camara.updateMatrixWorld();
+        const detalle=detalleTaxonomicoDiversidad(rangosNodos[0],factor,rangosPresentes,rangoInicial);limiteRango=detalle.orden;
         for(const b of leyenda.children)b.hidden=Number(b.dataset.orden)>limiteRango;
         // Origen flotante: las coordenadas completas siguen en doble precisión;
         // los buffers GPU contienen sólo diferencias locales durante el zoom.
@@ -151,7 +154,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
         const {visibles,brotes:colapsados}=seleccionarDetalleDiversidad(arbol,rangosNodos,limiteRango,i=>{
             if(!frustum.intersectsBox(cajaClado(i).expandByScalar(arbol.radios[i]*3)))return null;
             const p=proyectar(i),m={...p,extension:extension(i)};medidas.set(i,m);return m;
-        },{presupuesto,ancho,alto});
+        },{presupuesto,ancho,alto,umbral:Math.max(12,50/factor)});
         // La raíz anclada tiene prioridad sobre la agrupación de densidad,
         // sin aumentar el presupuesto ni abrir rangos posteriores.
         if(focoZoom>=0&&rangosNodos[focoZoom]<=limiteRango&&!visibles.includes(focoZoom)){
@@ -181,7 +184,8 @@ export function crearEscenaDiversidad(elemento,acciones) {
         }
         hojas.count=cantidad;hojas.instanceMatrix.needsUpdate=true;if(hojas.instanceColor)hojas.instanceColor.needsUpdate=true;
         dibujarEtiquetas(candidatos);camaraGPU.copy(camara);camaraGPU.position.sub(origenGPU);camaraGPU.updateMatrixWorld();renderer.render(escena,camaraGPU);
-        const factor=base/distancia;escalaTexto.textContent=`${numero(Math.round(factor*10)/10)}×`;acciones.zoom?.(factor);acciones.limitesZoom?.(.5,maxZoom);acciones.ajustado?.(Math.abs(factor-1)<.001&&!destino);
+        escalaTexto.textContent=`${numero(Math.round(factor*10)/10)}×`;acciones.zoom?.(factor);acciones.limitesZoom?.(.5,maxZoom);acciones.ajustado?.(Math.abs(factor-.5)<.001&&!destino);
+        marco.dataset.rangosDibujados=[...new Set(puntos.map(p=>rangoVisual3D(indice.porClave.get(arbol.claves[p.i])).nombre))].join(',');
         alejar.disabled=factor<=.50001;acercar.disabled=factor>=maxZoom*.99999;
         const raizProyectada=proyectar(0);
         Object.assign(marco.dataset,{zoom:factor.toFixed(3),raizX:String(raizProyectada.x),raizY:String(raizProyectada.y),ramasDibujadas:String(Math.max(0,visibles.length-1)),presupuesto:String(presupuesto),cacheTroncos:String(troncosCache.size),etiquetas:String(etiquetasDOM.size),enEncuadre:String(puntos.length),contraidos:String(colapsados.size),nivelDetalle:String(puntos.reduce((nivel,p)=>Math.max(nivel,arbol.niveles[p.i]),0)),rangoDetalle:detalle.nombre,drawCalls:String(renderer.info.render.calls),frames:String(renderer.info.render.frame),renderMs:(performance.now()-inicio).toFixed(2),centro:orbit.target.toArray().join(','),orientacion:camara.quaternion.toArray().map(n=>n.toFixed(5)).join(','),animando:String(Boolean(destino))});
@@ -245,7 +249,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
             // Al entrar/salir de pantalla completa se adapta una sola vez el
             // encuadre al área útil. Después el zoom mantiene esa raíz inmóvil.
             encuadrar(0,false,true);
-            const objetivo=zoomRaizDiversidad({centro:orbit.target.toArray(),posicion:camara.position.toArray()},posicion(0).toArray(),factor,{min:orbit.minDistance,max:orbit.maxDistance});
+            const objetivo=zoomRaizDiversidad({centro:orbit.target.toArray(),posicion:camara.position.toArray()},posicion(0).toArray(),factor/.5,{min:orbit.minDistance,max:orbit.maxDistance});
             camara.position.fromArray(objetivo.posicion);orbit.target.fromArray(objetivo.centro);orbit.update();
         }
         dimensionado=true;programar();

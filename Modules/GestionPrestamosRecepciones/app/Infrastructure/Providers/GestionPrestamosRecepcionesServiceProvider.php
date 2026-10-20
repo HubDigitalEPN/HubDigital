@@ -138,6 +138,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
         UsuarioNombrePort::class => LaravelUsuarioNombreAdapter::class,
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
+        \Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort::class => \Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentEsquemaMatrizAdapter::class,
         CatalogoEspecimenesPort::class => InventarioGestionColeccionEspecimenesAdapter::class,
         EstadoEspecimenCatalogoPort::class => InventarioGestionColeccionEstadoEspecimenAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
