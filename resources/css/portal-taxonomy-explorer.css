@@ -55,6 +55,7 @@
 .taxonomy-explorer-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .75rem; overflow: auto; overscroll-behavior: contain; padding: .85rem 1rem; }
 .taxonomy-explorer-search { flex: none; position: relative; }
 .taxonomy-explorer-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .4rem; }
+.taxonomy-explorer-summary:not(:has(button)) { margin-top: 0; }
 .taxonomy-explorer-summary p { margin: 0; }
 .taxonomy-explorer-pill { display: inline-flex; align-items: center; gap: .5rem; min-height: 36px; padding: .2rem .65rem; border: 1px solid #adc8df; border-radius: 999px; background: #e5f2fb; font-size: .8rem; }
 .taxonomy-explorer-suggestions { position: absolute; z-index: 5; inset: 100% 0 auto; margin: .25rem 0 0; padding: .25rem; max-height: 18rem; overflow: auto; list-style: none; border: 1px solid #adc8df; border-radius: 6px; background: #fff; box-shadow: 0 6px 20px rgb(8 28 45 / 18%); }
@@ -174,10 +175,10 @@
     .portal-mdd-vertical, .portal-mdd-horizontal { left: -28px; }
     .portal-mdd-horizontal { width: 28px; }
 }
-.taxonomy-phylum-select { display: flex; align-items: center; gap: 10px; flex: 0 1 290px; }
+.taxonomy-phylum-select { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; max-width: 100%; }
 .taxonomy-phylum-select label { font-size: 14px; font-weight: 700; color: #42637b; }
 .taxonomy-phylum-select select { width: 100%; min-width: 140px; min-height: 44px; border: 1px solid #adc8df; border-radius: 9px; padding: 8px 34px 8px 12px; background: #f0f7fb; color: #173752; font-size: 16px; font-weight: 600; }
-.taxonomy-phylotree-search { flex: 1; min-width: 0; max-width: 540px; }
+.taxonomy-phylotree-search { flex: 1 1 280px; min-width: 0; max-width: 400px; }
 .taxonomy-phylotree-search input { border-radius: 9px; font-size: 16px; box-shadow: 0 2px 5px rgb(23 55 82 / 4%); }
 .taxonomy-search-field { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 3px; min-height: 44px; border: 1px solid #adc8df; border-radius: 9px; background: #fff; box-shadow: 0 2px 5px rgb(23 55 82 / 4%); }
 .taxonomy-search-field:focus-within { border-color: #247bad; outline: 2px solid #247bad; outline-offset: 2px; }
@@ -206,7 +207,7 @@
 .taxonomy-explorer .taxonomy-search-field input:focus-visible { outline: 0; box-shadow: none; }
 @container taxonomy-explorer (max-width: 600px) {
     .taxonomy-phylotree-controls { flex-wrap: wrap; gap: 8px; }
-    .taxonomy-phylum-select, .taxonomy-phylotree-search { flex-basis: 100%; max-width: none; }
+    .taxonomy-phylotree-search { flex-basis: 100%; max-width: none; }
 }
 .portal-phylotree-stage > .portal-phylotree-svg { display: block; flex: none; max-width: none; overflow: visible; }
 .portal-phylotree-stage.portal-canvas-stage { display: block; }

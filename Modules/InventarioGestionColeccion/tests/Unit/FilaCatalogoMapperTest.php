@@ -10,6 +10,16 @@ function mapearFila(array $fila): FilaMapeada
     return (new FilaCatalogoMapper)->mapear($fila);
 }
 
+test('los campos estables de la plantilla curatorial conservan localidad y fecha de identificación históricas', function (): void {
+    $mapper = new FilaCatalogoMapper;
+    expect($mapper->normalizarClaves(['locality' => 'Yasuní', 'dateIdentified' => '2020-04-05']))
+        ->toBe($mapper->normalizarClaves(['localityName' => 'Yasuní', 'dateDetermined' => '2020-04-05']));
+    $nueva = $mapper->mapear(['locality' => 'Yasuní', 'dateIdentified' => '2020-04-05']);
+    $anterior = $mapper->mapear(['localityName' => 'Yasuní', 'dateDetermined' => '2020-04-05']);
+    expect($nueva->localidadVerbatim)->toBe($anterior->localidadVerbatim)
+        ->and($nueva->dateDetermined)->toBe($anterior->dateDetermined);
+});
+
 test('el protocolo de colecta original se conserva aunque el ejemplar no tenga oldCode', function (): void {
     $fila = mapearFila(['occurrenceID' => 'PROTO-QA', 'samplingProtocol' => '  leaf_litter_sifter  ']);
     expect($fila->samplingProtocol)->toBe('leaf_litter_sifter')->and($fila->oldCode)->toBeNull();

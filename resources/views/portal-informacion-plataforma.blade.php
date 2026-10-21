@@ -15,9 +15,9 @@
         <p>Fomentamos el uso de imágenes del laboratorio. En publicaciones impresas o digitales, recomendamos citar a la persona autora, el año, el código único del espécimen y el sitio de origen. Ejemplo: <em>Juan Pérez, 2026, MEPNINV00001, labinvepn.org</em>. Incluya el enlace a la licencia e indique cualquier modificación.</p>
         <p>En sitios web, identifique a la persona autora y la procedencia e incluya un enlace activo a la página de origen de la fotografía. Las imágenes externas conservan sus licencias y créditos originales.</p>
     @else
-        <h2 class="text-xl font-semibold">Créditos y financiamiento</h2>
-        <p>La plataforma es una creación del Arq. de Software Hernán Troya y del Laboratorio de ADN, Facultad de Ingeniería en Sistemas, Escuela Politécnica Nacional, Quito, Ecuador.</p>
-        <p>Créditos: Hernán Troya, Alejandro Alemán, Jimmy Valladares, Michael Trocellier, Miguel Mendoza y Paul Cajas. Comentarios y observaciones: Carlos Anchundia, PhD., y Pamela Flores, PhD. Comentarios de forma y diseño: Adrian Troya, PhD. Financiamiento: fondos del Laboratorio de Invertebrados.</p>
+        <p>{{ \App\Support\PortalCopy::text('creditos.autoria') }}</p>
+        <p>{{ \App\Support\PortalCopy::text('creditos.colaboraciones') }}</p>
+        <p>{{ \App\Support\PortalCopy::text('creditos.financiamiento') }}</p>
     @endif
     <a data-platform-information-return class="inline-block underline text-science-blue" href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}">Volver a la distribución de registros</a>
 </article>

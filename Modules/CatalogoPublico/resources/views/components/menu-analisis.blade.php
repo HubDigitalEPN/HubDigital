@@ -14,15 +14,14 @@
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">{{ \App\Support\PortalCopy::text('catalogo.pdf') }}</button>@endif
         @endif
         @if($tipo !== 'filos')<button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ \App\Support\PortalCopy::text($tipo === 'mapa' ? 'catalogo.alternar_agrupaciones' : 'catalogo.alternar_grafico') }}</button>@endif
-        <button type="button" role="menuitem" x-on:click="indice()">{{ \App\Support\PortalCopy::text('catalogo.indicador') }}</button>
+        <button type="button" role="menuitem" x-on:click="indice()">{{ \App\Support\PortalCopy::text('catalogo.explicar_metrica') }}</button>
     </div>
     <span class="sr-only" role="status" x-text="aviso"></span>
     <dialog class="atlas-index-dialog" x-ref="indice" aria-labelledby="indice-titulo-{{ $tipo }}" x-on:keydown.escape.stop.prevent="$el.close()" x-on:cancel.stop.prevent="$el.close()" x-on:close="$refs.boton.focus()" x-on:click="if ($event.target === $el) $el.close()">
         <div class="atlas-index-content">
-            <header><h2 id="indice-titulo-{{ $tipo }}">{{ \App\Support\PortalCopy::text('catalogo.indicador') }} · {{ $indice['titulo'] }}</h2><button type="button" autofocus x-on:click="$refs.indice.close()" aria-label="{{ \App\Support\PortalCopy::text('catalogo.cerrar_explicacion') }}">×</button></header>
+            <header><h2 id="indice-titulo-{{ $tipo }}">{{ $indice['titulo'] }}</h2><button type="button" autofocus x-on:click="$refs.indice.close()" aria-label="{{ \App\Support\PortalCopy::text('catalogo.cerrar_explicacion') }}">×</button></header>
             <figure>
                 <img src="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-640.webp') }}" srcset="{{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-320.webp') }} 320w, {{ asset('images/indices/'.($indice['imagen'] ?? $tipo).'-640.webp') }} 640w" sizes="(max-width: 480px) calc(94vw - 32px), 300px" alt="Ilustración generada: {{ $indice['foto'] }}" width="640" height="480" loading="lazy" decoding="async">
-                <figcaption>{{ \App\Support\PortalCopy::text('catalogo.ilustracion_ayuda') }}</figcaption>
             </figure>
             @if(config('figuras_portal.'.$tipo))<x-catalogopublico::figura-panel :tipo="$tipo" contexto="indicador" />@endif
             @foreach($indice['parrafos'] as $parrafo)<p>{{ $parrafo }}</p>@endforeach

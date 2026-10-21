@@ -60,18 +60,16 @@ test('QA6 distribución agregada conserva reservas de provincia fecha y nombre y
         ['decada' => 1990, 'especies' => 1, 'registros' => 1],
         ['decada' => 2000, 'especies' => 2, 'registros' => 4],
     ]);
-    // Un filo exige identificación pública: el registro reservado solo aporta
-    // cobertura de provincia/fecha cuando la selección no filtra su identidad.
+    // La selección global también exige nombre científico público: el registro
+    // reservado no aporta ubicaciones ni fechas aunque no haya filtro de filo.
     $sinIdentificacionExigida = app(PortalEstadisticas::class)->datosParaVista(['colector' => $marca], false);
     expect($sinIdentificacionExigida['riqueza'])->toBe([
         ['provincia' => 'Nariño', 'especies' => 2, 'registros' => 3],
         ['provincia' => 'Chocó', 'especies' => 1, 'registros' => 2],
-        ['provincia' => 'Carchi', 'especies' => 0, 'registros' => 1],
         ['provincia' => 'Esmeraldas', 'especies' => 0, 'registros' => 1],
     ])->and($sinIdentificacionExigida['decadas'])->toBe([
         ['decada' => 1980, 'especies' => 0, 'registros' => 1],
         ['decada' => 1990, 'especies' => 1, 'registros' => 1],
         ['decada' => 2000, 'especies' => 2, 'registros' => 4],
-        ['decada' => 2010, 'especies' => 0, 'registros' => 1],
     ]);
 });

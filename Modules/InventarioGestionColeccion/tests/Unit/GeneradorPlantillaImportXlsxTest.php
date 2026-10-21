@@ -26,6 +26,12 @@ test('genera un .xlsx válido (firma ZIP)', function (): void {
         ->and(substr($bytes, 0, 2))->toBe('PK'); // firma de archivo ZIP/OOXML
 });
 
+test('la descarga alternativa CSV conserva exactamente las columnas con comas del laboratorio', function (): void {
+    $csv = GeneradorPlantillaImportXlsx::generarCsv();
+    expect(str_getcsv(trim(substr($csv, 3)), ',', '"', ''))->toBe(array_keys(GeneradorPlantillaImportXlsx::columnas()))
+        ->toContain('recordCreatedBy,month-year');
+});
+
 test('la plantilla es leíble por el importador y sus headers coinciden', function (): void {
     $ruta = tempnam(sys_get_temp_dir(), 'plantilla_').'.xlsx';
     file_put_contents($ruta, GeneradorPlantillaImportXlsx::generar());

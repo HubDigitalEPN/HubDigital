@@ -156,10 +156,9 @@ test('registros identificados hasta familia aparecen en provincia década y en l
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][2])->update(['occurrence_id_visible' => false, 'scientific_name_visible' => false]);
     $pagina->call('limpiarFiltros')->call('abrirCelda', -3.5, -79.5);
     $reservado = $pagina->instance()->detalleCelda;
-    expect($reservado['registro_seleccionado']['nombre'])->toBe('Registro público 1')
-        ->and($reservado['registro_seleccionado']['padre_id'])->toBeNull()->and($reservado['seleccionado'])->toBeNull()
-        ->and(array_column($reservado['registros'], 'especimen_id'))->toBe([$f['ids'][2]]);
-    $pagina->assertDontSee('QA-AUTO-3')->assertSee('Código reservado');
+    expect($reservado['registro_seleccionado'])->toBeNull()->and($reservado['seleccionado'])->toBeNull()
+        ->and($reservado['registros'])->toBe([])->and($reservado['registros_arbol'])->toBe([]);
+    $pagina->assertDontSee('QA-AUTO-3')->assertDontSee('Código reservado');
 });
 
 test('una hoja conserva su UUID y relee el linaje público antes de cargar su ficha cuando cambia la identificación', function (): void {

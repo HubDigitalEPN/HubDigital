@@ -25,51 +25,24 @@ final class GeneradorPlantillaImportXlsx
      *
      * @return array<string, string>
      */
-    public static function columnas(): array
+    public static function columnas(?array $definicion = null): array
     {
-        return [
-            'occurrenceID' => 'Identificador único de la ocurrencia (ej. MEPN:INV:12345). Si se omite, se genera automáticamente.',
-            'catalogNumber' => 'Número de catálogo (ej. MEPN-INV-000123).',
-            'oldCode' => 'Código antiguo o de campo; agrupa especímenes de la misma muestra (ej. BT2F3).',
-            'scientificName' => 'Nombre científico completo (ej. Morpho peleides).',
-            'kingdom' => 'Reino (ej. Animalia).',
-            'phylum' => 'Filo (ej. Arthropoda).',
-            'class' => 'Clase (ej. Insecta).',
-            'order' => 'Orden (ej. Lepidoptera).',
-            'family' => 'Familia (ej. Nymphalidae).',
-            'genus' => 'Género (ej. Morpho).',
-            'specificEpithet' => 'Epíteto específico (ej. peleides).',
-            'infraspecificEpithet' => 'Epíteto infraespecífico / subespecie (opcional).',
-            'taxonRank' => 'Rango del nombre (ej. species, genus, family).',
-            'recordedBy' => 'Colector(es) (ej. J. Pérez).',
-            'eventDate' => 'Fecha de colecta. Admite fecha simple o rango (ej. 2001-02-14 o 14-26/feb/2001).',
-            'country' => 'País (ej. Ecuador).',
-            'stateProvince' => 'Provincia (ej. Orellana).',
-            'municipality' => 'Cantón o municipio (ej. Aguarico).',
-            'localityName' => 'Localidad (ej. Estación Científica Yasuní).',
-            'decimalLatitude' => 'Latitud en grados decimales (ej. -0.6846).',
-            'decimalLongitude' => 'Longitud en grados decimales (ej. -76.3969).',
-            'geodeticDatum' => 'Datum geodésico (ej. WGS84).',
-            'individualCount' => 'Número de individuos (entero).',
-            'sex' => 'Sexo (ej. male, female).',
-            'lifeStage' => 'Estadio de vida (ej. adult, larva).',
-            'caste' => 'Casta, para insectos sociales (opcional).',
-            'preparations' => 'Tipo de preparación (ej. pinned, alcohol).',
-            'disposition' => 'Disposición del ejemplar (ej. in collection).',
-            'occurrenceStatus' => 'Estado de la ocurrencia (present / absent).',
-            'typeStatus' => 'Estatus de tipo (ej. holotype), si aplica.',
-            'habitat' => 'Hábitat.',
-            'biome' => 'Bioma.',
-            'occurrenceRemarks' => 'Observaciones de la ocurrencia.',
-            'taxonomicNotes' => 'Notas taxonómicas.',
-            'specimenNotes' => 'Notas internas del espécimen.',
-        ];
+        $definicion ??= ConfiguracionPlantillaCatalogo::predeterminada();
+        return array_column($definicion['columnas'], 'descripcion', 'cabecera');
+    }
+
+    /** Cabeceras CSV completas, incluidas las que contienen comas. */
+    public static function generarCsv(?array $definicion = null): string
+    {
+        $cabeceras = array_map(static fn (string $campo): string => '"'.str_replace('"', '""', $campo).'"', array_keys(self::columnas($definicion)));
+        return "\xEF\xBB\xBF".implode(',', $cabeceras)."\r\n";
     }
 
     /** Devuelve el contenido binario del .xlsx de la plantilla. */
-    public static function generar(): string
+    public static function generar(?array $definicion = null): string
     {
-        $columnas = self::columnas();
+        $definicion ??= ConfiguracionPlantillaCatalogo::predeterminada();
+        $columnas = self::columnas($definicion);
         $encabezados = array_keys($columnas);
 
         $spreadsheet = new Spreadsheet;
@@ -94,20 +67,24 @@ final class GeneradorPlantillaImportXlsx
         // ── Hoja 2: Guía (columna → descripción) ──────────────────────────────
         $guia = $spreadsheet->createSheet();
         $guia->setTitle('Guía');
-        $guia->fromArray([['Columna', 'Descripción y ejemplo']], null, 'A1');
+        $guia->fromArray([['Campo', 'Columna', 'Descripción y ejemplo', 'Requisito', 'Formato']], null, 'A1');
         $fila = 2;
-        foreach ($columnas as $nombre => $descripcion) {
-            $guia->setCellValue("A{$fila}", $nombre);
-            $guia->setCellValue("B{$fila}", $descripcion);
+        foreach ($definicion['columnas'] as $c) {
+            $guia->fromArray([[$c['campo'], $c['cabecera'], $c['descripcion'], $c['requisito'], $c['formato']]], null, 'A'.$fila);
             $fila++;
         }
-        $guia->getStyle('A1:B1')->applyFromArray([
+        $guia->getStyle('A1:E1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1B365D']],
         ]);
-        $guia->getColumnDimension('A')->setAutoSize(true);
-        $guia->getColumnDimension('B')->setWidth(90);
-        $guia->getStyle('A1:B'.($fila - 1))->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+        foreach (['A' => 32, 'B' => 32, 'C' => 100, 'D' => 18, 'E' => 16] as $col => $ancho) $guia->getColumnDimension($col)->setWidth($ancho);
+        $guia->getStyle('A2:E'.($fila - 1))->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+        $guia->freezePane('C2');
+        $guia->setAutoFilter('A1:E'.($fila - 1));
+        // Todo texto se escribe explícitamente: ni encabezados ni guía son fórmulas.
+        foreach ([$hoja, $guia] as $sheet) foreach ($sheet->getRowIterator() as $row) foreach ($row->getCellIterator() as $cell) {
+            if ($cell->getValue() !== null) $cell->setValueExplicit((string)$cell->getValue(), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        }
 
         $spreadsheet->setActiveSheetIndex(0);
 

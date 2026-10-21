@@ -1,9 +1,9 @@
 const RANGOS = [
-    ['Filo', '#a9bfd2'], ['Subfilo', '#8ba8c2'], ['Superclase', '#83bac7'], ['Clase', '#65c4cf'],
-    ['Subclase', '#79adc4'], ['Infraclase', '#6594ad'], ['Superorden', '#d8c595'], ['Orden', '#dfb678'],
-    ['Suborden', '#c99b6d'], ['Infraorden', '#b58d65'], ['Superfamilia', '#99a8d0'], ['Familia', '#ada0d5'],
-    ['Subfamilia', '#9586bf'], ['Tribu', '#a18bb8'], ['Subtribu', '#8d79a5'],
-    ['Género', '#cd99b8'], ['Subgénero', '#b889a3'], ['Especie', '#80bfa9'], ['Subespecie', '#6fa78f'],
+    ['Filo', '#397bb5'], ['Subfilo', '#6c9ac4'], ['Superclase', '#2097a7'], ['Clase', '#00a7a0'],
+    ['Subclase', '#459fbc'], ['Infraclase', '#28768b'], ['Superorden', '#cf9c30'], ['Orden', '#efb323'],
+    ['Suborden', '#e56b24'], ['Infraorden', '#ad4e1b'], ['Superfamilia', '#7076c9'], ['Familia', '#8e58ce'],
+    ['Subfamilia', '#cc4ba3'], ['Tribu', '#b3a125'], ['Subtribu', '#79751d'],
+    ['Género', '#d44459'], ['Subgénero', '#a62c4b'], ['Especie', '#39a34b'], ['Subespecie', '#217138'],
 ];
 const normalizar = nombre => String(nombre || 'Taxón').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 const conocidos = new Map(RANGOS.map(([nombre, color], orden) => [normalizar(nombre), {id: normalizar(nombre), nombre, color, orden}]));

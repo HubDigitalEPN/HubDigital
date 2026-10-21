@@ -14,7 +14,7 @@ test('el modelo local no se invoca por defecto ni si supera un gigabyte', functi
     expect((new ModeloLocalPequeno)->resumir('pregunta', 'fuente'))->toBeNull();
     Http::assertNothingSent();
 
-    config()->set('chatbot.use_local_model', true);
+    habilitarQwenAislado();
     Http::fake(['*/api/tags' => Http::response(['models' => [['name' => 'qwen3:0.6b', 'size' => 1_000_000_001]]])]);
     expect((new ModeloLocalPequeno)->resumir('pregunta', 'fuente'))->toBeNull();
     Http::assertSentCount(1);
@@ -22,7 +22,7 @@ test('el modelo local no se invoca por defecto ni si supera un gigabyte', functi
 
 
 test('el modelo pequeno responde solo con una fuente si esta habilitado y bajo el limite', function (): void {
-    config()->set('chatbot.use_local_model', true);
+    habilitarQwenAislado();
     Http::fake([
         '*/api/tags' => Http::response(['models' => [['name' => 'qwen3:0.6b', 'size' => 523_000_000]]]),
         '*/api/chat' => Http::response(['message' => ['content' => 'Los insectos tienen tres pares de patas.']]),
@@ -39,8 +39,34 @@ function habilitarQwenAislado(): void
     config()->set('app.env', 'production');
     config()->set('app.url', 'https://labinvepn.org');
     config()->set('chatbot.use_local_model', true);
-    Cache::forget('chat:qwen:inventario:v1');
+    Cache::forget('chat:qwen:inventario:v2:qwen3:0.6b');
+    Cache::forget('chat:qwen:inventario:v2:qwen3:4b');
 }
+
+test('la corrección de intención conserva negaciones, taxones, citas y códigos y está apagada fuera de producción', function (): void {
+    habilitarQwenAislado();
+    $servicio = new \Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\OrtografiaConsultaChat;
+    $pregunta = 'no quero docuemntos; quiero regsitros de Camponotus atriceps MEPN-INV-123 y "regsitros"';
+    expect($servicio->corregir($pregunta))->toBe('no quiero documentos; quiero registros de Camponotus atriceps MEPN-INV-123 y "regsitros"');
+    config(['app.url' => 'https://dev.labinvepn.org']);
+    expect($servicio->corregir($pregunta))->toBe($pregunta);
+    config(['app.url' => 'http://localhost:8000', 'app.env' => 'local']);
+    expect($servicio->corregir($pregunta))->toBe($pregunta);
+});
+
+test('Qwen de producción recibe contexto acotado y un presupuesto fijo para la interpretación ortográfica', function (): void {
+    habilitarQwenAislado();
+    config(['chatbot.model' => 'qwen3:4b', 'chatbot.max_model_bytes' => 3_000_000_000]);
+    Http::fake([
+        '*/api/tags' => Http::response(['models' => [['name' => 'qwen3:4b', 'size' => 2_497_280_480]]]),
+        '*/api/chat' => Http::response(['message' => ['content' => '"documentos"']]),
+    ]);
+    expect((new ModeloLocalPequeno)->seleccionar('y los documntos?', ['documentos' => 'documentación del depósito', 'filtros' => 'filtros del mapa'], ['Quiero entregar ejemplares', str_repeat('x', 300)]))->toBe('documentos');
+    Http::assertSent(fn ($r): bool => str_ends_with($r->url(), '/api/chat') && $r['model'] === 'qwen3:4b'
+        && $r['options']['num_thread'] === 2 && $r['options']['num_ctx'] === 1024 && $r['options']['num_predict'] === 12
+        && str_contains($r['messages'][0]['content'], 'ortografía') && str_contains($r['messages'][0]['content'], 'negaciones')
+        && !str_contains($r['messages'][1]['content'], str_repeat('x', 161)));
+});
 
 test('la interpretación Qwen queda excluida de localhost y desarrollo aunque se copie la variable', function (string $entorno, string $url): void {
     habilitarQwenAislado();

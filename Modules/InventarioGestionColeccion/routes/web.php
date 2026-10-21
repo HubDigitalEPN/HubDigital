@@ -34,6 +34,8 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
             Route::get('/importar', ActualizarCatalogoIndex::class)->name('importar');
             Route::get('/importar/plantilla', DescargarPlantillaImportController::class)->name('importar.plantilla');
+            Route::get('/importar/plantilla/configurar', \Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionPlantillaCatalogoIndex::class)->name('importar.plantilla.configurar');
+            Route::get('/importar/{importacion}/original', \Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarOriginalImportacionController::class)->whereUuid('importacion')->name('importar.original');
             Route::get('/etiquetas', EtiquetadoQrIndex::class)->name('etiquetas');
             Route::get('/especimenes/duplicados', DuplicadosCatalogNumberIndex::class)->name('especimenes.duplicados');
             Route::get('/muestras', MuestrasColectaIndex::class)->name('muestras');

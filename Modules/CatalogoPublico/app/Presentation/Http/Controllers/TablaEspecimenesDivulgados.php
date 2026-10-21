@@ -228,6 +228,7 @@ final class TablaEspecimenesDivulgados extends Component
                 'tx_species.nombre_cientifico as scientific_name',
                 'te.taxon_verbatim',
                 'ed.publicado',
+                'ed.scientific_name_visible',
                 'te.coordenadas_otras_regiones',
                 DB::raw(ElegibilidadGeograficaPortal::sql().' as coordenadas_publicas_validas'),
                 DB::raw('(te.decimal_latitude IS NULL OR te.decimal_longitude IS NULL) as coordenadas_incompletas'),

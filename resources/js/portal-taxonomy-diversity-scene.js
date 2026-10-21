@@ -3,7 +3,7 @@ import {Box3, BufferAttribute, BufferGeometry, Color, DirectionalLight, Fog, Fru
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {LEYENDA_DIVERSIDAD,aperturaRamaDiversidad,crearArbolDiversidad,detalleTaxonomicoDiversidad,encuadreRaizDiversidad,limiteZoomRangosDiversidad,radioYemaDiversidad,seleccionarDetalleDiversidad,zoomParaRangoDiversidad,zoomRaizDiversidad} from './portal-taxonomy-diversity-model';
 import {rangoVisual3D,resumenTaxon3D} from './portal-taxonomy-three-ranks';
-import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
+import {actualizarBreadcrumbTaxonomico} from './portal-taxonomy-lineage';
 import {crearLeyendaTaxonomica} from './portal-taxonomy-tooltip';
 
 const numero=n=>Number(n).toLocaleString('es-EC');
@@ -14,6 +14,7 @@ const boton=(nombre,texto,accion)=>{const el=crear('button','',texto);el.type='b
 export function crearEscenaDiversidad(elemento,acciones) {
     const marco=crear('div','portal-diversity-scene');marco.dataset.motor='Three.js';
     const cabecera=crear('div','portal-three-context'),identidad=crear('div','portal-three-identity');
+    const breadcrumb=crear('nav','portal-taxonomy-breadcrumb');cabecera.append(breadcrumb);
     const titulo=crear('h3','portal-three-title'),meta=crear('p','portal-three-meta');identidad.append(titulo,meta);
     const controles=crear('div','portal-three-controls');
     const volverAlPadre=()=>{const padre=indice?.porClave.get(raiz)?.padre;if(indice?.porClave.has(padre))acciones.navegar(padre);};
@@ -28,9 +29,8 @@ export function crearEscenaDiversidad(elemento,acciones) {
     panelZoom.id='portal-diversity-slider-panel';panelZoom.hidden=true;escalaTexto.setAttribute('aria-controls',panelZoom.id);escalaTexto.setAttribute('aria-expanded','false');
     deslizador.type='range';deslizador.min='0';deslizador.max='1000';deslizador.step='1';deslizador.setAttribute('aria-label','Zoom del árbol');deslizador.setAttribute('aria-orientation','vertical');panelZoom.append(deslizador);escala.append(panelZoom,escalaTexto);
     const leyenda=crear('div','portal-diversity-legend');leyenda.setAttribute('role','group');leyenda.setAttribute('aria-label','Rangos taxonómicos: abrir u ocultar niveles');
-    const instrucciones=crear('p','portal-three-instructions');instrucciones.tabIndex=0;instrucciones.setAttribute('role','status');
     const estado=crear('p','portal-diversity-status');estado.setAttribute('role','alert');estado.hidden=true;
-    marco.append(vista,leyenda,instrucciones);elemento.replaceChildren(marco);
+    marco.append(vista,leyenda);elemento.replaceChildren(marco);
     const controlesAmpliados=crear('div','portal-diversity-fullscreen-controls');controlesAmpliados.setAttribute('role','group');controlesAmpliados.setAttribute('aria-label','Navegación, zoom y pantalla completa');
     const volverAmpliado=boton('Volver al padre de la rama en pantalla completa','↶',volverAlPadre);
     const alejar=boton('Alejar árbol en pantalla completa','−',()=>zoom(1/1.6)),acercar=boton('Acercar árbol en pantalla completa','+',()=>zoom(1.6));
@@ -74,10 +74,10 @@ export function crearEscenaDiversidad(elemento,acciones) {
     const color=valor=>{if(!colores.has(valor))colores.set(valor,new Color(valor));return colores.get(valor);};
     const posicion=(i,v=new Vector3())=>v.set(arbol.posiciones[i*2],arbol.posiciones[i*2+1],arbol.profundidad[i]);
     function programar(){if(frame!==null||destruido||!activo||document.hidden)return;frame=requestAnimationFrame(()=>{frame=null;if(!destruido&&activo&&elemento.closest('dialog')?.open&&arbol)dibujar();});}
-    function mensaje(i=elegido){instrucciones.textContent=`${textoLinajeTaxonomico(indice,arbol?.claves[i>=0?i:0])} · Jerarquía taxonómica, sin escala temporal`;instrucciones.title=instrucciones.textContent;}
+    function mensaje(){actualizarBreadcrumbTaxonomico(breadcrumb,indice,raiz,acciones.navegar);}
     function error(texto){estado.textContent=texto;estado.hidden=false;}
     function cajaClado(i){const b=arbol.limites3D.subarray(i*6,i*6+6);return caja.min.set(b[0],b[1],b[2]),caja.max.set(b[3],b[4],b[5]),caja;}
-    function margenInferior(){return (ancho<600?110:70)+(ampliado?leyenda.offsetHeight+instrucciones.offsetHeight:0);}
+    function margenInferior(){return (ancho<600?110:70)+(ampliado?leyenda.offsetHeight:0);}
     function encuadrar(i=0,animado=false,conservarOrientacion=false){
         if(!arbol)return;
         focoZoom=i;encuadreAutomatico=i===0;
@@ -93,11 +93,11 @@ export function crearEscenaDiversidad(elemento,acciones) {
         }
         bounds.expandByScalar(Math.max(2,arbol.radios[i]*2.8));const centro=bounds.getCenter(new Vector3()),tamano=bounds.getSize(new Vector3());
         let distancia=Math.max(tamano.y,tamano.x/Math.max(.2,camara.aspect),tamano.z*.8,40)/(2*Math.tan(camara.fov*Math.PI/360)) * 1.28;
-        const direccion=animado||conservarOrientacion?camara.position.clone().sub(orbit.target).normalize():new Vector3(.65,.32,1).normalize();
+        const direccion=animado||conservarOrientacion?camara.position.clone().sub(orbit.target).normalize():new Vector3(.8,.45,1).normalize();
         const objetivo={posicion:centro.clone().addScaledVector(direccion,distancia),centro};
         if(!i){
             const inicial=detalleTaxonomicoDiversidad(rangosNodos[0],.5,rangosPresentes,rangoInicial).orden;
-            const encuadre=encuadreRaizDiversidad(arbol,inicial,ancho,alto,{inferior:margenInferior(),direccion:direccion.toArray(),reserva:rangoInicial===rangosNodos[0]?2.1:1.4});
+            const encuadre=encuadreRaizDiversidad(arbol,inicial,ancho,alto,{inferior:margenInferior(),direccion:direccion.toArray(),reserva:1.2});
             objetivo.centro.fromArray(encuadre.centro);objetivo.posicion.fromArray(encuadre.posicion);distancia=encuadre.distancia;
         }
         if(!i){base=distancia*.5;radioArbol=Math.max(50,tamano.length());maxZoom=Math.max(2,limiteZoomRangosDiversidad(rangosNodos[0],rangosPresentes,rangoInicial)*2);minZoom=zoomParaRangoDiversidad(rangosNodos[0],Math.max(3,rangosNodos[0]),rangosPresentes,rangoInicial);orbit.minDistance=base/maxZoom;orbit.maxDistance=base/minZoom;}
@@ -112,9 +112,9 @@ export function crearEscenaDiversidad(elemento,acciones) {
         const objetivo=Math.max(minZoom,Math.min(maxZoom,valor));
         moverZoom(objetivo,referencia);
     }
-    function zoom(factor,referencia){
+    function zoom(factor,referencia,forzarPantallaCompleta=false){
         if(!arbol||!Number.isFinite(factor)||factor<=0)return;
-        if(factor>1&&ampliacionAutomatica&&!ampliado)ampliarAutomaticamente();
+        if(!ampliado&&(forzarPantallaCompleta||factor>1&&ampliacionAutomatica))ampliarAutomaticamente();
         irAlZoom(zoomActual()*factor,referencia);
     }
     function moverZoom(zoomObjetivo,referencia){
@@ -229,7 +229,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
             const nodo=indice.porClave.get(arbol.claves[i]),rango=rangoVisual3D(nodo),hoja=!arbol.hijos[i].length,brote=colapsados.has(i);
             if(i!==0&&rango.orden>limiteRango)continue;
             const prof=-posicion(i,punto).applyMatrix4(camara.matrixWorldInverse).z;
-            const perspectiva=Math.max(.7,Math.min(1.35,distancia/prof));
+            const perspectiva=Math.max(.55,Math.min(1.65,distancia/prof));
             const radio=prof/focal*Math.min(28,radioYemaDiversidad(arbol.especies[i]))*perspectiva;
             posicion(i,objeto.position).sub(origenGPU);objeto.quaternion.identity();objeto.scale.setScalar(radio);objeto.updateMatrix();
             hojas.setMatrixAt(cantidad,objeto.matrix);hojas.setColorAt(cantidad,color(resaltado&&rango.id!==resaltado&&i!==elegido?'#acb8a8':rango.color));cantidad++;
@@ -276,7 +276,9 @@ export function crearEscenaDiversidad(elemento,acciones) {
         e.preventDefault();e.stopPropagation();
         canvas.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,pointerId:e.pointerId,pointerType:e.pointerType,isPrimary:e.isPrimary,clientX:e.clientX,clientY:e.clientY,button:e.button,buttons:e.buttons,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey}));
     });
-    orbit.addEventListener('change',programar);orbit.addEventListener('start',()=>{destino=null;focoZoom=-1;encuadreAutomatico=false;marco.dataset.animando='false';tooltip.ocultar();marco.dataset.rotando='true';});orbit.addEventListener('end',()=>{marco.dataset.rotando='false';});
+    // El origen del límite orbital coincide con el objetivo del gesto. Así el
+    // giro no renormaliza ni desplaza su centro, incluso con coordenadas dobles.
+    orbit.addEventListener('change',programar);orbit.addEventListener('start',()=>{orbit.cursor.copy(orbit.target);destino=null;focoZoom=-1;encuadreAutomatico=false;marco.dataset.animando='false';tooltip.ocultar();marco.dataset.rotando='true';});orbit.addEventListener('end',()=>{marco.dataset.rotando='false';});
     escuchar(vista,'wheel',e=>{if(escala.contains(e.target))return;e.preventDefault();e.stopPropagation();zoom(Math.exp(-Math.max(-120,Math.min(120,e.deltaY))*Math.log(1.6)/120),e);},{passive:false,capture:true});
     // El pellizco comparte el zoom físico y el punto de interés de la rueda.
     // OrbitControls sólo recibe el ratón; no aplica otro dolly paralelo.
@@ -295,11 +297,11 @@ export function crearEscenaDiversidad(elemento,acciones) {
         if(!arbol)return;if(e.key==='ContextMenu'||e.shiftKey&&e.key==='F10'){e.preventDefault();abrirMenu(elegido,e);return;}
         if(!['+','=','-','Home','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageDown','PageUp','Enter'].includes(e.key))return;
         e.preventDefault();e.stopPropagation();tooltip.ocultar();
-        if(e.key==='Home')return ajustar();if(['+','='].includes(e.key))return zoom(1.6);if(e.key==='-')return zoom(1/1.6);
+        if(e.key==='Home')return ajustar();if(['+','='].includes(e.key))return zoom(1.6,undefined,true);if(e.key==='-')return zoom(1/1.6,undefined,true);
         if(e.key==='Enter'){elegirNodo(elegido);return;}
         if(['PageDown','PageUp'].includes(e.key)){const lista=arbol.hijos[0];if(!lista.length)return;hijoTeclado=(hijoTeclado+(e.key==='PageDown'?1:-1)+lista.length)%lista.length;elegido=lista[hijoTeclado];mensaje();encuadrar(elegido,true);mostrarDetalle(elegido);return;}
         encuadreAutomatico=false;
-        if(e.ctrlKey){if(e.key==='ArrowLeft'||e.key==='ArrowRight')orbit.rotateLeft(e.key==='ArrowLeft'? .13:-.13);else orbit.rotateUp(e.key==='ArrowUp'? .13:-.13);}else{focoZoom=-1;orbit.pan(({'ArrowLeft':70,'ArrowRight':-70}[e.key]||0),({'ArrowUp':70,'ArrowDown':-70}[e.key]||0));}orbit.update();programar();
+        if(e.ctrlKey){orbit.cursor.copy(orbit.target);if(e.key==='ArrowLeft'||e.key==='ArrowRight')orbit.rotateLeft(e.key==='ArrowLeft'? .13:-.13);else orbit.rotateUp(e.key==='ArrowUp'? .13:-.13);}else{focoZoom=-1;orbit.pan(({'ArrowLeft':70,'ArrowRight':-70}[e.key]||0),({'ArrowUp':70,'ArrowDown':-70}[e.key]||0));}orbit.update();programar();
     });
     escuchar(canvas,'webglcontextlost',e=>{e.preventDefault();error('Se perdió el contexto gráfico. Cambia de visualización para recuperarlo; la jerarquía de la izquierda sigue disponible.');});
     escuchar(canvas,'webglcontextrestored',()=>{estado.hidden=true;firma='';programar();});
@@ -319,8 +321,8 @@ export function crearEscenaDiversidad(elemento,acciones) {
         }
         dimensionado=true;programar();
     });resize.observe(vista);
-    function expandir(){ampliado=true;marco.classList.add('is-expanded');dialogo?.classList.add('has-diversity-expanded');marco.dataset.ampliado='true';canvas.focus({preventScroll:true});}
-    function restaurar(){ampliado=false;marco.classList.remove('is-expanded');dialogo?.classList.remove('has-diversity-expanded');marco.dataset.ampliado='false';ampliacionAutomatica=false;canvas.focus({preventScroll:true});}
+    function expandir(){ampliado=true;marco.classList.add('is-expanded');marco.prepend(cabecera);dialogo?.classList.add('has-diversity-expanded');marco.dataset.ampliado='true';canvas.focus({preventScroll:true});}
+    function restaurar(){ampliado=false;marco.classList.remove('is-expanded');barra.prepend(cabecera);dialogo?.classList.remove('has-diversity-expanded');marco.dataset.ampliado='false';ampliacionAutomatica=false;canvas.focus({preventScroll:true});}
     function ampliarAutomaticamente(){expandir();if(document.fullscreenEnabled&&navigator.userActivation?.isActive&&!fullscreenPendiente){fullscreenPendiente=true;marco.requestFullscreen().catch(()=>{}).finally(()=>{fullscreenPendiente=false;});}}
     async function salirDeAmpliacion(){restaurar();if(document.fullscreenElement===marco)await document.exitFullscreen();}
     async function pantallaCompleta(){if(ampliado)return salirDeAmpliacion();expandir();if(document.fullscreenEnabled&&navigator.userActivation?.isActive)await marco.requestFullscreen().catch(()=>{});}
@@ -342,7 +344,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
             canvas.setAttribute('aria-label',`${nodo.nombre}: árbol de diversidad 3D con ${numero(arbol.claves.length)} taxones. Rueda: zoom progresivo que revela ramas; Ctrl y arrastrar o Ctrl y flechas: girar; arrastrar: desplazar; Inicio: vista inicial; AvPág y RePág: hijos; Intro: explorar rama.`);
             Object.assign(marco.dataset,{raiz:clave,nombre:nodo.nombre,nodos:String(arbol.claves.length),terminales:String(arbol.terminales[0]),relaciones:String(arbol.claves.length-1),rotando:'false',rangoResaltado:'',camara:'perspectiva'});estado.hidden=true;mensaje();ajustar();
         },
-        ajustar,zoom,pantallaCompleta,error,
+        ajustar,zoom:factor=>zoom(factor,undefined,true),pantallaCompleta,error,
         seleccionar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i>=0){elegido=i;if(i===0){rangoInicial=aperturaRamaDiversidad(arbol);rangoForzado=rangoInicial;encuadrar();}mensaje();programar();}},
         async localizar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i<0)return false;elegido=i;encuadrar(i,true);mensaje();return true;},
         contiene:clave=>Boolean(arbol?.claves.includes(clave)),limpiarSeleccion(){elegido=0;mensaje();ajustar();},rangoActivo:()=>resaltado,

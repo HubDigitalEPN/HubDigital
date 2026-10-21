@@ -53,7 +53,9 @@ final class ChatBotWidget extends Component
         $start = microtime(true);
         try {
             $previous = $contexto->obtener();
-            $output = $asistente->responder($contexto->continuarConsulta($pregunta), $handler, $previous['node_id'] ?? null, $previous['variants'] ?? [], $previous['entities'] ?? [], $seleccionPortal, $previous['solicitud_pendiente'] ?? null);
+            $consulta = app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\OrtografiaConsultaChat::class)->corregir($pregunta);
+            $historial = array_column(array_filter(array_slice($this->mensajes, 0, -1), static fn ($m) => ($m['rol'] ?? '') === 'visitante'), 'texto');
+            $output = $asistente->responder($contexto->continuarConsulta($consulta), $handler, $previous['node_id'] ?? null, $previous['variants'] ?? [], $previous['entities'] ?? [], $seleccionPortal, $previous['solicitud_pendiente'] ?? null, historial: array_slice($historial, -2));
             $output['fuente'] ??= 'legacy';
             $contexto->guardar($previous, $output);
         } catch (QueryException $error) {

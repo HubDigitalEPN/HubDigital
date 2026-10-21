@@ -18,6 +18,7 @@ final class ActualizacionCatalogo
     private array $taxonesPorClave = [];
     private array $taxonesPorId = [];
     private array $linajesPropuestos = [];
+    private array $plantilla = [];
     public function __construct(private readonly LectorActualizacionCatalogo $lector, private readonly FilaCatalogoMapper $mapper, private readonly CatalogoTerritoriosDesglose $territorios) {}
 
     public static function identidad(string $valor): string
@@ -46,7 +47,8 @@ final class ActualizacionCatalogo
     {
         $lote = [];
         $bytes = 0;
-        foreach ($this->lector->filas($ruta, $extension, $separador) as $fila => $registro) {
+        foreach ($this->lector->filas($ruta, $extension, $separador, ConfiguracionPlantillaCatalogo::alias($this->plantilla)) as $fila => $registro) {
+            ConfiguracionPlantillaCatalogo::validarFila($registro['datos'], $fila, $this->plantilla);
             $tamano = strlen(json_encode($registro, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
             if ($lote !== [] && $bytes + $tamano > 2 * 1024 * 1024) { yield $lote; $lote = []; $bytes = 0; }
             $lote[$fila] = $registro;
@@ -245,7 +247,8 @@ final class ActualizacionCatalogo
         $resumen = ['filas' => 0, 'nuevos' => 0, 'actualizados' => 0, 'sin_cambios' => 0, 'provisionales' => 0, 'avisos' => [], 'muestra' => [], 'columnas_adicionales' => []];
         $vistas = [];
         $hash = hash_init('sha256');
-        hash_update($hash, hash_file('sha256', $ruta).':'.$modo.':'.$separador.':'.$this->cargarTaxonomia());
+        $this->plantilla = app(ConfiguracionPlantillaCatalogo::class)->leer();
+        hash_update($hash, hash_file('sha256', $ruta).':'.$modo.':'.$separador.':'.$this->cargarTaxonomia().':'.ConfiguracionPlantillaCatalogo::huella($this->plantilla));
         foreach ($this->lotes($ruta, $extension, $separador) as $lote) {
             $destinos = $this->destinos($lote);
             foreach ($lote as $fila => $registro) {

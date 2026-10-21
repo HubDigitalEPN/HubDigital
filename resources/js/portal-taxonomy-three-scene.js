@@ -35,7 +35,7 @@ export function crearEscenaTaxonomica(elemento, acciones) {
     leyenda.setAttribute('aria-label', 'Filtrar mundos por rango taxonómico; pulsa otra vez para ver toda la rama'); leyenda.setAttribute('role', 'group');
     const estado = crear('p', 'portal-three-status'); estado.setAttribute('role', 'status'); estado.hidden = true;
     const instrucciones = crear('p', 'portal-three-instructions');
-    instrucciones.tabIndex = 0;
+    instrucciones.className = 'portal-three-instructions sr-only';
     marco.append(vista, leyenda, instrucciones); elemento.replaceChildren(marco);
     const salirPantalla = boton('Salir de pantalla completa', '⛶', () => document.exitFullscreen());
     salirPantalla.className = 'portal-three-fullscreen-exit'; marco.append(salirPantalla);

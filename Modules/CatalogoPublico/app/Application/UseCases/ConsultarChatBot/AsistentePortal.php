@@ -17,8 +17,9 @@ final class AsistentePortal
     ) {}
 
     /** @return array{texto:string, opciones:array, node_id?:int, variant_id?:int|null} */
-    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null, ?string $solicitudPendiente = null, bool $interpretarConModelo = true): array
+    public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null, ?string $solicitudPendiente = null, bool $interpretarConModelo = true, array $historial = []): array
     {
+        $pregunta = app(OrtografiaConsultaChat::class)->corregir($pregunta);
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
         if (($estadistica = app(EstadisticasCatalogoChat::class)->responder($pregunta, $seleccionPortal)) !== null) return $estadistica;
@@ -267,7 +268,7 @@ final class AsistentePortal
                 'deposito' => 'entregar especímenes al museo', 'documentos' => 'requisitos documentales',
                 'cuenta' => 'crear usuario', 'filtros' => 'mapa y filtros',
                 'seguimiento' => 'estado del trámite', 'acceso' => 'catálogo sin cuenta',
-            ]);
+            ], array_slice([...$historial, ...($solicitudPendiente ? [$solicitudPendiente] : [])], -2));
             if ($opcion !== null) return [
                 'texto' => '¿Esta es la orientación que buscas? Selecciona la pregunta para continuar.',
                 'fuente' => 'aclaracion', 'intent' => 'portal.orientacion_modelo',

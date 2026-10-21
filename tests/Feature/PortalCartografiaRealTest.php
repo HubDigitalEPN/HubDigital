@@ -408,6 +408,7 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
     $original = (array) DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->first();
     unset($original['coordenadas_otras_regiones'], $original['busqueda_global']);
     $taxonesReales = [$reino, $f['filo'], $suborden, $familia, $subfamilia, $tribu, $genero, ...$f['taxones']];
+    $registroReservado = null;
     foreach (range(0, 11) as $i) {
         $taxonId = (string) Str::uuid(); $id = (string) Str::uuid(); $codigo = 'QA-LINAJE-'.Str::uuid();
         DB::table('taxonomia.taxones')->insert(['id' => $taxonId, 'padre_id' => $genero,
@@ -417,6 +418,7 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
         DB::table('divulgacion.especimenes_divulgables')->insert(['id' => (string) Str::uuid(), 'especimen_id' => $id,
             'publicado' => true, 'scientific_name_visible' => $i !== 11]);
         if ($i !== 11) $taxonesReales[] = $taxonId;
+        else $registroReservado = $id;
     }
     $componente = Livewire::withQueryParams(['vista' => 'mapa', 'fco' => $f['prefijo']])->test(PortalCatalogo::class)
         ->call('abrirCelda', -0.25, -78.5)->call('cambiarVistaCelda', 'grupos');
@@ -426,9 +428,10 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
         return array_values(array_filter($arbol, static fn (array $n): bool => ! in_array($n['id'], $padres, true)));
     };
     expect($detalle['seleccionado'])->toBeNull()->and($detalle['registros'])->toBe([])
-        ->and($detalle['arbol_hojas_total'])->toBe(15)
-        ->and($detalle['arbol_registros_total'])->toBe(15)->and($detalle)->not->toHaveKey('arbol_pagina')->not->toHaveKey('arbol_ultima')
-        ->and($hojas($detalle['arbol']))->toHaveCount(15)
+        ->and($detalle['arbol_hojas_total'])->toBe(14)
+        ->and($detalle['arbol_registros_total'])->toBe(14)->and($detalle)->not->toHaveKey('arbol_pagina')->not->toHaveKey('arbol_ultima')
+        ->and($hojas($detalle['arbol']))->toHaveCount(14)
+        ->and(array_column($detalle['registros_arbol'], 'especimen_id'))->not->toContain($registroReservado)
         ->and(array_values(array_unique(array_column($detalle['arbol'], 'rango'))))->toEqualCanonicalizing(['reino', 'phylum', 'suborden', 'familia', 'subfamilia', 'tribu', 'genero', 'especie', 'registro'])
         ->and(array_diff(array_filter(array_column($detalle['arbol'], 'taxon_id')), $taxonesReales))->toBe([]);
     $idsVisibles = array_column($detalle['arbol'], 'id');
@@ -467,7 +470,7 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
         ->and($seleccion['informacion']['jerarquia']['subfamily'])->toBe($f['prefijo'].' Subfamilia')
         ->and($seleccion['informacion']['jerarquia']['tribe'])->toBe($f['prefijo'].' Tribu')
         ->and(array_column($seleccion['registros'], 'especimen_id'))->toBe([$f['ids'][1]])
-        ->and($seleccion['arbol_hojas_total'])->toBe(15);
+        ->and($seleccion['arbol_hojas_total'])->toBe(14);
     $componente->call('navegarCelda', $idHermano);
     $propia = $componente->instance()->detalleCelda;
     expect($propia['seleccionado']['taxon_id'])->toBe($f['taxones'][1])
@@ -491,16 +494,16 @@ test('abrir un punto ofrece todos los linajes y registros sin paginar el árbol 
     expect($componente->instance()->detalleCelda['seleccionado'])->toBeNull();
     $componente->call('cerrarCelda')->assertSet('registroCeldaId', null)
         ->call('abrirCelda', -0.25, -78.5);
-    expect($componente->instance()->detalleCelda['arbol_hojas_total'])->toBe(15);
+    expect($componente->instance()->detalleCelda['arbol_hojas_total'])->toBe(14);
     $componente->call('cambiarVistaCelda', 'registros');
     $idsTabla = [];
     foreach ([1, 2, 3] as $paginaTabla) {
         $componente->call('paginarCelda', $paginaTabla);
         $tabla = $componente->instance()->detalleCelda;
-        expect($tabla['registros'])->toHaveCount($paginaTabla === 3 ? 3 : 6);
+        expect($tabla['registros'])->toHaveCount($paginaTabla === 3 ? 2 : 6);
         $idsTabla = [...$idsTabla, ...array_column($tabla['registros'], 'especimen_id')];
     }
-    expect($idsTabla)->toHaveCount(15)->and(array_values(array_unique($idsTabla)))->toHaveCount(15)
+    expect($idsTabla)->toHaveCount(14)->and(array_values(array_unique($idsTabla)))->toHaveCount(14)
         ->and($idsTabla)->toEqualCanonicalizing(array_column($detalle['registros_arbol'], 'especimen_id'));
 });
 
@@ -690,8 +693,9 @@ test('XLSX conserva la selección UUID y permisos sin convertir textos de colect
         $reservado = app(ExportarRegistrosEspecimenesHandler::class)->handle(new ExportarRegistrosEspecimenesInput($f['prefijo'].' alfa', [$f['ids'][0]]));
         file_put_contents($archivo, $reservado->contenidoXlsx);
         $libro = $lector->load($archivo);
-        expect($libro->getActiveSheet()->getCell('A2')->getValue())->toBe('')
-            ->and($libro->getActiveSheet()->getCell('B2')->getValue())->toBe('');
+        expect($libro->getActiveSheet()->toArray())->toHaveCount(1)
+            ->and($libro->getActiveSheet()->getCell('A2')->getValue())->toBeNull()
+            ->and($libro->getActiveSheet()->getCell('B2')->getValue())->toBeNull();
         $libro->disconnectWorksheets();
     } finally {
         unlink($archivo);

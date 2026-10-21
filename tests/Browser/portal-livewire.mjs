@@ -205,7 +205,8 @@ try {
         await evaluar(`document.querySelector('.platform-footer a[href$="/informacion/${seccion}"]').click()`);
         await visible(`document.querySelector('#platform-information-dialog:modal .platform-information-content').textContent.includes(${JSON.stringify(contenido)})`);
         assert.equal(await evaluar('location.href'),urlAntesInformacionPie,'Consultar información no abandona el catálogo ni sus filtros.');
-        assert.equal(await evaluar("document.querySelector('#platform-information-title').textContent"),titulo);
+        assert.equal(await evaluar("document.querySelector('#platform-information-title').textContent"),seccion==='creditos'?'Créditos y financiamiento':titulo);
+        if(seccion==='creditos')assert.ok(await evaluar("(() => {const c=document.querySelector('.platform-information-content');return !c.querySelector('h2')&&c.textContent.includes('Financiamiento: Adrian Troya, Laboratorio de Invertebrados.');})()"),'Los créditos usan un solo título y el financiamiento solicitado.');
         assert.ok(await evaluar(`(() => {const r=document.querySelector('#platform-information-dialog').getBoundingClientRect();return r.width>=500&&r.width<=641&&r.height<=innerHeight*.76+1;})()`),'El modal tiene un tamaño medio y cabe en la pantalla.');
         await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
         await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
@@ -299,9 +300,9 @@ try {
     // Explorador izquierdo único: una raíz compartida con el grafo y su ficha.
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')?.checkVisibility()"); await reposo();
-    const catalogoExplorador = await evaluar("({total: Alpine.$data(document.querySelector('#explorador-taxonomico')).total, texto: document.querySelector('.taxonomy-explorer-header p').textContent})");
+    const catalogoExplorador = await evaluar("({total: Alpine.$data(document.querySelector('#explorador-taxonomico')).total})");
     assert.ok(catalogoExplorador.total >= datos.codigos.length, 'El explorador conserva el catálogo público completo, incluidos todos los registros de la fixture.');
-    assert.equal(Number(catalogoExplorador.texto.match(/[\d.]+/)[0].replaceAll('.', '')), catalogoExplorador.total, 'El encabezado refleja el total del catálogo propio del explorador.');
+    assert.equal(await evaluar("document.querySelector('#explorador-taxonomico > .taxonomy-explorer-header p')"), null, 'La cabecera conserva el título sin el subtítulo que consumía espacio vertical.');
     assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect();return d.matches(':modal') && Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && d.querySelector('#filo-explorador-taxonomico').checkVisibility() && !d.querySelector('footer,.taxonomy-explorer-map,.taxonomy-explorer-representation,.taxonomy-navigator-sidebar,.taxonomy-navigator-fold');})()"), 'El modal conserva sus márgenes, selector y buscador y libera el ancho del lateral retirado.');
     assert.equal(await evaluar("document.querySelector('.portal-ete-controls,.taxonomy-navigator-sidebar > h3,.taxonomy-navigator-caption,.taxonomy-navigator-breadcrumb,.taxonomy-navigator-heading,.taxonomy-expand-all,.taxonomy-branch-select')"), null);
     assert.ok(await evaluar("document.querySelector('.taxonomy-phylotree-search #busqueda-explorador-taxonomico').checkVisibility() && document.querySelector('.portal-ete-host').checkVisibility()"));
@@ -403,6 +404,12 @@ try {
     await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     await comprobarAncla(raizAntesRueda);
     assert.ok(await evaluar("(() => {const d=document.querySelector('.portal-diversity-scene').dataset;return Math.abs(Number(d.zoom)-.8)<.001&&Math.abs(Number(d.baseCamara)/Number(d.distanciaCamara)-.8)<.001;})()"),'La rueda mueve realmente la cámara y conserva la raíz en la vista general.');
+    assert.ok(await evaluar("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded')"),'La rueda respeta la salida voluntaria de pantalla completa.');
+    await evaluar("document.querySelector('[aria-label=\"Alejar árbol\"]').click()");
+    await visible("document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'0.500','El botón menos abre pantalla completa y aplica su zoom físico.');
+    await evaluar("document.querySelector('.portal-diversity-fullscreen-exit').click()");
+    await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");
     await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-three-fit,.portal-branch-retry,.portal-diversity-guide')"),null,'Los controles y la ayuda visual retirados no ocupan espacio.');
     const estadoAntesDeGirar=await evaluar("({raiz:document.querySelector('.portal-diversity-scene').dataset.raiz,centro:document.querySelector('.portal-diversity-scene').dataset.centro,orientacion:document.querySelector('.portal-diversity-scene').dataset.orientacion})");
@@ -456,7 +463,7 @@ try {
     assert.ok(await evaluar("(() => {const s=document.querySelector('.portal-three-scene');return s.dataset.target==='0.00,0.00,0.00' && s.dataset.zoom==='1.000' && s.dataset.pulsando==='true';})()"), 'Buscar convierte el resultado en raíz, lo centra y activa su pulso.');
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0, 'Buscar localiza un taxón sin convertirlo en filtro del catálogo.');
     assert.equal(await evaluar("document.querySelector('.taxonomy-search-token span:first-child').textContent"), 'FiloBrowser' + token, 'El ámbito permanece dentro del buscador, con su equis.');
-    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-header p').textContent"), catalogoExplorador.texto, 'Buscar un taxón conserva el total del catálogo completo.');
+    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Buscar un taxón conserva el total del catálogo completo.');
     async function navegarInicial(nombre) {
         await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.irARama(d.nodos.find(n=>n.nombre===" + JSON.stringify(nombre) + "));})()");
         await visible(nombre === 'FiloBrowser' + token
@@ -602,7 +609,7 @@ try {
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
-    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-header p').textContent"), catalogoExplorador.texto, 'Reabrir el explorador conserva su catálogo independiente del filtro del mapa.');
+    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Reabrir el explorador conserva su catálogo independiente del filtro del mapa.');
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
     const antesDeAjustar = totalPeticiones;
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");
@@ -797,7 +804,7 @@ try {
     // Las leyendas no ocupan la vista normal; Indicador muestra la explicación y PDF agrega sus figuras.
     assert.equal(await evaluar("document.querySelectorAll('.atlas-dashboard .atlas-figure-caption').length"), 0);
     assert.equal(await evaluar("[...document.querySelectorAll('#menu-filos button')].filter(b=>b.getAttribute('x-on:click') === 'alternarGrafico()').length"), 0);
-    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Indicador').click()");
+    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Explicar Métrica…').click()");
     await visible("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation')");
     assert.equal(await evaluar("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation').textContent.trim().split(/\\s+/).length"), 80);
     await evaluar("document.querySelector('.atlas-index-dialog[open]').close()");

@@ -13,7 +13,7 @@ import urllib.request
 
 VERSION = "v0.40.5"
 ARCHIVE_SHA256 = "fbe71ebb1a10e59b8480c4d2839826b5f9dff1a6d5c142428b2e7db9b1a2c642"
-MODEL_LAYER = "7f4030143c1c477224c5434f8272c662a8b042079a0a584f0a27a1684fe2e1fa"
+MODEL_LAYER = "3e4cb14174460404e7a233e531675303b2fbf7749c02f91864fe311ab6344e4f"
 
 
 def run(args, **kwargs):
@@ -107,7 +107,7 @@ shutil.copyfile(service, "/etc/systemd/system/hubdigital-chat-model.service")
 Path("/etc/systemd/system/hubdigital-chat-model.service").chmod(0o644)
 run(["systemctl", "daemon-reload"])
 run(["systemctl", "enable", "--now", "hubdigital-chat-model.service"])
-print("Servicio CPU instalado sólo en loopback; la activación de Laravel sigue deshabilitada.", flush=True)
+print("Servicio CPU instalado sólo en loopback; se conserva la configuración de activación de Laravel.", flush=True)
 for attempt in range(30):
     try:
         with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2):
@@ -117,7 +117,7 @@ for attempt in range(30):
             raise SystemExit("Ollama no quedó disponible; Laravel sigue deshabilitado.")
         time.sleep(1)
 request = urllib.request.Request("http://127.0.0.1:11434/api/pull",
-    data=b'{"model":"qwen3:0.6b","stream":false}', headers={"Content-Type": "application/json"})
+    data=b'{"model":"qwen3:4b","stream":false}', headers={"Content-Type": "application/json"})
 with urllib.request.urlopen(request, timeout=1200) as response:
     response.read()
 blob = Path("/var/lib/hubdigital-chat-model/models/blobs/sha256-" + MODEL_LAYER)
@@ -126,5 +126,5 @@ with blob.open("rb") as model_file:
 if not approved:
     run(["systemctl", "stop", "hubdigital-chat-model.service"])
     raise SystemExit("Los pesos de Qwen no coinciden con el modelo aprobado; servicio detenido.")
-run(["python3", str(root / "warm-chat-model.py")])
-print("Qwen3-0.6B descargado y verificado. No se modificó ninguna configuración de desarrollo ni de localhost.")
+run(["systemctl", "restart", "hubdigital-chat-model.service"])
+print("Qwen3-4B descargado y verificado; proceso limitado a 4 GiB. No se modificó ninguna configuración de desarrollo ni de localhost.")

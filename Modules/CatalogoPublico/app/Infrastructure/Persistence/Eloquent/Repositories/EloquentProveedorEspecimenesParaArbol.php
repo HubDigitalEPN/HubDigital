@@ -57,7 +57,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     public function filosPublicosDisponibles(): array
     {
         $revision = (int) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
-        $clave = 'portal:filos-publicos:v1:'.$revision;
+        $clave = 'portal:filos-publicos:v2:'.$revision;
         try {
             $guardado = Cache::get($clave);
             if (is_array($guardado)) return $guardado;

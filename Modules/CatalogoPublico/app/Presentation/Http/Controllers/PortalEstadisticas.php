@@ -61,7 +61,7 @@ final class PortalEstadisticas
         $this->presupuesto = new PresupuestoConsultaPortal($firma);
         try {
             return $this->presupuesto->ejecutar(fn (): array => $this->cachear(
-                'portal:estadisticas:v23:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
+                'portal:estadisticas:v24:'.(int) $incluirContenidoTaxon.':'.$this->revisionDatos().':'.$firma,
                 fn (): array => $this->resumir($filtros, $incluirContenidoTaxon),
             ));
         } finally {
@@ -77,7 +77,7 @@ final class PortalEstadisticas
     /** Distribución completa sin hidratar tarjetas ni calcular los otros indicadores. */
     public function puntosParaMapa(array $filtros): array
     {
-        return $this->cachear('portal:puntos:v5:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
+        return $this->cachear('portal:puntos:v6:'.$this->revisionDatos().':'.sha1(json_encode($filtros)), function () use ($filtros): array {
             $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
             return $this->agruparPuntos($this->consulta($filtros), $taxones);
         });
@@ -86,7 +86,7 @@ final class PortalEstadisticas
     /** Opciones geográficas públicas, invalidadas junto con los registros y sus permisos. */
     public function geografiaParaFiltros(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
     {
-        $clave = 'portal:geografia:v2:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
+        $clave = 'portal:geografia:v3:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
         return $this->cachear($clave, static function () use ($filtros, $nivel, $taxon): array {
             $consulta = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($filtros, $nivel, $taxon);
             $campos = ['CASE WHEN ed.state_province_visible THEN te.state_province END AS provincia'];
@@ -105,7 +105,7 @@ final class PortalEstadisticas
     /** Faceta territorial: conserva otros filtros y ofrece todas las provincias o localidades públicas. */
     public function territorioParaPanel(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): array
     {
-        $clave = 'portal:territorio:v1:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
+        $clave = 'portal:territorio:v2:'.$this->revisionDatos().':'.sha1(serialize([$filtros, $nivel, $taxon]));
         return $this->cachear($clave, static function () use ($filtros, $nivel, $taxon): array {
             $localidades = $filtros->provinciasSeleccionadas() !== [];
             $campo = $localidades ? \Modules\CatalogoPublico\Infrastructure\LocalidadPublica::sql('te') : 'te.state_province';

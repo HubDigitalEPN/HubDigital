@@ -136,12 +136,12 @@ test('la imagen divulgada se sirve desde R2 y la despublicada no consulta el obj
     Http::assertNothingSent();
 });
 
-test('una imagen de otras regiones permanece almacenada pero no se sirve al portal público', function (): void {
+test('una imagen de otra región publicada con nombre y coordenadas públicas se sirve sin alterar el original', function (): void {
     $imagen = imagenPublicadaR2DePrueba();
     DB::table('taxonomia.especimenes')->where('id', $imagen['especimen_id'])->update(['decimal_latitude' => 40.4, 'decimal_longitude' => -3.7]);
-    Http::fake();
-    $this->get(route('portal.imagen', ['objeto' => $imagen['objeto']]))->assertNotFound();
-    Http::assertNothingSent();
+    simularObjetoR2($imagen['contenido'], 'image/jpeg');
+    $this->get(route('portal.imagen', ['objeto' => $imagen['objeto']]))->assertOk()->assertStreamedContent($imagen['contenido']);
+    Http::assertSent(static fn (Request $r): bool => $r->method() === 'GET');
     expect(DB::table('divulgacion.imagenes_taxonomicas')->where('ruta', $imagen['ruta'])->exists())->toBeTrue();
 });
 

@@ -18,7 +18,7 @@ final class LectorActualizacionCatalogo
     public const MAX_COLUMNAS = 200;
     public const MAX_BYTES = 25 * 1024 * 1024;
 
-    public function filas(string $ruta, string $extension, string $delimitador = ','): \Generator
+    public function filas(string $ruta, string $extension, string $delimitador = ',', array $alias = []): \Generator
     {
         if (!is_file($ruta) || filesize($ruta) > self::MAX_BYTES) throw new DomainException('El archivo no existe o supera los 25 MB permitidos.');
         $fuente = match (strtolower($extension)) {
@@ -47,7 +47,8 @@ final class LectorActualizacionCatalogo
                 if ($cabecera === '') continue;
                 $original[] = ['columna' => $columna + 1, 'cabecera' => $cabecera, 'valor' => (string)$valor];
                 if (trim((string)$valor) === '') continue;
-                $normalizada = $mapper->normalizarClaves([$cabecera => trim((string)$valor)]);
+                $campo = $alias[mb_strtolower(trim($cabecera))] ?? $cabecera;
+                $normalizada = $mapper->normalizarClaves([$campo => trim((string)$valor)]);
                 $clave = array_key_first($normalizada);
                 if (isset($datos[$clave]) && $datos[$clave] !== $normalizada[$clave]) throw new DomainException("Fila {$numero}: las columnas equivalentes «{$cabecera}» tienen valores distintos. Corrige la fila antes de importar.");
                 $datos[$clave] = $normalizada[$clave];

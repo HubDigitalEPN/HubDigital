@@ -4,7 +4,7 @@
         <a href="{{ route('portal.terminos') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Términos de uso</a>
         <a href="{{ route('portal.licencia') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Licencia</a>
         <a href="{{ route('portal.citar') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Cómo citar</a>
-        <a href="{{ route('portal.creditos') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Créditos</a>
+        <a href="{{ route('portal.creditos') }}" data-platform-information data-platform-information-title="Créditos y financiamiento" aria-haspopup="dialog" aria-controls="platform-information-dialog">Créditos</a>
     </nav>
     <dialog id="platform-information-dialog" class="platform-information-dialog" aria-labelledby="platform-information-title">
         <header class="platform-information-heading">

@@ -1,5 +1,5 @@
 [Unit]
-Description=HubDigital Qwen3-0.6B local interpretation
+Description=HubDigital Qwen3-4B local interpretation (production, 4 GiB)
 After=network-online.target
 Wants=network-online.target
 ConditionPathExists=/opt/hubdigital/ollama/current/bin/ollama
@@ -26,10 +26,10 @@ Restart=on-failure
 RestartSec=5s
 TimeoutStopSec=15s
 MemoryAccounting=true
-MemoryHigh=1536M
-MemoryMax=2G
+MemoryHigh=3686M
+MemoryMax=4G
 CPUAccounting=true
-CPUQuota=70%
+CPUQuota=150%
 CPUWeight=10
 Nice=15
 TasksMax=96

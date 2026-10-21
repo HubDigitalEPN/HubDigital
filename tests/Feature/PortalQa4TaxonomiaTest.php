@@ -266,7 +266,7 @@ test('QA4-007 el aviso curatorial está acotado y respeta publicación, privacid
     qa4RegistroPublico($sinNombre, $seleccion, 'Provincia '.$seleccion, ['scientific_name_visible' => false]);
     $repo = app(EloquentProveedorEspecimenesParaArbol::class);
     $resumen = $repo->resumenJerarquia(FiltrosBusqueda::desde(['filtroColector' => $seleccion]));
-    expect($resumen['total'])->toBe(15)->and($resumen['curatoriales_total'])->toBe(14)
+    expect($resumen['total'])->toBe(14)->and($resumen['curatoriales_total'])->toBe(14)
         ->and($resumen['curatoriales'])->toHaveCount(12)->and($resumen['especies'])->toBe([])
         ->and(array_column($resumen['curatoriales'], 'nota'))->not->toContain('dañada privada '.$seleccion, 'dañada reservada '.$seleccion);
     $vacia = $repo->resumenRaiz(FiltrosBusqueda::desde(['filtroColector' => 'Otro '.$seleccion]));
@@ -295,7 +295,7 @@ test('QA4-007 el aviso de ancestro reservado no publica su nombre y se oculta co
         ->and($detalle['registros'][0]->taxon_en_revision)->toBeTrue();
     DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $id)->update(['scientific_name_visible' => false]);
     $componente->call('cambiarVista', 'registros')->assertDontSee($nombreReservado)->assertDontSee($seleccion.' propia')
-        ->assertViewHas('registrosVista', fn ($r): bool => count($r) === 1 && $r[0]->scientific_name === null && ! $r[0]->taxon_en_revision);
+        ->assertViewHas('registrosVista', fn ($r): bool => count($r) === 0);
 });
 
 test('QA4-007 una nota solo en la hoja conserva sus padres confirmados y no ocupa el rail de especies hermanas', function (): void {
@@ -424,9 +424,9 @@ test('las opciones de filtros excluyen vacíos Unicode conservando material, nom
     $metodoOculto = 'Técnica reservada '.$seleccion;
     DB::table('taxonomia.especimenes')->where('id', $idCamposOcultos)->update(['sampling_protocol' => $metodoOculto]);
     $componente = Livewire::withQueryParams(['vista' => 'registros', 'fco' => $seleccion])->test(PortalCatalogo::class)
-        ->assertViewHas('totalRegistrosVista', 5)
+        ->assertViewHas('totalRegistrosVista', 6)
         ->assertViewHas('provinciasDisponibles', fn (array $opciones): bool => in_array($provincia, $opciones, true)
-            && ! in_array($reservada, $opciones, true) && ! in_array($privada, $opciones, true) && ! in_array($otraRegion, $opciones, true)
+            && ! in_array($reservada, $opciones, true) && ! in_array($privada, $opciones, true) && in_array($otraRegion, $opciones, true)
             && count(array_filter($opciones, fn (string $p): bool => ! \Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica::contieneNombre($p))) === 0
             && array_values($opciones) === $opciones);
     foreach (['preparacionesDisponibles' => 'preparations', 'biomasDisponibles' => 'biome', 'metodosRecoleccionDisponibles' => 'sampling_protocol'] as $propiedad => $campo) {
@@ -434,7 +434,7 @@ test('las opciones de filtros excluyen vacíos Unicode conservando material, nom
         $clave = $campo === 'sampling_protocol'
             ? \Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave(...)
             : static fn (string $valor): string => $valor;
-        expect($opciones)->toContain($clave($reales[$campo]))->not->toContain(...array_map($clave, $vacios))->not->toContain($clave($excluidas[$campo]));
+        expect($opciones)->toContain($clave($reales[$campo]))->not->toContain(...array_map($clave, $vacios))->toContain($clave($excluidas[$campo]));
         expect(array_values($opciones))->toBe($opciones);
     }
     expect($componente->instance()->biomasDisponibles)->toContain($biomaSinAcento)

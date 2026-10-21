@@ -337,6 +337,8 @@ final class FilaCatalogoMapper
                 'd_ecimal_longitude' => 'decimal_longitude',
                 'type_ecaste', 'typ_ecaste' => 'caste',
                 'i_infraspecific_epithet' => 'infraspecific_epithet',
+                'locality' => 'locality_name',
+                'date_identified' => 'date_determined',
                 default => $key,
             };
             $out[$key] = is_string($valor) ? $valor : ($valor === null ? null : (string) $valor);

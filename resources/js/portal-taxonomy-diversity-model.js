@@ -182,7 +182,9 @@ export function crearArbolDiversidad(indice, raiz) {
             const proporcion = pesos[j] / suma, medio = cursor + proporcion / 2;
             // Azimut completo alrededor del eje vertical. Cada generación gira
             // su inserción, en lugar de añadir un relieve a un abanico plano.
-            azimuts[h]=azimuts[i]+(lista.length>1?Math.PI*2*(medio+niveles[i]*.381966):.55);
+            // Filotaxis de ángulo áureo: incluso una bifurcación de dos hijos
+            // evita el mismo plano diametral y mantiene relieve desde el frente.
+            azimuts[h]=azimuts[i]+(lista.length>1?j*Math.PI*(3-Math.sqrt(5))+(niveles[i]+1)*.71:.65);
             const inclinacion=lista.length>1?.4+.78*(1-proporcion):.14+.04*Math.sin(niveles[h]*1.7);
             angulos[h]=Math.min(1.3,angulos[i]*.22+inclinacion);
             longitudes[h] = Math.max(.02, longitudes[i] * (lista.length === 1 ? .77 : .37 + .48 * Math.sqrt(proporcion)));

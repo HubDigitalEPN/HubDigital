@@ -13,7 +13,6 @@
         <div>
             <h2 id="titulo-explorador-taxonomico">Explorador de Estructura Taxonómica</h2>
             <div class="taxonomy-explorer-summary">
-                <p role="status" aria-live="polite" x-text="listo ? 'Mostrando el catálogo de ' + numero(total) + ' registros' : 'Consultando el catálogo…'"></p>
                 <template x-for="(filtro, indice) in filtrosArbol" :key="filtro.id">
                     <button type="button" class="taxonomy-explorer-pill" :disabled="buscando" x-on:click="quitarFiltroArbol(indice)" :aria-label="'Quitar filtro ' + filtro.nombre">
                         <span x-text="filtro.nombre"></span><span aria-hidden="true">×</span>
@@ -33,7 +32,7 @@
             <div class="taxonomy-phylotree-controls">
                 <div class="taxonomy-phylum-select">
                     <label for="filo-explorador-taxonomico">Filo</label>
-                    <select id="filo-explorador-taxonomico" :value="filoActual" :disabled="buscando || !filos.length" x-on:change="elegirFilo($event.target.value)">
+                    <select id="filo-explorador-taxonomico" x-effect="const nombres = filos.map(f => f.nombre); $nextTick(() => { const c = document.createElement('canvas').getContext('2d'); const s = getComputedStyle($el); c.font = s.font; $el.style.width = (Math.max(65, ...nombres.map(n => c.measureText(n).width)) + parseFloat(s.paddingLeft) + parseFloat(s.paddingRight) + 8) + 'px'; })" :value="filoActual" :disabled="buscando || !filos.length" x-on:change="elegirFilo($event.target.value)">
                         <template x-for="filo in filos" :key="filo.clave"><option :value="filo.clave" :selected="filo.clave === filoActual" x-text="filo.nombre"></option></template>
                     </select>
                 </div>

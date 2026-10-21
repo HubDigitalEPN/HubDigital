@@ -11,13 +11,13 @@ return [
     'use_local_model' => env('CHATBOT_USE_LOCAL_MODEL', false),
     // Aunque se copie una variable por error, localhost y dev no cargan Qwen.
     'local_model_production_url' => 'https://labinvepn.org',
-    'local_model_timeout_seconds' => 3,
+    'local_model_timeout_seconds' => 8,
     // Las respuestas habituales se resuelven con reglas y datos locales.
     'use_external_biology' => env('CHATBOT_USE_EXTERNAL_BIOLOGY', false),
     'public_sources' => env('CHAT_PUBLIC_SOURCES', true),
     'ollama_url' => env('CHATBOT_OLLAMA_URL', 'http://127.0.0.1:11434'),
-    'model' => 'qwen3:0.6b',
-    'max_model_bytes' => 1_000_000_000,
+    'model' => env('APP_ENV') === 'production' && rtrim((string)env('APP_URL'), '/') === 'https://labinvepn.org' ? 'qwen3:4b' : 'qwen3:0.6b',
+    'max_model_bytes' => env('APP_ENV') === 'production' && rtrim((string)env('APP_URL'), '/') === 'https://labinvepn.org' ? 3_000_000_000 : 1_000_000_000,
     'ranking' => [
         // Valores iniciales sujetos a calibración con el corpus del módulo.
         'weights' => [

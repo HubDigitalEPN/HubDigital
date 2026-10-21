@@ -102,7 +102,7 @@
         <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
             <div>
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('images/logo-epn.png') }}" alt="{{ $navegacion('logo_alt') }}" class="h-14 w-auto object-contain brightness-0 invert" />
+                    <img src="{{ asset('images/logo-epn.png') }}" alt="{{ $navegacion('logo_alt') }}" class="h-14 w-auto object-contain" />
                     <div class="border-l border-white/20 pl-3">
                         <p class="font-display text-lg font-semibold text-white">{{ $navegacion('laboratorio') }}</p>
                         <p class="mt-1 text-xs uppercase tracking-[0.12em] text-white/60">{{ $navegacion('institucion') }}</p>

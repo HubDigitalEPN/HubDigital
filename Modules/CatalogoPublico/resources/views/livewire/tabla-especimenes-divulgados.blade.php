@@ -114,10 +114,11 @@
                             {{ $especimen->publicado && $especimen->coordenadas_publicas_validas ? 'Público' : 'Solo curaduría' }}
                         </td>
                         <td class="px-4 py-3 text-xs text-amber-800">
-                            @if($especimen->coordenadas_otras_regiones)<span class="block">Coordenadas de otras regiones · oculto al portal</span>@endif
+                            @if($especimen->coordenadas_otras_regiones)<span class="block">Coordenadas de otras regiones · revisar procedencia</span>@endif
+                            @if(! $especimen->scientific_name_visible || ! \Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica::contieneNombre($especimen->scientific_name ?? ''))<span class="block">Nombre científico ausente o reservado · oculto al portal</span>@endif
                             @if($especimen->coordenadas_incompletas)<span class="block">Sin par de coordenadas · revisar fuente · oculto al portal</span>@endif
                             @if($especimen->coordenadas_reservadas)<span class="block">Coordenadas reservadas · oculto al portal</span>@endif
-                            @if(! $especimen->coordenadas_publicas_validas && ! $especimen->coordenadas_incompletas && ! $especimen->coordenadas_reservadas && ! $especimen->coordenadas_otras_regiones)<span class="block">Coordenadas fuera del rango válido · revisar fuente · oculto al portal</span>@endif
+                            @if(! $especimen->coordenadas_publicas_validas && ! $especimen->coordenadas_incompletas && ! $especimen->coordenadas_reservadas && $especimen->scientific_name_visible && \Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica::contieneNombre($especimen->scientific_name ?? ''))<span class="block">Coordenadas fuera del rango válido · revisar fuente · oculto al portal</span>@endif
                             @if($especimen->fecha_colecta && ((int) substr($especimen->fecha_colecta, 0, 4) < 1800 || $especimen->fecha_colecta > date('Y-m-d')))<span class="block">Fecha original por revisar: {{ $especimen->fecha_colecta }}</span>@endif
                             @if(preg_match('/dañad[oa]|danad[oa]|ilegible/iu', $especimen->scientific_name ?? ''))<span class="block">Identificación dañada · no cuenta como especie</span>@endif
                         </td>

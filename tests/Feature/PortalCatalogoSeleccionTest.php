@@ -289,21 +289,47 @@ test('el árbol del chat permite escribir directamente el código o nombre que s
         ->and($asistente->responder(mb_strtolower($f['prefijo'].' alfa'), $handler)['datos']['total'])->toBe(2);
 });
 
-test('otras regiones se ocultan de toda selección pública y la marca se recalcula al corregir coordenadas', function (): void {
+test('otras regiones con coordenadas y nombre públicos se incluyen y conservan su marca de revisión', function (): void {
     $f = seleccionPortalFixture();
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => 40, 'decimal_longitude' => -3]);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][1])->update(['decimal_latitude' => -0.75, 'decimal_longitude' => -90.3]);
     expect(DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->value('coordenadas_otras_regiones'))->toBeTrue();
     $repo = app(EloquentProveedorEspecimenesParaArbol::class);
     $filtros = FiltrosBusqueda::desde(['filtroFiloId' => $f['filo']]);
-    expect($repo->paginaPublica($filtros, 1)['ids'])->toEqualCanonicalizing([$f['ids'][1], $f['ids'][2]])
-        ->and($repo->cursorParaCsv($filtros)->pluck('occurrence_id')->all())->not->toContain($f['codigos'][0])
-        ->and(app(ConsultaCatalogoPublico::class)->responder('Busca '.$f['codigos'][0])['datos']['total'])->toBe(0);
+    expect($repo->paginaPublica($filtros, 1)['ids'])->toEqualCanonicalizing($f['ids'])
+        ->and($repo->cursorParaCsv($filtros)->pluck('occurrence_id')->all())->toContain($f['codigos'][0])
+        ->and(app(ConsultaCatalogoPublico::class)->responder('Busca '.$f['codigos'][0])['datos']['total'])->toBe(1);
     $datos = app(PortalEstadisticas::class)->datosParaVista(['filo' => $f['filo']]);
-    expect(array_sum(array_column($datos['mapa'], 'total')))->toBe(2);
+    expect(array_sum(array_column($datos['mapa'], 'total')))->toBe(3);
     DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['decimal_latitude' => -0.25, 'decimal_longitude' => -78.5]);
     expect($repo->paginaPublica($filtros, 1)['total'])->toBe(3);
 });
+
+test('el mapa global sigue excluyendo nombres ausentes, datos privados y coordenadas inválidas', function (array $coordenadas, array $permisos, ?string $nombre): void {
+    $f = seleccionPortalFixture();
+    if (($permisos['publicado'] ?? null) === false) {
+        // El trigger confirma publicación por filo. Una identificación sin filo
+        // permite comprobar un registro realmente privado, sin desactivar el trigger.
+        $privado = (string) Str::uuid();
+        DB::table('taxonomia.taxones')->insert(['id' => $privado, 'nombre_cientifico' => $f['prefijo'].' privada', 'rango' => 'especie']);
+        DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update(['taxon_id' => $privado]);
+    }
+    DB::table('taxonomia.especimenes')->where('id', $f['ids'][0])->update($coordenadas);
+    if ($permisos !== []) DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update($permisos);
+    if (($permisos['publicado'] ?? null) === false) expect(DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->value('publicado'))->toBeFalse();
+    if ($nombre !== null) DB::table('taxonomia.taxones')->where('id', $f['taxones'][0])->update(['nombre_cientifico' => $nombre]);
+    $pagina = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica(FiltrosBusqueda::desde(['filtroColector' => 'Ana '.$f['prefijo']]), 1);
+    expect($pagina['ids'])->not->toContain($f['ids'][0]);
+})->with([
+    'coordenada incompleta' => [['decimal_latitude' => null], [], null],
+    'latitud inválida' => [['decimal_latitude' => 91], [], null],
+    'longitud inválida' => [['decimal_longitude' => -181], [], null],
+    'coordenadas reservadas' => [['decimal_latitude' => 0.3, 'decimal_longitude' => 32.6], ['decimal_longitude_visible' => false], null],
+    'nombre reservado' => [['decimal_latitude' => 0.3, 'decimal_longitude' => 32.6], ['scientific_name_visible' => false], null],
+    'registro sin publicar' => [['decimal_latitude' => 0.3, 'decimal_longitude' => 32.6], ['publicado' => false], null],
+    'nombre vacío' => [['decimal_latitude' => 0.3, 'decimal_longitude' => 32.6], [], ''],
+    'nombre invisible' => [['decimal_latitude' => 0.3, 'decimal_longitude' => 32.6], [], "\u{00A0}\u{200B} \t"],
+]);
 
 test('los marcadores curatoriales y fechas implausibles conservan el registro sin inflar métricas', function (): void {
     $this->actingAs(\App\Models\User::factory()->curador()->create());
@@ -453,7 +479,7 @@ test('la ayuda explica los filtros solicitados y mantiene las preguntas del port
         ->and($asistente->responder('¿Son registros o especies distintas?', $handler)['intent'])->toBe('portal.conteos');
 });
 
-test('el modal asocia las fotos a su registro y curaduría permite filtrar los registros ocultos por región', function (): void {
+test('el modal asocia las fotos y curaduría permite revisar registros públicos de otras regiones', function (): void {
     $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = seleccionPortalFixture();
     DB::table('divulgacion.imagenes_taxonomicas')->insert([
@@ -469,5 +495,5 @@ test('el modal asocia las fotos a su registro y curaduría permite filtrar los r
         ->test(\Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados::class)
         ->set('busquedaTaxonomia', $f['prefijo'])->set('regionCoordenadas', 'otras')
         ->assertSee($f['codigos'][0])->assertDontSee($f['codigos'][1])->assertDontSee($f['codigos'][2])
-        ->assertSee('Coordenadas de otras regiones')->assertSee('Solo curaduría');
+        ->assertSee('Coordenadas de otras regiones')->assertSee('Público');
 });

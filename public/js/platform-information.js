@@ -78,7 +78,7 @@
             if (!dialog || url.origin !== location.origin || !paths.has(url.pathname)) return;
             event.preventDefault();
             trigger = link;
-            dialog.querySelector('#platform-information-title').textContent = link.textContent.trim();
+            dialog.querySelector('#platform-information-title').textContent = link.dataset.platformInformationTitle || link.textContent.trim();
             if (!dialog.open) dialog.showModal();
             dialog.querySelector('[data-platform-information-close]').focus();
             loadInformation(dialog, link);

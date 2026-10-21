@@ -9,6 +9,12 @@ use Illuminate\Support\Facades\Cache;
 
 final class ModeloLocalPequeno
 {
+    public static function habilitado(): bool
+    {
+        return (bool)config('chatbot.use_local_model') && config('app.env') === 'production'
+            && rtrim((string)config('app.url'), '/') === config('chatbot.local_model_production_url')
+            && rtrim((string)config('chatbot.ollama_url'), '/') === 'http://127.0.0.1:11434';
+    }
     /**
      * Qwen sólo selecciona una orientación aprobada. Nunca entrega hechos,
      * números, enlaces ni una decisión sobre la documentación al visitante.
@@ -18,9 +24,7 @@ final class ModeloLocalPequeno
      */
     public function seleccionar(string $pregunta, array $opciones, array $historial = []): ?string
     {
-        if (! config('chatbot.use_local_model') || config('app.env') !== 'production'
-            || rtrim((string) config('app.url'), '/') !== config('chatbot.local_model_production_url')
-            || rtrim((string) config('chatbot.ollama_url'), '/') !== 'http://127.0.0.1:11434'
+        if (!self::habilitado()
             || trim($pregunta) === '' || mb_strlen($pregunta) > 500) return null;
 
         $opciones = array_slice(array_filter($opciones, static fn ($v, $k): bool => is_string($v)
@@ -30,14 +34,14 @@ final class ModeloLocalPequeno
             array_slice(array_values(array_filter($historial, 'is_string')), -2));
         $lock = null;
         try {
-            $clave = 'chat:qwen:opcion:v2:'.hash('sha256', json_encode([$pregunta, $opciones, $historial], JSON_THROW_ON_ERROR));
+            $clave = 'chat:qwen:opcion:v3:'.hash('sha256', json_encode([$pregunta, $opciones, $historial], JSON_THROW_ON_ERROR));
             $cache = Cache::get($clave);
             if (is_string($cache) && isset($opciones[$cache])) return $cache;
-            $lock = Cache::lock('chat:qwen:inferencia', 10);
+            $lock = Cache::lock('chat:qwen:inferencia', 15);
             if (! $lock->get()) return null;
 
             $modelo = (string) config('chatbot.model');
-            $instalado = Cache::remember('chat:qwen:inventario:v1', 30, function () use ($modelo): bool {
+            $instalado = Cache::remember('chat:qwen:inventario:v2:'.$modelo, 30, function () use ($modelo): bool {
                 $inventario = Http::connectTimeout(0.5)->timeout(1)->get('http://127.0.0.1:11434/api/tags');
                 if (! $inventario->successful()) return false;
                 foreach ((array) $inventario->json('models', []) as $item) {
@@ -51,12 +55,12 @@ final class ModeloLocalPequeno
                 ->post('http://127.0.0.1:11434/api/chat', [
                     'model' => $modelo, 'stream' => false, 'think' => false, 'keep_alive' => -1,
                     'format' => ['type' => 'string', 'enum' => [...array_keys($opciones), 'ninguna']],
-                    'options' => ['temperature' => 0, 'num_predict' => 12, 'num_ctx' => 1024, 'num_thread' => 1],
+                    'options' => ['temperature' => 0, 'num_predict' => 12, 'num_ctx' => 1024, 'num_thread' => $modelo === 'qwen3:4b' ? 2 : 1],
                     'messages' => [
                         ['role' => 'system', 'content' => 'Clasifica: '.implode('; ', array_map(
                             static fn (string $clave, string $descripcion): string => $clave.'='.mb_substr($descripcion, 0, 60),
                             array_keys($opciones), array_values($opciones),
-                        )).'. Otro tema: ninguna. Sólo el nombre JSON.'],
+                        )).'. Interpreta faltas de ortografía, letras intercambiadas y palabras incompletas según el contexto. La última pregunta tiene prioridad; el historial sólo aclara referencias como eso o el anterior. Respeta las negaciones y los cambios de tema. No inventes nombres científicos, lugares, códigos ni cantidades. Si falta información o hay dos intenciones posibles, ninguna. Otro tema: ninguna. Devuelve sólo el nombre JSON.'],
                         ['role' => 'user', 'content' => ($historial === [] ? '' : 'Antes: '.implode(' ', $historial)."\n").$pregunta],
                     ],
                 ]);
@@ -75,7 +79,7 @@ final class ModeloLocalPequeno
 
     public function resumir(string $pregunta, string $fuente): ?string
     {
-        if (! config('chatbot.use_local_model')) {
+        if (!self::habilitado()) {
             return null;
         }
 

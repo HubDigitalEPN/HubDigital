@@ -23,8 +23,10 @@ final class DescargarPlantillaImportController
 {
     public function __invoke(): Response
     {
+        \App\Support\AccesoCatalogo::autorizar();
+        $definicion = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer();
         if (class_exists(Spreadsheet::class)) {
-            $xlsx = GeneradorPlantillaImportXlsx::generar();
+            $xlsx = GeneradorPlantillaImportXlsx::generar($definicion);
 
             return response($xlsx, 200, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -36,8 +38,7 @@ final class DescargarPlantillaImportController
 
         // Fallback sin dependencias: CSV con los mismos encabezados. El BOM UTF-8
         // hace que Excel lo abra con los acentos correctos.
-        $encabezados = array_keys(GeneradorPlantillaImportXlsx::columnas());
-        $csv = "\xEF\xBB\xBF".implode(',', $encabezados)."\r\n";
+        $csv = GeneradorPlantillaImportXlsx::generarCsv($definicion);
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
