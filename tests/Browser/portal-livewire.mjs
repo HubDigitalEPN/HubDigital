@@ -313,6 +313,7 @@ try {
     const raizDiversidad = await evaluar("document.querySelector('.portal-diversity-scene').dataset.raiz");
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.camara"),'perspectiva','La vista inicial tiene perspectiva y geometría con volumen.');
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Orden');
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.portal-diversity-legend button')].map(b=>b.textContent)"),['Filo','Clase','Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'],'Todos los accesos de rango están visibles desde el inicio.');
     assert.ok(await evaluar("Number(document.querySelector('.portal-diversity-scene').dataset.ramasDibujadas)<160"),'La vista inicial no dibuja ramas de niveles cerrados.');
     await evaluar(`(() => {const etiqueta=document.querySelector('.portal-diversity-label.is-selected'),canvas=document.querySelector('.portal-diversity-canvas'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new PointerEvent('pointermove',{clientX:r.left+Number(etiqueta.dataset.puntoX)*r.width/canvas.clientWidth,clientY:r.top+Number(etiqueta.dataset.puntoY)*r.height/canvas.clientHeight,bubbles:true}));})()`);
     assert.ok(await evaluar("document.querySelector('.portal-diversity-tooltip').checkVisibility() && document.querySelector('.portal-diversity-tooltip strong').textContent===document.querySelector('.portal-three-title').textContent"),'Se puede identificar un nodo al señalarlo sin cambiar la raíz ni la ficha seleccionada.');
@@ -343,8 +344,7 @@ try {
     await evaluar("document.querySelector('[aria-label=\"Volver al padre de la rama en pantalla completa\"]').click()");
     await visible("document.querySelector('.portal-diversity-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));await reposo();
     assert.ok(await evaluar("document.querySelector('.portal-diversity-scene.is-expanded') && document.querySelector('[aria-label=\"Volver al padre de la rama en pantalla completa\"]').disabled"),'Volver al padre publicado conserva pantalla completa y se deshabilita al llegar al filo sin padre.');
-    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'-',bubbles:true}))");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
-    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'-',bubbles:true}))");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
+    await evaluar("document.querySelector('.portal-diversity-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'0.500');
     const raizGeneral=await posicionRaiz();
     for(const [desde,hasta]of[[.5,.6],[.6,.7],[.7,.8],[.8,.9],[.9,1]]){
@@ -360,14 +360,30 @@ try {
     await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");await reposo();
     const raizNormal=await posicionRaiz();
     for (let i=0;i<9;i++) {await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");await reposo();await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.enEncuadre"))>0,'El acercamiento conserva taxones en pantalla, también al llegar a especies.');}
-    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Especie','El zoom abre el último rango; los nodos fuera de pantalla siguen recortados.');
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Especie','El zoom máximo abre la distribución compacta de especies.');
     await comprobarAncla(raizNormal);
-    assert.ok(Number(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"))>3,'El árbol permite varios acercamientos consecutivos más allá del límite de las esferas.');
-    assert.ok(await evaluar("!document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.portal-diversity-scene').dataset;return d.panorama==='true'&&Math.abs(Number(d.zoom)-Number(d.zoomMax))<.001&&Number(d.destinosPagina)>0&&[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Especie ('));})()"),'El límite conserva especies visibles en lugar de acercar indefinidamente.');
+    assert.ok(await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').disabled"));
     await evaluar("(() => {const c=document.querySelector('.portal-diversity-canvas');for(let i=0;i<9;i++)c.dispatchEvent(new KeyboardEvent('keydown',{key:'+',bubbles:true}));})()");await reposo();
     await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");
     await comprobarAncla(raizNormal);
-    assert.ok(await evaluar("(() => {const d=document.querySelector('.portal-diversity-scene').dataset;return Number(d.zoom)>1000&&d.rangoDetalle==='Especie'&&Number(d.ramasDibujadas)<160&&Number(d.cacheTroncos)<=256&&Number(d.drawCalls)<=2;})()"),'El zoom extremo mantiene el anclaje, los rangos abiertos y el presupuesto gráfico.');
+    assert.ok(await evaluar("(() => {const d=document.querySelector('.portal-diversity-scene').dataset;return Math.abs(Number(d.zoom)-Number(d.zoomMax))<.001&&d.rangoDetalle==='Especie'&&Number(d.ramasDibujadas)<160&&Number(d.cacheTroncos)<=256&&Number(d.drawCalls)<=2;})()"),'Los intentos de acercamiento adicionales conservan el encuadre útil y el presupuesto gráfico.');
+    await evaluar("document.querySelector('.portal-diversity-legend button[data-rango=\"familia\"]').click()");await reposo();
+    assert.ok(await evaluar("Boolean(document.querySelector('.portal-diversity-scene.is-expanded')) && document.querySelector('.portal-diversity-scene').dataset.rangoDetalle==='Suborden'"),'Pulsar un rango abierto oculta ese rango y sus descendientes y entra en pantalla completa.');
+    await evaluar("document.querySelector('.portal-diversity-legend button[data-rango=\"familia\"]').click()");await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Familia');
+    assert.ok(await evaluar("[...document.querySelectorAll('.portal-diversity-label small')].some(e=>e.textContent.startsWith('Familia ('))"),'El acceso de rango abre yemas reales de ese nivel.');
+    await evaluar("document.querySelector('.portal-diversity-slider').focus()");
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'End',code:'End',windowsVirtualKeyCode:35});await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'End',code:'End',windowsVirtualKeyCode:35});await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Especie','El deslizador llega directamente al último rango con el teclado.');
+    assert.equal(await evaluar("document.activeElement.classList.contains('portal-diversity-slider')"),true,'El deslizador conserva el foco al ampliar.');
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Home',code:'Home',windowsVirtualKeyCode:36});await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Home',code:'Home',windowsVirtualKeyCode:36});await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Clase','El mínimo permite ocultar también los órdenes.');
+    assert.ok(await evaluar("document.querySelector('[aria-label=\"Alejar árbol en pantalla completa\"]').disabled"));
+    await evaluar("document.querySelector('.portal-diversity-legend button[data-rango=\"clase\"]').click()");await reposo();
+    assert.equal(await evaluar("document.querySelector('.portal-diversity-legend button[data-rango=\"clase\"]').getAttribute('aria-pressed')"),'true','Clase conserva su acción de resaltar.');
+    await evaluar("document.querySelector('.portal-diversity-legend button[data-rango=\"clase\"]').click();document.querySelector('.portal-diversity-fullscreen-exit').click()");
+    await visible("!document.querySelector('.portal-diversity-scene').classList.contains('is-expanded') && !document.fullscreenElement");
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");await reposo();
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.zoom"),'0.500');
     assert.equal(await evaluar("document.querySelector('.portal-diversity-scene').dataset.rangoDetalle"),'Orden','Alejar vuelve a ocultar los rangos posteriores.');

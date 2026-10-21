@@ -9,6 +9,22 @@ const ETAPAS_DIVERSIDAD=[
     {orden:15,nombre:'Género'},{orden:18,nombre:'Especie'},
 ];
 
+export const LEYENDA_DIVERSIDAD=['Filo','Clase','Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'];
+const ANCHO_DESTINO_DIVERSIDAD=230;
+
+function nivelesZoomDiversidad(ordenRaiz,disponibles,ordenInicial){
+    const inicial=etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial)[0];
+    const niveles=ETAPAS_DIVERSIDAD.filter((e,i)=>e.orden>=ordenRaiz&&(e.orden===inicial.orden||e.orden===3&&ordenRaiz<3||!disponibles||disponibles.some(r=>r>(ETAPAS_DIVERSIDAD[i-1]?.orden??-1)&&r<=e.orden)));
+    if(!niveles.length)niveles.push(inicial);
+    return {niveles,inicio:Math.max(0,niveles.findIndex(e=>e.orden===inicial.orden))};
+}
+
+export function zoomParaRangoDiversidad(ordenRaiz,orden,disponibles,ordenInicial=ordenRaiz){
+    const {niveles,inicio}=nivelesZoomDiversidad(ordenRaiz,disponibles,ordenInicial);
+    const posicion=niveles.findIndex(e=>e.orden>=orden);
+    return .5*1.6**((posicion<0?niveles.length-1:posicion)-inicio);
+}
+
 function etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial){
     const encontrado=ETAPAS_DIVERSIDAD.findIndex(n=>n.orden>=Math.max(ordenRaiz,ordenInicial));
     // La vista general abre Clase y Orden juntos. Una selección más específica
@@ -19,29 +35,79 @@ function etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial){
 
 /** El zoom habilita rangos formales, independientemente de los huecos del linaje. */
 export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles,ordenInicial=ordenRaiz){
-    const etapas=etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial);
+    const {niveles:etapas,inicio}=nivelesZoomDiversidad(ordenRaiz,disponibles,ordenInicial);
     // El primer encuadre es 0,5×. Cada paso de 1,6 abre un rango desde ahí:
     // 0,5 Orden, 0,8 Suborden, 1,28 Familia... No esperar hasta 1,6×.
-    const pasos=Math.max(0,Math.floor(Math.log(Math.max(1,(Number.isFinite(zoom)?zoom:.5)/.5))/Math.log(1.6)+1e-6));
-    return etapas[Math.min(etapas.length-1,pasos)];
+    const pasos=Math.floor(Math.log(Math.max(Number.EPSILON,(Number.isFinite(zoom)?zoom:.5)/.5))/Math.log(1.6)+1e-6);
+    return etapas[Math.max(0,Math.min(etapas.length-1,inicio+pasos))];
+}
+
+/** Cada página contiene taxones reales y todos sus ancestros. La partición
+ * conserva todos los destinos, con un presupuesto de nodos y espacio legible.
+ */
+export function paginasRangoDiversidad(arbol,orden,ancho,alto,{presupuesto=160,maxDestinos=48}={}){
+    const capacidad=Math.max(1,Math.min(maxDestinos,Math.floor(Math.max(ANCHO_DESTINO_DIVERSIDAD,ancho-100)/ANCHO_DESTINO_DIVERSIDAD)*Math.max(1,Math.floor((alto-230)/105))));
+    const destinos=[];
+    for(let i=0;i<arbol.claves.length;i++)if(arbol.rangos[i]===orden)destinos.push(i);
+    const paginas=[];let nodos=new Set(),actual=[];
+    for(const i of destinos){
+        const cadena=[];for(let j=i;j>=0;j=arbol.padres[j])cadena.push(j);
+        const nuevos=cadena.filter(j=>!nodos.has(j));
+        if(actual.length&&(actual.length>=capacidad||nodos.size+nuevos.length>presupuesto)){paginas.push({destinos:actual,indices:[...nodos].sort((a,b)=>a-b)});actual=[];nodos=new Set();}
+        actual.push(i);for(const j of cadena)nodos.add(j);
+    }
+    if(actual.length)paginas.push({destinos:actual,indices:[...nodos].sort((a,b)=>a-b)});
+    return {paginas,total:destinos.length,capacidad};
+}
+
+/** La corona ocupa la pantalla; los ancestros quedan compactos en el tercio
+ * inferior. Sólo cambia la presentación: padres, claves y datos son originales.
+ */
+export function distribuirRangoDiversidad(arbol,pagina,ancho,alto){
+    const {indices,destinos}=pagina,visibles=new Set(indices),terminales=new Set(destinos);
+    const posiciones=arbol.posiciones.slice(),profundidad=arbol.profundidad.slice(),curvas=arbol.curvas.slice();
+    const limites=arbol.limites.slice(),limites3D=arbol.limites3D.slice();
+    const columnas=Math.min(destinos.length,Math.max(1,Math.floor((ancho-100)/ANCHO_DESTINO_DIVERSIDAD))),filas=Math.ceil(destinos.length/columnas);
+    const w=Math.max(160,ancho-160),h=Math.max(220,alto-220),pesos=new Map(),sumas=new Map();
+    destinos.forEach((i,k)=>{
+        const fila=Math.floor(k/columnas),enFila=Math.min(columnas,destinos.length-fila*columnas),columna=k%columnas;
+        // Una columna estrecha alterna los extremos: evita que las ramas
+        // hermanas coincidan en una línea que parezca una cadena de ancestros.
+        const x=columnas===1&&destinos.length>1?(k%2?-.22:.22)*w:((columna+.5)/enFila-.5)*w,y=h*(.48+.52*(filas===1?.5:1-fila/(filas-1)));
+        posiciones[i*2]=x;posiciones[i*2+1]=y;profundidad[i]=Math.sin(k*2.39996)*h*.012;
+        for(let j=arbol.padres[i];j>=0;j=arbol.padres[j]){pesos.set(j,(pesos.get(j)||0)+1);sumas.set(j,(sumas.get(j)||0)+x);}
+    });
+    const nivelMax=Math.max(1,...indices.filter(i=>!terminales.has(i)).map(i=>arbol.niveles[i]));
+    for(const i of indices)if(!terminales.has(i)){posiciones[i*2]=i===0?0:(sumas.get(i)||0)/(pesos.get(i)||1);posiciones[i*2+1]=h*.27*arbol.niveles[i]/nivelMax;profundidad[i]=0;}
+    for(const i of indices){
+        const p=arbol.padres[i];if(p<0)continue;
+        const x=posiciones[p*2],y=posiciones[p*2+1],z=profundidad[p],dx=posiciones[i*2]-x,dy=posiciones[i*2+1]-y,dz=profundidad[i]-z;
+        curvas.set([x+dx*.18,y+dy*.48,z+dz*.2,x+dx*.8,y+dy*.8,z+dz*.8],i*6);
+    }
+    for(const i of [...indices].reverse()){
+        let x0=posiciones[i*2],x1=x0,y0=posiciones[i*2+1],y1=y0,z0=profundidad[i],z1=z0;
+        for(const hijo of arbol.hijos[i])if(visibles.has(hijo)){const b=limites3D.subarray(hijo*6,hijo*6+6);x0=Math.min(x0,b[0]);y0=Math.min(y0,b[1]);z0=Math.min(z0,b[2]);x1=Math.max(x1,b[3]);y1=Math.max(y1,b[4]);z1=Math.max(z1,b[5]);}
+        limites.set([x0,y0,x1,y1],i*4);limites3D.set([x0,y0,z0,x1,y1,z1],i*6);
+    }
+    return {...arbol,posiciones,profundidad,curvas,limites,limites3D};
 }
 
 export function limiteZoomRangosDiversidad(ordenRaiz,disponibles,ordenInicial=ordenRaiz){
     return .5*1.6**(etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial).length-1);
 }
 
-/** Abrir rangos no debe expulsar la copa de la pantalla. Durante esa apertura
- * la cámara crece suavemente; una vez expuesto el último rango vuelve al zoom
- * geométrico completo. Las funciones inversas conservan gestos acumulados.
+/** Abrir rangos no debe expulsar la copa de la pantalla. Las conversiones
+ * simétricas conservan gestos acumulados y crecen suavemente durante la apertura.
+ * El visor limita el último rango y lo presenta con el encuadre compacto.
  */
 export function escalaCamaraDiversidad(zoom,limite=.5){
-    zoom=Math.max(.5,Number.isFinite(zoom)?zoom:.5);limite=Math.max(.5,limite);
+    zoom=Math.max(Number.EPSILON,Number.isFinite(zoom)?zoom:.5);limite=Math.max(.5,limite);
     const apertura=.5*(Math.min(zoom,limite)/.5)**.12;
     return apertura*Math.max(1,zoom/limite);
 }
 
 export function zoomSemanticoDiversidad(escala,limite=.5){
-    escala=Math.max(.5,Number.isFinite(escala)?escala:.5);limite=Math.max(.5,limite);
+    escala=Math.max(Number.EPSILON,Number.isFinite(escala)?escala:.5);limite=Math.max(.5,limite);
     const apertura=.5*(limite/.5)**.12;
     return escala<=apertura ? .5*(escala/.5)**(1/.12) : limite*escala/apertura;
 }
@@ -77,14 +143,14 @@ export function zoomRaizDiversidad(camara,raiz,factor,{min=0,max=Infinity}={}){
  * rangos abiertos dentro del área útil. Resuelve los límites en perspectiva;
  * no usa las cajas de descendientes que todavía deben permanecer cerrados.
  */
-export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,direccion=[.22,.16,1],reserva=1.05}={}){
+export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,superior=35,direccion=[.22,.16,1],reserva=1.05,indices=null}={}){
     const longitud=Math.hypot(...direccion),d=direccion.map(v=>v/longitud),lateral=Math.hypot(d[0],d[2]);
     const derecha=[d[2]/lateral,0,-d[0]/lateral],arriba=[-d[1]*d[0]/lateral,lateral,-d[1]*d[2]/lateral];
     const t=Math.tan(38*Math.PI/360),aspecto=ancho/alto,raiz=[arbol.posiciones[0],arbol.posiciones[1],arbol.profundidad[0]];
     const margen=Math.min(inferior,alto*.4),y=alto-margen,k=(2*y/alto-1)*t;
-    const bordeX=Math.max(.05,1-70/ancho),bordeSuperior=1-70/alto,bordeInferior=1-2*(alto-Math.max(12,margen-58))/alto;
+    const bordeX=Math.max(.05,1-70/ancho),bordeSuperior=1-2*superior/alto,bordeInferior=1-2*(alto-Math.max(12,margen-58))/alto;
     let distancia=40;
-    for(let i=0;i<arbol.claves.length;i++){
+    for(const i of indices??arbol.claves.keys()){
         if(i!==0&&arbol.rangos[i]>limite)continue;
         const p=[arbol.posiciones[i*2]-raiz[0],arbol.posiciones[i*2+1]-raiz[1],arbol.profundidad[i]-raiz[2]];
         const producto=v=>p.reduce((s,n,j)=>s+n*v[j],0),x=producto(derecha),y=producto(arriba),z=producto(d);

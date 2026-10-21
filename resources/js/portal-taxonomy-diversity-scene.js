@@ -1,7 +1,7 @@
 import {Box3, BufferAttribute, BufferGeometry, Color, DirectionalLight, Frustum, HemisphereLight, InstancedMesh, LineBasicMaterial, LineSegments,
     Matrix4, MeshStandardMaterial, MOUSE, Object3D, PerspectiveCamera, Scene, SphereGeometry, TOUCH, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {aperturaRamaDiversidad,crearArbolDiversidad,detalleTaxonomicoDiversidad,encuadreRaizDiversidad,escalaCamaraDiversidad,limiteZoomRangosDiversidad,radioYemaDiversidad,seleccionarDetalleDiversidad,zoomRaizDiversidad,zoomSemanticoDiversidad} from './portal-taxonomy-diversity-model';
+import {LEYENDA_DIVERSIDAD,aperturaRamaDiversidad,crearArbolDiversidad,detalleTaxonomicoDiversidad,distribuirRangoDiversidad,encuadreRaizDiversidad,escalaCamaraDiversidad,limiteZoomRangosDiversidad,paginasRangoDiversidad,radioYemaDiversidad,seleccionarDetalleDiversidad,zoomParaRangoDiversidad,zoomRaizDiversidad,zoomSemanticoDiversidad} from './portal-taxonomy-diversity-model';
 import {rangoVisual3D,resumenTaxon3D} from './portal-taxonomy-three-ranks';
 import {textoLinajeTaxonomico} from './portal-taxonomy-lineage';
 import {crearLeyendaTaxonomica} from './portal-taxonomy-tooltip';
@@ -23,8 +23,9 @@ export function crearEscenaDiversidad(elemento,acciones) {
     const barra=elemento.closest('.taxonomy-navigator').querySelector('.taxonomy-navigator-zoom');barra.prepend(cabecera);barra.append(maximizar);
     const vista=crear('div','portal-diversity-viewport'),etiquetas=crear('div','portal-diversity-labels');
     const ayuda=crear('p','sr-only','Rueda o pellizco: zoom progresivo. Arrastrar: desplazar. Ctrl y arrastrar o Ctrl y flechas: girar en 3D. Inicio: vista inicial. AvPág y RePág: explorar hijos. Intro: abrir rama.');ayuda.id='portal-diversity-help';
-    const escalaTexto=crear('output','portal-diversity-scale');escalaTexto.setAttribute('aria-label','Nivel de zoom');
-    const leyenda=crear('div','portal-diversity-legend');leyenda.setAttribute('role','group');leyenda.setAttribute('aria-label','Resaltar un rango conservando todas las relaciones publicadas');
+    const escala=crear('label','portal-diversity-scale'),deslizador=crear('input','portal-diversity-slider'),escalaTexto=crear('output','');
+    deslizador.type='range';deslizador.min='0';deslizador.max='1000';deslizador.step='1';deslizador.setAttribute('aria-label','Zoom y detalle del árbol');escalaTexto.setAttribute('aria-hidden','true');escala.append(deslizador,escalaTexto);
+    const leyenda=crear('div','portal-diversity-legend');leyenda.setAttribute('role','group');leyenda.setAttribute('aria-label','Rangos taxonómicos: abrir u ocultar niveles');
     const instrucciones=crear('p','portal-three-instructions');instrucciones.tabIndex=0;instrucciones.setAttribute('role','status');
     const estado=crear('p','portal-diversity-status');estado.setAttribute('role','alert');estado.hidden=true;
     marco.append(vista,leyenda,instrucciones);elemento.replaceChildren(marco);
@@ -38,7 +39,10 @@ export function crearEscenaDiversidad(elemento,acciones) {
     renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio||1,1.5));
     const canvas=renderer.domElement;canvas.className='portal-diversity-canvas';canvas.tabIndex=0;canvas.setAttribute('role','img');
     canvas.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight ArrowUp ArrowDown Control+ArrowLeft Control+ArrowRight Control+ArrowUp Control+ArrowDown PageDown PageUp Enter Home + -');canvas.setAttribute('aria-describedby',ayuda.id);
-    vista.append(canvas,etiquetas,ayuda,escalaTexto,estado);
+    const paginas=crear('nav','portal-diversity-pages');paginas.setAttribute('aria-label','Páginas del rango abierto');paginas.hidden=true;
+    const paginaAnterior=boton('Página anterior de taxones','‹',()=>cambiarPagina(-1)),paginaSiguiente=boton('Página siguiente de taxones','›',()=>cambiarPagina(1));
+    const paginaTexto=crear('span','');paginaTexto.setAttribute('role','status');const paginaNumero=crear('span',''),paginaTotal=crear('span','portal-diversity-pages-total');paginaTexto.append(paginaNumero,paginaTotal);paginas.append(paginaAnterior,paginaTexto,paginaSiguiente);
+    vista.append(canvas,etiquetas,ayuda,escala,paginas,estado);
     const tooltip=crearLeyendaTaxonomica(vista,canvas);
     const escena=new Scene(),camara=new PerspectiveCamera(38,1,.01,10000),camaraGPU=new PerspectiveCamera(),origenGPU=new Vector3();
     escena.add(new HemisphereLight('#fffdf0','#355044',2.5));
@@ -53,7 +57,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
     const frustum=new Frustum(),matriz=new Matrix4(),caja=new Box3(),punto=new Vector3(),objeto=new Object3D();
     const colores=new Map(),etiquetasDOM=new Map(),troncosCache=new Map(),abort=new AbortController();
     const reducido=matchMedia('(prefers-reduced-motion: reduce)');
-    let indice,arbol,fuente,raiz,ancho=1,alto=1,base=1,maxZoom=4096,radioArbol=1,rangosPresentes=[],rangosNodos=[];
+    let indice,arbol,arbolOriginal,panorama=null,fuente,raiz,ancho=1,alto=1,base=1,minZoom=.5,maxZoom=.5,radioArbol=1,rangosPresentes=[],rangosNodos=[];
     let frame=null,destruido=false,activo=true,elegido=0,resaltado='',hijoTeclado=-1,puntos=[],pulsacion=null,destino=null,firma='',revision=0,limiteRango=3;
     let dimensionado=false,ampliado=false,ampliacionAutomatica=true,fullscreenPendiente=false;
     let focoZoom=0,rangoInicial=0,limiteZoomRangos=.5,encuadreAutomatico=true;
@@ -65,6 +69,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
     function mensaje(i=elegido){instrucciones.textContent=`${textoLinajeTaxonomico(indice,arbol?.claves[i>=0?i:0])} · Jerarquía taxonómica, sin escala temporal`;instrucciones.title=instrucciones.textContent;}
     function error(texto){estado.textContent=texto;estado.hidden=false;}
     function cajaClado(i){const b=arbol.limites3D.subarray(i*6,i*6+6);return caja.min.set(b[0],b[1],b[2]),caja.max.set(b[3],b[4],b[5]),caja;}
+    function margenInferior(){return (ancho<600?110:70)+(ampliado?leyenda.offsetHeight+instrucciones.offsetHeight:0);}
     function encuadrar(i=0,animado=false,conservarOrientacion=false){
         if(!arbol)return;
         focoZoom=i;encuadreAutomatico=i===0;
@@ -84,21 +89,50 @@ export function crearEscenaDiversidad(elemento,acciones) {
         const objetivo={posicion:centro.clone().addScaledVector(direccion,distancia),centro};
         if(!i){
             const inicial=detalleTaxonomicoDiversidad(rangosNodos[0],.5,rangosPresentes,rangoInicial).orden;
-            const pie=ampliado?leyenda.offsetHeight+instrucciones.offsetHeight:0;
-            const encuadre=encuadreRaizDiversidad(arbol,inicial,ancho,alto,{inferior:70+pie,direccion:direccion.toArray(),reserva:rangoInicial===rangosNodos[0]?1.4:1.2});
+            const encuadre=encuadreRaizDiversidad(arbol,inicial,ancho,alto,{inferior:margenInferior(),direccion:direccion.toArray(),reserva:rangoInicial===rangosNodos[0]?1.4:1.2});
             objetivo.centro.fromArray(encuadre.centro);objetivo.posicion.fromArray(encuadre.posicion);distancia=encuadre.distancia;
         }
-        if(!i){base=distancia*.5;radioArbol=Math.max(50,tamano.length());maxZoom=Math.max(4096,Math.min(1e7,80/arbol.separacion));limiteZoomRangos=limiteZoomRangosDiversidad(rangosNodos[0],rangosPresentes,rangoInicial);orbit.minDistance=base/escalaCamaraDiversidad(maxZoom,limiteZoomRangos);orbit.maxDistance=base*2;}
+        if(!i){base=distancia*.5;radioArbol=Math.max(50,tamano.length());limiteZoomRangos=limiteZoomRangosDiversidad(rangosNodos[0],rangosPresentes,rangoInicial);maxZoom=limiteZoomRangos;minZoom=zoomParaRangoDiversidad(rangosNodos[0],Math.max(3,rangosNodos[0]),rangosPresentes,rangoInicial);orbit.minDistance=base/escalaCamaraDiversidad(maxZoom,limiteZoomRangos);orbit.maxDistance=base/escalaCamaraDiversidad(minZoom,limiteZoomRangos);}
         if(animado&&!reducido.matches)destino=objetivo;else{destino=null;camara.position.copy(objetivo.posicion);orbit.target.copy(centro);orbit.update();}
         marco.dataset.animando=String(Boolean(destino));tooltip.ocultar();programar();
     }
-    function ajustar(){encuadrar();}
+    function restaurarArbol(){panorama=null;arbol=arbolOriginal;paginas.hidden=true;troncosCache.clear();firma='';}
+    function ajustar(){restaurarArbol();encuadrar();}
+    function zoomActual(){return panorama?.zoom??zoomSemanticoDiversidad(base/(destino?.posicion||camara.position).distanceTo(destino?.centro||orbit.target),limiteZoomRangos);}
+    function abrirRango(limite,nivel,pagina=0){
+        const orden=limite===18&&rangosPresentes.includes(17)?17:Math.max(...rangosPresentes.filter(r=>r<=limite));
+        if(panorama?.orden===orden&&panorama.pagina===pagina&&panorama.ancho===ancho&&panorama.alto===alto){panorama.zoom=nivel;programar();return;}
+        const listado=paginasRangoDiversidad(arbolOriginal,orden,ancho,alto,{presupuesto:ancho<600?80:160,maxDestinos:ancho<600?8:24});
+        if(!listado.paginas.length)return;
+        const numeroPagina=Math.max(0,Math.min(pagina,listado.paginas.length-1)),contenido=listado.paginas[numeroPagina];
+        const direccion=camara.position.clone().sub(orbit.target).normalize();
+        arbol=distribuirRangoDiversidad(arbolOriginal,contenido,ancho,alto);
+        panorama={...listado,...contenido,orden,zoom:nivel,pagina:numeroPagina,ancho,alto};
+        troncosCache.clear();firma='';focoZoom=0;encuadreAutomatico=true;tooltip.ocultar();
+        const encuadre=encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior:margenInferior(),superior:ampliado?80:35,direccion:direccion.toArray(),reserva:1.05,indices:contenido.indices});
+        orbit.minDistance=encuadre.distancia*.1;orbit.maxDistance=encuadre.distancia*4;
+        // El encuadre compacto sustituye al acercamiento ilimitado. La raíz
+        // conserva su ancla inferior y todos los destinos caben en la página.
+        destino=null;camara.position.fromArray(encuadre.posicion);orbit.target.fromArray(encuadre.centro);orbit.update();
+        paginaAnterior.disabled=numeroPagina===0;paginaSiguiente.disabled=numeroPagina===listado.paginas.length-1;
+        paginaNumero.textContent=`${numero(numeroPagina+1)} / ${numero(listado.paginas.length)}`;paginaTotal.textContent=` · ${numero(listado.total)} taxones`;paginas.title=`${numero(listado.total)} taxones del rango abierto`;
+        paginas.hidden=listado.paginas.length<=1;programar();
+    }
+    function cambiarPagina(paso){if(panorama)abrirRango(detalleTaxonomicoDiversidad(rangosNodos[0],panorama.zoom,rangosPresentes,rangoInicial).orden,panorama.zoom,panorama.pagina+paso);}
+    function irAlZoom(valor){
+        if(!arbol||!Number.isFinite(valor))return;
+        const objetivo=Math.max(minZoom,Math.min(maxZoom,valor));
+        if(panorama||objetivo>=maxZoom*.99999){abrirRango(detalleTaxonomicoDiversidad(rangosNodos[0],objetivo,rangosPresentes,rangoInicial).orden,objetivo);return;}
+        moverZoom(objetivo);
+    }
     function zoom(factor){
         if(!arbol||!Number.isFinite(factor)||factor<=0)return;
         if(factor>1&&ampliacionAutomatica&&!ampliado)ampliarAutomaticamente();
+        irAlZoom(zoomActual()*factor);
+    }
+    function moverZoom(zoomObjetivo){
         const centro=destino?.centro||orbit.target,origen=destino?.posicion||camara.position;
-        const escalaActual=base/origen.distanceTo(centro),zoomActual=zoomSemanticoDiversidad(escalaActual,limiteZoomRangos);
-        const zoomObjetivo=Math.max(.5,Math.min(maxZoom,zoomActual*factor));
+        const escalaActual=base/origen.distanceTo(centro);
         const factorCamara=escalaCamaraDiversidad(zoomObjetivo,limiteZoomRangos)/escalaActual;
         const objetivo=zoomRaizDiversidad({centro:centro.toArray(),posicion:origen.toArray()},posicion(0).toArray(),factorCamara,{min:orbit.minDistance,max:orbit.maxDistance});
         focoZoom=0;
@@ -106,6 +140,16 @@ export function crearEscenaDiversidad(elemento,acciones) {
         Object.assign(marco.dataset,{yemaZoom:arbol.claves[focoZoom],registrosYema:String(arbol.registros[focoZoom])});
         if(reducido.matches){camara.position.copy(destino.posicion);orbit.target.copy(destino.centro);destino=null;orbit.update();}
         marco.dataset.animando=String(Boolean(destino));tooltip.ocultar();programar();
+    }
+    escuchar(deslizador,'input',()=>{if(!ampliado)ampliarAutomaticamente();deslizador.focus({preventScroll:true});irAlZoom(minZoom*(maxZoom/minZoom)**(Number(deslizador.value)/1000));});
+    escuchar(escala,'wheel',e=>e.stopPropagation());
+    function activarRango(r){
+        ampliarAutomaticamente();
+        if(r.orden===0||r.orden===3){resaltado=resaltado===r.id?'':r.id;marco.dataset.rangoResaltado=resaltado;programar();return;}
+        const actual=detalleTaxonomicoDiversidad(rangosNodos[0],zoomActual(),rangosPresentes,rangoInicial).orden;
+        const umbral=zoomParaRangoDiversidad(rangosNodos[0],r.orden,rangosPresentes,rangoInicial);
+        const nivel=actual>=r.orden?Math.max(minZoom,umbral/1.6):umbral;
+        abrirRango(detalleTaxonomicoDiversidad(rangosNodos[0],nivel,rangosPresentes,rangoInicial).orden,nivel);
     }
     function proyectar(i){const p=posicion(i,punto).project(camara);return{x:(p.x+1)*ancho/2,y:(1-p.y)*alto/2,z:p.z};}
     function extension(i){
@@ -143,18 +187,19 @@ export function crearEscenaDiversidad(elemento,acciones) {
             if(camara.position.distanceTo(destino.posicion)<Math.max(.0000001,camara.position.distanceTo(orbit.target)*.0004)){camara.position.copy(destino.posicion);orbit.target.copy(destino.centro);destino=null;}
             orbit.update();
         }
-        const distancia=camara.position.distanceTo(orbit.target),factor=zoomSemanticoDiversidad(base/distancia,limiteZoomRangos);camara.near=Math.max(1e-9,distancia*.00003);camara.far=distancia+radioArbol*5;camara.updateProjectionMatrix();camara.updateMatrixWorld();
+        const distancia=camara.position.distanceTo(orbit.target),factor=panorama?.zoom??zoomSemanticoDiversidad(base/distancia,limiteZoomRangos);camara.near=Math.max(1e-9,distancia*.00003);camara.far=distancia+Math.max(radioArbol,ancho,alto)*5;camara.updateProjectionMatrix();camara.updateMatrixWorld();
         const detalle=detalleTaxonomicoDiversidad(rangosNodos[0],factor,rangosPresentes,rangoInicial);limiteRango=detalle.orden;
-        for(const b of leyenda.children)b.hidden=Number(b.dataset.orden)>limiteRango;
+        for(const b of leyenda.children){const orden=Number(b.dataset.orden);if(orden===0||orden===3)b.setAttribute('aria-pressed',String(b.dataset.rango===resaltado));else b.setAttribute('aria-expanded',String(!b.disabled&&orden<=limiteRango));}
         // Origen flotante: las coordenadas completas siguen en doble precisión;
         // los buffers GPU contienen sólo diferencias locales durante el zoom.
         if(origenGPU.distanceTo(orbit.target)>distancia*24){origenGPU.copy(orbit.target);firma='';}
         frustum.setFromProjectionMatrix(matriz.multiplyMatrices(camara.projectionMatrix,camara.matrixWorldInverse));
         const medidas=new Map(),presupuesto=ancho<600?80:160;
-        const {visibles,brotes:colapsados}=seleccionarDetalleDiversidad(arbol,rangosNodos,limiteRango,i=>{
+        const {visibles,brotes:colapsados}=panorama?{visibles:[...panorama.indices],brotes:new Set()}:seleccionarDetalleDiversidad(arbol,rangosNodos,limiteRango,i=>{
             if(!frustum.intersectsBox(cajaClado(i).expandByScalar(arbol.radios[i]*3)))return null;
             const p=proyectar(i),m={...p,extension:extension(i)};medidas.set(i,m);return m;
         },{presupuesto,ancho,alto,umbral:Math.max(12,50/factor)});
+        if(panorama)for(const i of visibles)medidas.set(i,{...proyectar(i),extension:0});
         // La raíz anclada tiene prioridad sobre la agrupación de densidad,
         // sin aumentar el presupuesto ni abrir rangos posteriores.
         if(focoZoom>=0&&rangosNodos[focoZoom]<=limiteRango&&!visibles.includes(focoZoom)){
@@ -176,19 +221,21 @@ export function crearEscenaDiversidad(elemento,acciones) {
             const nodo=indice.porClave.get(arbol.claves[i]),rango=rangoVisual3D(nodo),hoja=!arbol.hijos[i].length,brote=colapsados.has(i);
             if(i!==0&&rango.orden>limiteRango)continue;
             const prof=-posicion(i,punto).applyMatrix4(camara.matrixWorldInverse).z;
-            const radio=prof/focal*Math.min(28,radioYemaDiversidad(arbol.especies[i]));
+            const esDestino=panorama?.destinos.includes(i),radio=prof/focal*Math.min(panorama&&!esDestino?(i===0?12:5):28,radioYemaDiversidad(arbol.especies[i]));
             posicion(i,objeto.position).sub(origenGPU);objeto.quaternion.identity();objeto.scale.setScalar(radio);objeto.updateMatrix();
             hojas.setMatrixAt(cantidad,objeto.matrix);hojas.setColorAt(cantidad,color(resaltado&&rango.id!==resaltado&&i!==elegido?'#acb8a8':rango.color));cantidad++;
             const tamano=radio*focal/prof;puntos.push({i,...p,tamano});
-            if(i===0||i===elegido||i===focoZoom||hoja||brote||rango.orden===limiteRango||tamano>15||p.extension>150)candidatos.push({i,...p,espacio:tamano*2,hoja,brote});
+            if(panorama?(esDestino||i===0||i===elegido):(i===0||i===elegido||i===focoZoom||hoja||brote||rango.orden===limiteRango||tamano>15||p.extension>150))candidatos.push({i,...p,espacio:tamano*2,hoja,brote});
         }
         hojas.count=cantidad;hojas.instanceMatrix.needsUpdate=true;if(hojas.instanceColor)hojas.instanceColor.needsUpdate=true;
         dibujarEtiquetas(candidatos);camaraGPU.copy(camara);camaraGPU.position.sub(origenGPU);camaraGPU.updateMatrixWorld();renderer.render(escena,camaraGPU);
-        escalaTexto.textContent=`${numero(Math.round(factor*10)/10)}×`;acciones.zoom?.(factor);acciones.limitesZoom?.(.5,maxZoom);acciones.ajustado?.(Math.abs(factor-.5)<.001&&!destino);
+        escalaTexto.textContent=`${numero(Math.round(factor*100)/100)}×`;
+        deslizador.value=String(maxZoom===minZoom?0:Math.round(Math.log(zoomActual()/minZoom)/Math.log(maxZoom/minZoom)*1000));deslizador.disabled=maxZoom===minZoom;deslizador.setAttribute('aria-valuetext',`${escalaTexto.textContent}, hasta ${detalle.nombre}`);
+        acciones.zoom?.(factor);acciones.limitesZoom?.(minZoom,maxZoom);acciones.ajustado?.(Math.abs(factor-.5)<.001&&!destino&&!panorama);
         marco.dataset.rangosDibujados=[...new Set(puntos.map(p=>rangoVisual3D(indice.porClave.get(arbol.claves[p.i])).nombre))].join(',');
-        alejar.disabled=factor<=.50001;acercar.disabled=factor>=maxZoom*.99999;
+        alejar.disabled=factor<=minZoom*1.00001;acercar.disabled=factor>=maxZoom*.99999;
         const raizProyectada=proyectar(0);
-        Object.assign(marco.dataset,{zoom:factor.toFixed(3),raizX:String(raizProyectada.x),raizY:String(raizProyectada.y),ramasDibujadas:String(Math.max(0,visibles.length-1)),presupuesto:String(presupuesto),cacheTroncos:String(troncosCache.size),etiquetas:String(etiquetasDOM.size),enEncuadre:String(puntos.length),contraidos:String(colapsados.size),nivelDetalle:String(puntos.reduce((nivel,p)=>Math.max(nivel,arbol.niveles[p.i]),0)),rangoDetalle:detalle.nombre,drawCalls:String(renderer.info.render.calls),frames:String(renderer.info.render.frame),renderMs:(performance.now()-inicio).toFixed(2),centro:orbit.target.toArray().join(','),orientacion:camara.quaternion.toArray().map(n=>n.toFixed(5)).join(','),animando:String(Boolean(destino))});
+        Object.assign(marco.dataset,{zoom:factor.toFixed(3),zoomMin:String(minZoom),zoomMax:String(maxZoom),panorama:String(Boolean(panorama)),pagina:String(panorama?panorama.pagina+1:0),paginas:String(panorama?.paginas.length??0),destinos:String(panorama?.total??0),destinosPagina:String(panorama?.destinos.length??0),raizX:String(raizProyectada.x),raizY:String(raizProyectada.y),ramasDibujadas:String(Math.max(0,visibles.length-1)),presupuesto:String(presupuesto),cacheTroncos:String(troncosCache.size),etiquetas:String(etiquetasDOM.size),enEncuadre:String(puntos.length),contraidos:String(colapsados.size),nivelDetalle:String(puntos.reduce((nivel,p)=>Math.max(nivel,arbol.niveles[p.i]),0)),rangoDetalle:detalle.nombre,drawCalls:String(renderer.info.render.calls),frames:String(renderer.info.render.frame),renderMs:(performance.now()-inicio).toFixed(2),centro:orbit.target.toArray().join(','),orientacion:camara.quaternion.toArray().map(n=>n.toFixed(5)).join(','),animando:String(Boolean(destino))});
         if(destino)programar();
     }
     function dibujarEtiquetas(candidatos){
@@ -201,7 +248,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
             if(!sitio)continue;const{x,y}=sitio;
             cajas.push({x,y,w,h});usados.add(p.i);let el=etiquetasDOM.get(p.i);
             if(!el){el=boton(`${nodo.nombre}. Explorar esta rama`,'',()=>elegirNodo(p.i));el.className='portal-diversity-label';el.tabIndex=-1;el.append(crear('strong','',nodo.nombre),crear('small','',resumenTaxon3D(nodo)));etiquetasDOM.set(p.i,el);etiquetas.append(el);el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();abrirMenu(p.i,e);});}
-            el.style.transform=`translate(${x}px,${y}px)`;el.style.width=`${w}px`;el.dataset.puntoX=String(p.x);el.dataset.puntoY=String(p.y);el.dataset.especies=String(arbol.especies[p.i]);el.dataset.radioYema=String(Math.min(28,radioYemaDiversidad(arbol.especies[p.i])));el.dataset.clave=arbol.claves[p.i];el.classList.toggle('is-selected',p.i===elegido);el.classList.toggle('is-leaf',p.hoja);
+            el.style.transform=`translate(${x}px,${y}px)`;el.style.width=`${w}px`;el.dataset.puntoX=String(p.x);el.dataset.puntoY=String(p.y);el.dataset.especies=String(arbol.especies[p.i]);el.dataset.radioYema=String(p.espacio/2);el.dataset.clave=arbol.claves[p.i];el.classList.toggle('is-selected',p.i===elegido);el.classList.toggle('is-leaf',p.hoja);
             el.querySelector('small').textContent=resumenTaxon3D(nodo);
         }
         for(const [i,el]of etiquetasDOM)if(!usados.has(i)){el.remove();etiquetasDOM.delete(i);}
@@ -232,7 +279,7 @@ export function crearEscenaDiversidad(elemento,acciones) {
         e.preventDefault();e.stopPropagation();tooltip.ocultar();
         if(e.key==='Home')return ajustar();if(['+','='].includes(e.key))return zoom(1.6);if(e.key==='-')return zoom(1/1.6);
         if(e.key==='Enter'){elegirNodo(elegido);return;}
-        if(['PageDown','PageUp'].includes(e.key)){const lista=arbol.hijos[0];if(!lista.length)return;hijoTeclado=(hijoTeclado+(e.key==='PageDown'?1:-1)+lista.length)%lista.length;elegido=lista[hijoTeclado];mensaje();encuadrar(elegido,true);mostrarDetalle(elegido);return;}
+        if(['PageDown','PageUp'].includes(e.key)){if(panorama){restaurarArbol();encuadrar();}const lista=arbol.hijos[0];if(!lista.length)return;hijoTeclado=(hijoTeclado+(e.key==='PageDown'?1:-1)+lista.length)%lista.length;elegido=lista[hijoTeclado];mensaje();encuadrar(elegido,true);mostrarDetalle(elegido);return;}
         encuadreAutomatico=false;
         if(e.ctrlKey){if(e.key==='ArrowLeft'||e.key==='ArrowRight')orbit.rotateLeft(e.key==='ArrowLeft'? .13:-.13);else orbit.rotateUp(e.key==='ArrowUp'? .13:-.13);}else{focoZoom=-1;orbit.pan(({'ArrowLeft':70,'ArrowRight':-70}[e.key]||0),({'ArrowUp':70,'ArrowDown':-70}[e.key]||0));}orbit.update();programar();
     });
@@ -244,7 +291,8 @@ export function crearEscenaDiversidad(elemento,acciones) {
         const w=vista.clientWidth,h=vista.clientHeight;if(w===ancho&&h===alto)return;
         const factor=base/(destino?.posicion||camara.position).distanceTo(destino?.centro||orbit.target);
         ancho=w;alto=h;camara.aspect=w/h;camara.updateProjectionMatrix();renderer.setSize(w,h,false);
-        if(arbol&&!dimensionado)ajustar();
+        if(arbol&&panorama){const {zoom:nivel,pagina}=panorama;abrirRango(detalleTaxonomicoDiversidad(rangosNodos[0],nivel,rangosPresentes,rangoInicial).orden,nivel,pagina);}
+        else if(arbol&&!dimensionado)ajustar();
         else if(arbol&&encuadreAutomatico){
             // Al entrar/salir de pantalla completa se adapta una sola vez el
             // encuadre al área útil. Después el zoom mantiene esa raíz inmóvil.
@@ -260,25 +308,29 @@ export function crearEscenaDiversidad(elemento,acciones) {
     async function salirDeAmpliacion(){restaurar();if(document.fullscreenElement===marco)await document.exitFullscreen();}
     async function pantallaCompleta(){if(ampliado)return salirDeAmpliacion();expandir();if(document.fullscreenEnabled&&navigator.userActivation?.isActive)await marco.requestFullscreen().catch(()=>{});}
     escuchar(document,'fullscreenchange',()=>{if(!document.fullscreenElement&&ampliado)restaurar();});
-    escuchar(document,'keydown',e=>{if(!ampliado)return;if(e.key==='Escape'){if(marco.querySelector('[role="menu"]')?.checkVisibility())return;e.preventDefault();e.stopImmediatePropagation();salirDeAmpliacion();}else if(e.key==='Tab'){const controles=[...marco.querySelectorAll('button:not([tabindex="-1"]),canvas')].filter(el=>el.checkVisibility()&&!el.disabled);if(!controles.length)return;e.preventDefault();const i=controles.indexOf(document.activeElement);controles[(i+(e.shiftKey?-1:1)+controles.length)%controles.length].focus({preventScroll:true});}},{capture:true});
+    escuchar(document,'keydown',e=>{if(!ampliado)return;if(e.key==='Escape'){if(marco.querySelector('[role="menu"]')?.checkVisibility())return;e.preventDefault();e.stopImmediatePropagation();salirDeAmpliacion();}else if(e.key==='Tab'){const controles=[...marco.querySelectorAll('button:not([tabindex="-1"]),input,canvas')].filter(el=>el.checkVisibility()&&!el.disabled);if(!controles.length)return;e.preventDefault();const i=controles.indexOf(document.activeElement);controles[(i+(e.shiftKey?-1:1)+controles.length)%controles.length].focus({preventScroll:true});}},{capture:true});
     return {
         async actualizar(nuevos,clave,nuevoIndice){
             if(destruido)return;if(fuente===nuevos&&raiz===clave&&indice===nuevoIndice)return;
-            revision++;tooltip.ocultar();troncosCache.clear();etiquetasDOM.clear();etiquetas.replaceChildren();fuente=nuevos;indice=nuevoIndice;raiz=clave;arbol=crearArbolDiversidad(indice,clave);rangosNodos=Array.from(arbol.rangos);elegido=0;focoZoom=0;rangoInicial=rangosNodos[0];hijoTeclado=-1;resaltado='';firma='';
+            revision++;tooltip.ocultar();troncosCache.clear();etiquetasDOM.clear();etiquetas.replaceChildren();fuente=nuevos;indice=nuevoIndice;raiz=clave;arbolOriginal=arbol=crearArbolDiversidad(indice,clave);panorama=null;paginas.hidden=true;rangosNodos=Array.from(arbol.rangos);elegido=0;focoZoom=0;rangoInicial=rangosNodos[0];hijoTeclado=-1;resaltado='';firma='';
             if(hojas){escena.remove(hojas);hojas.dispose();}hojas=new InstancedMesh(geometriaHoja,materialHojas,arbol.claves.length);hojas.frustumCulled=false;escena.add(hojas);
             const nodo=indice.porClave.get(clave);titulo.textContent=nodo.nombre;meta.textContent=resumenTaxon3D(nodo);volver.disabled=volverAmpliado.disabled=!indice.porClave.has(nodo.padre);
             const rangos=new Map();for(const k of arbol.claves){const r=rangoVisual3D(indice.porClave.get(k));rangos.set(r.id,r);}leyenda.replaceChildren();
             rangosPresentes=[...rangos.values()].map(r=>r.orden);
-            for(const r of [...rangos.values()].sort((a,b)=>a.orden-b.orden)){const b=boton(`Resaltar ${r.nombre}`,r.nombre,()=>{resaltado=resaltado===r.id?'':r.id;for(const el of leyenda.children)el.setAttribute('aria-pressed',String(el.dataset.rango===resaltado));marco.dataset.rangoResaltado=resaltado;programar();});b.dataset.rango=r.id;b.dataset.orden=String(r.orden);b.setAttribute('aria-pressed','false');b.style.setProperty('--rank-color',r.color);leyenda.append(b);}
+            const todos=new Map(LEYENDA_DIVERSIDAD.map(nombre=>{const r=rangoVisual3D({etiqueta:nombre});return[r.id,r];}));
+            for(const r of [...todos.values()].sort((a,b)=>a.orden-b.orden)){
+                const resaltar=r.orden===0||r.orden===3,b=boton(`${resaltar?'Resaltar':'Abrir u ocultar'} ${r.nombre}`,r.nombre,()=>{activarRango(r);b.focus({preventScroll:true});});
+                b.dataset.rango=r.id;b.dataset.orden=String(r.orden);b.setAttribute(resaltar?'aria-pressed':'aria-expanded','false');b.disabled=!rangos.has(r.id);if(b.disabled)b.title=`${r.nombre}: sin taxones de este rango en la rama seleccionada`;b.style.setProperty('--rank-color',r.color);leyenda.append(b);
+            }
             canvas.setAttribute('aria-label',`${nodo.nombre}: árbol de diversidad 3D con ${numero(arbol.claves.length)} taxones. Rueda: zoom progresivo que revela ramas; Ctrl y arrastrar o Ctrl y flechas: girar; arrastrar: desplazar; Inicio: vista inicial; AvPág y RePág: hijos; Intro: explorar rama.`);
             Object.assign(marco.dataset,{raiz:clave,nombre:nodo.nombre,nodos:String(arbol.claves.length),terminales:String(arbol.terminales[0]),relaciones:String(arbol.claves.length-1),rotando:'false',rangoResaltado:'',camara:'perspectiva'});estado.hidden=true;mensaje();ajustar();
         },
         ajustar,zoom,pantallaCompleta,error,
-        seleccionar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i>=0){elegido=i;if(i===0){rangoInicial=aperturaRamaDiversidad(arbol);encuadrar();}mensaje();programar();}},
-        async localizar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i<0)return false;elegido=i;encuadrar(i,true);mensaje();return true;},
+        seleccionar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i>=0){elegido=i;if(i===0){restaurarArbol();rangoInicial=aperturaRamaDiversidad(arbol);encuadrar();}mensaje();programar();}},
+        async localizar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i<0)return false;if(panorama){restaurarArbol();encuadrar();}elegido=i;encuadrar(i,true);mensaje();return true;},
         contiene:clave=>Boolean(arbol?.claves.includes(clave)),limpiarSeleccion(){elegido=0;mensaje();ajustar();},rangoActivo:()=>resaltado,
         enfocar(clave){const i=arbol?.claves.indexOf(clave)??-1;if(i<0)return false;elegido=i;canvas.focus({preventScroll:true});mensaje();mostrarDetalle(i);programar();return true;},
         mostrar(valor){activo=valor;cabecera.hidden=maximizar.hidden=!valor;orbit.enabled=valor;if(valor)programar();else{if(frame!==null)cancelAnimationFrame(frame);frame=null;destino=null;marco.dataset.animando='false';tooltip.ocultar();}},
-        destruir(){destruido=true;revision++;if(document.fullscreenElement===marco)document.exitFullscreen().catch(()=>{});dialogo?.classList.remove('has-diversity-expanded');abort.abort();toques.clear();resize.disconnect();orbit.dispose();tooltip.destruir();if(frame!==null)cancelAnimationFrame(frame);etiquetasDOM.clear();colores.clear();troncosCache.clear();ramas.geometry.dispose();hojas?.dispose();geometriaHoja.dispose();materialRamas.dispose();materialHojas.dispose();renderer.dispose();renderer.forceContextLoss();cabecera.remove();maximizar.remove();elemento.replaceChildren();arbol=indice=fuente=null;puntos=[];},
+        destruir(){destruido=true;revision++;if(document.fullscreenElement===marco)document.exitFullscreen().catch(()=>{});dialogo?.classList.remove('has-diversity-expanded');abort.abort();toques.clear();resize.disconnect();orbit.dispose();tooltip.destruir();if(frame!==null)cancelAnimationFrame(frame);etiquetasDOM.clear();colores.clear();troncosCache.clear();ramas.geometry.dispose();hojas?.dispose();geometriaHoja.dispose();materialRamas.dispose();materialHojas.dispose();renderer.dispose();renderer.forceContextLoss();cabecera.remove();maximizar.remove();elemento.replaceChildren();arbol=arbolOriginal=panorama=indice=fuente=null;puntos=[];},
     };
 }

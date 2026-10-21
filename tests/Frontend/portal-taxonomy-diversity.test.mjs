@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {aperturaRamaDiversidad, crearArbolDiversidad, detalleTaxonomicoDiversidad, encuadreDiversidad, encuadreRaizDiversidad, escalaCamaraDiversidad, limiteZoomRangosDiversidad, orientarDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, zoomRaizDiversidad, zoomSemanticoDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
+import {aperturaRamaDiversidad, crearArbolDiversidad, detalleTaxonomicoDiversidad, distribuirRangoDiversidad, encuadreDiversidad, encuadreRaizDiversidad, escalaCamaraDiversidad, limiteZoomRangosDiversidad, orientarDiversidad, paginasRangoDiversidad, proyectarDiversidad, radioYemaDiversidad, seleccionarDetalleDiversidad, zoomParaRangoDiversidad, zoomRaizDiversidad, zoomSemanticoDiversidad, zoomDiversidad} from '../../resources/js/portal-taxonomy-diversity-model.js';
 import {resumenTaxon3D} from '../../resources/js/portal-taxonomy-three-ranks.js';
 import {Euler, Matrix4, PerspectiveCamera, Quaternion, Vector3} from 'three';
 
@@ -60,7 +60,7 @@ test('las yemas cuentan especies reales una sola vez, excluyen terminales sin id
     assert.ok(a.radios[0]<2,'El tallo general es fino e independiente del diámetro de la yema.');
 });
 
-test('la apertura semántica descubre rangos con crecimiento físico suave y conserva el zoom profundo después de especies',()=>{
+test('las conversiones de cámara y zoom semántico son inversas y abren rangos con crecimiento físico suave',()=>{
     const limite=limiteZoomRangosDiversidad(0),rangos=['Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'];
     let anterior=0;
     for(let i=0;i<rangos.length;i++){
@@ -75,6 +75,55 @@ test('la apertura semántica descubre rangos con crecimiento físico suave y con
     assert.ok(Math.abs(escalaCamaraDiversidad(limite*4,limite)/escalaCamaraDiversidad(limite,limite)-4)<1e-10);
     assert.equal(limiteZoomRangosDiversidad(0,[3,7,11,15,17]),.5*1.6**3,'Sólo cuentan los rangos realmente disponibles.');
     assert.equal(escalaCamaraDiversidad(8,.5),8,'Una raíz terminal conserva el acercamiento físico completo.');
+});
+
+test('los accesos de rango permiten abrir y cerrar Orden y respetan una raíz con dos niveles ya abiertos',()=>{
+    const disponibles=[0,3,7,8,11,12,13,15,17];
+    for(const [orden,nombre]of[[3,'Clase'],[7,'Orden'],[8,'Suborden'],[11,'Familia'],[17,'Especie']]){
+        const zoom=zoomParaRangoDiversidad(0,orden,disponibles);
+        assert.equal(detalleTaxonomicoDiversidad(0,zoom,disponibles).nombre,nombre);
+        assert.ok(Math.abs(zoomSemanticoDiversidad(escalaCamaraDiversidad(zoom,8.388608),8.388608)-zoom)<1e-9);
+    }
+    assert.equal(detalleTaxonomicoDiversidad(0,.5/1.6,disponibles).nombre,'Clase');
+    assert.equal(detalleTaxonomicoDiversidad(0,zoomParaRangoDiversidad(0,7,[0,7,11,17])/1.6,[0,7,11,17]).nombre,'Clase','Cerrar Orden también funciona en un linaje sin Clase publicada, sin crear nodos.');
+    assert.equal(zoomParaRangoDiversidad(3,8,disponibles,8),.5);
+    assert.equal(detalleTaxonomicoDiversidad(3,zoomParaRangoDiversidad(3,3,disponibles,8),disponibles,8).nombre,'Clase');
+    assert.equal(detalleTaxonomicoDiversidad(0,zoomParaRangoDiversidad(0,11,[0,3,7,11,17]),[0,3,7,11,17]).nombre,'Familia');
+    assert.ok(detalleTaxonomicoDiversidad(19,.5,[19]),'Los rangos no reconocidos no rompen la navegación.');
+});
+
+test('la vista masiva conserva cada especie exactamente una vez y todos sus ancestros con presupuesto acotado',()=>{
+    const taxon=(clave,padre,etiqueta)=>({...nodo(clave,padre),etiqueta});
+    const nodos=[taxon('r',null,'Filo'),taxon('c','r','Clase')];
+    for(let g=0;g<100;g++){nodos.push(taxon('g'+g,'c','Género'));for(let e=0;e<100;e++)nodos.push(taxon(`g${g}e${e}`,'g'+g,'Especie'));}
+    const a=crearArbolDiversidad(indice(nodos),'r');
+    for(const [ancho,alto,presupuesto]of[[1600,900,160],[390,700,80]]){
+        const resultado=paginasRangoDiversidad(a,17,ancho,alto,{presupuesto});
+        const destinos=resultado.paginas.flatMap(p=>p.destinos);
+        assert.equal(resultado.total,10000);assert.equal(destinos.length,10000);assert.equal(new Set(destinos).size,10000);
+        for(const p of resultado.paginas){
+            assert.ok(p.indices.length<=presupuesto);assert.ok(p.destinos.length<=resultado.capacidad);
+            const presentes=new Set(p.indices);
+            for(const i of p.destinos){assert.equal(a.rangos[i],17);for(let j=i;j>=0;j=a.padres[j])assert.ok(presentes.has(j));}
+        }
+    }
+    assert.ok(paginasRangoDiversidad(a,17,390,700).capacidad<paginasRangoDiversidad(a,17,1600,900).capacidad);
+    assert.equal(paginasRangoDiversidad(a,11,1600,900).paginas.length,0,'Un rango ausente no inventa taxones.');
+});
+
+test('el encuadre compacto contiene destinos y raíz sin cambiar identidades, relaciones ni coordenadas originales',()=>{
+    const taxon=(clave,padre,etiqueta)=>({...nodo(clave,padre),etiqueta});
+    const a=crearArbolDiversidad(indice([taxon('r',null,'Filo'),taxon('g','r','Género'),...Array.from({length:120},(_,i)=>taxon('e'+i,'g','Especie'))]),'r');
+    const original=a.posiciones.slice();
+    for(const [ancho,alto]of[[1700,960],[390,700]]){
+        const pagina=paginasRangoDiversidad(a,17,ancho,alto,{maxDestinos:24}).paginas[0],vista=distribuirRangoDiversidad(a,pagina,ancho,alto);
+        assert.deepEqual(a.posiciones,original);assert.equal(vista.claves,a.claves);assert.equal(vista.padres,a.padres);assert.equal(vista.especies,a.especies);
+        const e=encuadreRaizDiversidad(vista,18,ancho,alto,{indices:pagina.indices,inferior:150,superior:80,reserva:1.05}),camara=new PerspectiveCamera(38,ancho/alto,.01,1e9);
+        camara.position.fromArray(e.posicion);camara.lookAt(new Vector3(...e.centro));camara.updateMatrixWorld();
+        for(const i of pagina.indices){const p=new Vector3(vista.posiciones[i*2],vista.posiciones[i*2+1],vista.profundidad[i]).project(camara);const x=(p.x+1)*ancho/2,y=(1-p.y)*alto/2;assert.ok(x>=30&&x<=ancho-30&&y>=75&&y<=alto-100,`Destino fuera del encuadre: ${i}, ${x}, ${y}`);}
+        const r=new Vector3(vista.posiciones[0],vista.posiciones[1],vista.profundidad[0]).project(camara);
+        assert.ok(Math.abs((r.x+1)*ancho/2-ancho/2)<1e-8);assert.ok(Math.abs((1-r.y)*alto/2-(alto-150))<1e-8);
+    }
 });
 
 test('los registros y el resumen breve no sustituyen el conteo de especies de las yemas',()=>{
