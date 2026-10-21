@@ -10,7 +10,6 @@ const ETAPAS_DIVERSIDAD=[
 ];
 
 export const LEYENDA_DIVERSIDAD=['Filo','Clase','Orden','Suborden','Familia','Subfamilia','Tribu','Género','Especie'];
-const ANCHO_DESTINO_DIVERSIDAD=230;
 
 function nivelesZoomDiversidad(ordenRaiz,disponibles,ordenInicial){
     const inicial=etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial)[0];
@@ -42,74 +41,8 @@ export function detalleTaxonomicoDiversidad(ordenRaiz,zoom,disponibles,ordenInic
     return etapas[Math.max(0,Math.min(etapas.length-1,inicio+pasos))];
 }
 
-/** Cada página contiene taxones reales y todos sus ancestros. La partición
- * conserva todos los destinos, con un presupuesto de nodos y espacio legible.
- */
-export function paginasRangoDiversidad(arbol,orden,ancho,alto,{presupuesto=160,maxDestinos=48}={}){
-    const capacidad=Math.max(1,Math.min(maxDestinos,Math.floor(Math.max(ANCHO_DESTINO_DIVERSIDAD,ancho-100)/ANCHO_DESTINO_DIVERSIDAD)*Math.max(1,Math.floor((alto-230)/105))));
-    const destinos=[];
-    for(let i=0;i<arbol.claves.length;i++)if(arbol.rangos[i]===orden)destinos.push(i);
-    const paginas=[];let nodos=new Set(),actual=[];
-    for(const i of destinos){
-        const cadena=[];for(let j=i;j>=0;j=arbol.padres[j])cadena.push(j);
-        const nuevos=cadena.filter(j=>!nodos.has(j));
-        if(actual.length&&(actual.length>=capacidad||nodos.size+nuevos.length>presupuesto)){paginas.push({destinos:actual,indices:[...nodos].sort((a,b)=>a-b)});actual=[];nodos=new Set();}
-        actual.push(i);for(const j of cadena)nodos.add(j);
-    }
-    if(actual.length)paginas.push({destinos:actual,indices:[...nodos].sort((a,b)=>a-b)});
-    return {paginas,total:destinos.length,capacidad};
-}
-
-/** La corona ocupa la pantalla; los ancestros quedan compactos en el tercio
- * inferior. Sólo cambia la presentación: padres, claves y datos son originales.
- */
-export function distribuirRangoDiversidad(arbol,pagina,ancho,alto){
-    const {indices,destinos}=pagina,visibles=new Set(indices),terminales=new Set(destinos);
-    const posiciones=arbol.posiciones.slice(),profundidad=arbol.profundidad.slice(),curvas=arbol.curvas.slice();
-    const limites=arbol.limites.slice(),limites3D=arbol.limites3D.slice();
-    const columnas=Math.min(destinos.length,Math.max(1,Math.floor((ancho-100)/ANCHO_DESTINO_DIVERSIDAD))),filas=Math.ceil(destinos.length/columnas);
-    const w=Math.max(160,ancho-160),h=Math.max(220,alto-220),pesos=new Map(),sumas=new Map();
-    destinos.forEach((i,k)=>{
-        const fila=Math.floor(k/columnas),enFila=Math.min(columnas,destinos.length-fila*columnas),columna=k%columnas;
-        // Una columna estrecha alterna los extremos: evita que las ramas
-        // hermanas coincidan en una línea que parezca una cadena de ancestros.
-        const x=columnas===1&&destinos.length>1?(k%2?-.22:.22)*w:((columna+.5)/enFila-.5)*w,y=h*(.48+.52*(filas===1?.5:1-fila/(filas-1)));
-        posiciones[i*2]=x;posiciones[i*2+1]=y;profundidad[i]=Math.sin(k*2.39996)*h*.012;
-        for(let j=arbol.padres[i];j>=0;j=arbol.padres[j]){pesos.set(j,(pesos.get(j)||0)+1);sumas.set(j,(sumas.get(j)||0)+x);}
-    });
-    const nivelMax=Math.max(1,...indices.filter(i=>!terminales.has(i)).map(i=>arbol.niveles[i]));
-    for(const i of indices)if(!terminales.has(i)){posiciones[i*2]=i===0?0:(sumas.get(i)||0)/(pesos.get(i)||1);posiciones[i*2+1]=h*.27*arbol.niveles[i]/nivelMax;profundidad[i]=0;}
-    for(const i of indices){
-        const p=arbol.padres[i];if(p<0)continue;
-        const x=posiciones[p*2],y=posiciones[p*2+1],z=profundidad[p],dx=posiciones[i*2]-x,dy=posiciones[i*2+1]-y,dz=profundidad[i]-z;
-        curvas.set([x+dx*.18,y+dy*.48,z+dz*.2,x+dx*.8,y+dy*.8,z+dz*.8],i*6);
-    }
-    for(const i of [...indices].reverse()){
-        let x0=posiciones[i*2],x1=x0,y0=posiciones[i*2+1],y1=y0,z0=profundidad[i],z1=z0;
-        for(const hijo of arbol.hijos[i])if(visibles.has(hijo)){const b=limites3D.subarray(hijo*6,hijo*6+6);x0=Math.min(x0,b[0]);y0=Math.min(y0,b[1]);z0=Math.min(z0,b[2]);x1=Math.max(x1,b[3]);y1=Math.max(y1,b[4]);z1=Math.max(z1,b[5]);}
-        limites.set([x0,y0,x1,y1],i*4);limites3D.set([x0,y0,z0,x1,y1,z1],i*6);
-    }
-    return {...arbol,posiciones,profundidad,curvas,limites,limites3D};
-}
-
 export function limiteZoomRangosDiversidad(ordenRaiz,disponibles,ordenInicial=ordenRaiz){
     return .5*1.6**(etapasDetalleDiversidad(ordenRaiz,disponibles,ordenInicial).length-1);
-}
-
-/** Abrir rangos no debe expulsar la copa de la pantalla. Las conversiones
- * simétricas conservan gestos acumulados y crecen suavemente durante la apertura.
- * El visor limita el último rango y lo presenta con el encuadre compacto.
- */
-export function escalaCamaraDiversidad(zoom,limite=.5){
-    zoom=Math.max(Number.EPSILON,Number.isFinite(zoom)?zoom:.5);limite=Math.max(.5,limite);
-    const apertura=.5*(Math.min(zoom,limite)/.5)**.12;
-    return apertura*Math.max(1,zoom/limite);
-}
-
-export function zoomSemanticoDiversidad(escala,limite=.5){
-    escala=Math.max(Number.EPSILON,Number.isFinite(escala)?escala:.5);limite=Math.max(.5,limite);
-    const apertura=.5*(limite/.5)**.12;
-    return escala<=apertura ? .5*(escala/.5)**(1/.12) : limite*escala/apertura;
 }
 
 /** Radio en píxeles CSS: contar especies identificadas, nunca ejemplares ni
@@ -166,10 +99,11 @@ export function encuadreRaizDiversidad(arbol,limite,ancho,alto,{inferior=70,supe
  * Los clados fuera de pantalla no compiten por espacio. Los densos conservan
  * su nodo real como brote; al acercarse, sus hijos vuelven a competir por espacio.
  */
-export function seleccionarDetalleDiversidad(arbol,rangos,limite,medir,{presupuesto=160,celda=22,umbral=100,ancho=1000,alto=600}={}){
+export function seleccionarDetalleDiversidad(arbol,rangos,limite,medir,{presupuesto=160,celda=22,umbral=100,umbralRama=0,ancho=1000,alto=600}={}){
     const visibles=[],brotes=new Set(),ocupadas=new Set(),pendientes=[];
     const agregar=i=>{
         const m=medir(i);if(!m)return;
+        if(i>0&&m.longitudRama<umbralRama){brotes.add(arbol.padres[i]);return;}
         const p={i,...m,prioridad:Math.min(1e9,m.extension)/(1+Math.hypot(m.x-ancho/2,m.y-alto/2)/Math.max(ancho,alto))};
         let j=pendientes.length;pendientes.push(p);
         while(j>0){const padre=(j-1)>>1;if(pendientes[padre].prioridad>=p.prioridad)break;pendientes[j]=pendientes[padre];j=padre;}pendientes[j]=p;
@@ -237,7 +171,7 @@ export function crearArbolDiversidad(indice, raiz) {
     }
     // Ramas orgánicas de escala decreciente, en lugar de pisos horizontales.
     // Cada bifurcación sigue siendo exactamente la publicada en el catálogo.
-    const profundidad = new Float64Array(n), longitudes = new Float64Array(n), radios = new Float64Array(n), angulos = new Float64Array(n);
+    const profundidad = new Float64Array(n), longitudes = new Float64Array(n), radios = new Float64Array(n), angulos = new Float64Array(n),azimuts=new Float64Array(n);
     longitudes[0] = 230; radios[0] = 1.25;
     posiciones.fill(0);
     for (let i = 0; i < n; i++) {
@@ -246,28 +180,31 @@ export function crearArbolDiversidad(indice, raiz) {
         let cursor = 0;
         lista.forEach((h, j) => {
             const proporcion = pesos[j] / suma, medio = cursor + proporcion / 2;
-            const abanico = lista.length > 1 ? (medio - .5) * 2.45 : Math.sin(niveles[h] * 1.7) * .12;
-            angulos[h] = Math.max(-1.32, Math.min(1.32, angulos[i] * .48 + abanico));
+            // Azimut completo alrededor del eje vertical. Cada generación gira
+            // su inserción, en lugar de añadir un relieve a un abanico plano.
+            azimuts[h]=azimuts[i]+(lista.length>1?Math.PI*2*(medio+niveles[i]*.381966):.55);
+            const inclinacion=lista.length>1?.4+.78*(1-proporcion):.14+.04*Math.sin(niveles[h]*1.7);
+            angulos[h]=Math.min(1.3,angulos[i]*.22+inclinacion);
             longitudes[h] = Math.max(.02, longitudes[i] * (lista.length === 1 ? .77 : .37 + .48 * Math.sqrt(proporcion)));
             // Los hijos grandes continúan el tronco; los pequeños se desprenden
             // a diferentes alturas. No se fabrican ancestros de esas salidas.
             const tramo = longitudes[h] + longitudes[i] * (lista.length > 1 ? .18 + .16 * medio : .12);
-            posiciones[h*2] = posiciones[i*2] + Math.sin(angulos[h]) * tramo;
+            posiciones[h*2] = posiciones[i*2] + Math.cos(azimuts[h])*Math.sin(angulos[h]) * tramo;
             posiciones[h*2+1] = posiciones[i*2+1] + Math.cos(angulos[h]) * tramo;
-            profundidad[h] = profundidad[i] + Math.sin((j + .5) * 2.39996 + niveles[h] * .8) * tramo * .48;
+            profundidad[h] = profundidad[i] + Math.sin(azimuts[h])*Math.sin(angulos[h]) * tramo;
             radios[h] = Math.max(.00002, radios[i] * (lista.length === 1 ? .78 : .24 + .57 * Math.sqrt(proporcion)));
             cursor += proporcion;
         });
     }
     const curvas = new Float64Array(n*6);
     for(let i=1;i<n;i++) {
-        const p=padres[i], distancia=Math.hypot(posiciones[i*2]-posiciones[p*2],posiciones[i*2+1]-posiciones[p*2+1]);
-        curvas.set([posiciones[p*2]+Math.sin(angulos[p]) * distancia * .46,
+        const p=padres[i], distancia=Math.hypot(posiciones[i*2]-posiciones[p*2],posiciones[i*2+1]-posiciones[p*2+1],profundidad[i]-profundidad[p]);
+        curvas.set([posiciones[p*2]+Math.cos(azimuts[p])*Math.sin(angulos[p]) * distancia * .46,
             posiciones[p*2+1]+Math.cos(angulos[p]) * distancia * .46,
-            profundidad[p]+(profundidad[i]-profundidad[p])*.18,
-            posiciones[i*2]-Math.sin(angulos[i]) * distancia * .36,
+            profundidad[p]+Math.sin(azimuts[p])*Math.sin(angulos[p])*distancia*.46,
+            posiciones[i*2]-Math.cos(azimuts[i])*Math.sin(angulos[i]) * distancia * .36,
             posiciones[i*2+1]-Math.cos(angulos[i]) * distancia * .36,
-            profundidad[i]-(profundidad[i]-profundidad[p])*.25],i*6);
+            profundidad[i]-Math.sin(azimuts[i])*Math.sin(angulos[i])*distancia*.36],i*6);
     }
     const limites3D = new Float64Array(n*6);
     for (let i = n - 1; i >= 0; i--) {
@@ -276,13 +213,14 @@ export function crearArbolDiversidad(indice, raiz) {
             x0 = Math.min(x0, limites[h * 4]); y0 = Math.min(y0, limites[h * 4 + 1]);
             x1 = Math.max(x1, limites[h * 4 + 2]); y1 = Math.max(y1, limites[h * 4 + 3]);
         }
-        limites.set([x0, y0, x1, y1], i * 4);
         let z0=profundidad[i],z1=z0;
         for(const h of hijos[i]) {z0=Math.min(z0,limites3D[h*6+2]);z1=Math.max(z1,limites3D[h*6+5]);}
+        for(const h of hijos[i])for(let j=0;j<2;j++){const o=h*6+j*3;x0=Math.min(x0,curvas[o]);x1=Math.max(x1,curvas[o]);y0=Math.min(y0,curvas[o+1]);y1=Math.max(y1,curvas[o+1]);z0=Math.min(z0,curvas[o+2]);z1=Math.max(z1,curvas[o+2]);}
+        limites.set([x0, y0, x1, y1], i * 4);
         limites3D.set([x0,y0,z0,x1,y1,z1],i*6);
     }
     return {claves, padres: Int32Array.from(padres), niveles: Uint32Array.from(niveles), hijos, terminales, especies, rangos, registros, yemasPorRango,
-        posiciones, profundidad, curvas, sectores, limites, limites3D, radios, angulos, longitudes, separacion: Math.max(Number.EPSILON, separacion)};
+        posiciones, profundidad, curvas, sectores, limites, limites3D, radios, angulos, azimuts, longitudes, separacion: Math.max(Number.EPSILON, separacion)};
 }
 
 /** Gira posiciones y cajas con la misma matriz 3D; etiquetas y selección usan

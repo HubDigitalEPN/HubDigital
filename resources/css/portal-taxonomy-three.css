@@ -36,19 +36,16 @@ button.portal-three-fullscreen-exit { display: none; }
 .portal-diversity-label small { color: #547163; font-size: 10px; white-space: nowrap; }
 .portal-diversity-label.is-leaf strong { font-family: Georgia, serif; font-style: italic; font-size: 13px; }
 .taxonomy-explorer button.portal-diversity-label:hover, .taxonomy-explorer button.portal-diversity-label.is-selected { border-color: #a4c6ae; background: #e5f0e2; }
-.portal-diversity-scale { position: absolute; z-index: 3; right: 12px; bottom: 10px; display: flex; align-items: center; gap: 9px; max-width: calc(100% - 24px); padding: 5px 9px; border: 1px solid #cddcc9; border-radius: 5px; background: #fff; color: #48614d; font-size: 11px; font-variant-numeric: tabular-nums; }
-.portal-diversity-slider { width: clamp(95px, 13vw, 180px); height: 26px; margin: 0; appearance: none; background: transparent; accent-color: #327c69; cursor: pointer; }
-.portal-diversity-slider::-webkit-slider-runnable-track { height: 5px; border-radius: 5px; background: #c9dacc; }
-.portal-diversity-slider::-webkit-slider-thumb { width: 17px; height: 17px; margin-top: -6px; appearance: none; border: 2px solid #fff; border-radius: 50%; background: #327c69; box-shadow: 0 0 0 1px #327c69; }
-.portal-diversity-slider::-moz-range-track { height: 5px; border-radius: 5px; background: #c9dacc; }
+.portal-diversity-scale { position: absolute; z-index: 3; right: 12px; bottom: 10px; color: #48614d; font-size: 11px; font-variant-numeric: tabular-nums; }
+.taxonomy-explorer button.portal-diversity-zoom-value { min-width: 52px; height: 32px; padding: 4px 8px; border: 1px solid #cddcc9; border-radius: 5px; background: #fff; color: #48614d; font: inherit; white-space: nowrap; }
+.portal-diversity-slider-panel { position: absolute; right: 0; bottom: calc(100% - 1px); display: grid; place-items: center; box-sizing: border-box; width: 52px; height: clamp(120px, 24vh, 200px); padding: 12px; border: 1px solid #cddcc9; border-radius: 5px 5px 0 0; background: #fff; box-shadow: 0 -3px 12px rgb(40 73 45 / 8%); }
+.portal-diversity-slider-panel[hidden] { display: none; }
+.portal-diversity-slider { width: 26px; height: 100%; margin: 0; writing-mode: vertical-lr; direction: rtl; appearance: none; background: transparent; accent-color: #327c69; cursor: pointer; }
+.portal-diversity-slider::-webkit-slider-runnable-track { width: 5px; height: 100%; border-radius: 5px; background: #c9dacc; }
+.portal-diversity-slider::-webkit-slider-thumb { width: 17px; height: 17px; margin-left: -6px; appearance: none; border: 2px solid #fff; border-radius: 50%; background: #327c69; box-shadow: 0 0 0 1px #327c69; }
+.portal-diversity-slider::-moz-range-track { width: 5px; height: 100%; border-radius: 5px; background: #c9dacc; }
 .portal-diversity-slider::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; background: #327c69; box-shadow: 0 0 0 1px #327c69; }
 .portal-diversity-slider:disabled { opacity: .45; cursor: default; }
-.portal-diversity-scale output { min-width: 38px; text-align: right; white-space: nowrap; }
-.portal-diversity-pages { position: absolute; z-index: 3; bottom: 10px; left: 12px; display: flex; align-items: center; gap: 7px; max-width: calc(100% - 280px); padding: 3px; border: 1px solid #cddcc9; border-radius: 5px; background: #fff; color: #405848; font-size: 11px; }
-.portal-diversity-pages[hidden] { display: none; }
-.portal-diversity-pages span { text-align: center; font-variant-numeric: tabular-nums; }
-.taxonomy-explorer .portal-diversity-pages button { min-width: 30px; height: 30px; padding: 0 7px; border: 1px solid #cddcc9; border-radius: 4px; background: #f7faf4; color: #31563e; font-size: 22px; }
-.portal-diversity-pages button:disabled { opacity: .4; cursor: default; }
 .portal-diversity-legend { display: flex; flex: none; align-items: center; justify-content: safe center; gap: 3px; padding: 5px; border-top: 1px solid #d9e3d5; overflow-x: auto; scrollbar-width: thin; }
 .taxonomy-explorer .portal-diversity-legend button { display: inline-flex; flex: none; align-items: center; gap: 5px; padding: 4px 5px; border: 1px solid transparent; border-radius: 4px; color: #405848; background: transparent; font-size: 11px; white-space: nowrap; }
 .portal-diversity-legend button::before { content: ''; width: 7px; height: 7px; border: 1px solid rgb(37 76 64 / 25%); border-radius: 50%; background: var(--rank-color); }
@@ -72,7 +69,6 @@ button.portal-three-fullscreen-exit { display: none; }
 .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-legend { position: absolute; inset: auto 0 46px; z-index: 2; background: #f4f7f1; }
 .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-three-instructions { position: absolute; inset: auto 0 0; z-index: 2; }
 .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-scale { bottom: 95px; }
-.portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-pages { bottom: 95px; }
 .portal-diversity-fullscreen-controls { display: none; }
 .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-fullscreen-controls { display: flex; position: absolute; right: 15px; top: 15px; gap: 4px; z-index: 4; }
 .portal-diversity-fullscreen-controls button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid #9fb69b; border-radius: 5px; color: #31563e; background: #fff; font-size: 24px; }
@@ -84,10 +80,6 @@ button.portal-three-fullscreen-exit { display: none; }
     .portal-diversity-scene .portal-three-instructions { height: 64px; font-size: 11px; }
     .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-legend { bottom: 64px; }
     .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-scale { bottom: 113px; }
-    .portal-diversity-pages { max-width: calc(100% - 200px); font-size: 10px; gap: 4px; }
-    .portal-diversity-pages-total { display: none; }
-    .taxonomy-explorer .portal-diversity-pages button { min-width: 26px; padding: 0 4px; }
-    .portal-diversity-scene:is(:fullscreen,.is-expanded) .portal-diversity-pages { bottom: 113px; }
     .taxonomy-explorer .taxonomy-navigator-zoom { flex-wrap: wrap; row-gap: 7px; }
     .taxonomy-explorer .taxonomy-navigator-zoom .portal-three-context { flex: 1 1 100%; }
 }
