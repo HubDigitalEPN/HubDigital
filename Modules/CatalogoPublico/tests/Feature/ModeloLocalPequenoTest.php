@@ -63,7 +63,7 @@ test('Qwen de producción recibe contexto acotado y un presupuesto fijo para la 
     ]);
     expect((new ModeloLocalPequeno)->seleccionar('y los documntos?', ['documentos' => 'documentación del depósito', 'filtros' => 'filtros del mapa'], ['Quiero entregar ejemplares', str_repeat('x', 300)]))->toBe('documentos');
     Http::assertSent(fn ($r): bool => str_ends_with($r->url(), '/api/chat') && $r['model'] === 'qwen3:4b'
-        && $r['options']['num_thread'] === 2 && $r['options']['num_ctx'] === 1024 && $r['options']['num_predict'] === 12
+        && $r['options']['num_thread'] === 1 && $r['options']['num_ctx'] === 1024 && $r['options']['num_predict'] === 12
         && str_contains($r['messages'][0]['content'], 'ortografía') && str_contains($r['messages'][0]['content'], 'negaciones')
         && !str_contains($r['messages'][1]['content'], str_repeat('x', 161)));
 });
@@ -124,6 +124,26 @@ test('una caída del servicio libera la inferencia y permite continuar sin model
     $available = Cache::lock('chat:qwen:inferencia', 10);
     expect($available->get())->toBeTrue();
     $available->release();
+});
+
+test('una inferencia larga conserva el bloqueo durante todo el presupuesto del modelo 4B', function (): void {
+    habilitarQwenAislado();
+    config(['chatbot.model' => 'qwen3:4b', 'chatbot.max_model_bytes' => 3_000_000_000, 'chatbot.local_model_timeout_seconds' => 25]);
+    Http::fake([
+        '*/api/tags' => Http::response(['models' => [['name' => 'qwen3:4b', 'size' => 2_497_280_480]]]),
+        '*/api/chat' => function () {
+            $this->travel(20)->seconds();
+            $segundo = Cache::lock('chat:qwen:inferencia', 5);
+            $adquirido = $segundo->get();
+            if ($adquirido) $segundo->release();
+            expect($adquirido)->toBeFalse();
+            return Http::response(['message' => ['content' => '"deposito"']]);
+        },
+    ]);
+    try {
+        expect((new ModeloLocalPequeno)->seleccionar('Entregar material con una duda', ['deposito' => 'entrega']))->toBe('deposito');
+        Http::assertSentCount(2);
+    } finally { $this->travelBack(); }
 });
 
 test('el asistente documental usa la orientación aprobada sin aceptar ni firmar documentos', function (): void {

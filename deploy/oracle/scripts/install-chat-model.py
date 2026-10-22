@@ -106,6 +106,8 @@ shutil.copyfile(warm_script, root / "warm-chat-model.py")
 shutil.copyfile(service, "/etc/systemd/system/hubdigital-chat-model.service")
 Path("/etc/systemd/system/hubdigital-chat-model.service").chmod(0o644)
 run(["systemctl", "daemon-reload"])
+# Los límites persistidos por set-property tienen prioridad sobre la unidad.
+run(["systemctl", "set-property", "hubdigital-chat-model.service", "MemoryMax=4G", "CPUQuota=150%"])
 run(["systemctl", "enable", "--now", "hubdigital-chat-model.service"])
 print("Servicio CPU instalado sólo en loopback; se conserva la configuración de activación de Laravel.", flush=True)
 for attempt in range(30):

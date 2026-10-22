@@ -19,7 +19,7 @@ for attempt in range(15):
         time.sleep(1)
 
 request = urllib.request.Request("http://127.0.0.1:11434/api/generate",
-    data=b'{"model":"qwen3:4b","stream":false,"keep_alive":-1,"options":{"num_ctx":1024,"num_thread":2}}',
+    data=b'{"model":"qwen3:4b","stream":false,"keep_alive":-1,"options":{"num_ctx":1024,"num_thread":1}}',
     headers={"Content-Type": "application/json"})
 with urllib.request.urlopen(request, timeout=45) as response:
     result = json.load(response)

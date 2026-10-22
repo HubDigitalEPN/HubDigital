@@ -34,10 +34,11 @@ final class ModeloLocalPequeno
             array_slice(array_values(array_filter($historial, 'is_string')), -2));
         $lock = null;
         try {
-            $clave = 'chat:qwen:opcion:v3:'.hash('sha256', json_encode([$pregunta, $opciones, $historial], JSON_THROW_ON_ERROR));
+            $clave = 'chat:qwen:opcion:v4:'.hash('sha256', json_encode([$pregunta, $opciones, $historial], JSON_THROW_ON_ERROR));
             $cache = Cache::get($clave);
             if (is_string($cache) && isset($opciones[$cache])) return $cache;
-            $lock = Cache::lock('chat:qwen:inferencia', 15);
+            $presupuesto = min(25, max(3, (float) config('chatbot.local_model_timeout_seconds', 25)));
+            $lock = Cache::lock('chat:qwen:inferencia', (int) ceil($presupuesto) + 5);
             if (! $lock->get()) return null;
 
             $modelo = (string) config('chatbot.model');
@@ -51,16 +52,16 @@ final class ModeloLocalPequeno
                 return false;
             });
             if (! $instalado) return null;
-            $respuesta = Http::connectTimeout(0.5)->timeout((float) config('chatbot.local_model_timeout_seconds', 3))
+            $respuesta = Http::connectTimeout(0.5)->timeout($presupuesto)
                 ->post('http://127.0.0.1:11434/api/chat', [
                     'model' => $modelo, 'stream' => false, 'think' => false, 'keep_alive' => -1,
                     'format' => ['type' => 'string', 'enum' => [...array_keys($opciones), 'ninguna']],
-                    'options' => ['temperature' => 0, 'num_predict' => 12, 'num_ctx' => 1024, 'num_thread' => $modelo === 'qwen3:4b' ? 2 : 1],
+                    'options' => ['temperature' => 0, 'num_predict' => 12, 'num_ctx' => 1024, 'num_thread' => 1],
                     'messages' => [
                         ['role' => 'system', 'content' => 'Clasifica: '.implode('; ', array_map(
                             static fn (string $clave, string $descripcion): string => $clave.'='.mb_substr($descripcion, 0, 60),
                             array_keys($opciones), array_values($opciones),
-                        )).'. Interpreta faltas de ortografía, letras intercambiadas y palabras incompletas según el contexto. La última pregunta tiene prioridad; el historial sólo aclara referencias como eso o el anterior. Respeta las negaciones y los cambios de tema. No inventes nombres científicos, lugares, códigos ni cantidades. Si falta información o hay dos intenciones posibles, ninguna. Otro tema: ninguna. Devuelve sólo el nombre JSON.'],
+                        )).'. Interpreta errores de ortografía con contexto. Prioriza la última pregunta y respeta negaciones y cambios de tema. No inventes nombres científicos, lugares, códigos ni cantidades. Ante duda, información insuficiente o tema ajeno: ninguna. Devuelve sólo la clave JSON.'],
                         ['role' => 'user', 'content' => ($historial === [] ? '' : 'Antes: '.implode(' ', $historial)."\n").$pregunta],
                     ],
                 ]);
