@@ -139,6 +139,11 @@ try {
             $env:DB_DATABASE = $env:TEST_DB_DATABASE = $baseAislada
             & $Php artisan migrate --database=pgsql --force --no-interaction
             if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones en la base temporal.' }
+            # pg_dump/pg_restore no conserva las estadísticas del planificador.
+            # Prepararlas antes de medir las consultas evita planes de una base
+            # recién restaurada, sin ampliar el presupuesto HTTP de producción.
+            & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseAislada --no-psqlrc --set=ON_ERROR_STOP=1 --command='ANALYZE;'
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las estadísticas de la base temporal.' }
             foreach ($carpeta in @('app\private','framework\cache\data','framework\sessions','framework\views','logs','document-processing')) {
                 New-Item -ItemType Directory -Path (Join-Path $raizPruebas ("worker-$tokenPruebas\" + $carpeta)) -Force | Out-Null
             }

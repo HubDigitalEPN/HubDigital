@@ -1,7 +1,7 @@
 /** Puerta obligatoria de crear-paquete-oci: navegador real, assets compilados y Livewire real. */
 import assert from 'node:assert/strict';
 import {spawn, execFileSync} from 'node:child_process';
-import {existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
@@ -26,6 +26,7 @@ const procesos = [];
 let conexion;
 let procesoNavegador;
 let entorno;
+let respuestaInicial;
 const excepciones = [], erroresLivewire = [], peticiones = new Set();
 const demora = ms => new Promise(resolve => setTimeout(resolve, ms));
 function obtenerLocal(url) {
@@ -37,7 +38,7 @@ function obtenerLocal(url) {
             respuesta.setEncoding('utf8');
             respuesta.on('data', parte => { texto += parte; });
             respuesta.on('error', reject);
-            respuesta.on('end', () => resolve({ok: respuesta.statusCode >= 200 && respuesta.statusCode < 300, texto}));
+            respuesta.on('end', () => resolve({ok: respuesta.statusCode >= 200 && respuesta.statusCode < 300, status: respuesta.statusCode, tipo: respuesta.headers['content-type'], texto}));
         });
         peticion.setTimeout(60000, () => peticion.destroy(new Error('Tiempo agotado al consultar el servidor local.')));
         peticion.on('error', reject);
@@ -170,7 +171,7 @@ try {
     const url = `${origen}/portal/catalogo?vista=mapa&ft=${encodeURIComponent(datos.taxonBusqueda)}`;
     // El GET entrega el catálogo completo para que la PWA conserve contenido,
     // sin repetir una petición Livewire para resolver un placeholder.
-    const primera = await esperar(async () => { try { const r = await obtenerLocal(url); return r.ok && r.texto; } catch { return false; } }, 'primera respuesta del portal');
+    const primera = await esperar(async () => { try { const r = await obtenerLocal(url); respuestaInicial = {estado: r.status, tipo: r.tipo, bytes: Buffer.byteLength(r.texto), mapa: /atlas-dashboard/.test(r.texto), filtros: /research-phylum-tree/.test(r.texto), errorMapa: /mapa-error-titulo/.test(r.texto)}; return r.ok && r.texto; } catch { return false; } }, 'primera respuesta del portal');
     assert.ok(/atlas-dashboard/.test(primera) && /research-phylum-tree/.test(primera), 'La primera respuesta incluye mapa, paneles y filtros ya renderizados.');
     assert.ok(!/Cargando los registros públicos y sus filtros|wire:lazy/.test(primera), 'La apertura no depende de un placeholder ni una segunda petición de carga.');
     // Una descarga lenta del bundle no debe adelantar Alpine a sus componentes.
@@ -979,6 +980,19 @@ try {
     console.log('OK navegador: tooltip durante morph Livewire, filtros bloqueados, LOV, cierre sin request, tres gráficos que filtran el mapa, filas adaptables, fotografía renovada al cambiar de taxón y PDF de siete figuras.');
 } catch (error) {
     console.error('Diagnóstico del navegador:', JSON.stringify({excepciones, erroresLivewire, peticionesPendientes: peticiones.size}));
+    console.error('Diagnóstico de respuesta inicial:', JSON.stringify(respuestaInicial ?? null));
+    const log = entorno && path.join(entorno.LARAVEL_STORAGE_PATH, 'logs/laravel.log');
+    try {
+        if (log && existsSync(log)) {
+            const contenido = readFileSync(log, 'utf8');
+            // Sólo códigos y tiempos: no imprimir SQL, bindings, sesiones o secretos.
+            console.error('Diagnóstico SQLSTATE:', JSON.stringify([...new Set([...contenido.matchAll(/SQLSTATE\[([A-Z0-9]{5})\]/g)].map(m => m[1]))]));
+            const etapas = [...contenido.matchAll(/portal\.mapa\.etapa (\{[^\r\n]+\})/g)].slice(-12).map(m => {
+                try { const e = JSON.parse(m[1]); return {etapa: e.etapa, duracion_ms: e.duracion_ms, total_ms: e.total_ms}; } catch { return null; }
+            }).filter(Boolean);
+            console.error('Diagnóstico de etapas del mapa:', JSON.stringify(etapas));
+        }
+    } catch { console.error('Diagnóstico local de consultas no disponible.'); }
     if (conexion) {
         try {
             const estado = await conexion.send('Runtime.evaluate', {expression: `JSON.stringify({url: location.href, titulo: document.title, foco: {id: document.activeElement?.id, elemento: document.activeElement?.tagName}, busqueda: document.querySelector('#busqueda-explorador-taxonomico')?.value, explorador: (()=>{const el=document.querySelector('#explorador-taxonomico');if(!el||!window.Alpine)return null;const d=Alpine.$data(el);return {abierto:d.abierto,listo:d.listo,buscando:d.buscando,visorCargando:d.visorCargando,error:d.error,sugerencias:d.sugerencias?.length,busqueda:d.busqueda};})(), texto: document.body.innerText.slice(-1800), tooltip: document.querySelector('.atlas-floating-tooltip')?.outerHTML, marcadores: [...document.querySelectorAll('.atlas-map [aria-label^="Ubicación original"]')].map(p=>({etiqueta:p.getAttribute('aria-label'), rect:p.getBoundingClientRect().toJSON()}))})`, returnByValue: true});
