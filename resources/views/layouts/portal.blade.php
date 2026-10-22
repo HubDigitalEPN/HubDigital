@@ -14,7 +14,7 @@
     <header x-data="{ abierto: false }" class="sticky top-0 z-50 border-b border-blue-navy/10 bg-white/95 backdrop-blur-md">
         <div class="portal-header-container mx-auto flex h-[4.75rem] w-full items-center justify-between">
             <a href="{{ route('home') }}" class="group flex min-w-0 items-center gap-3 !text-blue-navy" aria-label="{{ $navegacion('inicio_accesible') }}">
-                <img src="{{ asset('images/logo-epn.png') }}" alt="" class="h-12 w-auto shrink-0 object-contain" />
+                <img src="{{ asset('images/logo-epn-v1.avif') }}" alt="" class="h-12 w-auto shrink-0 object-contain" />
                 <span class="h-10 w-px shrink-0 bg-blue-navy/20" aria-hidden="true"></span>
                 <span class="min-w-0 leading-tight">
                     <span class="hidden text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-text-secondary sm:block">{{ $navegacion('institucion') }}</span>
@@ -102,7 +102,7 @@
         <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
             <div>
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('images/logo-epn.png') }}" alt="{{ $navegacion('logo_alt') }}" class="h-14 w-auto object-contain" />
+                    <img src="{{ asset('images/logo-epn-v1.avif') }}" alt="{{ $navegacion('logo_alt') }}" class="h-14 w-auto object-contain" />
                     <div class="border-l border-white/20 pl-3">
                         <p class="font-display text-lg font-semibold text-white">{{ $navegacion('laboratorio') }}</p>
                         <p class="mt-1 text-xs uppercase tracking-[0.12em] text-white/60">{{ $navegacion('institucion') }}</p>

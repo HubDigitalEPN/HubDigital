@@ -1,6 +1,6 @@
 const OFFLINE_CACHE = 'hubdigital-public-offline-v1';
 const OFFLINE_URL = '/offline.html';
-importScripts('/pwa-cache.js?v=6');
+importScripts('/pwa-cache.js?v=8');
 
 function readPushPayload(data) {
     if (!data) return {};
@@ -13,8 +13,10 @@ function readPushPayload(data) {
 }
 
 self.addEventListener('install', (event) => event.waitUntil(
-    caches.open(OFFLINE_CACHE)
-        .then((cache) => cache.add(OFFLINE_URL))
+    Promise.all([
+        caches.open(OFFLINE_CACHE).then((cache) => cache.add(OFFLINE_URL)),
+        portalPwa.precacheLogos(),
+    ])
         .then(() => self.skipWaiting()),
 ));
 self.addEventListener('activate', (event) => event.waitUntil(

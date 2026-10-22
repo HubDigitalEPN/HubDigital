@@ -45,12 +45,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // de la petición. Estas rutas no muestran el depurador ni registran el
         // mensaje, el SQL o la traza, incluso si APP_DEBUG está habilitado.
         $exceptions->report(function (Throwable $e): ?bool {
-            if (! request()->attributes->get('administracion_sensible')
-                && ! request()->attributes->get('credencial_firma_sensible')) {
+            // Un fallo de arranque de Artisan puede ocurrir antes de que el
+            // kernel de consola vincule request. No ocultar el error original.
+            if (! app()->bound('request')) {
+                return null;
+            }
+            $request = app('request');
+            if (! $request->attributes->get('administracion_sensible')
+                && ! $request->attributes->get('credencial_firma_sensible')) {
                 return null;
             }
 
-            Log::error(request()->attributes->get('credencial_firma_sensible')
+            Log::error($request->attributes->get('credencial_firma_sensible')
                 ? 'Fallo en la operación de firma Java.' : 'Fallo en administración de usuarios.', [
                 'exception_type' => $e::class,
                 'exception_code' => $e->getCode(),

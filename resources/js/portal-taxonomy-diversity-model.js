@@ -185,9 +185,14 @@ export function crearArbolDiversidad(indice, raiz) {
             // Filotaxis de ángulo áureo: incluso una bifurcación de dos hijos
             // evita el mismo plano diametral y mantiene relieve desde el frente.
             azimuts[h]=azimuts[i]+(lista.length>1?j*Math.PI*(3-Math.sqrt(5))+(niveles[i]+1)*.71:.65);
-            const inclinacion=lista.length>1?.4+.78*(1-proporcion):.14+.04*Math.sin(niveles[h]*1.7);
-            angulos[h]=Math.min(1.3,angulos[i]*.22+inclinacion);
-            longitudes[h] = Math.max(.02, longitudes[i] * (lista.length === 1 ? .77 : .37 + .48 * Math.sqrt(proporcion)));
+            const inclinacion=lista.length>1?.42+.53*(1-proporcion):.14+.04*Math.sin(niveles[h]*1.7);
+            // En la perspectiva inicial toda rama asciende sobre su padre.
+            // Evita encuadres enormes causados por hijos proyectados bajo la raíz.
+            angulos[h]=Math.min(1.12,angulos[i]*.18+inclinacion);
+            // Una corona numerosa necesita más separación angular y radial;
+            // los clados pequeños no se amontonan contra la yema de su padre.
+            const amplitud=1+Math.min(.65,Math.log2(Math.max(1,lista.length))*.12);
+            longitudes[h] = Math.max(.02, longitudes[i] * (lista.length === 1 ? .77 : (.5 + .35 * Math.sqrt(proporcion))*amplitud));
             // Los hijos grandes continúan el tronco; los pequeños se desprenden
             // a diferentes alturas. No se fabrican ancestros de esas salidas.
             const tramo = longitudes[h] + longitudes[i] * (lista.length > 1 ? .18 + .16 * medio : .12);

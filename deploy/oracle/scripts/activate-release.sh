@@ -115,6 +115,7 @@ if ! systemctl restart php8.4-fpm nginx; then
     echo 'Fallo al reiniciar FPM o nginx; la release queda en mantenimiento y no se inician escritores.' >&2
     exit 1
 fi
+PHP_BIN=/usr/bin/php8.4 bash "${release_dir}/deploy/oracle/scripts/verify-php-security.sh" --active
 if [[ -S /run/hubdigital/r2-transport/r2.sock ]]; then
     chown www-data:www-data /run/hubdigital/r2-transport/r2.sock
     chmod 0600 /run/hubdigital/r2-transport/r2.sock

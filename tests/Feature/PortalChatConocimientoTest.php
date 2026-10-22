@@ -59,6 +59,35 @@ test('solo curaduría puede administrar el chat y publicar una respuesta nueva',
     expect(DB::table('divulgacion.chat_variants')->where('node_id', $nodeId)->where('text', 'Respuesta de prueba alternativa.')->value('active'))->toBeFalse();
 });
 
+test('curaduría guarda una respuesta hija y valida su padre sin confundir esquema con conexión', function (): void {
+    $curador = User::factory()->curador()->create();
+    $padre = DB::table('divulgacion.chat_nodes')->where('slug', 'deposito')->value('id');
+    expect($padre)->not->toBeNull();
+    Livewire::actingAs($curador)->test(AdministrarAsistente::class)
+        ->call('createChild', $padre)->set('title', 'Hija de depósito QA')
+        ->set('answer', 'Orientación revisada.')->call('save')->assertHasNoErrors();
+    $hija = DB::table('divulgacion.chat_nodes')->where('title', 'Hija de depósito QA')->first();
+    expect($hija->parent_id)->toBe($padre);
+    Livewire::actingAs($curador)->test(AdministrarAsistente::class)
+        ->call('edit', $hija->id)->set('answer', 'Borrador actualizado.')->call('save')->assertHasNoErrors();
+    $borrador = json_decode(DB::table('divulgacion.chat_node_drafts')->where('node_id', $hija->id)->value('payload'), true);
+    expect($borrador['answer'])->toBe('Borrador actualizado.');
+    Livewire::actingAs($curador)->test(AdministrarAsistente::class)
+        ->set('parentId', 2147483647)->set('title', 'Padre inválido')
+        ->set('answer', 'No guardar.')->call('save')->assertHasErrors(['parentId']);
+});
+
+test('la errata de documentos se resuelve con orientación aprobada sin pedir inferencia', function (): void {
+    config(['app.env' => 'production', 'app.url' => 'https://labinvepn.org', 'chatbot.use_local_model' => true]);
+    \Illuminate\Support\Facades\Http::fake();
+    $respuesta = app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AsistentePortal::class)->responder(
+        'y los documntos?', app(\Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\ConsultarChatBotHandler::class),
+        DB::table('divulgacion.chat_nodes')->where('slug', 'deposito')->value('id'),
+    );
+    expect($respuesta['texto'])->toContain('autorización');
+    \Illuminate\Support\Facades\Http::assertNothingSent();
+});
+
 test('las consultas científicas cuentan únicamente ejemplares divulgables', function (): void {
     $phylum = (string) Str::uuid();
     $genus = (string) Str::uuid();

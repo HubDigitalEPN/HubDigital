@@ -110,7 +110,7 @@ final class AdministrarAsistente extends Component
     public function save(): void
     {
         $data = $this->validate([
-            'parentId' => 'nullable|integer|exists:divulgacion.chat_nodes,id',
+            'parentId' => 'nullable|integer|exists:'.DB::getDefaultConnection().'.divulgacion.chat_nodes,id',
             'title' => 'required|string|max:160',
             'answer' => 'required|string|max:3000',
             'aliasesText' => 'nullable|string|max:4000',

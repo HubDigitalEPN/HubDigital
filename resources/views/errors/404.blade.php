@@ -1,18 +1,12 @@
 <x-layouts::auth :title="__('Página no encontrada')">
-    @php
-        $logoEpnPath = resource_path('logos/logo-epn.jpeg');
-        $logoBioPath = resource_path('logos/logo-departamento-biologia-epn.jpeg');
-        $logoEpnBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoEpnPath));
-        $logoBioBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoBioPath));
-    @endphp
 
     <div class="flex flex-col gap-6">
 
         {{-- Logos institucionales --}}
         <div class="flex items-center justify-center gap-6">
-            <img src="{{ $logoEpnBase64 }}" alt="Logo EPN" class="h-14 w-auto" />
+            <img src="{{ asset('images/logo-epn-lockup-v2.avif') }}" alt="Logo EPN" width="368" height="224" class="h-14 w-auto" />
             <div class="h-10 w-px bg-border"></div>
-            <img src="{{ $logoBioBase64 }}" alt="Logo Departamento de Biología" class="h-14 w-auto" />
+            <img src="{{ asset('images/logo-biologia-v1.avif') }}" alt="Logo Departamento de Biología" width="489" height="224" class="h-14 w-auto" />
         </div>
 
         {{-- Header --}}

@@ -13,7 +13,7 @@
 
                 {{-- Brand: lockup oficial de Hub Digital --}}
                 <a href="{{ route('home') }}" class="flex items-center justify-center" wire:navigate>
-                    <img src="{{ asset('images/hub-logo.png') }}" alt="Hub Digital · Laboratorio de Invertebrados"
+                    <img src="{{ asset('images/hub-logo-v1.avif') }}" alt="Hub Digital · Laboratorio de Invertebrados"
                          class="h-10 w-auto sm:h-12" />
                 </a>
 

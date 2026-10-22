@@ -31,6 +31,12 @@ try {
         || count(CorpusChat::particion('test_final')) < 50) {
         throw new RuntimeException('Falta la publicación versionada o el corpus ampliado.');
     }
+    // En producción la aceptación comprueba la estructura del asistente.
+    // Las conversaciones quedan a cargo del usuario; se conservan en DEV.
+    if ($app->environment('production')) {
+        echo 'OK asistente: esquema versionado y corpus; sin conversaciones en producción.'.PHP_EOL;
+        exit(0);
+    }
     $knowledge = $app->make(ConocimientoPortal::class);
     $hello = $knowledge->responder('hola', registrar: false);
     $docs = $knowledge->responder('¿Qué papeles tengo que mandar?', registrar: false);

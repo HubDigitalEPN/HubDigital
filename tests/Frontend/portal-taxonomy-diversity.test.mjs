@@ -121,6 +121,20 @@ test('las ramas rodean el tronco en los cuatro cuadrantes y conservan ancho al g
     const b=a.limites3D;assert.ok((b[5]-b[2])/(b[3]-b[0])>.7,'La profundidad tiene una escala comparable al ancho.');
 });
 
+test('las coronas ascienden en la perspectiva inicial y no fuerzan un encuadre vacío bajo la raíz',()=>{
+    const nodos=[{...nodo('r'),etiqueta:'Filo'}];
+    for(let i=0;i<8;i++){
+        nodos.push({...nodo('c'+i,'r'),etiqueta:'Clase'});
+        for(let j=0;j<12;j++)nodos.push({...nodo(`o${i}-${j}`,'c'+i),etiqueta:'Orden'});
+    }
+    const a=crearArbolDiversidad(indice(nodos),'r');
+    const frente=new Vector3(.8,.45,1).normalize(),derecha=new Vector3(frente.z,0,-frente.x).normalize(),arriba=new Vector3().crossVectors(frente,derecha);
+    for(let i=1;i<a.claves.length;i++){
+        const p=a.padres[i],tramo=new Vector3(a.posiciones[i*2]-a.posiciones[p*2],a.posiciones[i*2+1]-a.posiciones[p*2+1],a.profundidad[i]-a.profundidad[p]);
+        assert.ok(tramo.dot(arriba)>0,'La yema hija se proyecta sobre su padre al abrir la rama.');
+    }
+});
+
 test('los registros y el resumen breve no sustituyen el conteo de especies de las yemas',()=>{
     const taxon=(clave,padre,etiqueta,total)=>({...nodo(clave,padre),etiqueta,total});
     const fuente=indice([taxon('r',null,'Filo',1000),taxon('c','r','Clase',1000),taxon('o','c','Orden',1000),taxon('so','o','Suborden',1000),taxon('f','so','Familia',1000),taxon('sf','f','Subfamilia',1000),taxon('t','sf','Tribu',1000),taxon('sin-identificar','t','Género',1),taxon('g','t','Género',999),taxon('e','g','Especie',990),taxon('e-menor','g','Especie',9)]);

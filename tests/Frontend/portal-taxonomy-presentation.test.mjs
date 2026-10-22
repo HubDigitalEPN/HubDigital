@@ -13,9 +13,9 @@ test('el linaje incluye los ancestros de la raíz 3D y sus rangos formales hasta
         nodo('superfamilia', 'suborden', 'Superfamilia', 'Formicoidea'), nodo('familia', 'superfamilia', 'Familia', 'Formicidae'),
         nodo('genero', 'familia', 'Género', 'Camponotus'), nodo('especie', 'genero', 'Especie', 'Camponotus atriceps'),
     ]);
-    assert.equal(textoLinajeTaxonomico(fuente, 'familia'), 'Clase: Insecta → Orden: Hymenoptera → Suborden: Apocrita → Superfamilia: Formicoidea → Familia: Formicidae');
+    assert.equal(textoLinajeTaxonomico(fuente, 'familia'), 'Filo: Arthropoda → Clase: Insecta → Orden: Hymenoptera → Suborden: Apocrita → Superfamilia: Formicoidea → Familia: Formicidae');
     assert.equal(linajeTaxonomico(fuente, 'especie').at(-1).nombre, 'Camponotus atriceps');
-    assert.equal(linajeTaxonomico(fuente, 'especie').length, 7);
+    assert.equal(linajeTaxonomico(fuente, 'especie').length, 8);
     assert.equal(textoLinajeTaxonomico(fuente, 'filo'), 'Filo: Arthropoda');
 });
 

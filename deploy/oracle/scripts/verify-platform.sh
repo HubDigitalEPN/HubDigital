@@ -35,10 +35,7 @@ for binary in java; do
     }
 done
 
-"${php_bin}" -r 'exit(PHP_VERSION_ID >= 80400 ? 0 : 1);' || {
-    echo 'HubDigital bloqueado requiere PHP >= 8.4.' >&2
-    exit 65
-}
+PHP_BIN="${php_bin}" bash "${repo_dir}/deploy/oracle/scripts/verify-php-security.sh"
 php_modules="$("${php_bin}" -m)"
 for extension in curl gd intl mbstring openssl pdo_pgsql xml zip bcmath; do
     grep -Fxq "${extension}" <<<"${php_modules}" || { echo "Falta la extensión PHP ${extension}." >&2; exit 65; }

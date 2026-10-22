@@ -422,7 +422,7 @@
             <flux:sidebar.toggle class="text-white/80 hover:text-white lg:hidden" icon="bars-2" inset="left" />
 
             <a href="{{ route('dashboard') }}" wire:navigate class="hub-mobile-brand hub-topbar-brand">
-                <img src="{{ asset('images/hub-logo.png') }}" alt="Laboratorio de Invertebrados" class="h-10 w-auto max-w-20 rounded bg-white p-1 object-contain" />
+                <img src="{{ asset('images/hub-logo-v1.avif') }}" alt="Laboratorio de Invertebrados" class="h-10 w-auto max-w-20 rounded bg-white p-1 object-contain" />
                 <span><strong>Plataforma de Gestión de Información</strong><small>Laboratorio de Invertebrados</small><small>Escuela Politécnica Nacional</small></span>
             </a>
 

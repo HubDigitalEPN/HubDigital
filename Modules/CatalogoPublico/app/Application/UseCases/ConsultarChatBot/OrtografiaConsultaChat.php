@@ -20,7 +20,7 @@ final class OrtografiaConsultaChat
         'filros' => 'filtros', 'fitlros' => 'filtros', 'flitros' => 'filtros', 'linpiar' => 'limpiar',
         'despositar' => 'depositar', 'deposiatro' => 'depositar', 'deposiot' => 'deposito',
         'solcitud' => 'solicitud', 'solicutud' => 'solicitud', 'solicitu' => 'solicitud',
-        'documetos' => 'documentos', 'docuemntos' => 'documentos', 'requesitos' => 'requisitos',
+        'documetos' => 'documentos', 'docuemntos' => 'documentos', 'documntos' => 'documentos', 'requesitos' => 'requisitos',
         'contrasean' => 'contrasena', 'contarsena' => 'contrasena', 'certifcado' => 'certificado',
         'firmra' => 'firmar', 'descagar' => 'descargar', 'descagra' => 'descarga',
         'porqe' => 'por que', 'porq' => 'por que', 'mostar' => 'mostrar', 'muestrame' => 'muestrame',

@@ -10,17 +10,17 @@
 .portal-three-scene:fullscreen { position: relative; width: 100vw; height: 100vh; }
 button.portal-three-fullscreen-exit { display: none; }
 .portal-three-scene:fullscreen button.portal-three-fullscreen-exit { position: absolute; display: grid; place-items: center; right: 16px; top: 16px; z-index: 4; width: 40px; height: 40px; padding: 0; border: 1px solid #7395ab; border-radius: 5px; color: #eaf4fc; background: #142d40; font-size: 24px; }
-.portal-three-context { display: flex; align-items: center; gap: 12px; padding-right: 4px; min-width: 0; }
-.portal-taxonomy-breadcrumb { min-width: 0; max-width: 340px; font-size: 12px; color: #4c6d85; }
+.portal-three-context { display: flex; align-items: center; justify-content: flex-end; flex: 0 1 auto; gap: 10px; padding-right: 4px; min-width: 0; margin-left: auto; }
+.portal-taxonomy-breadcrumb { flex: 0 1 auto; min-width: 0; max-width: 340px; font-size: 12px; color: #4c6d85; }
 .portal-taxonomy-breadcrumb[hidden] { display: none; }
-.portal-taxonomy-breadcrumb ol { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; list-style: none; padding: 0; margin: 0; }
-.portal-taxonomy-breadcrumb li { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.portal-taxonomy-breadcrumb ol { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px; list-style: none; padding: 0; margin: 0; }
+.portal-taxonomy-breadcrumb li { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; min-width: 0; }
 .portal-taxonomy-breadcrumb li::after { content: '›'; color: #7893a3; }
-.taxonomy-explorer .portal-three-context .portal-taxonomy-breadcrumb button { display: inline; width: auto; height: auto; min-width: 0; min-height: 32px; max-width: none; max-height: none; padding: 3px 4px; border: 0; background: transparent; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
-.portal-diversity-scene.is-expanded > .portal-three-context { position: absolute; z-index: 4; top: 12px; left: 12px; right: 210px; width: fit-content; max-width: calc(100% - 222px); padding: 5px 8px; border-radius: 5px; background: rgb(248 251 246 / 92%); }
+.taxonomy-explorer .taxonomy-navigator-zoom .portal-three-context .portal-taxonomy-breadcrumb button { display: inline-block; flex: 0 0 auto; width: auto; height: auto; min-width: 0; min-height: 28px; max-width: none; max-height: none; padding: 3px 4px; border: 0; background: transparent; font: inherit; line-height: 1.5; white-space: nowrap; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.portal-diversity-scene.is-expanded > .portal-three-context { position: absolute; z-index: 4; top: 12px; right: 210px; width: fit-content; max-width: calc(100% - 222px); padding: 5px 8px; border-radius: 5px; background: rgb(248 251 246 / 92%); }
 .portal-diversity-scene.is-expanded > .portal-three-context .portal-three-controls { display: none; }
 .portal-three-context[hidden], .taxonomy-explorer button.portal-three-maximize[hidden] { display: none; }
-.portal-three-identity { min-width: 0; flex: 1; }
+.portal-three-identity { min-width: 100px; flex: 0 1 auto; }
 .portal-three-title { max-width: 230px; margin: 0; font-family: Georgia, serif; font-size: 21px; line-height: 1.2; font-weight: 700; color: #173d56; overflow-wrap: anywhere; }
 .portal-three-meta { margin: 4px 0 0; font-size: 12px; color: #4c6d85; }
 .portal-three-controls { display: flex; align-items: center; gap: 5px; }
@@ -39,11 +39,14 @@ button.portal-three-fullscreen-exit { display: none; }
 .portal-diversity-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 .portal-diversity-canvas:active { cursor: grabbing; }
 .portal-diversity-labels { position: absolute; inset: 0; pointer-events: none; }
+.portal-diversity-label-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+.portal-diversity-label-links line { stroke: #738e80; stroke-width: .65; opacity: .36; }
 .taxonomy-explorer button.portal-diversity-label { position: absolute; left: 0; top: 0; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px 7px; border: 1px solid transparent; border-radius: 5px; color: #254c40; background: transparent; text-shadow: 0 1px 3px #fff, 0 -1px 3px #fff; font-size: 12px; line-height: 16px; text-align: center; pointer-events: auto; }
 .portal-diversity-label strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
 .portal-diversity-label small { color: #547163; font-size: 10px; white-space: nowrap; }
 .portal-diversity-label.is-leaf strong { font-family: Georgia, serif; font-style: italic; font-size: 13px; }
 .taxonomy-explorer button.portal-diversity-label:hover, .taxonomy-explorer button.portal-diversity-label.is-selected { border-color: #a4c6ae; background: #e5f0e2; }
+.taxonomy-phylotree-controls > .taxonomy-navigator-zoom { flex: 1 1 420px; min-width: 0; justify-content: flex-end; }
 .portal-diversity-scale { position: absolute; z-index: 3; right: 12px; bottom: 10px; color: #48614d; font-size: 11px; font-variant-numeric: tabular-nums; }
 .taxonomy-explorer button.portal-diversity-zoom-value { min-width: 52px; height: 32px; padding: 4px 8px; border: 1px solid #cddcc9; border-radius: 5px; background: #fff; color: #48614d; font: inherit; white-space: nowrap; }
 .portal-diversity-slider-panel { position: absolute; right: 0; bottom: calc(100% - 1px); display: grid; place-items: center; box-sizing: border-box; width: 52px; height: clamp(120px, 24vh, 200px); padding: 12px; border: 1px solid #cddcc9; border-radius: 5px 5px 0 0; background: #fff; box-shadow: 0 -3px 12px rgb(40 73 45 / 8%); }
@@ -109,7 +112,7 @@ button.portal-three-fullscreen-exit { display: none; }
     .portal-taxonomy-branch-pane { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #cbdde7; }
     .taxonomy-phylotree-controls { flex-wrap: wrap; }
     .taxonomy-phylotree-controls > .taxonomy-navigator-zoom { flex-basis: 100%; justify-content: flex-end; }
-    .portal-three-context { margin-right: auto; }
+    .portal-three-context { margin-right: 0; }
 }
 @container taxonomy-explorer (max-width: 600px) {
     .taxonomy-navigator-phylotree .portal-ete-host.portal-taxonomy-split-host { overflow: auto; }

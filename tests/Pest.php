@@ -56,6 +56,8 @@ pest()->extend(InfrastructureTestCase::class)
     ->in(
         'Feature/AlmacenamientoDepositosTest.php',
         'Feature/DirectorioTemporalHubDigitalTest.php',
+        'Feature/ReporteExcepcionesConsolaTest.php',
+        'Feature/Error404LigeroTest.php',
     );
 
 // Las rutas que verifican R2 con relaciones reales se ejecutan contra una

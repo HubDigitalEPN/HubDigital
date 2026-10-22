@@ -32,6 +32,7 @@ validation_queue="$(read_env HUBDIGITAL_VALIDATION_QUEUE)"
 }
 
 systemctl is-active --quiet postgresql@16-main php8.4-fpm nginx hubdigital-worker
+PHP_BIN=/usr/bin/php8.4 bash "${app_dir}/deploy/oracle/scripts/verify-php-security.sh" --active
 if [[ "$(read_env DEPOSIT_SIGNATURE_ASYNC)" == true ]]; then
     systemctl is-active --quiet hubdigital-r2-signatures.service
 fi
