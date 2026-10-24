@@ -343,6 +343,7 @@
                         </flux:sidebar.group>
                         @if($rolActivo === RolUsuario::ADMIN)
                             <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*')" class="grid">
+                                <flux:sidebar.item icon="language" :href="route('admin.textos-sistema')" :current="request()->routeIs('admin.textos-sistema')" wire:navigate>Textos de todas las pantallas</flux:sidebar.item>
                                 <flux:sidebar.item
                                     icon="squares-2x2"
                                     :href="route('admin.centro')"

@@ -1,4 +1,12 @@
 import L from 'leaflet';
+L.Map.addInitHook(function () {
+    this.whenReady(() => {
+        const instalar = () => window.hubMapaPantallaCompleta(this);
+        if (window.hubMapaPantallaCompleta) instalar();
+        else window.addEventListener('hub-mapa-controles-listos', instalar, {once: true});
+        this.on('unload', () => window.removeEventListener('hub-mapa-controles-listos', instalar));
+    });
+});
 import {exportarPdfPaneles} from './portal-dashboard-export.js';
 import {distribuirArbol} from './portal-tree-model.js';
 import {crearGeojsonMapa, prepararPuntosMapa, crearAgrupadorMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from './portal-map-model';
@@ -414,6 +422,7 @@ const registrarDashboard = () => {
             botones[siguiente]?.focus();
         },
         descargar(contenido, extension, mime) {
+            if (document.querySelector('meta[name=catalogo-descargas]')?.content !== 'true') return;
             const url = URL.createObjectURL(new Blob([contenido], {type: mime}));
             const enlace = document.createElement('a');
             enlace.href = url; enlace.download = `${tipo}-coleccion.${extension}`;
@@ -424,6 +433,7 @@ const registrarDashboard = () => {
             return {titulo, fuente: 'Laboratorio de Invertebrados — Escuela Politécnica Nacional', consulta: window.location.href, consultado: new Date().toISOString(), alcance: 'Registros públicos de la selección aplicada; no representa abundancia natural.', panel: tipo};
         },
         async pdf() {
+            if (document.querySelector('meta[name=catalogo-descargas]')?.content !== 'true') return;
             this.cerrar();
             try { await exportarPdfPaneles(); }
             catch (error) { this.aviso = error.message; }

@@ -15,6 +15,8 @@ trait ExploraTaxonomia
 {
     #[Locked]
     public string $filtroTaxonId = '';
+    #[Locked]
+    public array $filtroTaxonIds = [];
 
     private function ajustarFilosAlTexto(): void
     {
@@ -26,6 +28,7 @@ trait ExploraTaxonomia
         if (! in_array($this->filtroFiloId, $filos, true)) $this->filtroFiloId = '';
         $this->filtroFilos = array_values(array_intersect($this->filtroFilos, $filos));
         if ($this->filtroTaxonId !== '' && $explorador->taxon($filtros, $this->filtroTaxonId) === null) $this->filtroTaxonId = '';
+        $this->filtroTaxonIds = array_values(array_filter($this->filtroTaxonIds, fn ($id) => $explorador->taxon($filtros, $id) !== null));
     }
 
     #[Computed]
@@ -34,6 +37,7 @@ trait ExploraTaxonomia
         $explorador = app(ExploradorTaxonomicoPublico::class);
         $filtros = FiltrosBusqueda::desde(['filtroTaxon' => $this->filtroTaxon]);
         $seleccion = $this->filtroTaxonId !== '' ? $explorador->taxon($filtros, $this->filtroTaxonId) : null;
+        $selecciones = array_values(array_filter(array_map(fn ($id) => $explorador->taxon($filtros, $id), $this->filtroTaxonIds)));
         if ($seleccion === null && $this->filtroTaxon !== '') {
             $exactos = $explorador->exacto($filtros, $this->filtroTaxon);
             if (count($exactos) === 1) $seleccion = $exactos[0];
@@ -44,13 +48,21 @@ trait ExploraTaxonomia
             $datos = $explorador->estructura($filtros);
             $datos['expandidos'] = array_column(array_filter($datos['nodos'], static fn (array $n): bool => $n['tieneHijos']), 'clave');
         } else {
-            $datos = $explorador->consultar($filtros, conservar: $seleccion ? [$seleccion['clave']] : []);
+            $datos = $explorador->consultar($filtros, conservar: array_values(array_unique([...array_column($selecciones, 'clave'), ...($seleccion ? [$seleccion['clave']] : [])])));
         }
         $datos['contexto'] = $this->filtroTaxon.':'.DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version');
         $datos['busquedaTaxon'] = $this->filtroTaxon;
         $datos['filos'] = $this->filtrosActuales()->filosSeleccionados();
         $datos['seleccionado'] = $this->filtroTaxonId;
+        $datos['seleccionados'] = $this->filtroTaxonIds;
         $datos['linaje'] = [];
+        foreach ($selecciones as $seleccionActual) {
+            $porClave = array_column($datos['nodos'], null, 'clave'); $cursor = $seleccionActual['clave']; $vistos = [];
+            while ($cursor !== null && isset($porClave[$cursor]) && !isset($vistos[$cursor])) {
+                $vistos[$cursor] = true; $datos['linaje'][] = $porClave[$cursor]['id'];
+                $padre = $porClave[$cursor]['padre']; if ($padre !== null) $datos['expandidos'][] = $padre; $cursor = $padre;
+            }
+        }
         if ($seleccion) {
             $porClave = array_column($datos['nodos'], null, 'clave'); $cursor = $seleccion['clave'];
             $vistos = [];
@@ -76,14 +88,10 @@ trait ExploraTaxonomia
                 && $explorador->taxon(FiltrosBusqueda::desde(['filtroTaxonId' => $this->filtroTaxonId]), $id)) $this->filtroTaxonId = '';
             $this->seleccionarFilo($id);
         } else {
-            $this->filtroTaxonId = $this->filtroTaxonId === $id ? '' : $id;
-            if ($this->filtroTaxonId !== '') {
-                $porClave = array_column($explorador->consultar($filtros, conservar: [$nodo['clave']])['nodos'], null, 'clave');
-                $raiz = $nodo;
-                while ($raiz['padre'] !== null && isset($porClave[$raiz['padre']])) $raiz = $porClave[$raiz['padre']];
-                if ($this->filtroFiloId !== $raiz['id']) $this->filtroFiloId = '';
-                $this->filtroFilos = array_values(array_intersect($this->filtroFilos, [$raiz['id']]));
-            }
+            $seleccionados = array_values(array_unique([...$this->filtroTaxonIds, ...($this->filtroTaxonId !== '' ? [$this->filtroTaxonId] : [])]));
+            $this->filtroTaxonIds = in_array($id, $seleccionados, true) ? array_values(array_diff($seleccionados, [$id])) : [...$seleccionados, $id];
+            abort_if(count($this->filtroTaxonIds) > 100, 422, 'Selecciona hasta 100 taxones.');
+            $this->filtroTaxonId = '';
             $this->nivel = $this->taxon = $this->explorar = '';
             $this->actualizarFiltros();
             $this->ajustarGeografiaDependiente();
@@ -97,12 +105,12 @@ trait ExploraTaxonomia
 
     private function contextoExplorador(): FiltrosBusqueda
     {
-        return FiltrosBusqueda::desde(array_replace($this->valoresFiltros(), ['filtroTaxonId' => '']));
+        return FiltrosBusqueda::desde(array_replace($this->valoresFiltros(), ['filtroTaxonId' => '', 'filtroTaxonIds' => []]));
     }
 
     public function consultarExploradorTaxonomico(?string $padre = null, string $busqueda = '', array $conservar = []): array
     {
-        $resultado = app(ExploradorTaxonomicoPublico::class)->consultar(FiltrosBusqueda::vacio(), $padre, $busqueda, $conservar);
+        $resultado = app(ExploradorTaxonomicoPublico::class)->consultar(FiltrosBusqueda::desde($this->valoresFiltros() + ['nivelNavegado' => $this->nivel, 'taxonNavegado' => $this->taxon]), $padre, $busqueda, $conservar);
         $resultado['total'] = $resultado['totalCatalogo'];
         $resultado['seleccionado'] = '';
         $this->skipRender();
@@ -115,7 +123,6 @@ trait ExploraTaxonomia
             $this->skipRender();
             return ['error' => 'Este taxón ya no tiene registros públicos.'];
         }
-        $this->limpiarFiltros();
         return $this->seleccionarTaxonExplorador($id);
     }
 
@@ -128,6 +135,7 @@ trait ExploraTaxonomia
         $this->forceRender();
         \Livewire\store($this)->unset('skipRender');
         $this->filtroTaxonId = $nodo['id'];
+        $this->filtroTaxonIds = [];
         $this->nivel = $this->taxon = $this->explorar = '';
         $this->vista = 'mapa';
         $this->mostrarFotoComposicion = false;

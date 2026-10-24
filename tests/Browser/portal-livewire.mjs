@@ -164,8 +164,9 @@ try {
     const reposo = async () => {
         await demora(300);
         // La respuesta de red puede terminar antes de que Livewire retire inert
-        // o concluya el ajuste de filas iniciado por ResizeObserver.
-        await esperar(async () => peticiones.size === 0 && await evaluar("!document.querySelector('.research-sidebar')?.inert && !document.querySelector('.collection-main')?.inert && !document.querySelector('.collection-workspace')?.classList.contains('is-updating') && [...document.querySelectorAll('.portal-records-viewport')].every(el => !window.Alpine?.$data(el)?.solicitando)"), 'finalización de Livewire y del ajuste de registros');
+        // o concluya el ajuste de filas iniciado por ResizeObserver. La cámara
+        // también debe terminar antes de comprobar el rango que quedó visible.
+        await esperar(async () => peticiones.size === 0 && await evaluar("!document.querySelector('.research-sidebar')?.inert && !document.querySelector('.collection-main')?.inert && !document.querySelector('.collection-workspace')?.classList.contains('is-updating') && [...document.querySelectorAll('.portal-records-viewport')].every(el => !window.Alpine?.$data(el)?.solicitando) && [...document.querySelectorAll('.portal-diversity-scene')].every(el => !el.checkVisibility() || el.dataset.animando !== 'true')"), 'finalización de Livewire, del ajuste de registros y de la cámara');
         sinErrores();
     };
     const url = `${origen}/portal/catalogo?vista=mapa&ft=${encodeURIComponent(datos.taxonBusqueda)}`;
@@ -224,7 +225,8 @@ try {
     await visible("!document.querySelector('#platform-information-dialog').open");
     await conexion.send('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
     await evaluar('window.scrollTo(0, 0)'); await reposo();
-    assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && ![...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargar') || ['pdf()','verRegistros(menuNodo)'].includes(b.getAttribute('x-on:click')))`),'El visitante conserva la exploración sin controles operativos.');
+    assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && ![...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargar') || b.getAttribute('x-on:click')==='pdf()')`),'El visitante consulta el catálogo sin controles de exportación ni acceso al panel.');
+    assert.ok(await evaluar(`[...document.querySelectorAll('button')].some(b=>b.getAttribute('x-on:click')==='verRegistros(menuNodo)')`),'El visitante puede consultar los registros del árbol.');
     await conexion.send('Page.navigate',{url:origen+'/login'});
     await visible("document.querySelector('#hub-login-form') && window.Alpine");
     await evaluar(`(() => {const f=document.querySelector('#hub-login-form');f.elements.email.value=${JSON.stringify(datos.email)};f.elements.password.value=${JSON.stringify(datos.password)};f.requestSubmit();})()`);
@@ -302,7 +304,7 @@ try {
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')?.checkVisibility()"); await reposo();
     const catalogoExplorador = await evaluar("({total: Alpine.$data(document.querySelector('#explorador-taxonomico')).total})");
-    assert.ok(catalogoExplorador.total >= datos.codigos.length, 'El explorador conserva el catálogo público completo, incluidos todos los registros de la fixture.');
+    assert.ok(catalogoExplorador.total >= datos.codigos.length, 'El explorador conserva las ramas del conjunto filtrado que contiene los registros de la fixture.');
     assert.equal(await evaluar("document.querySelector('#explorador-taxonomico > .taxonomy-explorer-header p')"), null, 'La cabecera conserva el título sin el subtítulo que consumía espacio vertical.');
     assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect();return d.matches(':modal') && Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && d.querySelector('#filo-explorador-taxonomico').checkVisibility() && !d.querySelector('footer,.taxonomy-explorer-map,.taxonomy-explorer-representation,.taxonomy-navigator-sidebar,.taxonomy-navigator-fold');})()"), 'El modal conserva sus márgenes, selector y buscador y libera el ancho del lateral retirado.');
     assert.equal(await evaluar("document.querySelector('.portal-ete-controls,.taxonomy-navigator-sidebar > h3,.taxonomy-navigator-caption,.taxonomy-navigator-breadcrumb,.taxonomy-navigator-heading,.taxonomy-expand-all,.taxonomy-branch-select')"), null);
@@ -464,7 +466,7 @@ try {
     assert.ok(await evaluar("(() => {const s=document.querySelector('.portal-three-scene');return s.dataset.target==='0.00,0.00,0.00' && s.dataset.zoom==='1.000' && s.dataset.pulsando==='true';})()"), 'Buscar convierte el resultado en raíz, lo centra y activa su pulso.');
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0, 'Buscar localiza un taxón sin convertirlo en filtro del catálogo.');
     assert.equal(await evaluar("document.querySelector('.taxonomy-search-token span:first-child').textContent"), 'FiloBrowser' + token, 'El ámbito permanece dentro del buscador, con su equis.');
-    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Buscar un taxón conserva el total del catálogo completo.');
+    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Buscar en el árbol conserva el total del conjunto filtrado del portal.');
     async function navegarInicial(nombre) {
         await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.irARama(d.nodos.find(n=>n.nombre===" + JSON.stringify(nombre) + "));})()");
         await visible(nombre === 'FiloBrowser' + token
@@ -610,14 +612,14 @@ try {
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
-    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Reabrir el explorador conserva su catálogo independiente del filtro del mapa.');
+    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Reabrir el explorador conserva el mismo conjunto filtrado que el mapa.');
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
     const antesDeAjustar = totalPeticiones;
     await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");
     await visible("Alpine.$data(document.querySelector('#explorador-taxonomico')).ajustado && document.querySelector('.portal-three-scene').dataset.zoom==='1.000'");
     assert.ok(await evaluar("(() => {const l=document.querySelector('.portal-ete-host');return l.scrollHeight<=l.clientHeight+1 && l.scrollWidth<=l.clientWidth+1;})()"));
     assert.equal(totalPeticiones, antesDeAjustar);
-    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.filtrosArbol.length===0 && d.nodos.some(n=>n.nombre==='FiloBrowser" + token + "');})()"), 'Cerrar y reabrir conserva el catálogo completo y su selección independiente del mapa.');
+    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.filtrosArbol.length===0 && d.nodos.some(n=>n.nombre==='FiloBrowser" + token + "');})()"), 'Cerrar y reabrir conserva las ramas del conjunto filtrado sin añadir filtros internos del árbol.');
     const antesDeEscape = totalPeticiones;
     await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
@@ -628,7 +630,9 @@ try {
     const fondoExplorador = await evaluar("(() => {const r=document.querySelector('#explorador-taxonomico').getBoundingClientRect();return {x:r.left-8,y:r.top+20};})()");
     await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...fondoExplorador});
     await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...fondoExplorador});
-    assert.equal(await evaluar("document.querySelector('#explorador-taxonomico').open"), true);
+    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     assert.ok(await evaluar(`(() => {
         const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button')],rects=botones.map(b=>b.getBoundingClientRect()),visualizacion=barra.querySelector('.portal-taxonomy-visualization');
         return botones.length===5 && botones.at(-2).classList.contains('portal-three-maximize') && botones.at(-1).classList.contains('portal-taxonomy-visualization') && !barra.querySelector('.portal-three-fit')
@@ -941,7 +945,7 @@ try {
     await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");await reposo();
     await menuTaxon('.portal-diversity-canvas');
     assert.ok(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement===document.querySelector('.portal-diversity-scene.is-expanded')"),'El menú del árbol pertenece a la escena expandida.');
-    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa']);
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa','Ver registros']);
     assert.ok(await evaluar("(() => {const m=document.querySelector('.taxonomy-explorer-context-menu'),r=m.querySelector('button').getBoundingClientRect();return m.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"),'El visitante puede pulsar el menú, que no queda tapado por el canvas.');
     const taxonMapaPublico=await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).menuNodo.nombre");
     await evaluar("document.querySelector('.taxonomy-explorer-context-menu button').click()");
@@ -962,7 +966,7 @@ try {
     await visible("document.fullscreenElement===document.querySelector('.portal-three-scene')");
     await menuTaxon('.portal-three-canvas');
     assert.ok(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement===document.fullscreenElement"),'El menú de esferas está dentro del top layer nativo.');
-    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa']);
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa','Ver registros']);
     assert.ok(await evaluar("(() => {const m=document.querySelector('.taxonomy-explorer-context-menu'),r=m.querySelector('button').getBoundingClientRect();return m.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"));
     await evaluar("document.querySelector('.taxonomy-explorer-context-menu button').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open && !document.fullscreenElement && document.querySelector('.atlas-map .leaflet-pane')");await reposo();

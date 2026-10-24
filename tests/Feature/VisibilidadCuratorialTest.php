@@ -67,7 +67,7 @@ test('Colección Biológica responde como primera pantalla pública', function (
         ->assertSee('Colección Biológica')
         ->assertSee('Filtros de investigación')
         ->assertSee('Registros por provincia')
-        ->assertDontSee('Vista de registros');
+        ->assertSee('Vista de registros')->assertDontSee('data-catalogo-descarga', false);
     $this->actingAs(User::factory()->curador()->create())
         ->get(route('portal.catalogo', ['vista' => 'mapa']))
         ->assertOk()->assertSee('Vista de registros');

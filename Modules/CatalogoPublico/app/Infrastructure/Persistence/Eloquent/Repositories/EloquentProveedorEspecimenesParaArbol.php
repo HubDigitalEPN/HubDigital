@@ -78,6 +78,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     /** Única selección pública para árbol, tabla, mapa y exportaciones. */
     public function consultaPublica(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): Builder
     {
+        if ($nivel === '' && $taxon === '') { $nivel = $filtros->nivelNavegado; $taxon = $filtros->taxonNavegado; }
         $query = DB::table('taxonomia.especimenes as te')
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
             ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql());
@@ -401,22 +402,25 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
                 ->whereRaw('(seleccion_taxonomica.otros OR (seleccion_taxonomica.familia AND ed.family_visible) OR (seleccion_taxonomica.genero AND ed.genus_visible))');
         }
 
-        if ($filtros->taxonId !== null) {
-            $seleccionExacta = DB::query()->fromRaw(<<<'SQL'
+        if ($filtros->taxonId !== null || $filtros->taxonIds !== []) {
+            $taxonesElegidos = array_values(array_unique([...$filtros->taxonIds, ...($filtros->taxonIds !== [] ? $filtros->filosSeleccionados() : []), ...($filtros->taxonId !== null ? [$filtros->taxonId] : [])]));
+            $parametrosTaxon = implode(',', array_fill(0, count($taxonesElegidos), '?'));
+            $sqlTaxon = <<<'SQL'
                 (
                     WITH RECURSIVE seleccion AS (
-                        SELECT id, rango AS rango_raiz FROM taxonomia.taxones WHERE id = ?
+                        SELECT id, rango AS rango_raiz FROM taxonomia.taxones WHERE id IN (__TAXONES__)
                         UNION
                         SELECT t.id, s.rango_raiz FROM taxonomia.taxones t JOIN seleccion s ON t.padre_id = s.id
-                    ) SELECT id, rango_raiz FROM seleccion
+                    ) SELECT id, BOOL_OR(rango_raiz NOT IN ('familia','family','genero','género','genus')) AS otros, BOOL_OR(rango_raiz IN ('familia','family')) AS familia, BOOL_OR(rango_raiz IN ('genero','género','genus')) AS genero FROM seleccion GROUP BY id
                 ) AS taxon_exacto
-                SQL, [$filtros->taxonId])->select('id', 'rango_raiz');
+                SQL;
+            $seleccionExacta = DB::query()->fromRaw(str_replace('__TAXONES__', $parametrosTaxon, $sqlTaxon), $taxonesElegidos)->select('id', 'otros', 'familia', 'genero');
             $query->joinSub($seleccionExacta, 'seleccion_exacta', 'seleccion_exacta.id', '=', 'te.taxon_id')
                 ->where('ed.scientific_name_visible', true)
-                ->whereRaw("(seleccion_exacta.rango_raiz NOT IN ('familia', 'family', 'genero', 'género', 'genus') OR (seleccion_exacta.rango_raiz IN ('familia', 'family') AND ed.family_visible) OR (seleccion_exacta.rango_raiz IN ('genero', 'género', 'genus') AND ed.genus_visible))");
+                ->whereRaw('(seleccion_exacta.otros OR (seleccion_exacta.familia AND ed.family_visible) OR (seleccion_exacta.genero AND ed.genus_visible))');
         }
 
-        if ($filtros->filosSeleccionados() !== []) {
+        if ($filtros->filosSeleccionados() !== [] && $filtros->taxonIds === []) {
             $query->where('ed.scientific_name_visible', true);
             $idsFilos = $filtros->filosSeleccionados();
             $parametros = implode(',', array_fill(0, count($idsFilos), '?'));
@@ -424,6 +428,15 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
         }
 
         // Geografía — CTE recursivo pre-resuelto
+        if ($filtros->localidadTexto !== null) {
+            $query->where('ed.locality_name_visible', true)->where(function (Builder $localidad) use ($filtros): void {
+                foreach (['localidad', 'localidad_area', 'localidad2', 'localidad3', 'localidad_verbatim', 'locality_name', 'locality_notes', 'municipality'] as $campo) {
+                    $localidad->orWhereRaw('te.'.$campo.' ILIKE ?', [self::patronParcial($filtros->localidadTexto)]);
+                }
+                $localidad->orWhere(function (Builder $pais) use ($filtros): void { $pais->where('ed.country_visible', true)->whereRaw('te.country ILIKE ?', [self::patronParcial($filtros->localidadTexto)]); });
+                $localidad->orWhere(function (Builder $provincia) use ($filtros): void { $provincia->where('ed.state_province_visible', true)->whereRaw('te.state_province ILIKE ?', [self::patronParcial($filtros->localidadTexto)]); });
+            });
+        }
         if ($filtros->geografias !== []) {
             $query->where('ed.locality_name_visible', true);
             $ids = $this->resolverDescendientesGeografia($filtros->geografias);

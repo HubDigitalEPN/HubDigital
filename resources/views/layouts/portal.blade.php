@@ -29,11 +29,18 @@
             </nav>
 
             @if(\App\Support\AccesoCatalogo::completo())
-                <a href="{{ route('dashboard') }}" class="portal-curator-access" aria-label="Ir al panel del curador">
+                <div class="flex min-w-0 items-center gap-3">
+                    <div class="hidden max-w-56 min-w-0 text-right text-xs sm:block">
+                        <strong class="block truncate">Hola, {{ auth()->user()->name }}</strong>
+                        <span class="block truncate">{{ auth()->user()->email }}</span>
+                        <span>{{ auth()->user()->esAdministrador() ? 'Administrador' : 'Curador' }}</span>
+                    </div>
+                    <a href="{{ route('dashboard') }}" class="portal-curator-access" aria-label="Ir al panel del curador">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></svg>
                     <span class="portal-curator-full-label">Panel del curador</span>
                     <span class="portal-curator-short-label" aria-hidden="true">Panel</span>
-                </a>
+                    </a>
+                </div>
             @else
             <div class="hidden shrink-0 lg:block">
                 @auth
@@ -55,7 +62,7 @@
             </div>
             @endif
 
-            <div class="portal-mobile-actions">
+            <div class="portal-mobile-actions lg:hidden">
             @if(config('chatbot.enabled', true))
             <button id="portal-chat-mobile-trigger" type="button" class="portal-mobile-chat-button"
                 x-data="{ chatAbierto: false }" x-on:portal-chat-state.window="chatAbierto = $event.detail.abierto"

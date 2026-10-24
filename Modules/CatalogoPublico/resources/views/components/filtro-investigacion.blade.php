@@ -5,7 +5,7 @@
         $valor = $aplicados[$campo] ?? '';
         return is_array($valor) ? array_any($valor, static fn ($item) => trim((string) $item) !== '') : trim((string) $valor) !== '';
     };
-    $colectaActiva = array_any(['filtroColector', 'filtroPreparaciones', 'filtroMetodos', 'filtroBiomas', 'filtroHabitat', 'filtroTipo', 'filtroDisposicion', 'filtroCasta', 'filtroEstadio'], $activo);
+    $colectaActiva = array_any(['filtroLocalidadTexto', 'filtroColector', 'filtroPreparaciones', 'filtroMetodos', 'filtroBiomas', 'filtroHabitat', 'filtroTipo', 'filtroDisposicion', 'filtroCasta', 'filtroEstadio'], $activo);
 @endphp
 
 <details class="research-sidebar" open wire:key="catalogo-filtros" x-data="portalFiltros" wire:ignore.self wire:loading.attr="inert">
@@ -21,10 +21,10 @@
         <x-catalogopublico::busqueda-predictiva campo="filtroCatalogo" :etiqueta="$filtroTexto('numero_catalogo')" :placeholder="$filtroTexto('catalogo_placeholder')" :maxlength="240" :activo="$activo('filtroCatalogo')" />
         <x-catalogopublico::busqueda-predictiva campo="filtroTaxon" :etiqueta="$filtroTexto('taxon')" :placeholder="$filtroTexto('taxon_placeholder')" :activo="$activo('filtroTaxon')" />
         @php($panelFilos = $this->arbolFiloPanel)
-        <fieldset @class(['research-filter-active' => $activo('filtroFilos') || $activo('filtroTaxonId')]) wire:key="panel-filos" x-data="portalFiltroFilo(@js($panelFilos), @js(route('portal.filos')))" x-on:filos-panel-actualizados="actualizar($event.detail)">
+        <fieldset @class(['research-filter-active' => $activo('filtroFilos') || $activo('filtroTaxonId') || $activo('filtroTaxonIds')]) wire:key="panel-filos" x-data="portalFiltroFilo(@js($panelFilos), @js(route('portal.filos')))" x-on:filos-panel-actualizados="actualizar($event.detail)">
             <legend>{{ $filtroTexto('filo') }}</legend>
             <span hidden wire:key="filos-datos-{{ sha1(json_encode($panelFilos)) }}" x-init="$dispatch('filos-panel-actualizados', @js($panelFilos))"></span>
-            <div class="research-phylum-tree research-check-list" role="tree" aria-label="{{ $filtroTexto('filo') }}" wire:ignore x-ref="arbolFilo" x-on:scroll.passive="actualizarVentana()" x-on:resize.window.debounce.100ms="actualizarVentana()">
+            <div class="research-phylum-tree research-check-list" role="tree" aria-multiselectable="true" aria-label="{{ $filtroTexto('filo') }}" wire:ignore x-ref="arbolFilo" x-on:scroll.passive="actualizarVentana()" x-on:resize.window.debounce.100ms="actualizarVentana()">
                 <div aria-hidden="true" :style="{height: espacioSuperior + 'px'}"></div>
                 <template x-for="nodo in filasVisibles" :key="nodo.clave">
                     <div class="research-phylum-row" role="treeitem" :data-filo-clave="nodo.clave" :aria-level="nodo.profundidad + 1" :aria-expanded="nodo.tieneHijos ? expandidos.includes(nodo.clave) : null" :aria-selected="marcado(nodo)" :style="{'--nivel-filo': Math.min(nodo.profundidad, 5)}" :class="{'is-selected': marcado(nodo), 'is-lineage': enLinaje(nodo)}">
@@ -49,6 +49,7 @@
         <details @class(['research-filter-section', 'research-filter-active' => $colectaActiva]) @if($colectaActiva) open @endif>
             <summary>{{ $filtroTexto('colecta') }}</summary>
             <div class="research-filter-fields">
+                <label @class(['research-filter-active' => $activo('filtroLocalidadTexto')])><span>Localidad, sitio o referencia de colecta</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroLocalidadTexto" maxlength="120" placeholder="Buscar en todos los campos de localidad"></label>
                 <label @class(['research-filter-active' => $activo('filtroColector')])><span>{{ $filtroTexto('colector') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroColector" aria-invalid="{{ $errors->has('filtroColector') ? 'true' : 'false' }}" aria-describedby="error-filtroColector" placeholder="{{ $filtroTexto('colector_placeholder') }}" maxlength="120"></label>
                 @if($preparaciones !== [])<fieldset @class(['research-filter-active' => $activo('filtroPreparaciones')])><legend>{{ $filtroTexto('preparacion') }}</legend><div class="research-check-list">@foreach($preparaciones as $preparacion)<label><input type="checkbox" wire:model.live.debounce.400ms="borradorFiltros.filtroPreparaciones" aria-invalid="{{ $errors->has('filtroPreparaciones') ? 'true' : 'false' }}" aria-describedby="error-filtroPreparaciones" value="{{ $preparacion }}">{{ $preparacion }}</label>@endforeach</div></fieldset>@endif
                 @if($metodos !== [])<fieldset @class(['research-filter-active' => $activo('filtroMetodos')])><legend>{{ $filtroTexto('metodo') }}</legend><div class="research-check-list">@foreach($metodos as $metodo)<label title="Código original: {{ $metodo }}"><input type="checkbox" wire:model.live.debounce.400ms="borradorFiltros.filtroMetodos" aria-invalid="{{ $errors->has('filtroMetodos') ? 'true' : 'false' }}" aria-describedby="error-filtroMetodos" value="{{ $metodo }}"><span>{{ \Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::etiqueta($metodo) }} <small>({{ $metodo }})</small></span></label>@endforeach</div></fieldset>@endif

@@ -110,6 +110,17 @@ final class ActualizacionCatalogo
         if ($mapeada->individualCount !== null && $mapeada->individualCount < 0) throw new DomainException("Fila {$fila}: individualCount no puede ser negativo.");
         [$taxonomia, $provisional] = $this->taxonomia($datos);
         $cambios = [];
+        $extras = [];
+        foreach ($this->plantilla['columnas'] as $columnaExtra) {
+            if (!($columnaExtra['personalizada'] ?? false)) continue;
+            $claveExtra = $columnaExtra['campo'];
+            if (!isset($datos[$claveExtra]) || trim((string) $datos[$claveExtra]) === '') continue;
+            $valorExtra = trim((string) $datos[$claveExtra]);
+            if (mb_strlen($valorExtra) > 5000) throw new DomainException("Fila {$fila}: el campo «{$columnaExtra['cabecera']}» supera los 5000 caracteres.");
+            $previoExtra = $anterior ? DB::table('taxonomia.valores_columnas_especimen')->where(['especimen_id' => $anterior->id, 'campo' => $claveExtra])->value('valor') : null;
+            if ($modo === 'completar' && $previoExtra !== null && $previoExtra !== '') continue;
+            if ($previoExtra !== $valorExtra) $extras[$claveExtra] = $valorExtra;
+        }
         $adicionales = [];
         foreach (get_object_vars($mapeada) as $propiedad => $valor) {
             if (in_array($propiedad, ['codigoCatalogo', 'occurrenceId', 'warnings'], true) || $valor === null || $valor === '') continue;
@@ -155,7 +166,7 @@ final class ActualizacionCatalogo
         }, ARRAY_FILTER_USE_BOTH);
         $tieneTaxonomia = count(array_intersect_key($taxonomia, array_flip(['kingdom','phylum','class','order','suborder','family','subfamily','tribe','genus','specific_epithet']))) > 0;
         $aplicarTaxonomia = $tieneTaxonomia && (!$anterior || $anterior->taxon_id === null || $modo === 'actualizar');
-        return compact('codigo', 'cambios', 'taxonomia', 'provisional', 'adicionales', 'aplicarTaxonomia') + ['avisos' => $mapeada->warnings];
+        return compact('codigo', 'cambios', 'taxonomia', 'provisional', 'adicionales', 'aplicarTaxonomia', 'extras') + ['avisos' => $mapeada->warnings];
     }
 
     private function columnas(): array
@@ -267,7 +278,7 @@ final class ActualizacionCatalogo
                 }
                 $plan = $this->preparar($registro, $anterior, $fila, $modo, $columnas);
                 $this->validarLinaje($plan['taxonomia'], $fila);
-                $accion = !$anterior ? 'nuevos' : (($plan['cambios'] !== [] || $plan['aplicarTaxonomia']) ? 'actualizados' : 'sin_cambios');
+                $accion = !$anterior ? 'nuevos' : (($plan['cambios'] !== [] || $plan['extras'] !== [] || $plan['aplicarTaxonomia']) ? 'actualizados' : 'sin_cambios');
                 $resumen['filas']++;
                 $resumen[$accion]++;
                 if ($plan['provisional']) $resumen['provisionales']++;
@@ -287,6 +298,7 @@ final class ActualizacionCatalogo
     {
         return DB::transaction(function () use ($importacionId, $ruta): array {
             DB::statement("SET LOCAL lock_timeout = '10s'");
+            DB::table('taxonomia.configuracion_plantilla_catalogo')->where('clave', 'catalogo')->lockForUpdate()->first();
             DB::statement('LOCK TABLE taxonomia.taxones, taxonomia.especimenes IN SHARE ROW EXCLUSIVE MODE');
             $carga = DB::table('taxonomia.importaciones_catalogo')->where('id', $importacionId)->lockForUpdate()->first();
             if (!$carga || !hash_equals($carga->fuente_sha256, hash_file('sha256', $ruta))) throw new DomainException('El archivo no coincide con el original validado.');
@@ -313,14 +325,19 @@ final class ActualizacionCatalogo
                         $ajustesLinaje = $this->completarLinaje($filaPlan['taxonomia']);
                         if ($taxon !== null) $cambios['taxon_id'] = (string)$taxon;
                     }
-                    $accion = !$anterior ? 'nuevo' : ($cambios === [] ? 'sin_cambios' : 'actualizado');
+                    $accion = !$anterior ? 'nuevo' : ($cambios === [] && $filaPlan['extras'] === [] ? 'sin_cambios' : 'actualizado');
                     $id = $anterior?->id ?? (string)Str::uuid();
-                    if ($cambios !== [] || !$anterior) {
+                    if ($cambios !== [] || $filaPlan['extras'] !== [] || !$anterior) {
                         $cambios['updated_at'] = now();
                         $cambios['estado_revision'] = 'pendiente';
                         $cambios['motivo_revision'] = $filaPlan['provisional'] ? 'Identificación provisional conservada a nivel de género; revisar el original de la importación.' : 'Actualización desde matriz del curador; revisión pendiente.';
                         if ($anterior) DB::table('taxonomia.especimenes')->where('id', $id)->update($cambios);
                         else DB::table('taxonomia.especimenes')->insert($cambios + ['id' => $id, 'codigo_catalogo' => $codigo, 'occurrence_id' => $codigo, 'estado' => 'disponible', 'disposition' => 'in_collection', 'created_at' => now()]);
+                    }
+                    foreach ($filaPlan['extras'] as $campoExtra => $valorExtra) {
+                        $antesExtra = DB::table('taxonomia.valores_columnas_especimen')->where(['especimen_id' => $id, 'campo' => $campoExtra])->value('valor');
+                        DB::table('taxonomia.valores_columnas_especimen')->updateOrInsert(['especimen_id' => $id, 'campo' => $campoExtra], ['valor' => $valorExtra, 'actualizado_por' => $carga->creado_por_id, 'updated_at' => now()]);
+                        DB::table('taxonomia.historial_columnas_especimen')->insert(['especimen_id' => $id, 'campo' => $campoExtra, 'anterior' => $antesExtra, 'nuevo' => $valorExtra, 'actualizado_por' => $carga->creado_por_id, 'created_at' => now()]);
                     }
                     $posterior = DB::table('taxonomia.especimenes')->where('id', $id)->first();
                     if ($ajustesLinaje !== []) $posterior->_linajes_completados = $ajustesLinaje;

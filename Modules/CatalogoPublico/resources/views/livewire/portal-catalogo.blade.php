@@ -121,31 +121,31 @@
         <div class="collection-view-switch">
             <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="collection-view-label">Árbol</span></button>
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="collection-view-label">{{ $catalogoTexto('tarjetas') }}</span></button>
-            @if(\App\Support\AccesoCatalogo::completo())
+
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="collection-view-label">{{ $catalogoTexto('registros') }}</span></button>
-            @endif
+
             <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="collection-view-label">Mapa</span></button>
         </div>
     </nav>
 
-    @if(\App\Support\AccesoCatalogo::completo()) @include('catalogopublico::components.ficha-registro-publico') @endif
+    @include('catalogopublico::components.ficha-registro-publico')
     @if($vista === 'mapa')
         @if($errorMapa ?? false)
             <section class="mx-auto max-w-7xl px-4 py-8" aria-labelledby="mapa-error-titulo">
                 <h1 id="mapa-error-titulo" class="font-display text-2xl font-bold text-blue-navy">{{ $catalogoTexto('mapa_error_titulo') }}</h1>
                 <p class="mt-3" role="alert">{{ $catalogoTexto('mapa_error_descripcion') }}</p>
                 <button type="button" wire:click="$refresh" class="mt-4 underline text-science-blue">{{ $catalogoTexto('reintentar_mapa') }}</button>
-                @if(\App\Support\AccesoCatalogo::completo())<button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">{{ $catalogoTexto('ver_registros_seleccion') }}</button>@endif
+                <button type="button" wire:click="cambiarVista('registros')" class="mt-4 ml-4 underline text-science-blue">{{ $catalogoTexto('ver_registros_seleccion') }}</button>
             </section>
         @else
         @include('catalogopublico::dashboard-coleccion')
-        @if(\App\Support\AccesoCatalogo::completo()) @include('catalogopublico::components.detalle-celda-mapa') @endif
+        @include('catalogopublico::components.detalle-celda-mapa')
         @endif
     @elseif($vista === 'registros')
         <section class="portal-records-paged mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" aria-label="Registros del catálogo">
             <header class="mb-4"><h1 class="font-display text-2xl font-bold text-blue-navy">{{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}</h1>
                 <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</p></header>
-            <x-grid-frame label="Registros del catálogo" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina">
+            <x-grid-frame label="Registros del catálogo" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
                 <x-slot:search>
                     <form class="hub-ig-search" x-data="{campo: 'filtroCatalogo', texto: ''}" x-on:submit.prevent="$wire.aplicarBusquedaTexto(campo, texto)">
                         <select x-model="campo" aria-label="Columna de búsqueda"><option value="filtroCatalogo">N.º catálogo</option><option value="filtroTaxon">Taxón</option></select>
@@ -155,7 +155,7 @@
                 </x-slot:search>
                 <x-slot:actions>
                     <button type="button" role="menuitem" tabindex="-1" x-on:click="closeMenu(false); $refs.recordSort.dispatchEvent(new Event('abrir-orden'))"><flux:icon name="arrows-up-down" /> Ordenar</button>
-                    @if($totalRegistrosVista > 0)<button type="button" role="menuitem" tabindex="-1" data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga('resultados'))); closeMenu()"><flux:icon name="arrow-down-tray" /> Descargar resultados CSV</button>@endif
+                    @if($totalRegistrosVista > 0 && \App\Support\DescargasCatalogo::permitidas())<button type="button" role="menuitem" tabindex="-1" data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga('resultados'))); closeMenu()"><flux:icon name="arrow-down-tray" /> Descargar resultados CSV</button>@endif
                 </x-slot:actions>
                 <x-slot:reset><button type="button" class="hub-ig-button hub-ig-reset" wire:click="restablecerVistaRegistros" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button></x-slot:reset>
                 <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" :ordenable="true" />
@@ -164,7 +164,7 @@
                     <dialog class="hub-ig-dialog" x-ref="recordSort" aria-label="Ordenar registros" x-on:abrir-orden="columna = $wire.ordenRegistros || 'occurrence_id'; direccion = $wire.direccionRegistros; $el.showModal()" x-data="{columna: @js($this->ordenRegistros ?: 'occurrence_id'), direccion: @js($this->direccionRegistros)}">
                         <form x-on:submit.prevent="await $wire.ordenarRegistros(columna, direccion); $refs.recordSort.close()">
                             <div class="hub-ig-dialog-heading"><h2>Ordenar</h2><button type="button" class="hub-ig-icon-button" x-on:click="$refs.recordSort.close()" aria-label="Cerrar ordenación">×</button></div>
-                            <div class="hub-ig-dialog-body hub-ig-sort-fields"><label>Columna<select x-model="columna"><option value="occurrence_id">catalogNumber</option><option value="scientific_name">scientificName</option><option value="event_date">eventDate</option></select></label><label>Dirección<select x-model="direccion"><option value="asc">Ascendente</option><option value="desc">Descendente</option></select></label></div>
+                            <div class="hub-ig-dialog-body hub-ig-sort-fields"><label>Columna<select x-model="columna"><option value="occurrence_id">{{ collect($this->columnasPublicas)->firstWhere('campo', 'occurrence_id')['etiqueta'] ?? 'occurrenceID' }}</option><option value="scientific_name">scientificName</option><option value="event_date">eventDate</option></select></label><label>Dirección<select x-model="direccion"><option value="asc">Ascendente</option><option value="desc">Descendente</option></select></label></div>
                             <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.recordSort.close()">Cancelar</button><button type="submit" class="hub-ig-button hub-ig-button-primary">Aplicar</button></div>
                         </form>
                     </dialog>
@@ -176,7 +176,7 @@
     @if($nivelActual !== '' && $nivelActual !== 'species' && $taxonActual !== '' && ($conteos[$nivelActual.':'.$taxonActual] ?? 0) > 0)
         <section class="collection-taxon-records" aria-label="Registros del taxón seleccionado">
             <p>{{ number_format($conteos[$nivelActual.':'.$taxonActual], 0, ',', '.') }} {{ $conteos[$nivelActual.':'.$taxonActual] === 1 ? 'registro público' : 'registros públicos' }} de <em>{{ $taxonActual }}</em>, incluidos los identificados hasta este rango.</p>
-            @if(\App\Support\AccesoCatalogo::completo())<button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">{{ $catalogoTexto('ver_registros_taxon') }}</button>@endif
+            <button type="button" wire:click="cambiarVista('registros')" wire:loading.attr="disabled">{{ $catalogoTexto('ver_registros_taxon') }}</button>
         </section>
     @endif
     @if($nivelExplorar === '')
@@ -483,7 +483,7 @@
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Especie</span>
                         </h1>
-                        <div class="collection-species-download flex flex-wrap items-center gap-3">
+                        @if(\App\Support\DescargasCatalogo::permitidas())<div class="collection-species-download flex flex-wrap items-center gap-3">
                             <span class="text-xs text-text-secondary tabular-nums">
                                 {{ number_format($totalEspecimenes, 0, ',', '.') }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
                             </span>
@@ -501,9 +501,9 @@
                                     </span>
                                 </button>
                             @endif
-                        </div>
+                        </div>@endif
                     </div>
-                    @if(count($especimenes) > 0)<p class="mb-4 text-xs text-text-secondary">El XLSX incluye todos los registros filtrados de esta especie, también otras páginas, con números, fechas y campos públicos de referencia geográfica. Conserva por separado condición de tipo, disposición y advertencias de coordenadas; no incluye fotografías. Perfil de intercambio: <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code>.</p>@endif
+                    @if(count($especimenes) > 0 && \App\Support\DescargasCatalogo::permitidas())<p class="mb-4 text-xs text-text-secondary">El XLSX incluye todos los registros filtrados de esta especie, también otras páginas, con números, fechas y campos públicos de referencia geográfica. Conserva por separado condición de tipo, disposición y advertencias de coordenadas; no incluye fotografías. Perfil de intercambio: <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code>.</p>@endif
 
                     {{-- ══════════════════════════════════
                          IMAGEN DESTACADA DE LA ESPECIE (portada por defecto)
@@ -582,7 +582,7 @@
                         @endif
                     </section>
 
-                    @if(count($especimenes) === 0 && \App\Support\AccesoCatalogo::completo())
+                    @if(count($especimenes) === 0)
                         <div class="flex items-center justify-center rounded-lg border border-dashed border-border bg-surface py-12 text-sm text-text-secondary">
                             No hay registros públicos para esta especie en la selección actual.
                         </div>
@@ -924,7 +924,7 @@
 
     @endif {{-- fin modo árbol / explorar --}}
     @php $totalPaginado = $nivelActual === 'species' && $nivelExplorar === '' ? $totalEspecimenes : $totalTarjetas; @endphp
-    @if($totalPaginado > 6 && ($nivelActual !== 'species' || \App\Support\AccesoCatalogo::completo()))
+    @if($totalPaginado > 6)
         <nav class="collection-card-pagination" aria-label="Páginas de tarjetas">
             <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" wire:loading.attr="disabled" @disabled($paginaActual <= 1)>Anterior</button>
             <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 6 por página · {{ number_format($totalPaginado, 0, ',', '.') }} en total</span>
@@ -936,7 +936,7 @@
     </div>
 
     @include('catalogopublico::components.explorador-taxonomico')
-    @if(\App\Support\AccesoCatalogo::completo()) <livewire:catalogopublico.registros-taxon-explorador /> @endif
+    <livewire:catalogopublico.registros-taxon-explorador />
 
     {{-- Indicador de carga --}}
     <div

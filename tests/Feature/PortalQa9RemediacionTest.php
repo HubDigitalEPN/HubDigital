@@ -128,7 +128,7 @@ test('QA9 H05 el estado físico permanece original en ficha y XLSX sin convertir
         'occurrence_status' => 'destroyed', 'disposition' => 'in_collection', 'specimen_notes' => 'Destrucción completa por barcoding.',
     ]);
     $pagina = Livewire::withQueryParams(['vista' => 'registros', 'fc' => 'QA7-INV-1'])->test(PortalCatalogo::class)
-        ->call('abrirFichaRegistro', $f['ids'][0])->assertSee('Estado original')->assertSee('destroyed')
+        ->call('abrirFichaRegistro', $f['ids'][0])->assertSee('occurrenceStatus')->assertSee('destroyed')
         ->assertSee('Destrucción completa por barcoding.')->assertSee('En la colección');
     $leer = static function () use ($f): array {
         $xlsx = app(ExportarRegistrosEspecimenesHandler::class)->handle(new ExportarRegistrosEspecimenesInput('Ectatomma ruidum', $f['ids']));

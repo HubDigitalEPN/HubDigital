@@ -1,4 +1,4 @@
-@props(['label' => 'Resultados', 'client' => false, 'pageSize' => null, 'pageSizeAction' => null])
+@props(['label' => 'Resultados', 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true])
 <section class="hub-ig" aria-label="{{ $label }}" data-hub-grid="specialized"
     x-id="['grid-columns-title', 'grid-sort-title', 'grid-filter-title']" x-data="hubInteractiveGrid([], false, @js($label), @js($client))" :class="{'hub-ig-compact': compact}">
     <div class="hub-ig-toolbar">
@@ -6,7 +6,7 @@
         @if($client)
             <div class="hub-ig-search"><flux:icon name="magnifying-glass" /><input type="search" x-model="searchText" x-on:keydown.enter.prevent="searchPage()" aria-label="Buscar en {{ $label }}" placeholder="Buscar en la tabla"><button type="button" class="hub-ig-button" x-on:click="searchPage()">Ir</button></div>
         @endif
-        <x-grid-tools :client="$client" :page-size="$pageSize" :page-size-action="$pageSizeAction">{{ $actions ?? '' }}</x-grid-tools>
+        <x-grid-tools :client="$client" :page-size="$pageSize" :page-size-action="$pageSizeAction" :allow-download="$allowDownload">{{ $actions ?? '' }}</x-grid-tools>
         {{ $reset ?? '' }}
         @unless(isset($reset))<button type="button" class="hub-ig-button hub-ig-reset" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button>@endunless
     </div>

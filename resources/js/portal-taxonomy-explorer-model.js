@@ -280,7 +280,7 @@ export function crearExploradorTaxonomico(reloj = {
             catch {this.visorError = 'No se pudo activar la pantalla completa. Vuelve a intentarlo.';}
         },
         contextoActual() {
-            return JSON.stringify(this.filtrosArbol.map(filtro => filtro.id));
+            return JSON.stringify([this.filtrosArbol.map(filtro => filtro.id), globalThis.location?.search || '']);
         },
         actualizarPanel() {
             if (this.$refs.ete && !this.nodos.some(n => n.clave === this.ramaActiva)) {
@@ -418,6 +418,10 @@ export function crearExploradorTaxonomico(reloj = {
             const endpoint = this.$refs.dialogo.dataset?.endpoint;
             if (!endpoint) return this.$wire.consultarExploradorTaxonomico(padre, busqueda, ...(conservar.length ? [conservar] : []));
             const url = new URL(endpoint, window.location.origin);
+            for (const [clave, valor] of new URLSearchParams(globalThis.location?.search || '')) {
+                const corte = clave.indexOf('[');
+                url.searchParams.append(corte < 0 ? `contexto[${clave}]` : `contexto[${clave.slice(0,corte)}]${clave.slice(corte)}`, valor);
+            }
             if (padre) url.searchParams.set('padre', padre);
             if (busqueda) url.searchParams.set('busqueda', busqueda);
             if (this.$refs.ete && !padre && !busqueda) url.searchParams.set('completo', '1');
@@ -432,7 +436,6 @@ export function crearExploradorTaxonomico(reloj = {
             return datos;
         },
         restaurarPosicion() {
-            if (this.$refs.ete && this.modo === 'ramas') { visor?.ajustar(); return; }
             const lienzo = this.$refs.ete || this.$refs.lienzo;
             lienzo.scrollLeft = posicionGuardada.x;
             lienzo.scrollTop = posicionGuardada.y;
@@ -458,7 +461,7 @@ export function crearExploradorTaxonomico(reloj = {
             this.error = ''; this.destacado = ''; this.abierto = true; restaurarFoco = true;
             this.$refs.dialogo.showModal();
             this.$nextTick(() => {
-                visor?.ajustar(); this.distribuir();
+                if (!conservar) visor?.ajustar(); this.distribuir();
                 (this.lateralPlegado ? this.$refs.plegarLateral : this.$refs.busqueda)?.focus({preventScroll: true});
                 if (conservar) this.$nextTick(() => this.restaurarPosicion());
             });
@@ -472,8 +475,13 @@ export function crearExploradorTaxonomico(reloj = {
             posicionGuardada = {x: lienzo.scrollLeft || 0, y: lienzo.scrollTop || 0, cuerpo: this.$refs.cuerpo?.scrollTop || 0};
             restaurarFoco = devolverFoco;
             this.$refs.dialogo.close();
+            // close cambia open antes de emitir su evento en otra tarea. Dejar
+            // el estado listo ahora permite reabrir desde el botón sin esperar.
+            this.alCerrar();
         },
         alCerrar() {
+            // Un evento pendiente del cierre anterior no cancela una reapertura.
+            if (this.$refs.dialogo.open || !this.abierto) return;
             this.terminarArrastre(); this.terminarRedimension();
             this.abierto = false; sesion++; version++;
             revisionVisor++; this.visorCargando = false;

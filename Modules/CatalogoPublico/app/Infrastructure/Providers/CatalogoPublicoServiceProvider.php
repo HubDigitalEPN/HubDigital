@@ -72,6 +72,7 @@ class CatalogoPublicoServiceProvider extends ModuleServiceProvider
         $this->app->bind(GeneradorRespuestaChatBotPort::class, GeneradorCatalogoExacto::class);
         $this->app->scoped(ReferenciaTaxonomicaPublica::class);
         $this->app->scoped(\Modules\CatalogoPublico\Infrastructure\ExploradorTaxonomicoPublico::class);
+        $this->app->scoped(\Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico::class);
     }
 
     public function boot(): void

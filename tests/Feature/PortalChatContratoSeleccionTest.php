@@ -160,7 +160,7 @@ test('la ayuda pública prevalece sobre un código previo y reconoce CSV métric
     $handler = app(ConsultarChatBotHandler::class);
     $acceso = $asistente->responder('No quiero hacer un depósito. Solo quiero consultar el catálogo público, ¿necesito crear una cuenta?', $handler, contextoCatalogo: ['codigo' => 'QA3-CHAT-1']);
     expect($acceso['intent'])->toBe('portal.acceso_publico')
-        ->and($acceso['texto'])->toContain('No necesitas crear una cuenta', 'Los registros individuales', 'administración o curaduría')
+        ->and($acceso['texto'])->toContain('No necesitas crear una cuenta', 'los registros individuales son públicos', 'Las descargas requieren iniciar sesión con una cuenta verificada y estar habilitadas por administración')
         ->not->toContain('QA3-CHAT-1', 'o descargar sus resultados');
     $csv = $asistente->responder('¿Cómo descargo los resultados filtrados en CSV?', $handler, contextoCatalogo: ['taxon' => 'Chatobius', 'provincia' => 'Pichincha']);
     expect($csv['intent'])->toBe('portal.csv')

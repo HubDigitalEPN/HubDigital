@@ -29,7 +29,7 @@ Route::prefix('portal')
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
         Route::get('/descargas/{exportacion}', \Modules\CatalogoPublico\Presentation\Http\Controllers\DescargarCatalogo::class)
             ->whereIn('exportacion', ['datos', 'resultados', 'especies', 'mapa', 'filos', 'riqueza', 'decadas', 'calidad', 'raras', 'estacionalidad', 'altitud', 'metodos'])
-            ->middleware(['auth', 'verified', 'role:curador'])->name('descarga');
+            ->middleware(['auth', 'verified', 'throttle:20,1'])->name('descarga');
         // La PWA guarda el catálogo renderizado, no un placeholder que necesite
         // otra petición Livewire en cada apertura, incluso desde la caché.
         Route::get('/catalogo', PortalCatalogo::class)->name('catalogo');
@@ -55,7 +55,7 @@ Route::prefix('portal')
             ->middleware('throttle:120,1')->name('sugerencias');
         Route::view('/diccionario-exportacion', 'catalogopublico::diccionario-exportacion')->name('diccionario-exportacion');
         Route::get('/lista-especies.csv', [PortalEstadisticas::class, 'descargarLista'])
-            ->middleware(['auth', 'verified', 'role:curador'])->name('lista-especies');
+            ->middleware(['auth', 'verified', 'throttle:20,1'])->name('lista-especies');
         Route::get('/imagenes/{objeto}', ServirImagenCatalogo::class)
             ->where('objeto', '[A-Za-z0-9_-]+')
             ->name('imagen');

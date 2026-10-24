@@ -8,7 +8,7 @@
     </button>
     <div id="menu-{{ $tipo }}" class="atlas-menu" x-ref="menu" x-cloak x-show="abierto" role="menu" aria-label="Opciones de {{ $indice['titulo'] }}"
         x-on:keydown.arrow-down.prevent="mover($event)" x-on:keydown.arrow-up.prevent="mover($event)" x-on:keydown.home.prevent="mover($event)" x-on:keydown.end.prevent="mover($event)" x-on:focusout="if (!$el.contains($event.relatedTarget)) abierto = false">
-        @if(\App\Support\AccesoCatalogo::completo())
+        @if(\App\Support\DescargasCatalogo::permitidas())
         <button type="button" role="menuitem" data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga($tipo))); cerrar()">{{ \App\Support\PortalCopy::text($tipo === 'especies' ? 'catalogo.lista_csv' : 'catalogo.descargar_csv') }}</button>
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">{{ \App\Support\PortalCopy::text('catalogo.geojson') }}</button>@endif
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">{{ \App\Support\PortalCopy::text('catalogo.pdf') }}</button>@endif

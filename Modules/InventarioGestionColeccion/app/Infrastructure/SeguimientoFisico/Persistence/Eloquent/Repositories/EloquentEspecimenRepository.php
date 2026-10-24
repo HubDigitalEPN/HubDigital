@@ -912,9 +912,13 @@ class EloquentEspecimenRepository implements EspecimenRepositoryInterface
             $pat = '%'.$filtros['localidad'].'%';
             $query->where(function ($q) use ($pat): void {
                 $q->where('localidad', 'ilike', $pat)
+                    ->orWhere('localidad_area', 'ilike', $pat)
+                    ->orWhere('localidad_verbatim', 'ilike', $pat)
                     ->orWhere('localidad2', 'ilike', $pat)
                     ->orWhere('localidad3', 'ilike', $pat)
                     ->orWhere('locality_name', 'ilike', $pat)
+                    ->orWhere('locality_notes', 'ilike', $pat)
+                    ->orWhere('locality_code', 'ilike', $pat)
                     ->orWhere('state_province', 'ilike', $pat)
                     ->orWhere('municipality', 'ilike', $pat)
                     ->orWhere('country', 'ilike', $pat);

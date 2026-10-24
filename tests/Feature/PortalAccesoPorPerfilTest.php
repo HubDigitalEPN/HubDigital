@@ -11,29 +11,39 @@ use Modules\CatalogoPublico\Presentation\Http\Controllers\RegistrosTaxonExplorad
 uses(Tests\DatabaseFeatureTestCase::class);
 uses(Tests\Concerns\ColeccionPortalAislada::class);
 
-test('sólo administración y curaduría ven las funciones operativas del catálogo', function (?string $rol): void {
+test('todas las personas consultan registros y sólo las cuentas habilitadas ven las descargas', function (?string $rol): void {
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
-    $autorizado = in_array($rol, ['ADMIN', 'CURADOR'], true);
     $pagina = $this->get(route('portal.catalogo', ['vista' => 'mapa']))->assertOk();
-    foreach (['Ir al panel del curador', 'data-catalogo-descarga', 'x-on:click="pdf()"', 'x-on:click="verRegistros(menuNodo)"'] as $control) {
-        if ($autorizado) $pagina->assertSee($control, false);
+    $pagina->assertSee('x-on:click="verRegistros(menuNodo)"', false)->assertSee('Ver en el mapa');
+    if (in_array($rol, ['ADMIN', 'CURADOR'], true)) $pagina->assertSee('Ir al panel del curador');
+    else $pagina->assertDontSee('Ir al panel del curador');
+    foreach (['data-catalogo-descarga', 'x-on:click="pdf()"'] as $control) {
+        if ($rol !== null) $pagina->assertSee($control, false);
         else $pagina->assertDontSee($control, false);
     }
-    $pagina->assertDontSee('Datos originales por revisar')->assertDontSee('Consultar datos originales de la selección');
-    $pagina->assertSee('x-on:click="verEnMapa(menuNodo)"', false)->assertSee('Ver en el mapa');
-    if ($autorizado) $pagina->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, no-store, private');
+    Livewire::withQueryParams(['vista' => 'registros'])->test(PortalCatalogo::class)->assertSet('vista', 'registros');
+    Livewire::test(RegistrosTaxonExplorador::class)->assertOk();
 })->with([null, 'ADMIN', 'CURADOR', 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
 
-test('un visitante o un perfil ajeno a curaduría no puede invocar registros ni descargas directamente', function (?string $rol): void {
+test('el flag deshabilitado bloquea todas las descargas externas incluso por HTTP o Livewire', function (?string $rol): void {
+    \Illuminate\Support\Facades\DB::table('usuarios.configuracion_catalogo')->where('clave', 'descargas_autoservicio')->update(['habilitado' => false]);
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
-    foreach ([['descargarResultados'], ['descargarAnalisis', 'mapa'], ['descargarListaEspecies'], ['descargarDatos'], ['abrirCelda', -.25, -78.5], ['abrirFichaRegistro', (string) \Illuminate\Support\Str::uuid()], ['cambiarVista', 'registros']] as $accion) {
+    foreach ([['descargarResultados'], ['descargarAnalisis', 'mapa'], ['descargarListaEspecies'], ['descargarDatos']] as $accion) {
         Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call(...$accion)->assertForbidden();
     }
-    Livewire::test(RegistrosTaxonExplorador::class)->assertForbidden();
-    Livewire::withQueryParams(['vista' => 'registros'])->test(PortalCatalogo::class)->assertSet('vista', 'mapa');
+    Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('cambiarVista', 'registros')->assertSet('vista', 'registros');
     $this->getJson(route('portal.lista-especies'))->assertStatus($rol === null ? 401 : 403);
     $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertStatus($rol === null ? 401 : 403);
 })->with([null, 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
+
+test('el permiso de descarga se aplica a cuentas verificadas y curaduría conserva su acceso', function (): void {
+    $usuario = User::factory()->depositante()->create();
+    expect(\App\Support\DescargasCatalogo::permitidas($usuario))->toBeTrue();
+    \Illuminate\Support\Facades\DB::table('usuarios.configuracion_catalogo')->where('clave', 'descargas_autoservicio')->update(['habilitado' => false]);
+    expect(\App\Support\DescargasCatalogo::permitidas($usuario))->toBeFalse()
+        ->and(\App\Support\DescargasCatalogo::permitidas(User::factory()->curador()->create()))->toBeTrue()
+        ->and(\App\Support\DescargasCatalogo::permitidas(User::factory()->depositante()->unverified()->create()))->toBeFalse();
+});
 
 test('un curador sin verificar tampoco habilita operaciones del catálogo', function (): void {
     $this->actingAs(User::factory()->curador()->unverified()->create());
@@ -54,7 +64,7 @@ test('login dirige al mapa sólo a curaduría y administración aunque existiera
 
 test('el chat adapta los enlaces de registros al permiso y conserva los filtros de la selección', function (?string $rol): void {
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
-    $autorizado = in_array($rol, ['ADMIN', 'CURADOR'], true);
+    $autorizado = $rol !== null;
     $chat = Livewire::test(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)
         ->set('pregunta', '¿Cómo descargo los resultados filtrados en CSV?')
         ->call('enviar', ['fprov' => 'Pichincha']);
@@ -62,23 +72,23 @@ test('el chat adapta los enlaces de registros al permiso y conserva los filtros 
         $opcion = $mensajes[1]['opciones'][0];
         parse_str((string) parse_url($opcion['url'], PHP_URL_QUERY), $parametros);
         return ($parametros['fprov'] ?? null) === 'Pichincha'
-            && ($parametros['vista'] ?? null) === ($autorizado ? 'registros' : 'mapa')
-            && $opcion['label'] === ($autorizado ? 'Abrir registros filtrados' : 'Explorar selección en el mapa');
-    })->assertSee('cuenta verificada de administración o curaduría');
+            && ($parametros['vista'] ?? null) === 'registros'
+            && $opcion['label'] === 'Abrir registros filtrados';
+    })->assertSee('cuenta verificada');
     $documento = new DOMDocument;
     @$documento->loadHTML('<?xml encoding="UTF-8">'.$chat->html());
     $dom = new DOMXPath($documento);
-    expect($dom->query('//a[normalize-space(.)="Abrir registros filtrados"]')->length)->toBe($autorizado ? 1 : 0)
-        ->and($dom->query('//a[normalize-space(.)="Explorar selección en el mapa"]')->length)->toBe($autorizado ? 0 : 1);
+    expect($dom->query('//a[normalize-space(.)="Abrir registros filtrados"]')->length)->toBe(1)
+        ->and($dom->query('//a[normalize-space(.)="Explorar selección en el mapa"]')->length)->toBe(0);
 })->with([null, 'ADMIN', 'CURADOR', 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
 
-test('las sugerencias del chat sólo ofrecen ver registros a curaduría', function (bool $autorizado): void {
+test('las sugerencias del chat ofrecen la consulta de registros a todos los perfiles', function (bool $autorizado): void {
     if ($autorizado) $this->actingAs(User::factory()->curador()->create());
     Livewire::test(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)
         ->set('pregunta', 'ke bichos ai aki')->call('enviar')
         ->assertViewHas('mensajesVisibles', function (array $mensajes) use ($autorizado): bool {
             $etiquetas = array_column($mensajes[1]['opciones'], 'label');
-            return in_array('Ver registros', $etiquetas, true) === $autorizado
+            return in_array('Ver registros', $etiquetas, true)
                 && in_array('Contar especies', $etiquetas, true);
         });
 })->with([false, true]);

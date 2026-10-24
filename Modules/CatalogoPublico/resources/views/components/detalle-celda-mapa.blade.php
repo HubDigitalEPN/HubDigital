@@ -18,7 +18,7 @@
         <div class="atlas-cell-body" x-show="!cargando && !error">
             <p class="atlas-cell-status" wire:loading wire:target="paginarCelda,ajustarRegistrosPorPagina" role="status">Actualizando registros…</p>
             <div class="atlas-cell-content portal-records-paged">
-                <x-grid-frame label="Registros de la localidad" :page-size="$this->registrosPorPaginaCelda" page-size-action="ajustarRegistrosCelda">
+                <x-grid-frame label="Registros de la localidad" :page-size="$this->registrosPorPaginaCelda" page-size-action="ajustarRegistrosCelda" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
                     <x-catalogopublico::tabla-registros-mapa :registros="$detalle['registros']" :imagenes="$detalle['imagenes']" :total="$detalle['total']" :seleccion="null" :mostrar-titulo="false" />
                     <x-slot:pagination>
                         @if($detalle['ultima'] > 1 && $vistaCelda === 'registros')<x-grid-pages :page="$detalle['pagina']" :last="$detalle['ultima']" :total="$detalle['total']" :per-page="$this->registrosPorPaginaCelda" action="paginarCelda" label="Registros de la localidad" />@endif

@@ -22,7 +22,7 @@ final class ExploradorPublico
         ]);
         $id = $datos['taxon'] ?? '';
         if ($id !== '' && $explorador->taxon(FiltrosBusqueda::vacio(), $id) === null) abort(404);
-        $filtros = FiltrosBusqueda::desde(['filtroTaxonId' => $id]);
+        $filtros = \Modules\CatalogoPublico\Infrastructure\ContextoCatalogoPublico::filtros($request, $id);
         $conservar = $datos['conservar'] ?? [];
         $abrirSeleccion = $id !== '' && empty($datos['padre']) && empty($datos['busqueda']) && $conservar === [];
         if ($abrirSeleccion) {

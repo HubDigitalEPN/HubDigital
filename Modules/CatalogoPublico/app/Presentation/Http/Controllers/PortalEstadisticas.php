@@ -171,7 +171,7 @@ final class PortalEstadisticas
 
     public function descargarListaConFiltros(array $filtros): StreamedResponse
     {
-        \App\Support\AccesoCatalogo::autorizar();
+        \App\Support\DescargasCatalogo::autorizar();
         $idsValidos = CalidadDatoPublico::taxonesConLinajeValido(DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'nombre_cientifico']));
         $consulta = $this->consulta($filtros)
             ->join('taxonomia.taxones as t', 't.id', '=', 'te.taxon_id')
@@ -199,6 +199,8 @@ final class PortalEstadisticas
     {
         $datos = [];
         $datos['filtroTaxonId'] = $filtros['taxon_id'] ?? '';
+        $datos['filtroTaxonIds'] = $filtros['taxon_ids'] ?? [];
+        $datos['filtroLocalidadTexto'] = $filtros['localidad_texto'] ?? '';
         foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'provincias' => 'filtroProvincias', 'filos' => 'filtroFilos', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
             if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }

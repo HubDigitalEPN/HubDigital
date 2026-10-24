@@ -13,16 +13,19 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\Resolve
 /** Configura presentación de DTO públicos; nunca concede visibilidad de datos. */
 final class ColumnasRegistroPublico
 {
+    private ?array $columnas = null;
+
+    public function olvidar(): void { $this->columnas = null; }
     private const MAPA = [
         'occurrence_id' => ['codigoCatalogo', 'catalogNumber'],
         'scientific_name' => ['taxonNombre', 'scientificName'],
-        'event_date' => ['fechaColecta', 'eventDate'],
+        'event_date' => ['fechaVerbatim', 'eventDate'],
         'recorded_by' => ['colector', 'recordedBy'],
         'country' => ['country', 'country'],
         'state_province' => ['stateProvince', 'stateProvince'],
         'locality_name' => ['localidad', 'locality'],
         'locality_excel' => ['localidadVerbatim', 'verbatimLocality'],
-        'locality_inec' => ['localityName', 'Locality (INEC)'],
+        'locality_inec' => ['localidadInec', 'Localidad INEC'],
         'locality_inec_reference' => ['localityNotes', 'INEC reference'],
         'decimal_latitude' => ['decimalLatitude', 'decimalLatitude'],
         'decimal_longitude' => ['decimalLongitude', 'decimalLongitude'],
@@ -44,17 +47,19 @@ final class ColumnasRegistroPublico
 
     public function todas(): array
     {
-        $registro = array_column(app(ResolverPrioridadColumnas::class)->aplicar('especimenes', RegistroColumnasEspecimen::todas()), null, 'clave');
+        if ($this->columnas !== null) return $this->columnas;
+        $cabeceras = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'], 'cabecera', 'campo');
+        $registro = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(app(ResolverPrioridadColumnas::class)->aplicar('especimenes', RegistroColumnasEspecimen::todas())), null, 'clave');
         $config = Schema::hasTable('taxonomia.columnas_portal_publico')
             ? DB::table('taxonomia.columnas_portal_publico')->pluck('visible', 'clave')->all() : [];
         $columnas = [];
         foreach (self::MAPA as $campo => [$claveRegistro, $etiqueta]) {
             $meta = $registro[$claveRegistro] ?? [];
-            $columnas[] = ['clave' => $campo, 'campo' => $campo, 'claveRegistro' => $claveRegistro, 'etiqueta' => $etiqueta,
+            $columnas[] = ['clave' => $campo, 'campo' => $campo, 'claveRegistro' => $claveRegistro, 'etiqueta' => $cabeceras[\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::campo($claveRegistro)] ?? $meta['etiqueta'] ?? $etiqueta,
                 'grupo' => $meta['grupo'] ?? 'registro', 'prioridad' => $meta['prioridad'] ?? 'opcional',
                 'visible' => array_key_exists($campo, $config) ? (bool) $config[$campo] : true];
         }
-        return $columnas;
+        return $this->columnas = $columnas;
     }
 
     public function visibles(): array
@@ -74,5 +79,6 @@ final class ColumnasRegistroPublico
         foreach (self::MAPA as $clave => $_) $filas[] = ['clave' => $clave, 'visible' => in_array($clave, $clavesVisibles, true),
             'actualizado_por' => auth()->id(), 'created_at' => now(), 'updated_at' => now()];
         DB::transaction(fn () => DB::table('taxonomia.columnas_portal_publico')->upsert($filas, ['clave'], ['visible', 'actualizado_por', 'updated_at']));
+        $this->olvidar();
     }
 }

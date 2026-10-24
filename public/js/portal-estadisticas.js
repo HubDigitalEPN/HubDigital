@@ -21,6 +21,7 @@
             return '"' + texto.replaceAll('"', '""') + '"';
         };
         const descargarCsv = (nombre, cabecera, filas) => {
+            if (document.querySelector('meta[name=catalogo-descargas]')?.content !== 'true') return;
             const contenido = '\uFEFF' + [cabecera, ...filas].map(fila => fila.map(escaparCsv).join(';')).join('\r\n');
             const url = URL.createObjectURL(new Blob([contenido], {type: 'text/csv;charset=utf-8'}));
             const enlace = document.createElement('a');
@@ -147,6 +148,8 @@
         };
         if (window.L) {
             mapa = L.map('mapa-coleccion', {scrollWheelZoom: false, preferCanvas: true, boxZoom: true});
+            if (window.hubMapaPantallaCompleta) window.hubMapaPantallaCompleta(mapa);
+            else window.addEventListener('hub-mapa-controles-listos', () => window.hubMapaPantallaCompleta(mapa), {once: true});
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 18,
             }).addTo(mapa);

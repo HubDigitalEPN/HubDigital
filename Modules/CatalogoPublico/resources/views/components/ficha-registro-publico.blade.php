@@ -3,7 +3,7 @@
     x-on:click="if ($event.target === $el) $el.close()"
     x-on:close="$wire.cerrarFichaRegistro()" aria-labelledby="titulo-ficha-publica">
     <header class="portal-record-dialog-header">
-        <h2 id="titulo-ficha-publica">Ficha del registro</h2>
+        <h2 id="titulo-ficha-publica" class="sr-only">Detalle del espécimen</h2>
         <button type="button" autofocus x-on:click="$refs.fichaPublica.close()" aria-label="Cerrar ficha del registro">×</button>
     </header>
     @php

@@ -74,12 +74,12 @@ test('la estructura completa de ETE agrega sólo taxones públicos y conserva pe
     expect(array_column($oculto['nodos'], 'id'))->not->toContain($rama['familia']['id'], $rama['genero']['id']);
 });
 
-test('ver en el mapa desde el árbol reemplaza filtros anteriores y usa los puntos del nodo público', function (): void {
+test('ver en el mapa desde el árbol conserva los filtros aplicados en tarjetas y usa los puntos del nodo público', function (): void {
     $this->actingAs(\App\Models\User::factory()->curador()->create());
     $f = exploradorTaxonomicoFixture(2); $id = $f['ramas'][1]['especie']['id'];
-    Livewire::withQueryParams(['vista' => 'registros', 'fprov' => 'Pichincha', 'fco' => 'No existe'])
+    Livewire::withQueryParams(['vista' => 'registros', 'fprov' => 'Napo', 'fco' => 'QA explorador'])
         ->test(PortalCatalogo::class)->call('verTaxonExploradorEnMapa', $id)
-        ->assertSet('vista', 'mapa')->assertSet('filtroProvincia', '')->assertSet('filtroColector', '')
+        ->assertSet('vista', 'mapa')->assertSet('filtroProvincia', 'Napo')->assertSet('filtroColector', 'QA explorador')
         ->assertSet('filtroTaxonId', $id)->assertReturned(fn ($d) => $d['total'] === 2)
         ->assertViewHas('datosMapa', fn ($d) => $d['resumen']['registros'] === 2 && array_sum(array_column($d['mapa'], 'total')) === 2);
 });
@@ -181,15 +181,16 @@ test('el panel Filo depende del Taxón confirmado y permite seleccionar hijos si
     $pagina = Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class);
     expect($pagina->instance()->arbolFiloPanel['nodos'])->toHaveCount(2);
     $pagina->call('seleccionarNodoFilo', $primera['phylum']['id'])->call('seleccionarNodoFilo', $primera['clase']['id'])
-        ->assertSet('filtroTaxonId', $primera['clase']['id'])->assertSet('vista', 'mapa');
+        ->assertSet('filtroTaxonIds', [$primera['clase']['id']])->assertSet('vista', 'mapa');
     $panelAplicado = $pagina->instance()->arbolFiloPanel;
     expect(array_column(array_filter($panelAplicado['nodos'], fn ($n) => $n['padre'] === null), 'id'))
         ->toEqualCanonicalizing([$primera['phylum']['id'], $segunda['phylum']['id']]);
     $pagina->set('borradorFiltros.filtroTaxon', $segunda['especie']['nombre']);
     expect($pagina->instance()->arbolFiloPanel)->toBe($panelAplicado);
-    $pagina->assertSet('filtroTaxonId', $primera['clase']['id'])->assertSet('filtroTaxon', '');
+    $pagina->assertSet('filtroTaxonIds', [$primera['clase']['id']])->assertSet('filtroTaxon', '');
     $pagina->call('aplicarBusquedaTexto', 'filtroTaxon', $segunda['especie']['nombre'])
         ->assertSet('filtroTaxonId', '')->assertSet('filtroFiloId', '')->assertSet('filtroFilos', [])
+        ->assertSet('filtroTaxonIds', [])
         ->assertViewHas('datosMapa', fn ($d) => $d['resumen']['registros'] === 2);
     $panelTexto = $pagina->instance()->arbolFiloPanel;
     expect(array_column($panelTexto['nodos'], 'id'))
@@ -204,14 +205,16 @@ test('el panel Filo depende del Taxón confirmado y permite seleccionar hijos si
     }
 });
 
-test('elegir un hijo de otro filo retira las selecciones incompatibles', function (): void {
+test('elegir hijos de diferentes filos conserva la selección múltiple y permite retirar un hijo', function (): void {
     $f = exploradorTaxonomicoFixture(2);
     Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)
         ->call('seleccionarNodoFilo', $f['ramas'][0]['phylum']['id'])
         ->call('seleccionarNodoFilo', $f['ramas'][1]['clase']['id'])
-        ->assertSet('filtroTaxonId', $f['ramas'][1]['clase']['id'])->assertSet('vista', 'mapa')
-        ->assertSet('filtroFiloId', '')->assertSet('filtroFilos', [])
-        ->assertViewHas('datosMapa', fn ($d) => $d['resumen']['registros'] === 2);
+        ->assertSet('filtroTaxonIds', [$f['ramas'][1]['clase']['id']])->assertSet('vista', 'mapa')
+        ->assertSet('filtroFiloId', $f['ramas'][0]['phylum']['id'])->assertSet('filtroFilos', [])
+        ->assertViewHas('datosMapa', fn ($d) => $d['resumen']['registros'] === 3)
+        ->call('seleccionarNodoFilo', $f['ramas'][1]['clase']['id'])->assertSet('filtroTaxonIds', [])
+        ->assertViewHas('datosMapa', fn ($d) => $d['resumen']['registros'] === 1);
 });
 
 test('la ruta de ramas Filo entrega sólo descendientes públicos compatibles con el texto', function (): void {
@@ -356,7 +359,7 @@ test('el explorador conserva otros filtros y su identidad en el enlace sin acept
     $pagina = Livewire::withQueryParams(['vista' => 'registros', 'fprov' => 'Pichincha', 'fco' => 'QA explorador'])->test(PortalCatalogo::class)
         ->call('seleccionarTaxonExplorador', $rama['orden']['id'])
         ->assertSet('vista', 'mapa')->assertSet('filtroProvincia', 'Pichincha')->assertSet('filtroColector', 'QA explorador');
-    $pagina->call('consultarExploradorTaxonomico')->assertReturned(fn ($d) => count($d['nodos']) === 2 && $d['seleccionado'] === '' && $d['total'] === 3);
+    $pagina->call('consultarExploradorTaxonomico')->assertReturned(fn ($d) => count($d['nodos']) === 1 && $d['seleccionado'] === '' && $d['total'] === 1);
     $pagina->set('borradorFiltros.filtroTaxonId', $f['ramas'][1]['orden']['id'])->assertSet('filtroTaxonId', $rama['orden']['id']);
     $parametros = $pagina->instance()->seleccionPublicaChat;
     expect($parametros['fti'])->toBe($rama['orden']['id']);

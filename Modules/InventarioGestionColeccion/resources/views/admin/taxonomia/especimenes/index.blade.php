@@ -231,6 +231,7 @@
                              wire:click="$toggle('panelColumnasAbierto')">
                     Columnas <span class="ml-1 text-text-secondary">{{ count($columnasTabla) }}</span>
                 </flux:button>
+                @if(auth()->user()?->esAdministrador())<flux:button wire:click="$toggle('gestionarColumnas')">Crear o eliminar columnas</flux:button>@endif
 
                 <label class="flex items-center gap-2 text-xs text-text-secondary">
                     Filas
@@ -397,6 +398,14 @@
             </div>
         @endif
 
+        @if($gestionarColumnas && auth()->user()?->esAdministrador())
+        <section class="hub-panel space-y-4 p-4">
+            <h2 class="hub-section-title">Columnas del catálogo</h2>
+            <form wire:submit="crearColumna" class="grid gap-3 sm:grid-cols-3"><flux:input wire:model="nuevaColumna" label="Título de la columna"/><flux:input wire:model="descripcionColumna" label="Instrucción de la guía"/><flux:button type="submit" variant="primary">Crear columna</flux:button></form>
+            <p class="text-sm">Se conservan las columnas usadas y su historial. Los campos nuevos se pueden editar en la tabla y en la ficha.</p>
+            <div class="max-h-64 overflow-auto"><ul>@foreach($definicionColumnas as $c)<li class="flex items-center justify-between gap-3 border-b p-2"><span data-copy-preserve>{{ $c['cabecera'] }}</span><flux:button wire:click="eliminarColumna('{{ $c['campo'] }}')" wire:confirm="Se eliminará la columna únicamente si nunca se ha usado. ¿Continuar?">Eliminar si está sin uso</flux:button></li>@endforeach</ul></div>
+        </section>
+        @endif
         {{-- Panel de configuración de columnas --}}
         @if($panelColumnasAbierto)
             <div class="space-y-3 border-t border-border p-4">
@@ -410,6 +419,7 @@
                     <div class="flex flex-wrap gap-2">
                         <flux:button size="sm" variant="ghost" wire:click="restaurarColumnas">Por defecto</flux:button>
                         <flux:button size="sm" variant="ghost" wire:click="mostrarTodasColumnas">Mostrar todas</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="ocultarTodasColumnas">Ocultar todas</flux:button>
                         <flux:button size="sm" variant="ghost" wire:click="soloColumnasCriticas">Solo críticas</flux:button>
                         <flux:button size="sm" icon="x-mark" variant="ghost" wire:click="$set('panelColumnasAbierto', false)">Cerrar</flux:button>
                     </div>
@@ -602,7 +612,7 @@
                         </th>
                         @foreach($columnasTabla as $col)
                             @php $ordenable = in_array($col['clave'], $clavesOrdenables, true); @endphp
-                            <th scope="col"
+                            <th scope="col" data-copy-preserve
                                 class="sticky top-0 z-20 whitespace-nowrap border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 text-left font-sans font-medium text-white">
                                 @if($ordenable)
                                     <button type="button" wire:click="ordenarPorColumna('{{ $col['clave'] }}')"
@@ -661,7 +671,7 @@
                                     $texto = $textoCelda($especimen, $col['clave']);
                                     $editable = in_array($col['clave'], $clavesEditables, true);
                                     $esCodigo = $col['clave'] === 'codigoCatalogo';
-                                    $titulo = $texto.($editable ? ' · doble clic para editar' : '');
+                                    $titulo = $texto.($editable ? ' · clic o Enter para editar' : '');
                                     $clasesCelda = trim(
                                         ($editable ? 'cursor-cell ' : '').
                                         (in_array($col['clave'], $clavesNumericas, true) ? 'text-right' : '')
@@ -670,7 +680,9 @@
                                 <td class="border-b border-r border-border px-2 py-1 align-top text-text-primary
                                            {{ $fondo }} group-hover:bg-science-blue/10 {{ $clasesCelda }}"
                                     @if($editable)
-                                        x-on:dblclick="abrirCelda($event, '{{ $especimen['id'] }}', '{{ $col['clave'] }}', {{ Js::from($texto) }})"
+                                        tabindex="0" aria-label="Editar {{ $col['etiqueta'] }}"
+                                        x-on:click="if (!$event.target.closest('button,a,input')) abrirCelda($event, '{{ $especimen['id'] }}', '{{ $col['clave'] }}', {{ Js::from($texto) }})"
+                                        x-on:keydown.enter.prevent="abrirCelda($event, '{{ $especimen['id'] }}', '{{ $col['clave'] }}', {{ Js::from($texto) }})"
                                         x-bind:class="editando('{{ $especimen['id'] }}', '{{ $col['clave'] }}') && 'opacity-0'"
                                     @endif
                                     title="{{ $titulo }}">
@@ -843,7 +855,7 @@
                 $titulosGrupo = [
                     'identificacion' => 'Identificación',
                     'taxonomia' => 'Taxonomía',
-                    'localidad' => 'Localidad',
+                    'localidad' => 'Ubicación geográfica',
                     'fecha' => 'Fecha',
                     'registro' => 'Registro',
                     'atributos' => 'Atributos',
@@ -884,7 +896,7 @@
                                         $texto = $textoCelda($fichaDatos, $clave);
                                     @endphp
                                     <div class="min-w-0">
-                                        <label class="flex items-center gap-1.5 text-xs text-text-secondary"
+                                        <label data-copy-preserve class="flex items-center gap-1.5 text-xs text-text-secondary"
                                                @if($editable) for="ficha-{{ $clave }}" @endif>
                                             <span class="inline-block size-2 shrink-0 rounded-full
                                                 @if($col['prioridad']==='critica') bg-error
@@ -1210,6 +1222,7 @@
         @if($showEditModal)
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Editar especímen</flux:heading>
+            @if($errors->any())<div role="alert" class="text-sm text-error">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
             @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
             <p class="text-sm text-text-secondary">El portal mostrará juntas las tres localidades cuando el registro y su localidad estén autorizados para publicación. Deja el área vacía si no está documentada.</p>
             <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="editLocalidad" maxlength="255" /><flux:error name="editLocalidad" /></flux:field>

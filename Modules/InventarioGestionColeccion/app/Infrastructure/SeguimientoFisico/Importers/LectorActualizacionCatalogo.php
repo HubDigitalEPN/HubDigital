@@ -37,6 +37,7 @@ final class LectorActualizacionCatalogo
                 if (!array_filter($cabeceras)) throw new DomainException('La primera fila debe contener las columnas de la matriz.');
                 continue;
             }
+            if ($numero === 2 && str_starts_with(trim((string) ($celdas[0] ?? '')), '[INSTRUCCIONES] ')) continue;
             if (!array_filter($celdas, static fn ($v) => trim((string)$v) !== '' && trim((string)$v) !== '_')) continue;
             if (++$contador > self::MAX_FILAS) throw new DomainException('El archivo supera los 50.000 registros. Divide la matriz para continuar.');
             $datos = [];

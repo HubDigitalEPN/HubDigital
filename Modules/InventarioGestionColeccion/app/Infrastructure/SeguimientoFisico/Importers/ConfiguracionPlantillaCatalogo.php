@@ -73,6 +73,8 @@ final class ConfiguracionPlantillaCatalogo
             if (isset($campos[$campo]) || isset($cabeceras[$cabecera])) throw new DomainException('La configuración contiene campos o encabezados repetidos.');
             $campos[$campo] = true; $cabeceras[$cabecera] = true;
             if (!in_array($c['requisito'] ?? '', ['obligatorio', 'recomendado', 'opcional'], true) || !in_array($c['formato'] ?? '', ['texto', 'fecha'], true)) throw new DomainException('Requisito o formato no válido en «'.$c['cabecera'].'».');
+            if (isset($c['requisito_guia']) && !in_array($c['requisito_guia'], ['obligatorio','recomendado','opcional','interno','predeterminado'], true)) throw new DomainException('Requisito de guía no válido.');
+            if (($c['personalizada'] ?? false) && !preg_match('/^extra_[a-f0-9]{32}$/D', $c['campo'])) throw new DomainException('La clave estable de la columna personalizada no es válida.');
         }
         $id = array_values(array_filter($columnas, fn ($c) => $c['campo'] === 'occurrenceID'));
         if (count($id) !== 1 || $id[0]['requisito'] !== 'obligatorio') throw new DomainException('Conserva occurrenceID como obligatorio para identificar y actualizar las fichas.');
@@ -110,8 +112,15 @@ final class ConfiguracionPlantillaCatalogo
             $anteriores = $this->leer(); $porCampo = array_column($anteriores['columnas'], null, 'campo'); $columnas = [];
             for ($i = 2; $i <= $guia->getHighestDataRow(); $i++) {
                 $campo = $leer($guia->getCell('A'.$i)); if ($campo === '') continue;
-                $c = ['campo' => $campo, 'cabecera' => $leer($guia->getCell('B'.$i)), 'descripcion' => $leer($guia->getCell('C'.$i)), 'requisito' => mb_strtolower($leer($guia->getCell('D'.$i))), 'formato' => mb_strtolower($leer($guia->getCell('E'.$i)))];
+                $nuevaGuia = $leer($guia->getCell('F1')) === 'Requisito catálogo';
+                $c = ['campo' => $campo, 'cabecera' => $leer($guia->getCell('B'.$i)), 'descripcion' => $leer($guia->getCell('C'.$i)), 'requisito' => mb_strtolower($leer($guia->getCell(($nuevaGuia ? 'F' : 'D').$i))), 'formato' => mb_strtolower($leer($guia->getCell('E'.$i)))];
                 $previo = $porCampo[$campo] ?? null;
+                if ($previo['personalizada'] ?? false) $c['personalizada'] = true;
+                if ($nuevaGuia) {
+                    $referencia = mb_strtolower($leer($guia->getCell('D'.$i)));
+                    if (!in_array($referencia, ['obligatorio','recomendado','opcional','interno','predeterminado'], true)) throw new DomainException('Requisito de la guía v2 no válido.');
+                    if ($referencia !== GeneradorPlantillaImportXlsx::requisitoGuia($c) || isset($previo['requisito_guia'])) $c['requisito_guia'] = $referencia;
+                }
                 $c['alias'] = $previo['alias'] ?? [];
                 if ($previo && $previo['cabecera'] !== $c['cabecera']) $c['alias'] = array_values(array_unique([...$c['alias'], $previo['cabecera']]));
                 $columnas[] = $c;
@@ -132,7 +141,22 @@ final class ConfiguracionPlantillaCatalogo
         DB::transaction(function () use ($definicion, $esperada, $usuario): void {
             $fila = DB::table('taxonomia.configuracion_plantilla_catalogo')->where('clave', 'catalogo')->lockForUpdate()->first();
             if (!$fila || !hash_equals($esperada, self::huella(json_decode($fila->definicion, true, 512, JSON_THROW_ON_ERROR)))) throw new DomainException('La plantilla cambió mientras la editabas. Descarga la versión actual y vuelve a aplicar tus ajustes.');
+            $antes = json_decode($fila->definicion, true, 512, JSON_THROW_ON_ERROR);
+            $anteriores = array_column($antes['columnas'], null, 'campo');
+            $conocidas = array_column(self::predeterminada()['columnas'], 'campo');
+            foreach ($definicion['columnas'] as $columna) {
+                if (!isset($anteriores[$columna['campo']]) && !in_array($columna['campo'], $conocidas, true)) {
+                    if (!auth()->user()?->esAdministrador() || !($columna['personalizada'] ?? false)) throw new DomainException('Crea las nuevas columnas desde Catálogo → Especímenes con una cuenta administradora.');
+                }
+                if (($anteriores[$columna['campo']]['personalizada'] ?? false) && !($columna['personalizada'] ?? false)) throw new DomainException('Conserva el tipo de las columnas personalizadas.');
+            }
+            $campos = array_column($definicion['columnas'], 'campo');
+            foreach ($antes['columnas'] as $columna) if (!in_array($columna['campo'], $campos, true)) {
+                if (!auth()->user()?->esAdministrador()) throw new DomainException('Sólo el administrador puede eliminar columnas.');
+                if (app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->usada($columna)) throw new DomainException('No se puede eliminar «'.$columna['cabecera'].'»: ya fue utilizada.');
+            }
             DB::table('taxonomia.configuracion_plantilla_catalogo')->where('clave', 'catalogo')->update(['definicion' => json_encode($definicion, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'actualizado_por' => $usuario, 'updated_at' => now()]);
+            app(\Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico::class)->olvidar();
         });
     }
 }

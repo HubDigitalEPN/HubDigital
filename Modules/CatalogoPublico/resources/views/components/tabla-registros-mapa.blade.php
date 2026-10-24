@@ -17,8 +17,8 @@
                 <tr>
                     @foreach($columnas as $campo => $etiqueta)
                         @if($ordenable && in_array($campo, ['occurrence_id', 'scientific_name', 'event_date'], true))
-                            <th scope="col" data-grid-label="{{ $etiqueta }}" aria-sort="{{ $this->ordenRegistros === $campo ? ($this->direccionRegistros === 'asc' ? 'ascending' : 'descending') : 'none' }}"><button type="button" class="inline-flex items-center gap-1" wire:click="ordenarRegistros('{{ $campo }}')">{{ $etiqueta }} <span aria-hidden="true"><flux:icon name="arrows-up-down" class="size-3" /></span></button></th>
-                        @else<th scope="col">{{ $etiqueta }}</th>@endif
+                            <th scope="col" data-copy-preserve data-grid-label="{{ $etiqueta }}" aria-sort="{{ $this->ordenRegistros === $campo ? ($this->direccionRegistros === 'asc' ? 'ascending' : 'descending') : 'none' }}"><button type="button" class="inline-flex items-center gap-1" wire:click="ordenarRegistros('{{ $campo }}')">{{ $etiqueta }} <span aria-hidden="true"><flux:icon name="arrows-up-down" class="size-3" /></span></button></th>
+                        @else<th scope="col" data-copy-preserve>{{ $etiqueta }}</th>@endif
                     @endforeach
                 </tr>
             </thead>

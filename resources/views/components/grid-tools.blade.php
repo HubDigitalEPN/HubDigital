@@ -1,4 +1,4 @@
-@props(['server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null])
+@props(['server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true])
 <div class="hub-ig-actions" x-on:click.outside="closeMenu(false)">
     <button type="button" class="hub-ig-button" x-ref="actionsButton" aria-haspopup="menu" :aria-expanded="menuOpen.toString()"
         x-on:click="openMenu()" x-on:keydown.arrow-down.prevent="if (!menuOpen) openMenu()">Acciones <flux:icon name="chevron-down" /></button>
@@ -16,7 +16,7 @@
             <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('format')"><flux:icon name="adjustments-horizontal" /><span>Formato</span><flux:icon name="chevron-right" class="hub-ig-menu-trailing" /></button>
             {{ $slot }}
             <div class="hub-ig-menu-separator" role="separator"></div>
-            <button type="button" role="menuitem" tabindex="-1" x-on:click="downloadPage()"><flux:icon name="arrow-down-tray" /><span>Descargar página</span><span class="hub-ig-menu-hint">CSV</span></button>
+            @if($allowDownload)<button type="button" role="menuitem" tabindex="-1" x-on:click="downloadPage()"><flux:icon name="arrow-down-tray" /><span>Descargar página</span><span class="hub-ig-menu-hint">CSV</span></button>@endif
             @if($server)
                 <button type="button" role="menuitem" tabindex="-1" wire:click="restablecerGrilla" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /><span>Restablecer</span></button>
             @else
@@ -50,10 +50,11 @@
         <label class="hub-ig-dialog-search">Buscar columna<input type="search" x-model="columnSearch" placeholder="Nombre de columna" autofocus></label>
         <div class="hub-ig-column-list">
             <template x-for="(column, index) in columns" :key="index"><label x-show="column.toLocaleLowerCase().includes(columnSearch.toLocaleLowerCase())">
-                <input type="checkbox" :checked="!draftHidden.includes(index)" x-on:change="toggleDraft(index)" :disabled="!draftHidden.includes(index) && draftHidden.length === columns.length - 1"><span x-text="column"></span>
+                <input type="checkbox" :checked="!draftHidden.includes(index)" x-on:change="toggleDraft(index)"><span x-text="column"></span>
             </label></template>
         </div>
         <button type="button" class="hub-ig-text-button" x-on:click="draftHidden = []">Mostrar todas las columnas</button>
+        <button type="button" class="hub-ig-text-button" x-on:click="draftHidden = columns.map((_, index) => index)">Ocultar todas las columnas</button>
     </div>
     <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.columnsDialog.close()">Cancelar</button><button type="button" class="hub-ig-button hub-ig-button-primary" x-on:click="applyColumnSelection()">Aplicar</button></div>
 </dialog>

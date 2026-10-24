@@ -1,6 +1,7 @@
 @php
     $mostrarIdentificacion = $mostrarIdentificacion ?? true;
     $permitirFicha = $permitirFicha ?? true;
+    $etiquetasCatalogo = array_column(app(\Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico::class)->todas(), 'etiqueta', 'campo');
 @endphp
 <article class="atlas-record-card" wire:key="registro-mapa-{{ $registro->especimen_id }}">
     <h3>{{ $registro->occurrence_id ?: 'Código reservado' }}</h3>@if($mostrarIdentificacion)<p><em>{{ $registro->scientific_name ?: 'Identificación reservada o pendiente' }}</em></p>@endif
@@ -27,7 +28,7 @@
                     default => $registro->{$campo},
                     };
                 @endphp
-                <div><dt>{{ $etiqueta }}</dt><dd>{{ $valor }}@if($campo === 'sampling_protocol' && $valor !== $registro->{$campo}) <small>Valor original: {{ $registro->{$campo} }}</small>@endif</dd></div>
+                <div><dt data-copy-preserve>{{ $etiquetasCatalogo[$campo] ?? $etiqueta }}</dt><dd>{{ $valor }}@if($campo === 'sampling_protocol' && $valor !== $registro->{$campo}) <small>Valor original: {{ $registro->{$campo} }}</small>@endif</dd></div>
             @endif
         @endforeach
     </dl>

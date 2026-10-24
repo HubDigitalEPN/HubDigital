@@ -12,7 +12,7 @@
 @endphp
 <div class="atlas atlas-dashboard" wire:key="dashboard-mapa" x-on:atlas-datos="actualizar($event.detail)" x-on:encuadrar-taxonomia.window="encuadrarTaxonomia($event.detail)" x-on:restaurar-foco-mapa.window="restaurarFocoMapa($event.detail.invocador)" x-on:click.capture="recordarAccion($event)" x-data="portalDashboard()" x-on:alternar-tipo-grafico="alternarRepresentacionMapa($event.detail)" x-id="['atlas-map-tooltip']" x-on:scroll.window.capture="ocultarAyudaMapa()" x-on:resize.window="ocultarAyudaMapa()" x-on:keydown.escape.window="ocultarAyudaMapa()">
     <span hidden wire:key="mapa-datos-{{ $claveFiltrosMapa }}" x-init="$dispatch('atlas-datos', {celdas: @js($datosMapa['mapa']), filos: @js($datosMapa['filos'])})"></span>
-    <span hidden data-acceso-registros="{{ \App\Support\AccesoCatalogo::completo() ? 'true' : 'false' }}"></span>
+    <span hidden data-acceso-registros="true"></span>
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-label="Mapa de registros públicos">
             <header class="atlas-panel-header atlas-map-tools">

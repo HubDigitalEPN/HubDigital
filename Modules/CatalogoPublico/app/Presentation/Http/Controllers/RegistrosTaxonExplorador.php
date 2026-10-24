@@ -39,7 +39,7 @@ final class RegistrosTaxonExplorador extends Component
     #[On('abrir-registros-taxon')]
     public function abrir(string $id): void
     {
-        \App\Support\AccesoCatalogo::autorizar();
+
         $taxon = app(ExploradorTaxonomicoPublico::class)->taxon(FiltrosBusqueda::vacio(), $id);
         abort_if($taxon === null, 404);
         $this->taxonId = $taxon['id'];
@@ -58,7 +58,7 @@ final class RegistrosTaxonExplorador extends Component
 
     public function ajustarRegistrosPorPagina(int $cantidad): void
     {
-        \App\Support\AccesoCatalogo::autorizar();
+
         abort_unless(in_array($cantidad, [15, 24, 25, 50, 100], true), 422);
         $this->registrosPorPagina = $cantidad;
         $this->cambiarPagina(1);
@@ -66,7 +66,7 @@ final class RegistrosTaxonExplorador extends Component
 
     public function abrirFichaRegistro(string $id): void
     {
-        \App\Support\AccesoCatalogo::autorizar();
+
         abort_unless(Str::isUuid($id) && $this->taxonId !== '', 404);
         abort_unless(app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtros())
             ->where('te.id', $id)->exists(), 404);
@@ -96,7 +96,7 @@ final class RegistrosTaxonExplorador extends Component
     #[Computed]
     public function fichaRegistro(): ?array
     {
-        \App\Support\AccesoCatalogo::autorizar();
+
         if ($this->registroFichaId === null || $this->taxonId === '') return null;
         $repositorio = app(EloquentProveedorEspecimenesParaArbol::class);
         if (!$repositorio->consultaPublica($this->filtros())->where('te.id', $this->registroFichaId)->exists()) return null;
@@ -109,7 +109,7 @@ final class RegistrosTaxonExplorador extends Component
 
     public function render(): View
     {
-        \App\Support\AccesoCatalogo::autorizar();
+
         $paginacion = ['ids' => [], 'total' => 0, 'pagina' => 1, 'ultima' => 1];
         if ($this->taxonId !== '') $paginacion = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($this->filtros(), $this->pagina, tamano: $this->registrosPorPagina);
         $registros = $this->cargarDetallesPorEspecimenIds($paginacion['ids'], app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));

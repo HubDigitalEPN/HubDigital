@@ -22,7 +22,7 @@
             @endif
         @elseif($taxonId !== '')
             <div class="portal-records-paged">
-                <x-grid-frame label="Registros del taxón" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina">
+                <x-grid-frame label="Registros del taxón" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
                     <x-catalogopublico::tabla-registros-mapa :registros="$registros" :imagenes="$imagenes" :total="$paginacion['total']" contexto="catalogo" :mostrar-titulo="false" />
                     <x-slot:pagination><x-grid-pages :page="$paginacion['pagina']" :last="$paginacion['ultima']" :total="$paginacion['total']" :per-page="$this->registrosPorPagina" label="Registros del taxón" /></x-slot:pagination>
                 </x-grid-frame>

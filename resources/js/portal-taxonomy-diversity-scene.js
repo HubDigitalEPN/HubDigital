@@ -125,25 +125,36 @@ export function crearEscenaDiversidad(elemento,acciones) {
         // evitando ampliar únicamente el espacio vacío encima de la raíz.
         // Los gestos fraccionarios pueden llegar a 1 + un error de redondeo.
         // Esa tolerancia conserva el anclaje de la vista general hasta 1×.
-        const vistaGeneral=zoomObjetivo<=1+1e-9;
+        const vistaGeneral=rangoForzado===null&&zoomObjetivo<=1+1e-9;
         if(vistaGeneral&&zoomActual()>1+1e-9)encuadrar(0,false,true);
         encuadreAutomatico=vistaGeneral;
         const centro=destino?.centro||orbit.target,origen=destino?.posicion||camara.position;
         const escalaActual=base/origen.distanceTo(centro);
-        focoZoom=0;let centrarEspecie=false;
+        focoZoom=0;let centrarYema=false;
         if(!vistaGeneral){
             const cursor=referencia?coordenada(referencia):{x:ancho/2,y:alto*.42};let cerca=Infinity;
             const limite=rangoForzado??Math.max(...rangosPresentes);
             const buscarEspecie=zoomObjetivo>=maxZoom*.999&&rangosPresentes.includes(17)&&rangoForzado===null;
+            const rangoObjetivo=buscarEspecie?17:rangoForzado,buscarRango=rangoObjetivo!==null;
             for(let i=1;i<arbol.claves.length;i++){
-                if(rangosNodos[i]>limite||buscarEspecie&&rangosNodos[i]!==17)continue;const p=proyectar(i);
-                if(p.z< -1||p.z>1||!buscarEspecie&&(p.x<20||p.x>ancho-20||p.y<50||p.y>alto-margenInferior()))continue;
+                if(rangosNodos[i]>limite||buscarRango&&rangosNodos[i]!==rangoObjetivo)continue;const p=proyectar(i);
+                if(p.z< -1||p.z>1||!buscarRango&&(p.x<20||p.x>ancho-20||p.y<50||p.y>alto-margenInferior()))continue;
                 const d=Math.hypot(p.x-cursor.x,p.y-cursor.y);if(d<cerca){cerca=d;focoZoom=i;}
             }
-            centrarEspecie=buscarEspecie&&focoZoom>0;
+            // En un linaje filtrado la única especie puede quedar detrás de
+            // la cámara al acercarse a sus ancestros. El zoom máximo y la
+            // leyenda deben centrar una yema real del rango solicitado,
+            // aunque aún esté fuera del recorte.
+            if(buscarRango&&focoZoom===0){
+                for(let i=1;i<arbol.claves.length;i++){
+                    if(rangosNodos[i]!==rangoObjetivo)continue;
+                    const d=posicion(i).distanceToSquared(centro);if(d<cerca){cerca=d;focoZoom=i;}
+                }
+            }
+            centrarYema=buscarRango&&focoZoom>0;
         }
         const objetivo=zoomRaizDiversidad({centro:centro.toArray(),posicion:origen.toArray()},posicion(focoZoom).toArray(),zoomObjetivo/escalaActual,{min:orbit.minDistance,max:orbit.maxDistance});
-        if(centrarEspecie){const direccion=new Vector3(...objetivo.posicion).sub(new Vector3(...objetivo.centro)),foco=posicion(focoZoom);objetivo.centro=foco.toArray();objetivo.posicion=foco.clone().add(direccion).toArray();}
+        if(centrarYema){const direccion=new Vector3(...objetivo.posicion).sub(new Vector3(...objetivo.centro)),foco=posicion(focoZoom);objetivo.centro=foco.toArray();objetivo.posicion=foco.clone().add(direccion).toArray();}
         destino={centro:new Vector3(...objetivo.centro),posicion:new Vector3(...objetivo.posicion)};
         Object.assign(marco.dataset,{yemaZoom:arbol.claves[focoZoom],registrosYema:String(arbol.registros[focoZoom])});
         if(reducido.matches){camara.position.copy(destino.posicion);orbit.target.copy(destino.centro);destino=null;orbit.update();}

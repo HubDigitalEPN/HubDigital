@@ -24,7 +24,8 @@ final class DibujoTaxonomicoPublico
         ]);
         $id = $datos['taxon'] ?? '';
         abort_if($id !== '' && $explorador->taxon(FiltrosBusqueda::vacio(), $id) === null, 404);
-        $estructura = $explorador->estructura(FiltrosBusqueda::desde(['filtroTaxonId' => $id]));
+        $filtros = \Modules\CatalogoPublico\Infrastructure\ContextoCatalogoPublico::filtros($request, $id);
+        $estructura = $explorador->estructura($filtros);
         $claves = array_column($estructura['nodos'], 'clave');
         $rama = $datos['rama'] ?? '';
         abort_if($rama !== '' && !in_array($rama, $claves, true), 404);
@@ -32,7 +33,7 @@ final class DibujoTaxonomicoPublico
         sort($expandidos);
         $revision = (string) DB::table('divulgacion.portal_cache_revision')->where('id', 1)->value('version')
             .'-'.substr(hash_file('sha256', base_path('resources/python/portal_ete/server.py')), 0, 12);
-        $clave = 'portal-ete:'.hash('sha256', json_encode([$revision, $id, $rama, $datos['vista'], (float) $datos['escala'], $expandidos]));
+        $clave = 'portal-ete:'.hash('sha256', json_encode([$revision, $filtros, $id, $rama, $datos['vista'], (float) $datos['escala'], $expandidos]));
         try {
             $dibujo = Cache::remember($clave, 600, function () use ($estructura, $datos, $rama, $expandidos) {
                 return Http::connectTimeout(2)->timeout(config('portal-ete.timeout'))

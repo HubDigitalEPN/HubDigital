@@ -107,6 +107,7 @@
             for (const row of rows) row.hidden = !visible.has(row);
         },
         downloadPage() {
+            if (location.pathname.startsWith('/portal/') && document.querySelector('meta[name=catalogo-descargas]')?.content !== 'true') return;
             const escape = value => '"' + (/^[\s]*[=+@-]/.test(value) ? "'" + value : value).replaceAll('"', '""') + '"';
             const rows = [...this.$el.querySelectorAll('table tr')].filter(row => !row.hidden).map(row => [...row.cells].filter(cell => !cell.hidden)
                 .map(cell => escape((cell.dataset.gridLabel || cell.innerText).trim().replace(/\s*\n\s*/g, ' · '))).join(','));

@@ -39,7 +39,11 @@ test('la descarga y su guía reúnen la matriz de laboratorio y las dos notas si
     $libro = IOFactory::load($ruta);
     try {
         expect($libro->getSheetByName('Guía')->getHighestDataRow())->toBe(count($def['columnas']) + 1)
-            ->and($libro->getSheetByName('Guía')->getCell('D2')->getValue())->toBe('obligatorio');
+            ->and($libro->getSheetByName('Guía')->getCell('F2')->getValue())->toBe('obligatorio');
+        expect($libro->getSheet(0)->getCell('A2')->getValue())->toStartWith('[INSTRUCCIONES] ')
+            ->and($libro->getSheet(0)->getCell('C2')->getValue())->toBe($def['columnas'][2]['descripcion'])
+            ->and($libro->getSheet(0)->getStyle('C1')->getFill()->getStartColor()->getRGB())->toBe('FFC000')
+            ->and($libro->getSheetByName('Guía')->getStyle('D4')->getFill()->getStartColor()->getRGB())->toBe('FFC000');
     } finally { $libro->disconnectWorksheets(); }
 });
 
@@ -55,12 +59,12 @@ test('una cabecera editada y su guía se aplican en la lectura y cambian la huel
     $servicio->guardar($editada, ConfiguracionPlantillaCatalogo::huella($def), (string)$curador->id);
     expect($servicio->leer()['columnas'][0]['cabecera'])->toBe('Identificador de ficha')
         ->and(ConfiguracionPlantillaCatalogo::huella($servicio->leer()))->toBe(ConfiguracionPlantillaCatalogo::huella($editada));
-    $libro = IOFactory::load($ruta); $libro->getSheet(0)->setCellValue('A2', 'QA-CONFIG-'.Str::uuid());
+    $libro = IOFactory::load($ruta); $libro->getSheet(0)->setCellValue('A3', 'QA-CONFIG-'.Str::uuid());
     (new Xlsx($libro))->save($ruta); $libro->disconnectWorksheets();
     $plan = app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx');
     expect($plan['filas'])->toBe(1);
     $filas = iterator_to_array(app(LectorActualizacionCatalogo::class)->filas($ruta, 'xlsx', ',', ConfiguracionPlantillaCatalogo::alias($editada)));
-    expect($filas[2]['datos'])->toHaveKey('occurrence_id');
+    expect($filas[3]['datos'])->toHaveKey('occurrence_id');
     $cambiada = $editada; $cambiada['columnas'][0]['descripcion'] .= ' Nueva revisión.';
     $servicio->guardar($cambiada, ConfiguracionPlantillaCatalogo::huella($editada), (string)$curador->id);
     expect(app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx')['huella'])->not->toBe($plan['huella']);
@@ -75,9 +79,9 @@ test('obligaciones curatoriales se notifican por fila sin modificar los requisit
     unset($c);
     $servicio->guardar($editada, ConfiguracionPlantillaCatalogo::huella($def), (string)Str::uuid());
     $ruta = archivoPlantillaCatalogoQa(GeneradorPlantillaImportXlsx::generar($editada));
-    $libro = IOFactory::load($ruta); $libro->getSheet(0)->setCellValue('A2', 'QA-REQUERIDO-'.Str::uuid());
+    $libro = IOFactory::load($ruta); $libro->getSheet(0)->setCellValue('A3', 'QA-REQUERIDO-'.Str::uuid());
     (new Xlsx($libro))->save($ruta); $libro->disconnectWorksheets();
-    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))->toThrow(DomainException::class, 'Fila 2: campos obligatorios sin completar: scientificName');
+    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))->toThrow(DomainException::class, 'Fila 3: campos obligatorios sin completar: scientificName');
     expect(DB::table('recepciones.configuracion_matriz')->where('clave', 'depositos')->value('definicion'))->toBe($antes);
     $editada['columnas'][1]['cabecera'] = $editada['columnas'][0]['cabecera'];
     expect(fn () => $servicio->guardar($editada, ConfiguracionPlantillaCatalogo::huella($servicio->leer()), (string)Str::uuid()))->toThrow(DomainException::class, 'repetidos');

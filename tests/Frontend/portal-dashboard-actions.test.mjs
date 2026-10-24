@@ -19,14 +19,16 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
     const eventosMapa = {};
     const eventosTeselas = {};
     const encuadres = [];
+    const inicializadoresMapa = [];
     let redibujosTeselas = 0;
     let siguienteCuadro = 0;
     const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, getAttribute(clave) {return this.atributos[clave] ?? null;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, focus() {focos.push(this); this.eventos.focus?.();}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
-    const mapa = {getZoom: () => 10, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds(limites, opciones) {encuadres.push({limites, opciones});}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
+    const mapa = {getZoom: () => 10, whenReady(accion) {accion.call(this); return this;}, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds(limites, opciones) {encuadres.push({limites, opciones});}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
     const L = {
-        map: () => mapa, control: {zoom: control, scale: control}, tileLayer: () => ({
+        Map: {addInitHook(inicializador) {inicializadoresMapa.push(inicializador);}},
+        map: () => {inicializadoresMapa.forEach(inicializador => inicializador.call(mapa)); return mapa;}, control: {zoom: control, scale: control}, tileLayer: () => ({
             on(nombres, accion) { for (const nombre of nombres.split(' ')) eventosTeselas[nombre] = accion; return this; },
             addTo() { return this; }, redraw() { redibujosTeselas++; },
         }),
@@ -55,7 +57,7 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
     }};
     const contexto = {
         L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos,
-        window: {innerWidth: 1280, innerHeight: 800, Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}},
+        window: {innerWidth: 1280, innerHeight: 800, Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}, removeEventListener() {}},
         document: {
             documentElement: {classList: {add() {}, remove() {}}},
             body: {appendChild(ayuda) {ayudas.push(ayuda);}},
@@ -99,7 +101,7 @@ function activarComposicion(dashboard, identificador) {
     return runInNewContext(`${funciones}\n${'contextualizeExpression(expresion, el)'}`, {expresion, el});
 }
 
-test('un visitante consulta la ayuda agregada de una ubicación sin abrir registros ni anunciar una acción privada',()=>{
+test('sin acceso explícito a registros el mapa muestra ayuda sin anunciar una apertura',()=>{
     const {dashboard,marcadores,ayudas,pintar}=dashboardConMapa([{lat:-.25,lon:-78.5,total:2,filos:{Arthropoda:2}}],{acceso:false});
     let consultas=0;dashboard.$wire={abrirCelda(){consultas++;}};
     pintar();
@@ -107,6 +109,18 @@ test('un visitante consulta la ayuda agregada de una ubicación sin abrir regist
     assert.equal(consultas,0);assert.equal(ayudas.length,1);assert.match(ayudas[0].textContent,/2 registros/);
     assert.doesNotMatch(marcadores[0].elemento.getAttribute('aria-label'),/Abrir detalle/);
     marcadores[0].elemento.eventos.keydown({key:'Enter',preventDefault(){}});pintar();assert.equal(consultas,0);
+});
+
+test('la vista pública permite abrir una ubicación con ratón y teclado', () => {
+    assert.match(plantillaDashboard, /data-acceso-registros="true"/);
+    const {dashboard, marcadores, pintar} = dashboardConMapa([{lat: -.25, lon: -78.5, total: 2, filos: {Arthropoda: 2}}]);
+    const aperturas = [];
+    dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
+    pintar();
+    marcadores[0].eventos.click();
+    marcadores[0].elemento.eventos.keydown({key: 'Enter', preventDefault() {}});
+    assert.match(marcadores[0].elemento.getAttribute('aria-label'), /Abrir detalle/);
+    assert.deepEqual(aperturas.map(datos => Array.from(datos)), [[-.25, -78.5, 2], [-.25, -78.5, 2]]);
 });
 
 test('trece registros en tres coordenadas muestran sus cantidades y seis registros coincidentes abren la misma ubicación', () => {

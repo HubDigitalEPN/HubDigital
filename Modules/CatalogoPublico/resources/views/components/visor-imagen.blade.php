@@ -5,7 +5,7 @@
     <header>
         <h2 id="titulo-visor-imagen">Fotografía de la colección</h2>
         <div>
-            <a :href="url" :download="filename" aria-label="Descargar fotografía" title="Descargar fotografía"><flux:icon name="arrow-down-tray" class="size-4" /><span>Descargar</span></a>
+            @if(\App\Support\DescargasCatalogo::permitidas())<a :href="url" :download="filename" aria-label="Descargar fotografía" title="Descargar fotografía"><flux:icon name="arrow-down-tray" class="size-4" /><span>Descargar</span></a>@endif
             <button type="button" x-ref="cerrar" autofocus x-on:click="cerrar()" aria-label="Cerrar fotografía" title="Cerrar fotografía (Esc)"><flux:icon name="x-mark" class="size-5" /></button>
         </div>
     </header>

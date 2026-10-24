@@ -20,7 +20,7 @@ export function filasFilo(nodos, expandidos) {
 export function crearFiltroFilo(inicial, endpoint) {
     let version = 0, contexto = null;
     return {
-        nodos: [], expandidos: [], cargados: [], cargando: [], filos: [], seleccionado: '', linaje: [], filas: [], busquedaTaxon: '', error: '',
+        nodos: [], expandidos: [], cargados: [], cargando: [], filos: [], seleccionado: '', seleccionados: [], linaje: [], filas: [], busquedaTaxon: '', error: '',
         filasVisibles: [], espacioSuperior: 0, espacioInferior: 0,
         init() { this.actualizar(inicial); },
         actualizar(datos) {
@@ -29,7 +29,7 @@ export function crearFiltroFilo(inicial, endpoint) {
                 if (this.$refs?.arbolFilo) this.$refs.arbolFilo.scrollTop = 0;
             }
             this.error = ''; this.busquedaTaxon = datos.busquedaTaxon;
-            this.filos = datos.filos; this.seleccionado = datos.seleccionado;
+            this.filos = datos.filos; this.seleccionado = datos.seleccionado; this.seleccionados = datos.seleccionados || [];
             this.linaje = datos.linaje || [];
             this.integrar(datos);
             this.expandidos = [...new Set([...this.expandidos, ...datos.expandidos])];
@@ -60,7 +60,7 @@ export function crearFiltroFilo(inicial, endpoint) {
             this.filasVisibles = this.filas.slice(inicio, fin);
             this.espacioSuperior = inicio * ALTO_FILA_FILO; this.espacioInferior = (this.filas.length - fin) * ALTO_FILA_FILO;
         },
-        marcado(nodo) { return nodo.padre === null ? this.filos.includes(nodo.id) : this.seleccionado === nodo.id; },
+        marcado(nodo) { return nodo.padre === null ? this.filos.includes(nodo.id) : this.seleccionado === nodo.id || this.seleccionados.includes(nodo.id); },
         enLinaje(nodo) { return this.linaje.includes(nodo.id); },
         async alternar(nodo) {
             if (!nodo.tieneHijos || this.cargando.includes(nodo.clave)) return;
@@ -85,10 +85,12 @@ export function crearFiltroFilo(inicial, endpoint) {
             if (solicitud === version) { this.expandidos = [...new Set([...this.expandidos, nodo.clave])]; this.distribuir(); }
         },
         async seleccionar(nodo, marcado, entrada) {
+            const posicion = {top: this.$refs?.arbolFilo?.scrollTop || 0, left: this.$refs?.arbolFilo?.scrollLeft || 0};
             if (marcado && nodo.tieneHijos && !this.expandidos.includes(nodo.clave)) this.alternar(nodo);
             try {
                 const datos = await this.$wire.seleccionarNodoFilo(nodo.id);
                 if (datos?.contexto) this.actualizar(datos);
+                this.$nextTick(() => { const vista = this.$refs?.arbolFilo; if (vista) { vista.scrollTop = posicion.top; vista.scrollLeft = posicion.left; this.actualizarVentana(); } entrada?.focus({preventScroll: true}); });
                 if (entrada) this.$nextTick(() => { entrada.checked = this.marcado(nodo); });
             }
             catch {

@@ -131,7 +131,7 @@ final class ChatBotWidget extends Component
         // La orientación y el contexto conservan sus criterios; sólo se adaptan
         // las acciones visibles al mismo permiso que aplica el catálogo.
         $mensajesVisibles = $this->mensajes;
-        if (! \App\Support\AccesoCatalogo::completo()) {
+        if (! \App\Support\DescargasCatalogo::permitidas()) {
             foreach ($mensajesVisibles as &$mensaje) {
                 if ($mensaje['rol'] !== 'chatbot') continue;
                 $mensaje['opciones'] = array_values(array_filter(array_map(
@@ -150,17 +150,10 @@ final class ChatBotWidget extends Component
         if (isset($opcion['url'])) {
             $base = strtok($opcion['url'], '?#');
             if ($base === route('portal.lista-especies')) return null;
-            if ($base === route('portal.catalogo')) {
-                parse_str((string) parse_url($opcion['url'], PHP_URL_QUERY), $parametros);
-                if (($parametros['vista'] ?? null) === 'registros') {
-                    $parametros['vista'] = 'mapa';
-                    $opcion['url'] = route('portal.catalogo', $parametros);
-                    $opcion['label'] = 'Explorar selección en el mapa';
-                }
-            }
+            if (str_contains($base, '/portal/descargas/')) return null;
         }
         $etiqueta = Str::lower(Str::ascii($opcion['label'] ?? ''));
-        if (preg_match('/descarg|export|^(?:ver|abrir|consultar|mostrar|muestrame)\s+(?:los\s+)?registros/u', $etiqueta)) return null;
+        if (preg_match('/descarg|export/u', $etiqueta)) return null;
 
         return $opcion;
     }

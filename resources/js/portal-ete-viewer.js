@@ -146,7 +146,7 @@ export function crearVisorETE(elemento, acciones) {
     }
     return {
         async actualizar(datos) {
-            const siguiente = JSON.stringify([datos.revision, datos.taxon, datos.rama, datos.vista, datos.escala, [...datos.expandidos].sort()]);
+            const siguiente = JSON.stringify([datos.revision, datos.taxon, datos.rama, datos.vista, datos.escala, [...datos.expandidos].sort(), location.search]);
             if (siguiente === firma) {
                 // Una notificación de tamaño durante la petición no debe
                 // cancelarla, reiniciarla ni mostrar el dibujo de la rama anterior.
@@ -165,6 +165,10 @@ export function crearVisorETE(elemento, acciones) {
             if (cache.has(firma)) { mostrar(cache.get(firma), datos); acciones.cargando(false); return; }
             acciones.cargando(true);
             const url = new URL(datos.endpoint, location.origin);
+            for (const [clave, valor] of new URLSearchParams(location.search)) {
+                const corte = clave.indexOf('[');
+                url.searchParams.append(corte < 0 ? `contexto[${clave}]` : `contexto[${clave.slice(0,corte)}]${clave.slice(corte)}`, valor);
+            }
             if (datos.taxon) url.searchParams.set('taxon', datos.taxon);
             if (datos.rama) url.searchParams.set('rama', datos.rama);
             url.searchParams.set('vista', datos.vista); url.searchParams.set('escala', String(datos.escala));

@@ -71,8 +71,8 @@
         <a href="{{ route('admin.fichas-taxonomicas') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar fichas</a>
     </section>
     <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-textos-portal">
-        <div><h2 id="titulo-textos-portal" class="hub-section-title">Textos del portal</h2><p class="mt-1 text-sm text-text-secondary">Contenido de inicio, navegación, depósitos y Colección Biológica.</p></div>
-        <a href="{{ route('admin.textos-portal') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar textos</a>
+        <div><h2 id="titulo-textos-portal" class="hub-section-title">Textos de todas las pantallas</h2><p class="mt-1 text-sm text-text-secondary">Títulos, botones, mensajes e instrucciones del sistema, incluidos portal, mapa y depósitos.</p></div>
+        <a href="{{ route('admin.textos-sistema') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar textos</a>
     </section>
     <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-configuracion-sistema">
         <div>

@@ -1,5 +1,6 @@
 /* Estándar APEX compartido para formularios y listas de valores. */
 .portal-mobile-actions { display: flex; flex: none; align-items: center; gap: .35rem; }
+@media (min-width: 1024px) { .portal-mobile-actions { display: none; } }
 .portal-mobile-chat-button { display: none; }
 @media (max-width: 639px) {
     .portal-mobile-chat-button { display: flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid #b9c9d9; border-radius: 4px; background: #fff; color: #102d48; cursor: pointer; }

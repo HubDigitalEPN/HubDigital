@@ -2,6 +2,7 @@
     aria-labelledby="titulo-explorador-taxonomico" closedby="closerequest" data-endpoint="{{ route('portal.explorador') }}" data-ete-endpoint="{{ route('portal.explorador-dibujo') }}"
     data-ficha-endpoint="{{ route('portal.ficha', ['taxon' => '__TAXON__']) }}"
     x-on:abrir-explorador-taxonomico.window="abrir($event.detail?.invocador)"
+    x-on:click="if ($event.target === $el && ($event.clientX < $el.getBoundingClientRect().left || $event.clientX > $el.getBoundingClientRect().right || $event.clientY < $el.getBoundingClientRect().top || $event.clientY > $el.getBoundingClientRect().bottom)) cerrar()"
     x-on:portal-taxonomy-updated.window="if (abierto && !buscando) consultar(true, true)"
     x-on:registros-taxon-cerrados.window="enfocarNodo(seleccionado)"
     x-on:fullscreenchange.document="cerrarMenu()"
@@ -137,6 +138,6 @@
     <div class="taxonomy-explorer-context-menu" role="menu" aria-label="Acciones del taxón" x-ref="menu" x-cloak x-show="menuNodo"
         x-on:click.outside="cerrarMenu()" x-on:keydown="tecladoMenu($event)">
         <button type="button" role="menuitem" :disabled="aplicando" x-on:click="verEnMapa(menuNodo)">Ver en el mapa</button>
-        @if(\App\Support\AccesoCatalogo::completo())<button type="button" role="menuitem" :disabled="aplicando" x-on:click="verRegistros(menuNodo)">Ver registros</button>@endif
+        <button type="button" role="menuitem" :disabled="aplicando" x-on:click="verRegistros(menuNodo)">Ver registros</button>
     </div>
 </dialog>

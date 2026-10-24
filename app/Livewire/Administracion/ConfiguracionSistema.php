@@ -20,6 +20,17 @@ use Throwable;
 #[Title('Configuración del sistema')]
 final class ConfiguracionSistema extends Component
 {
+    public bool $descargasAutoservicio = false;
+
+    public function guardarDescargas(): void
+    {
+        $this->autorizar();
+        \Illuminate\Support\Facades\DB::table('usuarios.configuracion_catalogo')->updateOrInsert(
+            ['clave' => 'descargas_autoservicio'],
+            ['habilitado' => $this->descargasAutoservicio, 'actualizado_por' => auth()->id(), 'updated_at' => now()],
+        );
+        session()->flash('configuracion-descargas', 'Permiso de descarga actualizado.');
+    }
     public string $smtpHost = 'smtp.zoho.com';
 
     public int $smtpPort = 587;
@@ -42,6 +53,7 @@ final class ConfiguracionSistema extends Component
 
     public function mount(SystemMailConfigurationService $service): void
     {
+        $this->descargasAutoservicio = \App\Support\DescargasCatalogo::publicasHabilitadas();
         $configuration = $service->stored();
         $this->configuracionGuardada = $configuration !== null;
         $this->smtpHost = (string) ($configuration?->host ?? config('mail.mailers.smtp.host', 'smtp.zoho.com'));

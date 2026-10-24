@@ -88,7 +88,7 @@ final class AsistentePortal
         if (preg_match('/\b(?:catalogo|coleccion)\s+public[oa]\b/', $normal)
             && preg_match('/cuenta|registrar(?:me)?|registro|iniciar sesion|acceso|consultar/', $normal)
             && ! preg_match('/\bcuant[oa]s?\b|\bbusca\b|\b(?:descarg\w*|export\w*)\b|paso a paso|pasos/', $normal)) {
-            return ['texto' => 'No necesitas crear una cuenta ni iniciar sesión para explorar el catálogo público y aplicar filtros. Los registros individuales y las descargas requieren iniciar sesión con una cuenta verificada de administración o curaduría. Los trámites se abren según el perfil autorizado.',
+            return ['texto' => 'No necesitas crear una cuenta ni iniciar sesión para explorar el catálogo público y aplicar filtros. Las visualizaciones y los registros individuales son públicos. Las descargas requieren iniciar sesión con una cuenta verificada y estar habilitadas por administración. Los trámites se abren según el perfil autorizado.',
                 'fuente' => 'portal', 'intent' => 'portal.acceso_publico',
                 'opciones' => [['label' => 'Abrir catálogo público', 'url' => route('portal.catalogo')]]];
         }
@@ -353,7 +353,7 @@ final class AsistentePortal
         $texto .= $haySeleccionActual
             ? "\n3. Abre el enlace al mapa de esta selección."
             : "\n3. Los filtros se aplican al cambiar cada dato. Si un intervalo es inválido, corrígelo: se conserva la selección anterior.";
-        $texto .= "\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar Filtros restablece toda la selección. Los registros individuales y las descargas requieren una cuenta verificada de administración o curaduría.";
+        $texto .= "\n4. Usa los botones Tarjetas, Registros y Mapa y análisis: todos conservan la misma selección.\n5. En Registros puedes descargar el CSV; en los tres puntos de cada panel, Indicador explica el cálculo. Limpiar Filtros restablece toda la selección. Las visualizaciones y los registros individuales son públicos. Las descargas requieren una cuenta verificada y el permiso habilitado por administración.";
         if (preg_match('/\bmapa\b/', $normal)) $texto .= "\n\n".$this->instruccionesMapa();
         return ['texto' => $texto, 'fuente' => 'portal', 'intent' => 'portal.filtros',
             'entidades' => $usarSeleccionActual && $seleccionPortal === null ? $contextoCatalogo : $entidades,

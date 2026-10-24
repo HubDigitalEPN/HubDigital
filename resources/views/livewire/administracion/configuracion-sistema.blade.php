@@ -17,6 +17,15 @@
         </div>
     @endif
 
+    <section class="hub-panel p-5" aria-labelledby="titulo-descargas">
+        <h2 id="titulo-descargas" class="hub-section-title">Descargas del catálogo</h2>
+        <p class="mt-2 text-sm">Los visitantes pueden consultar las visualizaciones. Las descargas requieren iniciar sesión y verificar el correo.</p>
+        <form wire:submit="guardarDescargas" class="mt-4 flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2"><input type="checkbox" wire:model="descargasAutoservicio">Permitir descargas a usuarios de autoservicio</label>
+            <flux:button type="submit" variant="primary">Guardar permiso</flux:button>
+        </form>
+        @if(session('configuracion-descargas'))<p role="status" class="mt-3">{{ session('configuracion-descargas') }}</p>@endif
+    </section>
     <section class="hub-panel p-5" aria-labelledby="titulo-correo">
         <div class="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>

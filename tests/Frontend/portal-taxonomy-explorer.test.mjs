@@ -504,6 +504,23 @@ test('abrir y cerrar utilizan el diálogo aunque el evento venga de un descendie
     assert.equal(restaurados, 1);
 });
 
+test('reabrir antes del evento nativo de cierre conserva la nueva sesión y su búsqueda', async () => {
+    const {ui, tareas} = componente({consultarExploradorTaxonomico: async () => resultado('', [nodo('filo')])});
+    const eventosCierre = [];
+    let restaurados = 0;
+    ui.$refs.dialogo.close = function () {this.open = false; eventosCierre.push(() => ui.alCerrar());};
+    ui.cerrar();
+    assert.equal(ui.abierto, false, 'el cierre queda sincronizado antes del evento diferido');
+    await ui.abrir({focus() {restaurados++;}});
+    ui.busqueda = 'Coleoptera'; ui.buscar();
+    eventosCierre.shift()();
+    assert.equal(ui.abierto, true); assert.equal(ui.$refs.dialogo.open, true);
+    assert.equal(ui.buscando, true); assert.equal(tareas.size, 1);
+    assert.equal(restaurados, 0, 'el cierre anterior no restaura el foco de la sesión nueva');
+    ui.cerrar(); eventosCierre.shift()();
+    assert.equal(ui.abierto, false); assert.equal(tareas.size, 0); assert.equal(restaurados, 1);
+});
+
 test('reabrir conserva búsqueda, ramas cargadas, expansiones y desplazamiento con contadores actualizados', async () => {
     const raiz = {...nodo('a'), tieneHijos: true}, hijo = nodo('h', 'a');
     const llamadas = [];

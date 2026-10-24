@@ -59,6 +59,38 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
 final class EspecimenIndex extends Component
 {
+    public bool $gestionarColumnas = false;
+    public string $nuevaColumna = '';
+    public string $descripcionColumna = '';
+
+    public function crearColumna(): void
+    {
+        abort_unless(auth()->user()?->esAdministrador(), 403);
+        $this->validate(['nuevaColumna' => 'required|string|max:160', 'descripcionColumna' => 'required|string|max:5000']);
+        $servicio = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class);
+        $def = $servicio->leer(); $huella = $servicio::huella($def);
+        $campo = 'extra_'.str_replace('-', '', (string) \Illuminate\Support\Str::uuid());
+        $def['columnas'][] = ['campo' => $campo, 'cabecera' => trim($this->nuevaColumna), 'descripcion' => trim($this->descripcionColumna), 'formato' => 'texto', 'requisito' => 'opcional', 'alias' => [], 'personalizada' => true];
+        try {
+            $servicio->guardar($def, $huella, (string) auth()->id());
+            $this->ordenColumnas[] = $campo; $this->columnasVisibles[] = $campo; $this->persistirColumnas();
+            $this->nuevaColumna = $this->descripcionColumna = ''; $this->successMessage = 'Columna creada. Ya puedes editar sus valores.';
+        } catch (\DomainException $e) { $this->addError('nuevaColumna', $e->getMessage()); }
+    }
+
+    public function eliminarColumna(string $campo): void
+    {
+        abort_unless(auth()->user()?->esAdministrador(), 403);
+        $servicio = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class);
+        $def = $servicio->leer(); $huella = $servicio::huella($def);
+        $def['columnas'] = array_values(array_filter($def['columnas'], fn ($c) => $c['campo'] !== $campo));
+        try {
+            $servicio->guardar($def, $huella, (string) auth()->id());
+            $this->successMessage = 'Columna sin uso eliminada de la plantilla y del catálogo.';
+        } catch (\DomainException $e) { $this->errorMessage = $e->getMessage(); }
+    }
+
+    public function ocultarTodasColumnas(): void { $this->columnasVisibles = []; $this->persistirColumnas(); }
     use GeneraSvgQr;
     use TraduceErroresPersistencia;
 
@@ -453,7 +485,7 @@ final class EspecimenIndex extends Component
 
     public function restaurarColumnas(): void
     {
-        $this->ordenColumnas = array_column(RegistroColumnasEspecimen::todas(), 'clave');
+        $this->ordenColumnas = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(RegistroColumnasEspecimen::todas()), 'clave');
         $this->columnasVisibles = RegistroColumnasEspecimen::clavesVisiblesPorDefecto();
         $this->persistirColumnas();
     }
@@ -490,7 +522,7 @@ final class EspecimenIndex extends Component
      */
     private function normalizarColumnas(array $orden, array $visibles): void
     {
-        $conocidas = array_column(RegistroColumnasEspecimen::todas(), 'clave');
+        $conocidas = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(RegistroColumnasEspecimen::todas()), 'clave');
 
         $ordenado = array_values(array_intersect(
             array_map(strval(...), $orden),
@@ -817,11 +849,20 @@ final class EspecimenIndex extends Component
 
     public function actualizarEspecimen(ActualizarEspecimenHandler $handler): void
     {
-        $this->validateOnly('editLocalidad');
-        $this->validateOnly('editLocalidad2');
-        $this->validateOnly('editLocalidad3');
-        $this->validateOnly('editFechaColecta');
-        $this->validateOnly('editColector');
+        // Las fichas históricas pueden no tener fecha o colector. Corregir su
+        // ubicación no debe obligar a inventar esos datos ni validar el alta vacía.
+        $this->validate([
+            'editLocalidad' => 'nullable|string|max:255', 'editLocalidad2' => 'nullable|string|max:255',
+            'editLocalidad3' => 'nullable|string|max:500', 'editFechaColecta' => 'nullable|date_format:Y-m-d',
+            'editColector' => 'nullable|string|max:255', 'editCountry' => 'nullable|string|max:120',
+            'editStateProvince' => 'nullable|string|max:120', 'editMunicipality' => 'nullable|string|max:120',
+            'editLocalityName' => 'nullable|string|max:500', 'editDecimalLatitude' => 'nullable|numeric|between:-90,90',
+            'editDecimalLongitude' => 'nullable|numeric|between:-180,180', 'editElevationMinM' => 'nullable|numeric',
+            'editGeodeticDatum' => 'nullable|string|max:60', 'editBiome' => 'nullable|string|max:120',
+            'editHabitat' => 'nullable|string|max:255', 'editPreparations' => 'nullable|string|max:120',
+            'editDisposition' => 'nullable|string|max:120', 'editOccurrenceStatus' => 'nullable|string|max:120',
+            'editSpecimenNotes' => 'nullable|string|max:5000', 'editEntidadDepositanteId' => 'nullable|uuid',
+        ]);
 
         try {
             $handler->handle(new ActualizarEspecimenInput(
@@ -1050,6 +1091,11 @@ final class EspecimenIndex extends Component
         string $clave,
         string $valor,
     ): void {
+        if (str_starts_with($clave, 'extra_')) {
+            try { app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->guardarValor($id, $clave, trim($valor) ?: null); $this->errorMessage = null; }
+            catch (\Throwable $e) { $this->errorMessage = $this->traducirErrorParaUsuario($e); }
+            return;
+        }
         $campo = RegistroColumnasEspecimen::campoEditable($clave);
         if ($campo === null) {
             return;
@@ -1094,6 +1140,7 @@ final class EspecimenIndex extends Component
 
         $this->fichaId = $id;
         $this->fichaDatos = app(RevisionNombreCientifico::class)->completar([$ficha->ficha])[0];
+        $this->fichaDatos = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar([$this->fichaDatos + ['id' => $id]])[0];
         $this->fichaBorrador = [];
         foreach (RegistroColumnasEspecimen::clavesEditablesEnMasa() as $clave) {
             $valor = $ficha->ficha[$clave] ?? null;
@@ -1105,6 +1152,7 @@ final class EspecimenIndex extends Component
         }
 
         $this->fichaAbierta = true;
+        foreach (app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->personalizadas() as $c) $this->fichaBorrador[$c['campo']] = (string) ($this->fichaDatos[$c['campo']] ?? '');
         $this->errorMessage = null;
     }
 
@@ -1130,6 +1178,12 @@ final class EspecimenIndex extends Component
 
         try {
             foreach ($this->fichaBorrador as $clave => $valor) {
+                if (str_starts_with($clave, 'extra_')) {
+                    if (trim($valor) !== trim((string) ($this->fichaDatos[$clave] ?? ''))) {
+                        app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->guardarValor($this->fichaId, $clave, trim($valor) ?: null); $cambiados++;
+                    }
+                    continue;
+                }
                 $campo = RegistroColumnasEspecimen::campoEditable($clave);
                 if ($campo === null) {
                     continue;
@@ -1371,7 +1425,9 @@ final class EspecimenIndex extends Component
 
     public function render(ResolverPrioridadColumnas $resolver, ClasificadorMotivoRevision $clasificador): View
     {
-        $columnas = $resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas());
+        $columnas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar($resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas()));
+        $extras = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->personalizadas(), 'campo');
+        foreach ($extras as $extra) if (!in_array($extra, $this->ordenColumnas, true)) { $this->ordenColumnas[] = $extra; $this->columnasVisibles[] = $extra; }
         $porClave = [];
         foreach ($columnas as $col) {
             $porClave[$col['clave']] = $col;
@@ -1384,6 +1440,8 @@ final class EspecimenIndex extends Component
                 $columnasTabla[] = $porClave[$clave];
             }
         }
+
+        usort($columnasTabla, static fn ($a, $b) => ($a['grupo'] !== 'localidad') <=> ($b['grupo'] !== 'localidad'));
 
         $output = $this->consultarPagina();
         $offset = ($this->page - 1) * $this->perPage;
@@ -1401,7 +1459,8 @@ final class EspecimenIndex extends Component
         );
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
-            'filas' => $filas,
+            'filas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($filas),
+            'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],
             'totalPaginas' => max(1, $output->totalPaginas),
             'totalItems' => $output->total,
             'inicio' => $output->total > 0 ? $offset + 1 : 0,
@@ -1410,7 +1469,7 @@ final class EspecimenIndex extends Component
             'columnasRegistro' => $columnas,
             'columnasTabla' => $columnasTabla,
             'clavesOrdenables' => RegistroColumnasEspecimen::clavesOrdenables(),
-            'clavesEditables' => RegistroColumnasEspecimen::clavesEditablesEnMasa(),
+            'clavesEditables' => [...RegistroColumnasEspecimen::clavesEditablesEnMasa(), ...$extras],
             'tamanosPagina' => self::TAMANOS_PAGINA,
             'filtrosActivos' => $this->filtrosActivos(),
         ]);

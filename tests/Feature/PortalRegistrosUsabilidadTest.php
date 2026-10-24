@@ -46,13 +46,13 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
     $catalogo->call('$refresh')->assertDontSee('COLECTOR-RESERVADO-FICHA');
     $dom = domRegistrosPublicos($catalogo->html());
     $titulos = array_map(fn (DOMNode $n): string => trim($n->textContent), iterator_to_array($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')));
-    expect($titulos)->toBe(['catalogNumber', 'scientificName', 'recordedBy'])
+    expect($titulos)->toBe(['occurrenceID', 'scientificName', 'recordedBy'])
         ->and($dom->query('//table[@class="atlas-record-table"]//tr[@tabindex="0"]')->length)->toBe(1)
         ->and($dom->query('//table[@class="atlas-record-table"]//th[@scope="row"]')->item(0)->textContent)->toBe('QA3-CHAT-1');
 
     $catalogo->call('abrirFichaRegistro', $id)->assertSet('registroFichaId', $id)->assertDispatched('abrir-ficha-registro')
-        ->assertDontSee('COLECTOR-RESERVADO-FICHA')->assertSee('Localidad registrada')->assertSee('LOCALIDAD-PUBLICA-FICHA')
-        ->assertSee('Localidad original')->assertSee('ORIGINAL-PUBLICO-FICHA');
+        ->assertDontSee('COLECTOR-RESERVADO-FICHA')->assertSee('localityName')->assertSee('LOCALIDAD-PUBLICA-FICHA')
+        ->assertSee('verbatimLocality')->assertSee('ORIGINAL-PUBLICO-FICHA');
     expect($catalogo->instance()->fichaRegistro['registro']->recorded_by)->toBeNull();
     $catalogo->call('cerrarFichaRegistro')->assertSet('registroFichaId', null);
 });

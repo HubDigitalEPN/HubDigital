@@ -189,8 +189,8 @@ test('QA8 cada descarga compuesta conserva su formato aunque otra parte mencione
     $respuesta = app(AsistentePortal::class)->responder('Primero descarga los registros CSV. Después descarga XLSX. Explica la precisión de la coordenada recuperada del Excel.', app(ConsultarChatBotHandler::class), seleccionPortal: $seleccion);
     expect(array_column($respuesta['partes'], 'accion'))->toBe(['descarga', 'descarga', 'precision'])
         ->and($respuesta['texto'])->toContain(
-            '1. Los registros individuales y las descargas requieren iniciar sesión con una cuenta verificada de administración o curaduría. Cambia a Registros',
-            '2. Los registros individuales y las descargas requieren iniciar sesión con una cuenta verificada de administración o curaduría. Para descargar XLSX',
+            '1. Las visualizaciones y los registros individuales son públicos. Las descargas requieren iniciar sesión con una cuenta verificada y estar habilitadas por administración. Cambia a Registros',
+            '2. Las visualizaciones y los registros individuales son públicos. Las descargas requieren iniciar sesión con una cuenta verificada y estar habilitadas por administración. Para descargar XLSX',
             'nunca cero',
         )
         ->and(qa8Enlace($respuesta, 'registros'))->toEqual($seleccion + ['vista' => 'registros'])
