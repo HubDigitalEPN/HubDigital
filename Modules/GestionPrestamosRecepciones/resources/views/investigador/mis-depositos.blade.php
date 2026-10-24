@@ -67,7 +67,7 @@
         </div>
 
         {{-- Filtros en horizontal --}}
-        <div class="grid gap-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-[9rem_minmax(13rem,1fr)_10rem_10rem] xl:items-end">
+        <div class="grid items-start gap-3 px-4 py-3 sm:grid-cols-2 xl:grid-cols-[9rem_minmax(13rem,1fr)_10rem_10rem]">
 
             {{-- Tipo --}}
             <flux:field>

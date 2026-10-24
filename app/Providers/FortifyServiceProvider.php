@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
@@ -114,9 +113,12 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(User::normalizarEmail((string) $request->input(Fortify::username())).'|'.$request->ip());
+            $cuenta = User::normalizarEmail((string) $request->input(Fortify::username()));
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return [
+                Limit::perMinute(5)->by('login-account:'.hash('sha256', $cuenta)),
+                Limit::perMinute(20)->by('login-ip:'.hash('sha256', (string) $request->ip())),
+            ];
         });
     }
 

@@ -11,7 +11,7 @@
     {{-- Procesando documentos (polling activo) --}}
     @if($extraccionProcesando)
         @php $documentosEnRevision = array_intersect_key($documentosCargados, array_fill_keys($documentosRequeridos, true)); @endphp
-        <div wire:poll.500ms="verificarExtraccion" class="space-y-4 rounded-xl border border-science-blue/30 bg-science-blue/5 p-6" role="status" aria-live="polite">
+        <div wire:key="extraccion-poll-{{ $intervaloExtraccion }}" wire:poll.{{ $intervaloExtraccion }}s="verificarExtraccion" class="space-y-4 rounded-xl border border-science-blue/30 bg-science-blue/5 p-6" role="status" aria-live="polite">
             <div class="flex items-center gap-3">
                 <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-science-blue/15">
                     <flux:icon name="arrow-path" class="size-5 text-science-blue animate-spin" />

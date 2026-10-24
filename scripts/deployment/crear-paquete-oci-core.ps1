@@ -438,6 +438,10 @@ if ($php) {
         if ($SinPostgres) {
             Write-Host "`n==> Suite PostgreSQL omitida mediante -SinPostgres" -ForegroundColor Yellow
         } else {
+            # Resolver primero los contratos PDF y su plazo de firma evita repetir
+            # la suite larga por un fallo del motor, sin omitir ninguna puerta.
+            Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-deposit-pdf.php') -Descripcion 'Comprobando admision PDF y firma integrada PHP/Java' -DirectorioTrabajo $Proyecto
+            $solucionPdfComprobada = $true
             $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
             if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
             Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
@@ -446,8 +450,6 @@ if ($php) {
             ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
             $suitePostgresCompletada = $true
             $suiteNavegadorCompletada = $true
-            Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-deposit-pdf.php') -Descripcion 'Comprobando admision PDF y firma integrada PHP/Java' -DirectorioTrabajo $Proyecto
-            $solucionPdfComprobada = $true
         }
 
     }

@@ -13,6 +13,30 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\VerificarFirmaDocume
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
+test('document uploads accept the ten megabyte boundary and reject larger PDFs', function (int $kilobytes, bool $accepted): void {
+    $request = new \Modules\GestionPrestamosRecepciones\Presentation\Http\Requests\CargarDocumentacionOficialRequest;
+    $validator = \Illuminate\Support\Facades\Validator::make([
+        'documentos' => ['permiso' => UploadedFile::fake()->create('permiso.pdf', $kilobytes, 'application/pdf')],
+    ], $request->rules(), $request->messages());
+    expect($validator->passes())->toBe($accepted);
+    if (! $accepted) expect($validator->errors()->first('documentos.permiso'))->toContain('10 MB');
+    $temporary = \Illuminate\Support\Facades\Validator::make([
+        'file' => UploadedFile::fake()->create('permiso.pdf', $kilobytes, 'application/pdf'),
+    ], ['file' => config('livewire.temporary_file_upload.rules')]);
+    expect($temporary->passes())->toBe($accepted);
+    $signed = \Illuminate\Support\Facades\Validator::make([
+        'pdf_firmado' => UploadedFile::fake()->create('oficio-firmado.pdf', $kilobytes, 'application/pdf'),
+    ], \Modules\GestionPrestamosRecepciones\Infrastructure\Services\FirmaPdfJava::reglas());
+    expect($signed->passes())->toBe($accepted);
+})->with([[10240, true], [10241, false]]);
+
+test('the temporary PDF limit preserves twenty megabyte spreadsheets', function (): void {
+    $validator = \Illuminate\Support\Facades\Validator::make([
+        'file' => UploadedFile::fake()->create('matriz.xlsx', 20480, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+    ], ['file' => config('livewire.temporary_file_upload.rules')]);
+    expect($validator->passes())->toBeTrue();
+});
+
 function crearSolicitudApiDe(User $depositante, string $numero): SolicitudDepositoEloquentModel
 {
     return SolicitudDepositoEloquentModel::query()->create([

@@ -20,7 +20,15 @@ final class CargarDocumentacionOficialRequest extends FormRequest
     {
         return [
             'documentos' => ['required', 'array', 'min:1', 'max:10'],
-            'documentos.*' => ['required', 'file', 'mimes:pdf', 'max:20480'],
+            'documentos.*' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'documentos.*.max' => 'Cada PDF debe tener como máximo 10 MB.',
+            'documentos.*.uploaded' => 'No se pudo cargar el PDF. Su tamaño máximo es de 10 MB.',
         ];
     }
 

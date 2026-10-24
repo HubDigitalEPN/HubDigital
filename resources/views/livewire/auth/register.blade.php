@@ -16,6 +16,7 @@
         x-on:hub-register-turnstile-passed.window="turnstileVerified = true"
         x-on:hub-register-turnstile-reset.window="turnstileVerified = false">
         @csrf
+        <p class="text-xs text-text-secondary">El triángulo rojo identifica los campos obligatorios.</p>
         @if (config('services.turnstile.enabled'))
             <input type="hidden" name="cf-turnstile-response" value="">
         @endif
@@ -95,6 +96,8 @@
                 <flux:label class="font-medium text-text-primary">Nombre</flux:label>
                 <flux:input
                     name="first_name"
+                    required
+                    aria-required="true"
                     type="text"
                     value="{{ old('first_name') }}"
                     placeholder="Tu nombre"
@@ -108,6 +111,8 @@
                 <flux:label class="font-medium text-text-primary">Apellido</flux:label>
                 <flux:input
                     name="last_name"
+                    required
+                    aria-required="true"
                     type="text"
                     value="{{ old('last_name') }}"
                     placeholder="Tu apellido"
@@ -120,6 +125,8 @@
                 <flux:label class="font-medium text-text-primary">Correo electrónico</flux:label>
                 <flux:input
                     name="email"
+                    required
+                    aria-required="true"
                     type="email"
                     value="{{ old('email') }}"
                     placeholder="tu@email.com"
@@ -140,6 +147,9 @@
                 <flux:label class="font-medium text-text-primary">Cargo o posición</flux:label>
                 <flux:input
                     name="cargo"
+                    :required="$rolInicial === 'DEPOSITANTE'"
+                    x-bind:required="role === 'DEPOSITANTE'"
+                    x-bind:aria-required="(role === 'DEPOSITANTE').toString()"
                     type="text"
                     value="{{ old('cargo') }}"
                     placeholder="Ej. Coordinador Técnico de Proyectos"
@@ -152,6 +162,9 @@
                 <flux:label class="font-medium text-text-primary">Institución o empresa</flux:label>
                 <flux:input
                     name="institucion"
+                    :required="$rolInicial === 'DEPOSITANTE'"
+                    x-bind:required="role === 'DEPOSITANTE'"
+                    x-bind:aria-required="(role === 'DEPOSITANTE').toString()"
                     type="text"
                     value="{{ old('institucion') }}"
                     placeholder="Ej. EcoSambito C. Ltda"
@@ -166,16 +179,24 @@
                 <flux:label class="font-medium text-text-primary">Contraseña</flux:label>
                 <x-auth-password
                     name="password"
+                    required
+                    minlength="8"
+                    aria-required="true"
+                    aria-describedby="register-password-help"
                     placeholder="Mínimo 8 caracteres"
                     autocomplete="new-password"
                 />
                 <flux:error name="password" />
+                <flux:description id="register-password-help">Mínimo 8 caracteres.@if(app()->isProduction()) Incluye mayúsculas, minúsculas, números y símbolos; utiliza una contraseña que no haya sido expuesta.@endif</flux:description>
             </flux:field>
 
             <flux:field>
                 <flux:label class="font-medium text-text-primary">Confirmar contraseña</flux:label>
                 <x-auth-password
                     name="password_confirmation"
+                    required
+                    minlength="8"
+                    aria-required="true"
                     description="confirmación de contraseña"
                     placeholder="Repite tu contraseña"
                     autocomplete="new-password"

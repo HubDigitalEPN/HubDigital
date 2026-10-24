@@ -130,7 +130,7 @@ return [
 
     'temporary_file_upload' => [
         'disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'), // Example: 'local', 's3'             | Default: 'default'
-        'rules' => ['required', 'file', 'max:20480'],            // Mismo máximo de 20 MB que la carga documental.
+        'rules' => ['required', 'file', 'max:20480', 'pdf_max_upload:10240'], // Matrices hasta 20 MB; PDF hasta 10 MB.
         'directory' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DIRECTORY'), // Example: 'tmp'          | Default: 'livewire-tmp'
         'middleware' => null,                                 // Example: 'throttle:5,1'            | Default: 'throttle:60,1'
         'preview_mimes' => [                                  // Supported file types for temporary pre-signed file URLs...

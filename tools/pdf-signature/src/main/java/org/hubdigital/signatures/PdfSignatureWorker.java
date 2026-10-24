@@ -138,7 +138,10 @@ final class PdfSignatureWorker {
                         : text ? PdfSignatureCli.textResult(Path.of(fields[3]))
                         : verify ? PdfSignatureCli.officialResult(Path.of(fields[4]), Path.of(fields[3]))
                         : PdfSignatureCli.signRequest(request, true); }
-                    catch (Exception error) { result = PdfSignatureCli.errorResult(error); }
+                    catch (Exception error) {
+                        PdfSignatureCli.diagnosticarError(error);
+                        result = PdfSignatureCli.errorResult(error);
+                    }
                 }
             }
             writeFrame(peer, selector, result);

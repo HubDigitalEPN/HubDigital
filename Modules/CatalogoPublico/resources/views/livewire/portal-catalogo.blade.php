@@ -119,12 +119,12 @@
             @endforeach
         </div>
         <div class="collection-view-switch">
-            <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="sr-only">{{ $catalogoTexto('arbol_taxonomico') }}</span></button>
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="sr-only">{{ $catalogoTexto('tarjetas') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="collection-view-label">Árbol</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="collection-view-label">{{ $catalogoTexto('tarjetas') }}</span></button>
             @if(\App\Support\AccesoCatalogo::completo())
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="sr-only">{{ $catalogoTexto('registros') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="collection-view-label">{{ $catalogoTexto('registros') }}</span></button>
             @endif
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="sr-only">{{ $catalogoTexto('mapa_analisis') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="collection-view-label">Mapa</span></button>
         </div>
     </nav>
 
@@ -155,7 +155,7 @@
                 </x-slot:search>
                 <x-slot:actions>
                     <button type="button" role="menuitem" tabindex="-1" x-on:click="closeMenu(false); $refs.recordSort.dispatchEvent(new Event('abrir-orden'))"><flux:icon name="arrows-up-down" /> Ordenar</button>
-                    @if($totalRegistrosVista > 0)<button type="button" role="menuitem" tabindex="-1" wire:click="descargarResultados" x-on:click="closeMenu()"><flux:icon name="arrow-down-tray" /> Descargar resultados CSV</button>@endif
+                    @if($totalRegistrosVista > 0)<button type="button" role="menuitem" tabindex="-1" data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga('resultados'))); closeMenu()"><flux:icon name="arrow-down-tray" /> Descargar resultados CSV</button>@endif
                 </x-slot:actions>
                 <x-slot:reset><button type="button" class="hub-ig-button hub-ig-reset" wire:click="restablecerVistaRegistros" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button></x-slot:reset>
                 <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" :ordenable="true" />
@@ -489,20 +489,15 @@
                             </span>
                             @if(count($especimenes) > 0)
                                 <button
-                                    wire:click="descargarDatos"
-                                    wire:loading.attr="disabled"
-                                    wire:target="descargarDatos"
+                                    type="button" data-catalogo-descarga
+                                    x-on:click="window.location.assign(@js($this->urlDescarga('datos')))"
                                     class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:border-science-blue/50 hover:text-science-blue disabled:opacity-50 w-full sm:w-auto"
                                 >
-                                    <span wire:loading.remove wire:target="descargarDatos" class="flex items-center gap-1.5">
+                                    <span class="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                         </svg>
                                         Descargar datos XLSX
-                                    </span>
-                                    <span wire:loading wire:target="descargarDatos" class="flex items-center gap-1.5">
-                                        <span class="inline-block size-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
-                                        Generando…
                                     </span>
                                 </button>
                             @endif

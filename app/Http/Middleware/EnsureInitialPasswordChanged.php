@@ -16,7 +16,7 @@ final class EnsureInitialPasswordChanged
             return $next($request);
         }
 
-        if ($request->is('logout', 'settings/security', 'user/confirm-password', 'livewire-*/livewire.js', 'livewire-*/livewire.min.js')) {
+        if ($request->is('logout', 'api/logout', 'settings/security', 'user/confirm-password', 'livewire-*/livewire.js', 'livewire-*/livewire.min.js')) {
             return $next($request);
         }
 

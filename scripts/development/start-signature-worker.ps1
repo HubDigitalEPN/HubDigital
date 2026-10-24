@@ -7,8 +7,41 @@ $runtimeFirma = Join-Path $proyectoLocal '.local\localhost'
 $jarFirma = Join-Path $proyectoLocal 'resources\bin\hubdigital-pdf-signature.jar'
 $claveMotor = Join-Path $runtimeFirma 'signature-worker.key'
 New-Item -ItemType Directory -Path $runtimeFirma -Force | Out-Null
-if (Get-NetTCPConnection -LocalPort 17655 -State Listen -ErrorAction SilentlyContinue) {
-    throw 'El puerto local 17655 ya está ocupado. No se detienen ni reemplazan procesos existentes.'
+function Wait-MotorFirma([int]$IdMotorFirma) {
+    $limitePreparacionFirma = (Get-Date).AddSeconds(90)
+    do {
+        if (!(Get-Process -Id $IdMotorFirma -ErrorAction SilentlyContinue)) {
+            throw 'El motor local de firma terminó antes de prepararse.'
+        }
+        # Start-Process mantiene el log abierto mientras redirige stdout.
+        $salidaFirma = Get-Content -LiteralPath (Join-Path $runtimeFirma 'signature-worker.stdout.log') -Raw -ErrorAction SilentlyContinue
+        if ($salidaFirma -match '(?m)^LOCAL_SIGNATURE_READY\s*$') { return }
+        Start-Sleep -Milliseconds 100
+    } while ((Get-Date) -lt $limitePreparacionFirma)
+    throw 'El motor local no quedó preparado en 90 segundos.'
+}
+$escuchasFirma = @(Get-NetTCPConnection -LocalPort 17655 -State Listen -ErrorAction SilentlyContinue)
+if ($escuchasFirma) {
+    $propietariosFirma = @($escuchasFirma.OwningProcess | Sort-Object -Unique)
+    $motorExistente = if ($propietariosFirma.Count -eq 1) { Get-CimInstance Win32_Process -Filter "ProcessId = $($propietariosFirma[0])" }
+    if (@($escuchasFirma | Where-Object { $_.LocalAddress -notin @('127.0.0.1', '::1') }).Count -gt 0 -or
+        !$motorExistente -or !$motorExistente.CommandLine.Contains($jarFirma) -or
+        !$motorExistente.CommandLine.Contains($claveMotor) -or !$motorExistente.CommandLine.Contains('serve-local') -or
+        !(Test-Path -LiteralPath $claveMotor -PathType Leaf) -or (Get-Item -LiteralPath $claveMotor).Length -ne 32) {
+        throw 'El puerto 17655 pertenece a otro proceso o configuración. No se reemplaza.'
+    }
+    if ((Get-Item -LiteralPath $jarFirma).LastWriteTimeUtc -gt $motorExistente.CreationDate.ToUniversalTime()) {
+        # El cliente exige el hash del JAR activo. Un proceso anterior al build
+        # provocaría el respaldo CLI frío aunque siga escuchando en loopback.
+        Stop-Process -Id $motorExistente.ProcessId -ErrorAction Stop
+        Wait-Process -Id $motorExistente.ProcessId -Timeout 10 -ErrorAction SilentlyContinue
+        Write-Output 'Motor local anterior al build detenido.'
+    } else {
+        Wait-MotorFirma -IdMotorFirma $motorExistente.ProcessId
+        $motorExistente.ProcessId | Set-Content -LiteralPath (Join-Path $runtimeFirma 'signature-worker.pid') -Encoding ASCII
+        Write-Output ('Motor local preparado reutilizado, PID ' + $motorExistente.ProcessId + '.')
+        return
+    }
 }
 $aclClave = New-Object Security.AccessControl.FileSecurity
 $aclClave.SetAccessRuleProtection($true, $false)
@@ -57,8 +90,22 @@ try {
         '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2'
     ) + $opcionesLimites + @('-jar', ('"' + $jarFirma + '"'), 'serve-local', ('"' + $claveMotor + '"'))
     $procesoFirma = Start-Process -FilePath (Get-Command java.exe -ErrorAction Stop).Source -WindowStyle Hidden -WorkingDirectory $proyectoLocal -ArgumentList $argumentosFirma -RedirectStandardOutput (Join-Path $runtimeFirma 'signature-worker.stdout.log') -RedirectStandardError (Join-Path $runtimeFirma 'signature-worker.stderr.log') -PassThru
-    $procesoFirma.Id | Set-Content -LiteralPath (Join-Path $runtimeFirma 'signature-worker.pid') -Encoding ASCII
-    Write-Output ('Motor local iniciado, PID ' + $procesoFirma.Id + '. Esperar LOCAL_SIGNATURE_READY en signature-worker.stdout.log.')
+    try { Wait-MotorFirma -IdMotorFirma $procesoFirma.Id }
+    catch {
+        Stop-Process -Id $procesoFirma.Id
+        throw
+    }
+    # Oracle javapath puede lanzar otro java.exe. Administrar el propietario
+    # real del puerto evita dejar un motor huérfano al detener localhost.
+    $puertoPreparado = Get-NetTCPConnection -LocalPort 17655 -State Listen -ErrorAction Stop |
+        Where-Object LocalAddress -eq '127.0.0.1' | Select-Object -First 1
+    $motorReal = if ($puertoPreparado) { Get-CimInstance Win32_Process -Filter "ProcessId = $($puertoPreparado.OwningProcess)" }
+    if (!$motorReal -or !$motorReal.CommandLine.Contains($jarFirma) -or
+        !$motorReal.CommandLine.Contains($claveMotor) -or !$motorReal.CommandLine.Contains('serve-local')) {
+        throw 'No se pudo identificar el proceso real del motor local.'
+    }
+    $motorReal.ProcessId | Set-Content -LiteralPath (Join-Path $runtimeFirma 'signature-worker.pid') -Encoding ASCII
+    Write-Output ('Motor local preparado, PID ' + $motorReal.ProcessId + '.')
 } finally {
     if ($null -eq $confianzaAnterior) { Remove-Item Env:HUBDIGITAL_SIGNATURE_TRUST_DIR -ErrorAction SilentlyContinue }
     else { $env:HUBDIGITAL_SIGNATURE_TRUST_DIR = $confianzaAnterior }

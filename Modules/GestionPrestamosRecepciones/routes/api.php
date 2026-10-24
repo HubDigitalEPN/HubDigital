@@ -11,6 +11,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\ValidarIde
 
 Route::middleware([
     'auth:sanctum',
+    'password.changed',
     'ability:depositos:gestionar',
     'role:DEPOSITANTE',
 ])->prefix('v1')->group(function (): void {

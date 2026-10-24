@@ -798,7 +798,7 @@ final class PortalCatalogo extends Component
         }
     }
 
-    public function actualizarFiltros(): void
+    public function actualizarFiltros(bool $normalizarEtiquetaProvincia = true): void
     {
         unset($this->territorioPanel);
         $this->filtroMetodos = array_values(array_unique(array_map(ProtocoloColectaPublico::clave(...), $this->filtroMetodos)));
@@ -829,7 +829,7 @@ final class PortalCatalogo extends Component
         $this->claveRegistrosCargados = '';
         $this->paginasRegistrosCargadas = 1;
         unset($this->geografiaDisponible, $this->provinciasDisponibles, $this->localidadesDisponibles);
-        if ($this->filtroProvincia !== '') $this->filtroProvincia = NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) ?? $this->filtroProvincia;
+        if ($normalizarEtiquetaProvincia && $this->filtroProvincia !== '') $this->filtroProvincia = NormalizacionGeografica::nombreDisponible($this->filtroProvincia, $this->provinciasDisponibles) ?? $this->filtroProvincia;
         $this->pagina = 1;
         $this->paginaHermanos = 1;
         $this->sincronizarCoordenadasSimples();
@@ -874,7 +874,7 @@ final class PortalCatalogo extends Component
             return $filo && CalidadDatoPublico::esTextoValido($filo->nombre_cientifico) ? (string) $filo->id : null;
         }
         $coincidencias = [];
-        foreach ($this->filosDisponibles as $filo) {
+        foreach ($this->filosDisponibles() as $filo) {
             if (strcasecmp($filo['id'], $identificador) === 0) return $filo['id'];
             if (mb_strtolower(trim($filo['nombre_cientifico'])) === mb_strtolower($identificador)) $coincidencias[] = $filo['id'];
         }
@@ -1124,6 +1124,36 @@ final class PortalCatalogo extends Component
 
     // ─── Exportación ─────────────────────────────────────────────────────────
 
+    public function urlDescarga(string $exportacion): string
+    {
+        return route('portal.descarga', ['exportacion' => $exportacion] + $this->estadoParaUrl());
+    }
+
+    /** Reutiliza la selección y sus validadores sin renderizar el catálogo. */
+    public function prepararDescargaHttp(array $parametros): void
+    {
+        \App\Support\AccesoCatalogo::autorizar();
+        $reglas = ['fxprov' => ['prohibited']];
+        $defectos = get_class_vars(self::class);
+        foreach (self::PROPIEDADES_URL as $alias => $propiedad) {
+            if (is_array($defectos[$propiedad])) {
+                $reglas[$alias] = ['sometimes', 'nullable', 'array', 'max:100'];
+                $reglas[$alias.'.*'] = ['string', 'max:2000'];
+            } else {
+                $reglas[$alias] = $propiedad === 'pagina'
+                    ? ['sometimes', 'nullable', 'integer', 'min:1']
+                    : ['sometimes', 'nullable', 'string', 'max:2000'];
+            }
+        }
+        $estado = \Illuminate\Support\Facades\Validator::make($parametros, $reglas)->validate();
+        $this->aplicarEstadoUrl($estado);
+        $this->validarSeleccionUrl();
+        if ($this->avisoSeleccionUrl !== '') {
+            throw ValidationException::withMessages(['seleccion' => $this->avisoSeleccionUrl]);
+        }
+        $this->actualizarFiltros(normalizarEtiquetaProvincia: false);
+    }
+
     public function descargarDatos(): StreamedResponse
     {
         \App\Support\AccesoCatalogo::autorizar();
@@ -1214,7 +1244,7 @@ final class PortalCatalogo extends Component
             )],
             'riqueza' => [$this->filtrosActuales()->provinciasSeleccionadas() === [] ? 'registros-por-provincia.csv' : 'registros-por-localidad.csv',
                 [$this->filtrosActuales()->provinciasSeleccionadas() === [] ? 'Provincia' : 'Localidad', 'Registros'], array_map(
-                static fn (array $fila): array => [$fila['localidad'] ?? $fila['provincia'], $fila['registros']], $this->territorioPanel,
+                static fn (array $fila): array => [$fila['localidad'] ?? $fila['provincia'], $fila['registros']], $this->territorioPanel(),
             )],
             'decadas' => ['cobertura-por-decada.csv', ['Década', 'Especies', 'Registros'], array_map(
                 static fn (array $fila): array => [$fila['decada'], $fila['especies'], $fila['registros']], $datos['decadas'],

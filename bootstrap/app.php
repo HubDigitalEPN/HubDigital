@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\LocalRequestTimings::class);
         $middleware->trimStrings(except: ['clave_certificado']);
         $middleware->web(append: [
             NormalizeAuthenticationEmail::class,
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => CheckRole::class,
+            'password.changed' => EnsureInitialPasswordChanged::class,
             'deposit.owner' => EnsureOwnsDepositRequest::class,
             'ability' => CheckAbilities::class,
             'abilities' => CheckForAnyAbility::class,

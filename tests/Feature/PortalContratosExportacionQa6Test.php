@@ -18,6 +18,36 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 uses(Tests\DatabaseFeatureTestCase::class);
 uses(Tests\Concerns\ColeccionPortalAislada::class);
 
+test('HTTP exports preserve the selection and return a private binary attachment', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
+    $fixture = contratoExportacionFixtureQa6();
+    $response = $this->get(route('portal.descarga', [
+        'exportacion' => 'resultados', 'fph' => $fixture['filo'], 'fd' => 'En la colección',
+    ]))->assertOk()->assertHeader('X-Accel-Buffering', 'no');
+    $csv = $response->streamedContent();
+    expect($csv)->toStartWith("\xEF\xBB\xBF")
+        ->toContain($fixture['codigos'][0], $fixture['codigos'][1])
+        ->not->toContain($fixture['codigos'][2]);
+    expect($response->headers->get('Content-Disposition'))->toContain('attachment', 'registros-catalogo.csv');
+    expect($response->headers->get('Cache-Control'))->toContain('private', 'no-store');
+    $xlsx = $this->get(route('portal.descarga', [
+        'exportacion' => 'datos', 'nivel' => 'species', 'taxon' => $fixture['nombre'], 'fph' => $fixture['filo'],
+    ]))->assertOk()->assertHeader('X-Accel-Buffering', 'no');
+    expect($xlsx->streamedContent())->toStartWith('PK');
+    expect($xlsx->headers->get('Content-Disposition'))->toContain('attachment', '.xlsx');
+    $territorio = $this->get(route('portal.descarga', [
+        'exportacion' => 'riqueza', 'fph' => $fixture['filo'], 'fprov' => 'Orellana',
+    ]))->assertOk();
+    expect($territorio->streamedContent())->toContain('Registros', '3');
+    expect($territorio->headers->get('Content-Disposition'))->toContain('registros-por-localidad.csv');
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados', 'fph' => ['malformed']]))
+        ->assertUnprocessable();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados', 'fph' => 'not-a-public-phylum']))
+        ->assertUnprocessable();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados', 'fxprov' => 'Orellana']))
+        ->assertUnprocessable();
+});
+
 function contratoExportacionFixtureQa6(): array
 {
     $filo = (string) Str::uuid();

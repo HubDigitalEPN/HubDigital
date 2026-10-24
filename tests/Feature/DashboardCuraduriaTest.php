@@ -3,10 +3,36 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Livewire\Dashboard;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+
+test('el panel conserva el conteo por familia de cada espécimen y el orden de las ocho primeras', function (): void {
+    $taxones = DB::table('taxonomia.taxones')->get(['id', 'padre_id', 'rango', 'nombre_cientifico'])->keyBy('id');
+    $cantidades = [];
+    foreach (DB::table('taxonomia.especimenes')->select('taxon_id')->cursor() as $especimen) {
+        $actual = $especimen->taxon_id;
+        $visitados = [];
+        $familias = [];
+        while ($actual && isset($taxones[$actual]) && !isset($visitados[$actual])) {
+            $visitados[$actual] = true;
+            $taxon = $taxones[$actual];
+            if ($taxon->rango === 'familia') $familias[$taxon->nombre_cientifico] = true;
+            $actual = $taxon->padre_id;
+        }
+        foreach (array_keys($familias) as $familia) $cantidades[$familia] = ($cantidades[$familia] ?? 0) + 1;
+    }
+    $esperado = collect($cantidades)->map(fn ($valor, $etiqueta) => compact('etiqueta', 'valor'))
+        ->sort(fn ($a, $b) => ($b['valor'] <=> $a['valor']) ?: strcmp($a['etiqueta'], $b['etiqueta']))
+        ->take(8)->values()->all();
+
+    $this->actingAs(User::factory()->administrador()->create());
+    Livewire::test(Dashboard::class)->assertViewHas('graficoFamilias', $esperado);
+});
 
 test('el administrador ve cantidades estados y tendencia de depósitos', function (): void {
     $administrador = User::factory()->administrador()->create();

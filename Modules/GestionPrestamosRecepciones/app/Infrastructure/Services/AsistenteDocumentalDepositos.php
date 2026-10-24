@@ -21,13 +21,13 @@ final class AsistenteDocumentalDepositos
             return 'La orientación del chat no aprueba archivos ni omite sus controles. Adjunta el documento solicitado; su contenido, integridad y firma se comprueban en el flujo de carga y validación.';
         }
         if (preg_match('/virus|malware|antivirus|javascript|\bjs\b|\.exe|ejecutable|renombr|extension/', $normal)) {
-            return 'Cambiar la extensión a .pdf no convierte un archivo en PDF. Debe ser un PDF real de hasta 20 MB. La carga comprueba su cabecera, estructura y contenido activo; rechaza JavaScript, acciones activas y ejecutables renombrados. Esas comprobaciones no equivalen a un antivirus. Un PDF seguro también debe corresponder a la casilla y superar la validación documental.';
+            return 'Cambiar la extensión a .pdf no convierte un archivo en PDF. Debe ser un PDF real de hasta 10 MB. La carga comprueba su cabecera, estructura y contenido activo; rechaza JavaScript, acciones activas y ejecutables renombrados. Esas comprobaciones no equivalen a un antivirus. Un PDF seguro también debe corresponder a la casilla y superar la validación documental.';
         }
         if (preg_match('/corrupt|danad|roto|incompleto|no abre|ilegible|borros|escane|foto|ocr/', $normal)) {
             return 'Adjunta el PDF completo, con todas sus páginas y texto legible. Si está dañado, vuelve a obtenerlo de su emisor o exporta nuevamente el original. Para un escaneo, revisa que no falten páginas y que pueda leerse con claridad; si la lectura queda incompleta, el sistema no puede confirmar su contenido.';
         }
         if (preg_match('/megab|\bmb\b|tamano|peso|limite|formato|\bword\b|\.doc|imagen|jpg|png/', $normal)) {
-            return 'Cada archivo debe ser un PDF real de hasta 20 MB. Exporta el documento completo a PDF; renombrar Word, una imagen o un ejecutable no sirve. Puedes elegirlo o arrastrarlo a la casilla correspondiente. Su nombre no determina el tipo: se revisa el contenido.';
+            return 'Cada archivo debe ser un PDF real de hasta 10 MB. Exporta el documento completo a PDF; renombrar Word, una imagen o un ejecutable no sirve. Puedes elegirlo o arrastrarlo a la casilla correspondiente. Su nombre no determina el tipo: se revisa el contenido.';
         }
         if (preg_match('/por que.*rechaz|motivo.*rechaz|error|fallo|no.*sube|no.*carga/', $normal)) {
             $rechazos = array_filter($contexto['rechazos'] ?? [], 'is_array');
@@ -35,7 +35,7 @@ final class AsistenteDocumentalDepositos
                 $ultimo = end($rechazos);
                 return 'La última carga fue rechazada: '.Str::limit((string) ($ultimo['mensaje'] ?? 'No superó los controles de carga.'), 500).' Reemplaza ese archivo por el PDF correcto y completo.';
             }
-            return 'Comprueba que el PDF sea completo, legible, de hasta 20 MB y del tipo solicitado. Si aparece un aviso de rechazo, dime qué indica para orientarte. Todavía no consta un motivo de rechazo en esta conversación.';
+            return 'Comprueba que el PDF sea completo, legible, de hasta 10 MB y del tipo solicitado. Si aparece un aviso de rechazo, dime qué indica para orientarte. Todavía no consta un motivo de rechazo en esta conversación.';
         }
         if (preg_match('/no (?:tengo|cuento|dispongo|poseo)[^?!.]{0,40}(?:permis|document|autoriz|papel)|sin (permisos?|documentos)|carezco.*(?:permis|document)|ningun documento/', $normal)) {
             if ($cartaRequerida) {

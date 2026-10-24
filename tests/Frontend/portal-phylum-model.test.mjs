@@ -82,7 +82,7 @@ test('un filtro completo abre todos sus niveles y limita el DOM sin perder el ú
     assert.equal(ui.filas.length, 802);
     assert.deepEqual(ui.cargados, ['Arthropoda', 'Insecta']);
     assert.ok(ui.filasVisibles.length < 25);
-    ui.actualizarVentana(802 * 32 - 320);
+    ui.actualizarVentana(802 * 48 - 320);
     assert.equal(ui.filasVisibles.at(-1).clave, 'Especie-0799');
     assert.ok(ui.filasVisibles.length < 25); assert.equal(ui.espacioInferior, 0);
     ui.actualizar(datos({contexto: 'global:3'}));

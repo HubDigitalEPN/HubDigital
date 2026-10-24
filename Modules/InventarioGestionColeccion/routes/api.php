@@ -7,7 +7,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonController;
 
-Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
+Route::middleware(['auth:sanctum', 'password.changed'])->prefix('v1')->group(function (): void {
 
     // --- Gestión de registros taxonómicos ---
     Route::prefix('taxonomia')

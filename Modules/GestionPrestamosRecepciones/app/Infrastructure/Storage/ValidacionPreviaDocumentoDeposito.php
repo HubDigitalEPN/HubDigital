@@ -21,6 +21,10 @@ final class ValidacionPreviaDocumentoDeposito
     /** @return array<string,mixed> */
     public function validar(string $archivo, string $nombre, array $expediente = [], bool $confirmarContenidoIncierto = false): array
     {
+        $tamano = is_file($archivo) ? filesize($archivo) : false;
+        if ($tamano === false || $tamano > 10 * 1024 * 1024) {
+            throw new DocumentoDepositoRechazado('formato_invalido', 'Selecciona un PDF real de hasta 10 MB.');
+        }
         $huella = hash_file('sha256', $archivo);
         if ($huella === false) {
             throw new DocumentoDepositoRechazado('pdf_inseguro', 'No se pudo leer el PDF seleccionado.');

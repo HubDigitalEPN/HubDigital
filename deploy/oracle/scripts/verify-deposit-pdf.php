@@ -25,6 +25,7 @@ if ($archivoValido === false || $archivoFalso === false || ! mkdir($directorioFi
 
 $fallo = null;
 $motorPrueba = null;
+$directorioOficial = null;
 $configuracionFirma = config('firma-electronica');
 try {
     $pdf = new \setasign\Fpdi\Fpdi;
@@ -131,7 +132,10 @@ try {
             '-Dhubdigital.pdf.max_render_pixels='.config('firma-electronica.max_render_pixels', 100000000),
             ...$opcionesTransporte,
             '-jar', $jar, ...$transporte,
-        ], null, $entorno + ['HUBDIGITAL_SIGNATURE_TRUST_DIR' => $directorioFirma]);
+        ], null, $entorno + [
+            'HUBDIGITAL_SIGNATURE_TRUST_DIR' => $directorioFirma,
+            'HUBDIGITAL_SIGNATURE_DIAGNOSTICS' => '1',
+        ]);
         $motorPrueba->setTimeout(null);
         $motorPrueba->start();
         // Mismo margen de preparación que verify-signature-worker.php en la
@@ -166,6 +170,55 @@ try {
         }
     }
     $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class);
+    // El camino oficial exige certificado de persona (no CA) y los dos
+    // marcadores del perfil. La identidad sigue siendo sintética y efímera.
+    file_put_contents($opensslConfig, "\n[v3_signer]\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,nonRepudiation\n", FILE_APPEND);
+    $clavePersona = openssl_pkey_new($opciones + ['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    $csrPersona = $clavePersona === false ? false : openssl_csr_new(
+        ['commonName' => 'Persona QA', 'organizationName' => 'HubDigital', 'countryName' => 'EC'], $clavePersona, $opciones,
+    );
+    $certPersona = $csrPersona === false ? false : openssl_csr_sign(
+        $csrPersona, $certificado, $clave, 1, $opciones + ['x509_extensions' => 'v3_signer'], 2,
+    );
+    if ($certPersona === false || ! openssl_pkcs12_export($certPersona, $p12Persona, $clavePersona,
+        'prueba-temporal', ['extracerts' => [$certPem]])) {
+        throw new \RuntimeException('No se pudo preparar la identidad sintética de persona.');
+    }
+    $directorioOficial = \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital::crear('firma-oficial-qa');
+    file_put_contents($directorioOficial.'/persona.p12', $p12Persona);
+    $oficio = new \setasign\Fpdi\Fpdi;
+    $oficio->AddPage();
+    $oficio->SetFont('Helvetica', '', 12);
+    $oficio->Cell(0, 10, 'Oficio sintetico para medir firma oficial');
+    // FPDF escribe [x,y,x+w,y-h]. Partir del borde inferior y usar h negativo
+    // conserva el orden PDF canónico que exige el perfil institucional.
+    $oficio->Link(20, 245, 170, -35, 'https://firmas.hubdigital.invalid/bloques/solicitud-deposito/depositante/v1');
+    $oficio->Link(22, 243, 166, -31, 'https://firmas.hubdigital.invalid/zonas/solicitud-deposito/depositante/v1');
+    $contenidoOficio = $oficio->Output('S');
+    $originalOficial = $directorioOficial.'/oficio.pdf';
+    file_put_contents($originalOficial, $contenidoOficio);
+    $clientePreparado = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\ClienteFirmadorPreparado::class);
+    $clientePreparado->prepararOriginal($contenidoOficio);
+    // El respaldo CLI frío no debe ocultar una regresión de latencia.
+    $inicioCreacion = microtime(true);
+    $salidaPreparada = $directorioOficial.'/firmado-preparado.pdf';
+    $creacionPreparada = $clientePreparado->firmar($originalOficial, $salidaPreparada,
+        $directorioOficial.'/persona.p12', 'prueba-temporal', 'solicitud-deposito:depositante:v1');
+    $duracionCreacion = microtime(true) - $inicioCreacion;
+    if (! is_array($creacionPreparada) || ! is_file($salidaPreparada)
+        || ($creacionPreparada['aceptable'] ?? false) !== true
+        || ! in_array($creacionPreparada['status'] ?? null, ['firmado', 'firmado_sin_revocacion'], true)) {
+        $diagnostico = is_array($creacionPreparada)
+            ? json_encode(array_intersect_key($creacionPreparada, array_flip([
+                'status', 'reason', 'aceptable', 'contenido_oficial_coincide', 'pdf_seguro',
+            ])), JSON_UNESCAPED_UNICODE)
+            : 'sin respuesta compatible';
+        throw new \RuntimeException('El motor preparado no confirmó la creación y comprobación de la firma: '.$diagnostico
+            .($motorPrueba !== null ? "\nMotor sintético: ".$motorPrueba->getErrorOutput() : ''));
+    }
+    if ($duracionCreacion > 3) {
+        throw new \RuntimeException('La creación y comprobación de la firma superó tres segundos.');
+    }
     $inicioValidacion = microtime(true);
     $resultado = $adaptador->verificarFirma($firmado);
     $duracionFirma = microtime(true) - $inicioValidacion;
@@ -197,7 +250,7 @@ try {
     }
 
     echo "OK solución PDF depósitos: número mágico en byte cero, estructura y contenido activo comprobados; PDF falso rechazado; PHP/Java verificó firma válida, alterada y ausente.\n";
-    echo 'Tiempos de firma: íntegra='.round($duracionFirma * 1000).' ms; alterada='.round($duracionAlterado * 1000)." ms.\n";
+    echo 'Tiempos de firma: creación y comprobación='.round($duracionCreacion * 1000).' ms; íntegra='.round($duracionFirma * 1000).' ms; alterada='.round($duracionAlterado * 1000)." ms.\n";
 } catch (\Throwable $error) {
     $fallo = 'NO OK solución PDF depósitos: '.$error->getMessage();
     // Diagnóstico de los procesos sintéticos: clases y tiempos, nunca credenciales ni PDF.
@@ -211,6 +264,9 @@ try {
 } finally {
     if ($motorPrueba !== null) {
         $motorPrueba->stop(2);
+    }
+    if ($directorioOficial !== null) {
+        \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital::eliminar($directorioOficial);
     }
     config()->set('firma-electronica', $configuracionFirma);
     @unlink($archivoValido);

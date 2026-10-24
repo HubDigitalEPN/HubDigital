@@ -27,7 +27,8 @@
         if (controls.length !== 1 || controls[0] !== control) return;
         mark(field, 'data-hub-apex-field');
         mark(label, 'data-hub-apex-label');
-        if (label.parentElement !== field && label.parentElement.querySelector('a[href]')) {
+        if (label.parentElement !== field && field.contains(label.parentElement)
+            && label.parentElement.querySelector('a[href]')) {
             mark(label.parentElement, 'data-hub-apex-label-row');
         }
         if (control.tagName === 'INPUT' && !control.hasAttribute('placeholder')) {

@@ -31,7 +31,8 @@
             @if(\App\Support\AccesoCatalogo::completo())
                 <a href="{{ route('dashboard') }}" class="portal-curator-access" aria-label="Ir al panel del curador">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></svg>
-                    <span>Panel del curador</span>
+                    <span class="portal-curator-full-label">Panel del curador</span>
+                    <span class="portal-curator-short-label" aria-hidden="true">Panel</span>
                 </a>
             @else
             <div class="hidden shrink-0 lg:block">
@@ -54,6 +55,15 @@
             </div>
             @endif
 
+            <div class="portal-mobile-actions">
+            @if(config('chatbot.enabled', true))
+            <button id="portal-chat-mobile-trigger" type="button" class="portal-mobile-chat-button"
+                x-data="{ chatAbierto: false }" x-on:portal-chat-state.window="chatAbierto = $event.detail.abierto"
+                x-on:click="abierto = false; $dispatch('portal-chat-toggle')"
+                aria-label="Abrir asistente HubDigital" aria-controls="chat-bot-panel" :aria-expanded="chatAbierto.toString()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z" /></svg>
+            </button>
+            @endif
             <button
                 x-ref="menuButton"
                 type="button"
@@ -66,6 +76,7 @@
                 <svg x-show="!abierto" viewBox="0 0 24 24" aria-hidden="true" class="size-6 fill-none stroke-current stroke-2"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" /></svg>
                 <svg x-cloak x-show="abierto" viewBox="0 0 24 24" aria-hidden="true" class="size-6 fill-none stroke-current stroke-2"><path d="m6 6 12 12M18 6 6 18" stroke-linecap="round" /></svg>
             </button>
+            </div>
         </div>
 
         <nav

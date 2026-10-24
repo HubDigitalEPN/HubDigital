@@ -16,6 +16,23 @@ test('registration screen can be rendered', function () {
     $response->assertOk();
 });
 
+test('production passwords accept eight characters and preserve the other password checks', function () {
+    $environment = app()->environment();
+    app()->instance('env', 'production');
+    $this->mock(\Illuminate\Contracts\Validation\UncompromisedVerifier::class)
+        ->shouldReceive('verify')->andReturnTrue();
+    try {
+        $validate = static fn (string $password): bool => \Illuminate\Support\Facades\Validator::make(
+            ['password' => $password], ['password' => ['required', \Illuminate\Validation\Rules\Password::defaults()]],
+        )->passes();
+        expect($validate('Aa1!aaaa'))->toBeTrue()
+            ->and($validate('Aa1!aaa'))->toBeFalse()
+            ->and($validate('aaaaaaaa'))->toBeFalse();
+    } finally {
+        app()->instance('env', $environment);
+    }
+});
+
 test('registration preselects only public purposes and preserves a previous form choice', function (mixed $entrada, string $esperado): void {
     $response = $this->get(route('register', ['rol' => $entrada]))->assertOk();
     $dom = new DOMDocument;

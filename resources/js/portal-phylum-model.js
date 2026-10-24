@@ -1,3 +1,5 @@
+const ALTO_FILA_FILO = 48;
+
 export function filasFilo(nodos, expandidos) {
     const abiertos = new Set(expandidos), grupos = new Map();
     for (const nodo of nodos) {
@@ -53,10 +55,10 @@ export function crearFiltroFilo(inicial, endpoint) {
         actualizarVentana(posicion) {
             const vista = this.$refs?.arbolFilo;
             const alto = vista?.clientHeight || 320, scroll = posicion ?? vista?.scrollTop ?? 0;
-            const inicio = Math.max(0, Math.min(Math.max(0, this.filas.length - 1), Math.floor(scroll / 32) - 5));
-            const fin = Math.min(this.filas.length, Math.max(inicio + 1, Math.ceil((scroll + alto) / 32) + 5));
+            const inicio = Math.max(0, Math.min(Math.max(0, this.filas.length - 1), Math.floor(scroll / ALTO_FILA_FILO) - 5));
+            const fin = Math.min(this.filas.length, Math.max(inicio + 1, Math.ceil((scroll + alto) / ALTO_FILA_FILO) + 5));
             this.filasVisibles = this.filas.slice(inicio, fin);
-            this.espacioSuperior = inicio * 32; this.espacioInferior = (this.filas.length - fin) * 32;
+            this.espacioSuperior = inicio * ALTO_FILA_FILO; this.espacioInferior = (this.filas.length - fin) * ALTO_FILA_FILO;
         },
         marcado(nodo) { return nodo.padre === null ? this.filos.includes(nodo.id) : this.seleccionado === nodo.id; },
         enLinaje(nodo) { return this.linaje.includes(nodo.id); },
@@ -111,7 +113,7 @@ export function crearFiltroFilo(inicial, endpoint) {
             evento.preventDefault();
             if (destino) {
                 const vista = this.$refs?.arbolFilo, fila = this.filas.findIndex(n => n.clave === destino.clave);
-                if (vista && (fila * 32 < vista.scrollTop || (fila + 1) * 32 > vista.scrollTop + vista.clientHeight)) vista.scrollTop = Math.max(0, fila * 32 - vista.clientHeight / 2);
+                if (vista && (fila * ALTO_FILA_FILO < vista.scrollTop || (fila + 1) * ALTO_FILA_FILO > vista.scrollTop + vista.clientHeight)) vista.scrollTop = Math.max(0, fila * ALTO_FILA_FILO - vista.clientHeight / 2);
                 this.actualizarVentana();
                 this.$nextTick(() => this.$el.querySelector(`[data-filo-clave="${destino.clave}"] input`)?.focus());
             }

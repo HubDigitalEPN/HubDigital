@@ -27,11 +27,20 @@
         contenidoPorRevisar: @js($contenidoPorRevisar),
         archivoEstado: @js($estadoArchivo),
         nombreArchivo: @js($archivoNombre),
+        validarTamano(archivo) {
+            if (archivo.size <= 10 * 1024 * 1024) return true;
+            this.nombreArchivo = archivo.name;
+            this.errorSubida = true;
+            this.rechazo = {estado: 'formato_invalido', mensaje: 'El PDF no debe superar los 10 MB.'};
+            this.$dispatch('show-toast', {message: this.rechazo.mensaje, variant: 'warning'});
+            return false;
+        },
         soltar(e) {
             this.arrastrando = false;
             if (this.cargado) return;
             const archivo = e.dataTransfer.files[0];
             if (!archivo) return;
+            if (!this.validarTamano(archivo)) return;
             this.nombreArchivo = archivo.name;
             if (archivo.type !== 'application/pdf') {
                 this.errorSubida = true;
@@ -50,7 +59,7 @@
     x-on:livewire-upload-start="subiendo = true; progreso = 0; errorSubida = false"
     x-on:livewire-upload-progress="progreso = $event.detail.progress"
     x-on:livewire-upload-finish="subiendo = false; progreso = 100"
-    x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true; $dispatch('show-toast', {message: 'No se pudo completar la carga. Revisa que el PDF no supere 20 MB e intenta de nuevo.', variant: 'warning'})"
+    x-on:livewire-upload-error="subiendo = false; progreso = 0; errorSubida = true; $dispatch('show-toast', {message: 'No se pudo completar la carga. Revisa que el PDF no supere 10 MB e intenta de nuevo.', variant: 'warning'})"
     x-on:documento-aceptado.window="if ($event.detail.propiedad === '{{ $propiedad }}') { cargado = true; archivoEstado = 'valido'; contenidoPorRevisar = !!$event.detail.contenidoIncierto; firmaValidada = false; errorSubida = false; rechazo = null }"
     x-on:archivo-validado.window="if ($event.detail.nombre === @js($nombre)) { archivoEstado = $event.detail.estado; rechazo = ['valido', 'analizando'].includes(archivoEstado) ? null : { estado: archivoEstado, mensaje: $event.detail.mensaje }; errorSubida = !!rechazo }"
     x-on:firma-actualizada.window="if ($event.detail.nombre === @js($nombre)) firmaValidada = ['firmado', 'firmado_sin_revocacion'].includes($event.detail.estado)"
@@ -214,7 +223,7 @@
             @endif
 
             <span x-show="!cargado && !subiendo && !nombreArchivo" class="text-xs text-text-secondary">
-                Solo PDF · Haz clic o arrastra aquí
+                Solo PDF · Hasta 10 MB · Haz clic o arrastra aquí
             </span>
         </div>
 
@@ -251,7 +260,7 @@
 
         <div x-show="errorSubida" x-cloak class="hub-upload-rejection">
             <strong>Archivo no aceptado</strong>
-            <span x-text="rechazo?.mensaje || 'La carga no se completó. Solo se admite un PDF real de hasta 20 MB; cambiar su extensión no modifica el contenido.'"></span>
+            <span x-text="rechazo?.mensaje || 'La carga no se completó. Solo se admite un PDF real de hasta 10 MB; cambiar su extensión no modifica el contenido.'"></span>
         </div>
     </div>
 
@@ -279,6 +288,7 @@
         x-ref="fileInput"
         accept=".pdf"
         x-on:click.stop
+        x-on:change.capture="const archivo = $event.target.files[0]; if (archivo && !validarTamano(archivo)) { $event.target.value = ''; $event.stopImmediatePropagation() }"
         x-on:change="nombreArchivo = $event.target.files[0]?.name ?? null"
     />
 

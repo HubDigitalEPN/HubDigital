@@ -1,7 +1,9 @@
 <div
     class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
-    x-data="{ abierto: false, seleccionCatalogo() { const catalogo = document.querySelector('[data-catalogo-seleccion]'); return catalogo ? JSON.parse(catalogo.dataset.catalogoSeleccion) : null } }"
-    x-on:keydown.escape.window="if (abierto && !$event.defaultPrevented && !document.querySelector('dialog[open]')) { $event.preventDefault(); abierto = false; $nextTick(() => $refs.trigger.focus()) }"
+    x-data="{ abierto: false, devolverFoco() { if (this.$refs.trigger.offsetParent) { this.$refs.trigger.focus(); return } document.getElementById('portal-chat-mobile-trigger')?.focus() }, seleccionCatalogo() { const catalogo = document.querySelector('[data-catalogo-seleccion]'); return catalogo ? JSON.parse(catalogo.dataset.catalogoSeleccion) : null } }"
+    x-effect="$dispatch('portal-chat-state', { abierto })"
+    x-on:portal-chat-toggle.window="abierto = !abierto; $nextTick(() => abierto ? $refs.input.focus() : devolverFoco())"
+    x-on:keydown.escape.window="if (abierto && !$event.defaultPrevented && !document.querySelector('dialog[open]')) { $event.preventDefault(); abierto = false; $nextTick(() => devolverFoco()) }"
     x-on:chat-respuesta.window="$nextTick(() => { $refs.messages.scrollTop = $refs.messages.scrollHeight; $refs.input.focus() })"
 >
     <div class="pointer-events-none flex w-full max-w-[25rem] flex-col items-end gap-2">
@@ -23,7 +25,7 @@
                         <p class="text-xs text-white/75">Portal, colección y fuentes públicas</p>
                     </div>
                 </div>
-                <button type="button" x-on:click="abierto = false; $nextTick(() => $refs.trigger.focus())"
+                <button type="button" x-on:click="abierto = false; $nextTick(() => devolverFoco())"
                     class="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-white transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                     aria-label="Cerrar chat">
                     <flux:icon name="x-mark" class="size-5" />

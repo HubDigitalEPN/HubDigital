@@ -1,10 +1,19 @@
 /* Estándar APEX compartido para formularios y listas de valores. */
+.portal-mobile-actions { display: flex; flex: none; align-items: center; gap: .35rem; }
+.portal-mobile-chat-button { display: none; }
+@media (max-width: 639px) {
+    .portal-mobile-chat-button { display: flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid #b9c9d9; border-radius: 4px; background: #fff; color: #102d48; cursor: pointer; }
+    .portal-mobile-chat-button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .portal-mobile-chat-button:focus-visible { outline: 2px solid #056ac8; outline-offset: 2px; }
+    body:has(#portal-chat-mobile-trigger) .portal-chat-shell #chat-bot-trigger { display: none; }
+}
 :root {
     --hub-form-background: #f9f9f9;
     --hub-form-text: #202020;
     --hub-form-label: #262626;
     --hub-form-border: #dfdfdf;
     --hub-form-focus: #056ac8;
+    --hub-form-placeholder: #686868;
 }
 .dark {
     --hub-form-background: #182a3b;
@@ -12,6 +21,7 @@
     --hub-form-label: #e7eef7;
     --hub-form-border: #486077;
     --hub-form-focus: #9fc4ff;
+    --hub-form-placeholder: #b9c9d9;
 }
 html body [data-hub-apex-control][data-flux-control],
 html body [data-hub-apex-field] [data-hub-apex-control],
@@ -40,9 +50,23 @@ html body [data-hub-apex-field] {
     min-inline-size: 0;
 }
 html body [data-hub-apex-field] > * { order: 1; }
+/* Flux y los LOV comparten el borde superior, también con ayudas o errores. */
+html body [data-hub-apex-field] > :is([data-flux-input], [data-flux-select], [data-flux-textarea]) {
+    margin-block: 0;
+    align-self: stretch;
+}
+html body [data-hub-apex-field] [data-hub-apex-control] { margin-block: 0; vertical-align: top; }
 html body [data-hub-apex-field] > :is([data-flux-description], [data-flux-error]) { order: 2; margin-block: .2rem 0; }
 /* Cada campo conserva su motivo de rechazo visible y accesible. */
 html body .hub-depositos-ui :is([data-flux-error], p[role="alert"]) { display: block; position: static; width: auto; height: auto; margin: .3rem 0 0; padding: 0; overflow: visible; clip-path: none; white-space: normal; border: 0; }
+html body .hub-depositos-ui [data-flux-error].hidden { display: none; }
+/* Confirmación APEX no modal: permite continuar mientras se actualiza Livewire. */
+html body .hub-signature-success-overlay { inset: var(--hub-floating-notice-top, 6rem) 1rem auto auto; display: block; width: min(25rem, calc(100vw - 2rem)); padding: 0; background: transparent; pointer-events: none; }
+html body .hub-signature-success-card { position: relative; width: 100%; padding: 1rem 1rem 1rem 3.25rem; border: 1px solid #b8d4c3; border-left: 4px solid #42765c; border-radius: 3px; background: #f1fbf5; text-align: left; box-shadow: 0 5px 18px #102d481a; pointer-events: auto; }
+html body .hub-signature-success-emblem { position: absolute; top: 1rem; left: .75rem; width: 1.5rem; height: 1.5rem; margin: 0; background: transparent; }
+html body .hub-signature-success-emblem > span { width: 1.5rem; height: 1.5rem; background: #42765c; box-shadow: none; }
+html body .hub-signature-success-card h2 { margin-bottom: .35rem; font-size: .875rem; color: #234f38; }
+html body .hub-signature-success-card button { width: auto; margin-top: .65rem; padding: .3rem .65rem; border: 1px solid #b8d4c3; border-radius: 2px; background: #fff; color: #234f38; }
 html body [data-hub-apex-field] [data-hub-apex-label] {
     position: absolute;
     z-index: 2;
@@ -102,7 +126,8 @@ html body .hub-lov-trigger[data-hub-apex-control] > svg {
 }
 html body .hub-lov-trigger[data-hub-apex-control]:disabled > svg { background-color: #fff; }
 html body .hub-lov-field[data-hub-apex-field] [data-hub-apex-label] { max-inline-size: calc(100% - 2.5rem); }
-html body .hub-lov-value--empty { visibility: hidden; }
+html body .hub-lov-value--empty { color: var(--hub-form-placeholder); }
+html body [data-hub-apex-control]::placeholder { color: var(--hub-form-placeholder); opacity: 1; }
 /* La capa modal nativa no queda recortada por el transform/overflow de Flux. */
 html body dialog.hub-lov-overlay { margin: 0; border: 0; max-inline-size: none !important; max-width: none; max-height: none; width: 100dvw; height: 100dvh; transform: none; box-sizing: border-box; }
 html body dialog.hub-lov-overlay:not([open]) { display: none; }
@@ -139,7 +164,7 @@ html body [data-hub-apex-label-row] a { font-size: .6875rem; line-height: 1.25re
 /* Disposición y colores de la solicitud. */
 .hub-request-letter { padding-block-start: .5rem; }
 .hub-request-fields { align-items: start; }
-.hub-identification-fields { grid-template-columns: calc(9.5rem + .5cm) minmax(0, 1fr); }
+.hub-identification-fields { grid-template-columns: calc(9.5rem + .5cm) minmax(0, 1fr); align-items: start; }
 .hub-request-cell--letter { display: block; }
 .hub-request-cell--letter > [data-flux-field] { max-inline-size: 18rem; }
 .hub-request-cell--project > [data-flux-modal-trigger] { display: block; margin-block-start: .4rem; }

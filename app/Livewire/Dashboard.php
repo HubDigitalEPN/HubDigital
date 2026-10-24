@@ -35,6 +35,8 @@ class Dashboard extends Component
 
     public string $archivoSeleccion = '';
 
+    private float $inicioVista = 0;
+
     public function updatedPeriodoAnalisis(): void
     {
         if (! in_array($this->periodoAnalisis, ['6', '12', '24'], true)) {
@@ -96,9 +98,10 @@ class Dashboard extends Component
 
     public function render(): View
     {
+        $inicio = microtime(true);
         $user = Auth::user();
 
-        return match ($user->rolActivo()) {
+        $vista = match ($user->rolActivo()) {
             RolUsuario::CURADOR, RolUsuario::ADMIN => view('livewire.dashboard.curador-panel', [
                 ...$this->resumenCuraduria(),
                 'graficoFamilias' => $this->graficoFamilias(),
@@ -126,6 +129,18 @@ class Dashboard extends Component
                 $this->estadisticasDepositante((string) $user->id),
             ),
         };
+        $this->inicioVista = microtime(true);
+        if (app()->environment('local')) {
+            request()->attributes->set('panel_datos_ms', ($this->inicioVista - $inicio) * 1000);
+        }
+        return $vista;
+    }
+
+    public function rendered(): void
+    {
+        if (app()->environment('local') && $this->inicioVista > 0) {
+            request()->attributes->set('panel_vista_ms', (microtime(true) - $this->inicioVista) * 1000);
+        }
     }
 
     /** Datos acotados para el visor del archivo, sin descargar objetos R2 al renderizar. */
@@ -247,23 +262,35 @@ class Dashboard extends Component
      */
     private function graficoFamilias(): array
     {
+        $inicio = microtime(true);
         $filas = DB::select(<<<'SQL'
-            WITH RECURSIVE linaje AS (
-                SELECT e.id AS especimen_id, t.id, t.padre_id, t.rango, t.nombre_cientifico
-                FROM taxonomia.especimenes e
-                INNER JOIN taxonomia.taxones t ON t.id = e.taxon_id
+            WITH RECURSIVE conteos AS (
+                SELECT taxon_id, COUNT(*) AS cantidad
+                FROM taxonomia.especimenes
+                WHERE taxon_id IS NOT NULL
+                GROUP BY taxon_id
+            ), linaje AS (
+                SELECT t.id AS taxon_origen, c.cantidad, t.id, t.padre_id, t.rango, t.nombre_cientifico
+                FROM conteos c
+                INNER JOIN taxonomia.taxones t ON t.id = c.taxon_id
                 UNION ALL
-                SELECT linaje.especimen_id, padre.id, padre.padre_id, padre.rango, padre.nombre_cientifico
+                SELECT linaje.taxon_origen, linaje.cantidad, padre.id, padre.padre_id, padre.rango, padre.nombre_cientifico
                 FROM linaje
                 INNER JOIN taxonomia.taxones padre ON padre.id = linaje.padre_id
+            ), familias AS (
+                SELECT DISTINCT taxon_origen, cantidad, nombre_cientifico
+                FROM linaje
+                WHERE rango = 'familia'
             )
-            SELECT nombre_cientifico AS etiqueta, COUNT(DISTINCT especimen_id) AS valor
-            FROM linaje
-            WHERE rango = 'familia'
+            SELECT nombre_cientifico AS etiqueta, SUM(cantidad) AS valor
+            FROM familias
             GROUP BY nombre_cientifico
             ORDER BY valor DESC, etiqueta ASC
             LIMIT 8
         SQL);
+        if (app()->environment('local')) {
+            request()->attributes->set('panel_familias_ms', (microtime(true) - $inicio) * 1000);
+        }
 
         return array_map(
             static fn (object $fila): array => ['etiqueta' => (string) $fila->etiqueta, 'valor' => (int) $fila->valor],

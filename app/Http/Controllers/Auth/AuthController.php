@@ -28,6 +28,13 @@ class AuthController extends Controller
             return response()->json(['message' => 'Credenciales inválidas'], 401);
         }
 
+        if ($user->must_change_password) {
+            return response()->json([
+                'message' => 'Debes cambiar la contraseña inicial en el portal web antes de utilizar la API.',
+                'must_change_password' => true,
+            ], 403);
+        }
+
         // No se emiten tokens de larga duración saltando el segundo factor.
         // Las cuentas con 2FA usan el flujo web interactivo de Fortify.
         if ($user->hasEnabledTwoFactorAuthentication()) {

@@ -232,7 +232,7 @@ try {
     assert.equal(await evaluar('location.search'),'?vista=mapa','El login curatorial vuelve al mapa.');
     await conexion.send('Page.navigate',{url});
     await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && window.Livewire");await reposo();
-    assert.ok(await evaluar(`document.querySelector('.portal-curator-access') && [...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargarAnalisis'))`),'La sesión autorizada habilita exportaciones y el acceso al panel.');
+    assert.ok(await evaluar(`Boolean(document.querySelector('.portal-curator-access') && document.querySelector('button[data-catalogo-descarga]'))`),'La sesión autorizada habilita exportaciones HTTP y el acceso al panel.');
     // La provincia se selecciona directamente en el dashboard, sin buscador.
     assert.equal(await evaluar("document.querySelectorAll('.research-locality-dialog').length + [...document.querySelectorAll('.research-sidebar button')].filter(b => b.getAttribute('x-on:click') === 'abrirProvincias()').length"), 0);
     assert.equal(await evaluar("document.querySelectorAll('#buscar-provincia-panel,.atlas-chart-data-toggle').length"), 0);

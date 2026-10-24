@@ -266,6 +266,9 @@ final class RegistroSolicitudDeposito extends Component
     public $archivoMatriz = null;
 
     #[Locked]
+    public int $intervaloExtraccion = 5;
+
+    #[Locked]
     public ?string $matrizId = null;
 
     public string $estadoMatriz = '';
@@ -1378,11 +1381,12 @@ final class RegistroSolicitudDeposito extends Component
 
         try {
             $this->validate(
-                [$propiedad => 'file|mimes:pdf|extensions:pdf|max:20480'],
+                [$propiedad => 'file|mimes:pdf|extensions:pdf|max:10240'],
                 [
                     "{$propiedad}.mimes" => "Solo se aceptan archivos PDF para \"{$nombre}\".",
                     "{$propiedad}.extensions" => 'El archivo debe tener extensión .pdf.',
-                    "{$propiedad}.max" => 'El archivo no debe superar los 20 MB.',
+                    "{$propiedad}.max" => 'El archivo no debe superar los 10 MB.',
+                    "{$propiedad}.uploaded" => 'No se pudo cargar el PDF. Su tamaño máximo es de 10 MB.',
                 ]
             );
 
@@ -1931,6 +1935,8 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $this->documentosProcesados = $model->documentos_procesados ?? [];
+
+        $this->intervaloExtraccion = $model->extraccion_estado === 'procesando' ? 2 : 5;
 
         $segundosTranscurridos = $this->extraccionIniciadaEn > 0
             ? now()->timestamp - $this->extraccionIniciadaEn

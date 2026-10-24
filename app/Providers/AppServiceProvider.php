@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureTranslations();
+        $this->configureUploadRules();
         $this->configureSystemMail();
         $this->preventExternalNotificationsDuringValidation();
     }
@@ -68,11 +69,22 @@ class AppServiceProvider extends ServiceProvider
     protected function configureTranslations(): void
     {
         $this->app['translator']->addLines([
-            'validation.uploaded' => 'El archivo :attribute no pudo cargarse. Verifica que sea un PDF de máximo 10 MB.',
+            'validation.uploaded' => 'El archivo :attribute no pudo cargarse. Revisa el formato y el tamaño máximo indicado para esta carga.',
             'validation.attributes.pdfFirmado' => 'acta firmada',
             'validation.attributes.documentoIdentidad' => 'documento de identidad',
             'validation.attributes.documentoIdentidadSolo' => 'documento de identidad',
+            'validation.custom.pdf_firmado.max' => 'El PDF firmado no debe superar los 10 MB.',
         ], 'en');
+    }
+
+    protected function configureUploadRules(): void
+    {
+        \Illuminate\Support\Facades\Validator::extend('pdf_max_upload', static function ($attribute, $value, $parameters): bool {
+            if (! $value instanceof \Illuminate\Http\UploadedFile || ! $value->isValid()) return true;
+            $pdf = strtolower($value->getClientOriginalExtension()) === 'pdf'
+                || $value->getMimeType() === 'application/pdf';
+            return ! $pdf || $value->getSize() <= ((int) ($parameters[0] ?? 10240)) * 1024;
+        }, 'Cada PDF debe tener como máximo 10 MB.');
     }
 
     protected function configureDefaults(): void
@@ -84,7 +96,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
+            ? Password::min(8)
                 ->mixedCase()
                 ->letters()
                 ->numbers()

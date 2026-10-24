@@ -53,6 +53,10 @@
         @if($oficioCompleto && $pdfGenerado && !$solicitudFirmada)
                 <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentId: @js($solicitudId), documentVersion: {{ $solicitudDocumentoVersion }}, originalPrepared: true, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
                     <button type="button" class="hub-request-primary cursor-pointer rounded border border-science-blue bg-science-blue px-4 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-50" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</button>
+                    <flux:button x-show="estado === 'completado'" x-cloak class="hub-request-primary" variant="primary" icon-trailing="arrow-right"
+                        wire:click="continuarDesdeSolicitud" wire:loading.attr="disabled" wire:target="continuarDesdeSolicitud">
+                        Ir al paso 2 Trámite
+                    </flux:button>
                     <div x-show="dialogo" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
                         <section role="dialog" aria-modal="true" aria-labelledby="titulo-firma-solicitud" x-trap.inert.noscroll="dialogo" x-on:click.outside="cerrarDialogo()" class="hub-signature-dialog space-y-3 rounded-xl border border-border bg-surface p-4 text-text-primary shadow-2xl">
                             <div class="flex items-start justify-between gap-3">

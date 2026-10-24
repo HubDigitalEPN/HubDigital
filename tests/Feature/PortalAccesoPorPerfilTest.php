@@ -15,7 +15,7 @@ test('sólo administración y curaduría ven las funciones operativas del catál
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
     $autorizado = in_array($rol, ['ADMIN', 'CURADOR'], true);
     $pagina = $this->get(route('portal.catalogo', ['vista' => 'mapa']))->assertOk();
-    foreach (['Ir al panel del curador', 'wire:click="descargarAnalisis', 'x-on:click="pdf()"', 'x-on:click="verRegistros(menuNodo)"'] as $control) {
+    foreach (['Ir al panel del curador', 'data-catalogo-descarga', 'x-on:click="pdf()"', 'x-on:click="verRegistros(menuNodo)"'] as $control) {
         if ($autorizado) $pagina->assertSee($control, false);
         else $pagina->assertDontSee($control, false);
     }
@@ -32,12 +32,14 @@ test('un visitante o un perfil ajeno a curaduría no puede invocar registros ni 
     Livewire::test(RegistrosTaxonExplorador::class)->assertForbidden();
     Livewire::withQueryParams(['vista' => 'registros'])->test(PortalCatalogo::class)->assertSet('vista', 'mapa');
     $this->getJson(route('portal.lista-especies'))->assertStatus($rol === null ? 401 : 403);
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertStatus($rol === null ? 401 : 403);
 })->with([null, 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
 
 test('un curador sin verificar tampoco habilita operaciones del catálogo', function (): void {
     $this->actingAs(User::factory()->curador()->unverified()->create());
     Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('descargarAnalisis', 'mapa')->assertForbidden();
     $this->getJson(route('portal.lista-especies'))->assertForbidden();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertForbidden();
 });
 
 test('login dirige al mapa sólo a curaduría y administración aunque existiera otro destino', function (string $rol): void {

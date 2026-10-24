@@ -901,7 +901,7 @@ public final class PdfSignatureCli {
         }
     }
 
-    private static void diagnosticarError(Exception error) {
+    static void diagnosticarError(Exception error) {
         if ("1".equals(System.getenv("HUBDIGITAL_SIGNATURE_DIAGNOSTICS"))) {
             error.printStackTrace(System.err);
         }

@@ -226,11 +226,11 @@
 
     {{-- Toast teleportado al body — fuera del DOM de Livewire, sin morph --}}
     @teleport('body')
-        <div x-data="{show: false, timer: null, abrir() {clearTimeout(this.timer); this.show = true; this.timer = setTimeout(() => this.cerrar(), 3500);}, cerrar() {this.show = false; clearTimeout(this.timer); this.$nextTick(() => document.querySelector('[data-oficio-signed-link]')?.focus());}, destroy() {clearTimeout(this.timer);}}"
+        <div x-data="{show: false, timer: null, abrir() {clearTimeout(this.timer); this.show = true; this.timer = setTimeout(() => this.cerrar(), 3500);}, cerrar() {this.show = false; clearTimeout(this.timer);}, destroy() {clearTimeout(this.timer);}}"
             x-on:hub-firma-completada.window="abrir()" x-on:keydown.escape.window="if(show) cerrar()"
-            x-show="show" x-cloak x-transition.opacity x-trap.inert.noscroll="show"
+            x-show="show" x-cloak x-transition.opacity
             class="hub-signature-success-overlay" data-hub-signature-success>
-            <section class="hub-signature-success-card" role="alertdialog" aria-modal="true" aria-labelledby="firma-completada-titulo" aria-describedby="firma-completada-detalle">
+            <section class="hub-signature-success-card" role="status" aria-live="polite" aria-atomic="true" aria-labelledby="firma-completada-titulo" aria-describedby="firma-completada-detalle">
                 <div class="hub-signature-success-emblem" aria-hidden="true"><span><flux:icon name="check" class="size-7" /></span></div>
                 <h2 id="firma-completada-titulo">Documento firmado</h2>
                 <p id="firma-completada-detalle">Tu PDF está firmado y validado. El guardado seguro continúa automáticamente.</p>

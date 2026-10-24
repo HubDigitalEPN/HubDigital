@@ -2,7 +2,8 @@
 param(
     [ValidateSet('iniciar', 'detener', 'estado')][string]$Accion = 'iniciar',
     [string]$BaseDatos = 'hubdigital',
-    [string]$UsuarioBD = 'postgres'
+    [string]$UsuarioBD = 'postgres',
+    [switch]$SinVite
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,7 +50,8 @@ if (@($estadoLocal | Where-Object { Get-ProcesoLocal $_ }).Count -gt 0) {
     Write-Host 'Ya hay procesos de localhost encendidos. Usa -Accion estado o -Accion detener.'
     exit
 }
-foreach ($puertoLocal in @(8000, 8001, 5173)) {
+$puertosLocal = if ($SinVite) { @(8000, 8001) } else { @(8000, 8001, 5173) }
+foreach ($puertoLocal in $puertosLocal) {
     if (Get-NetTCPConnection -State Listen -LocalPort $puertoLocal -ErrorAction SilentlyContinue) {
         throw "El puerto $puertoLocal está ocupado. Este comando no detiene procesos ajenos."
     }
@@ -68,7 +70,7 @@ foreach ($rutaLocal in @($ejecutablePhpLocal, $routerLocal, $viteLocal, $pythonE
 }
 New-Item -ItemType Directory -Path $runtimeLocal -Force | Out-Null
 
-# Este comando sólo sirve la aplicación existente; no migra, compila ni ejecuta pruebas.
+# Sirve la aplicación y prepara sus vistas; no migra ni compila Java/Vite ni ejecuta suites.
 $variablesLocal = @{
     APP_ENV = 'local'; APP_DEBUG = 'true'; APP_URL = 'http://localhost:8000';
     APP_CONFIG_CACHE = (Join-Path $runtimeLocal 'config-sin-cache.php');
@@ -76,7 +78,8 @@ $variablesLocal = @{
     DB_CONNECTION = 'pgsql'; DB_HOST = '127.0.0.1'; DB_PORT = '5432'; DB_SSLMODE = 'prefer';
     DB_DATABASE = $BaseDatos; DB_USERNAME = $UsuarioBD;
     SESSION_DRIVER = 'file'; SESSION_DOMAIN = 'null'; SESSION_SECURE_COOKIE = 'false';
-    CACHE_STORE = 'file'; QUEUE_CONNECTION = 'sync'
+    CACHE_STORE = 'file'; QUEUE_CONNECTION = 'sync'; MAIL_MAILER = 'log'
+    JAVA_SIGNATURE_WORKER_ENABLED = 'true'
     PORTAL_ETE_URL = 'http://127.0.0.1:8001'; QT_QPA_PLATFORM = 'offscreen'
 }
 $archivoKeyLocal = Join-Path $runtimeLocal 'app-key.txt'
@@ -102,13 +105,32 @@ try {
         $anterioresLocal[$nombreLocal] = [Environment]::GetEnvironmentVariable($nombreLocal, 'Process')
         [Environment]::SetEnvironmentVariable($nombreLocal, $variablesLocal[$nombreLocal], 'Process')
     }
+    # Preparar también las vistas privadas antes de la primera visita autenticada.
+    & $ejecutablePhpLocal (Join-Path $raizLocal 'artisan') hub:prepare-local-views --no-interaction
+    if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las vistas de localhost.' }
+    & (Join-Path $PSScriptRoot 'start-signature-worker.ps1') -Proyecto $raizLocal
+    $idFirmaLocal = [int]([IO.File]::ReadAllText((Join-Path $runtimeLocal 'signature-worker.pid')).Trim())
+    $firmaProcesoLocal = Get-Process -Id $idFirmaLocal -ErrorAction Stop
+    $iniciadosLocal += [pscustomobject]@{ Nombre = 'Firma'; Id = $firmaProcesoLocal.Id; Inicio = $firmaProcesoLocal.StartTime.ToUniversalTime().Ticks; Ruta = (Join-Path $raizLocal 'resources\bin\hubdigital-pdf-signature.jar') }
+    $artisanLocal = Join-Path $raizLocal 'artisan'
+    $r2ProcesoLocal = Start-Process -FilePath $ejecutablePhpLocal -ArgumentList @(('"' + $artisanLocal + '"'), 'queue:work', 'r2_signatures', '--queue=r2-signatures', '--sleep=1', '--memory=192', '--timeout=300') -WorkingDirectory $raizLocal -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeLocal 'r2-signatures.stdout.log') -RedirectStandardError (Join-Path $runtimeLocal 'r2-signatures.stderr.log')
+    $iniciadosLocal += [pscustomobject]@{ Nombre = 'R2'; Id = $r2ProcesoLocal.Id; Inicio = $r2ProcesoLocal.StartTime.ToUniversalTime().Ticks; Ruta = $artisanLocal }
     $eteProcesoLocal = Start-Process -FilePath $pythonETELocal -ArgumentList @(('"' + $servidorETELocal + '"'), '--port', '8001') -WorkingDirectory $raizLocal -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeLocal 'ete.log') -RedirectStandardError (Join-Path $runtimeLocal 'ete-error.log')
     $iniciadosLocal += [pscustomobject]@{ Nombre = 'ETE'; Id = $eteProcesoLocal.Id; Inicio = $eteProcesoLocal.StartTime.ToUniversalTime().Ticks; Ruta = $servidorETELocal }
-    $phpProcesoLocal = Start-Process -FilePath $ejecutablePhpLocal -ArgumentList @('-d', 'max_execution_time=180', '-d', 'opcache.enable_cli=1', '-S', 'localhost:8000', ('"' + $routerLocal + '"')) -WorkingDirectory (Join-Path $raizLocal 'public') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeLocal 'php.log') -RedirectStandardError (Join-Path $runtimeLocal 'php-error.log')
+    $phpProcesoLocal = Start-Process -FilePath $ejecutablePhpLocal -ArgumentList @('-d', 'max_execution_time=180', '-d', 'opcache.enable_cli=1', '-d', 'upload_max_filesize=50M', '-d', 'post_max_size=55M', '-S', 'localhost:8000', ('"' + $routerLocal + '"')) -WorkingDirectory (Join-Path $raizLocal 'public') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeLocal 'php.log') -RedirectStandardError (Join-Path $runtimeLocal 'php-error.log')
     $iniciadosLocal += [pscustomobject]@{ Nombre = 'PHP'; Id = $phpProcesoLocal.Id; Inicio = $phpProcesoLocal.StartTime.ToUniversalTime().Ticks; Ruta = $routerLocal }
-    $viteProcesoLocal = Start-Process -FilePath $ejecutableNodeLocal -ArgumentList @(('"' + $viteLocal + '"'), '--host', 'localhost', '--port', '5173', '--strictPort') -WorkingDirectory $raizLocal -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeLocal 'vite.log') -RedirectStandardError (Join-Path $runtimeLocal 'vite-error.log')
-    $iniciadosLocal += [pscustomobject]@{ Nombre = 'Vite'; Id = $viteProcesoLocal.Id; Inicio = $viteProcesoLocal.StartTime.ToUniversalTime().Ticks; Ruta = $viteLocal }
+    if (!$SinVite) {
+        $viteProcesoLocal = Start-Process -FilePath $ejecutableNodeLocal -ArgumentList @(('"' + $viteLocal + '"'), '--host', 'localhost', '--port', '5173', '--strictPort') -WorkingDirectory $raizLocal -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimeLocal 'vite.log') -RedirectStandardError (Join-Path $runtimeLocal 'vite-error.log')
+        $iniciadosLocal += [pscustomobject]@{ Nombre = 'Vite'; Id = $viteProcesoLocal.Id; Inicio = $viteProcesoLocal.StartTime.ToUniversalTime().Ticks; Ruta = $viteLocal }
+    }
     $iniciadosLocal | Export-Clixml -LiteralPath $archivoEstadoLocal
+    # Preparar los caminos reales de lectura antes de entregar localhost al usuario.
+    # Evita que su primera navegación pague la carga fría de PHP, Blade y catálogo.
+    foreach ($paginaLocal in @('/register', '/portal/catalogo?vista=mapa')) {
+        $respuestaLocal = Invoke-WebRequest -Uri ('http://localhost:8000' + $paginaLocal) -UseBasicParsing -TimeoutSec 90
+        if ($respuestaLocal.StatusCode -ne 200) { throw "No se pudo preparar $paginaLocal." }
+        Write-Host ('Preparado ' + $paginaLocal + ': ' + $respuestaLocal.Headers['Server-Timing'])
+    }
     Write-Host 'Localhost encendido: http://localhost:8000/portal/catalogo?vista=mapa'
     Write-Host 'Para apagar: .\scripts\development\localhost.ps1 -Accion detener'
 } catch {
