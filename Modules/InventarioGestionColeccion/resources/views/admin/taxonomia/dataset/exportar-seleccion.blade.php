@@ -3,7 +3,7 @@
         <flux:heading size="lg" class="text-blue-navy font-semibold">Exportar especímenes seleccionados</flux:heading>
         <p class="text-sm text-text-secondary mt-1">
             Filtra, marca con las casillas los especímenes que quieras y descárgalos como Excel formateado.
-            La selección se conserva aunque cambies de página.
+            La selección se conserva aunque cambies de página. Sin casillas marcadas, se exportan todos los registros filtrados.
         </p>
     </div>
 
@@ -46,11 +46,7 @@
             @if($this->contarSeleccionados() > 0)
                 <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="limpiarSeleccion">Limpiar</flux:button>
             @endif
-            <flux:button variant="filled" icon="arrow-down-tray" wire:click="exportar"
-                         wire:loading.attr="disabled" wire:target="exportar" class="w-full sm:w-auto">
-                <span wire:loading.remove wire:target="exportar">Exportar a Excel</span>
-                <span wire:loading wire:target="exportar">Generando…</span>
-            </flux:button>
+            <x-catalogo-excel-menu accion="exportar" label="Exportar a Excel" />
         </div>
     </div>
 

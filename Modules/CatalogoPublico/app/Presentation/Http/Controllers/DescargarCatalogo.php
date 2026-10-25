@@ -18,6 +18,7 @@ final class DescargarCatalogo
         $catalogo->prepararDescargaHttp($request->query());
         $respuesta = match ($exportacion) {
             'datos' => $catalogo->descargarDatos(),
+            'ipt' => $catalogo->descargarDatos('ipt'),
             'resultados' => $catalogo->descargarResultados(app(EloquentProveedorEspecimenesParaArbol::class)),
             'especies' => $catalogo->descargarListaEspecies(),
             default => $catalogo->descargarAnalisis($exportacion),

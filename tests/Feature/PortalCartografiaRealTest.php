@@ -685,9 +685,11 @@ test('XLSX conserva la selección UUID y permisos sin convertir textos de colect
         $libro = $lector->load($archivo);
         $hoja = $libro->getActiveSheet();
         $filas = $hoja->toArray();
+        $campos = array_combine($filas[0], $filas[1]);
+        $celdaColector = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(array_search('recordedBy', $filas[0], true) + 1).'2';
         expect($filas)->toHaveCount(2)->and($filas[0][0])->toBe('occurrenceID')->and($filas[1][0])->toBe('')
-            ->and($filas[1][1])->toBe($f['prefijo'].' alfa')->and($filas[1][6])->toBe('')
-            ->and($filas[1][9])->toBe('=1+1')->and($hoja->getCell('J2')->getDataType())->toBe('inlineStr');
+            ->and($campos['scientificName'])->toBe($f['prefijo'].' alfa')->and($campos['country'])->toBe('')
+            ->and($campos['recordedBy'])->toBe('=1+1')->and($hoja->getCell($celdaColector)->getDataType())->toBe('inlineStr');
         $libro->disconnectWorksheets();
         DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $f['ids'][0])->update(['scientific_name_visible' => false]);
         $reservado = app(ExportarRegistrosEspecimenesHandler::class)->handle(new ExportarRegistrosEspecimenesInput($f['prefijo'].' alfa', [$f['ids'][0]]));
@@ -753,17 +755,21 @@ test('QA4 exporta la selección completa desde la segunda página conservando Un
     try {
         file_put_contents($archivo, $contenido);
         $libro = IOFactory::load($archivo);
-        $datosXlsx = array_slice($libro->getActiveSheet()->toArray(), 1);
+        $matrizXlsx = $libro->getActiveSheet()->toArray();
+        $cabecerasXlsx = array_shift($matrizXlsx);
+        $datosXlsx = array_map(static fn (array $fila): array => array_combine($cabecerasXlsx, $fila), $matrizXlsx);
         expect($datosXlsx)->toHaveCount(14)
-            ->and(array_column($datosXlsx, 0))->toEqualCanonicalizing($codigosEsperados)
-            ->and(array_unique(array_column($datosXlsx, 1)))->toBe([$f['prefijo'].' alfa'])
-            ->and(array_unique(array_column($datosXlsx, 5)))->toBe(['Río Ñambí; sector norte']);
+            ->and(array_column($datosXlsx, 'occurrenceID'))->toEqualCanonicalizing($codigosEsperados)
+            ->and(array_unique(array_column($datosXlsx, 'scientificName')))->toBe([$f['prefijo'].' alfa'])
+            ->and(array_unique(array_column($datosXlsx, 'localityName')))->toBe(['Río Ñambí; sector norte']);
         foreach ($datosXlsx as $fila) {
-            expect((float) $fila[7])->toBe(-0.25)->and((float) $fila[8])->toBe(-78.5);
+            expect((float) $fila['decimalLatitude'])->toBe(-0.25)->and((float) $fila['decimalLongitude'])->toBe(-78.5);
         }
+        $colLatitud = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(array_search('decimalLatitude', $cabecerasXlsx, true) + 1);
+        $colLongitud = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(array_search('decimalLongitude', $cabecerasXlsx, true) + 1);
         foreach (range(2, 15) as $fila) {
-            expect($libro->getActiveSheet()->getCell('H'.$fila)->getDataType())->toBe('n')
-                ->and($libro->getActiveSheet()->getCell('I'.$fila)->getDataType())->toBe('n');
+            expect($libro->getActiveSheet()->getCell($colLatitud.$fila)->getDataType())->toBe('n')
+                ->and($libro->getActiveSheet()->getCell($colLongitud.$fila)->getDataType())->toBe('n');
         }
         $libro->disconnectWorksheets();
     } finally {

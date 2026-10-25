@@ -3,6 +3,12 @@
         $catalogoTexto = static fn (string $clave): string => \App\Support\PortalCopy::text('catalogo.'.$clave);
         $etiquetaConteo = static fn (string $nivel, int $cantidad, string $plural): string => $cantidad === 1 ? (['kingdom' => 'reino', 'phylum' => 'filo', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'género', 'species' => 'especie'][$nivel] ?? $plural) : $plural;
     @endphp
+    @if(\App\Support\DescargasCatalogo::permitidas())
+        <div class="flex flex-wrap items-center justify-end gap-3 border-b border-border bg-surface px-4 py-2">
+            <span class="text-xs text-text-secondary">Ambos formatos incluyen todos los registros de los filtros activos, también otras páginas.</span>
+            <x-catalogo-excel-menu :catalogo-url="$this->urlDescarga('datos')" :ipt-url="$this->urlDescarga('ipt')" />
+        </div>
+    @endif
     @if($avisoSeleccionUrl !== '')<p role="status" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">{{ $avisoSeleccionUrl }}</p>@endif
     <div x-cloak x-show="errorHistorial" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
         <p x-text="errorHistorial" role="alert"></p>
@@ -488,22 +494,11 @@
                                 {{ number_format($totalEspecimenes, 0, ',', '.') }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
                             </span>
                             @if(count($especimenes) > 0)
-                                <button
-                                    type="button" data-catalogo-descarga
-                                    x-on:click="window.location.assign(@js($this->urlDescarga('datos')))"
-                                    class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:border-science-blue/50 hover:text-science-blue disabled:opacity-50 w-full sm:w-auto"
-                                >
-                                    <span class="flex items-center gap-1.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                        </svg>
-                                        Descargar datos XLSX
-                                    </span>
-                                </button>
+                                <x-catalogo-excel-menu :catalogo-url="$this->urlDescarga('datos')" :ipt-url="$this->urlDescarga('ipt')" label="Descargar datos XLSX" />
                             @endif
                         </div>@endif
                     </div>
-                    @if(count($especimenes) > 0 && \App\Support\DescargasCatalogo::permitidas())<p class="mb-4 text-xs text-text-secondary">El XLSX incluye todos los registros filtrados de esta especie, también otras páginas, con números, fechas y campos públicos de referencia geográfica. Conserva por separado condición de tipo, disposición y advertencias de coordenadas; no incluye fotografías. Perfil de intercambio: <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code>.</p>@endif
+                    @if(count($especimenes) > 0 && \App\Support\DescargasCatalogo::permitidas())<p class="mb-4 text-xs text-text-secondary">Ambas descargas incluyen todos los registros filtrados de esta especie, también otras páginas. El formato IPT usa las columnas configuradas por administración; los datos obligatorios faltantes quedan vacíos y se indican en la hoja Revisión. Los campos reservados no se divulgan.</p>@endif
 
                     {{-- ══════════════════════════════════
                          IMAGEN DESTACADA DE LA ESPECIE (portada por defecto)

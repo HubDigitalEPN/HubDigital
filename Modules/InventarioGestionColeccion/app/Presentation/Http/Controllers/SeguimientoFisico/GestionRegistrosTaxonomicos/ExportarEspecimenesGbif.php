@@ -8,9 +8,6 @@ use Illuminate\View\View;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\BuscarEspecimenes\BuscarEspecimenesInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ExportarEspecimenesSeleccionados\ExportarEspecimenesSeleccionadosHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ExportarEspecimenesSeleccionados\ExportarEspecimenesSeleccionadosInput;
-use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\GeneradorEspecimenesXlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -21,9 +18,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class ExportarEspecimenesGbif extends Component
 {
-    /** Máximo de especímenes que "seleccionar todos" agrega y que se exportan. */
-    private const MAX_SELECCION = 2000;
-
     // ── Filtros ───────────────────────────────────────────────────────────────
     /** Nombre de taxón en cualquier nivel (reino, orden, familia, género, especie). */
     public string $fTaxon = '';
@@ -99,18 +93,12 @@ final class ExportarEspecimenesGbif extends Component
         $this->error = null;
     }
 
-    /** Marca todos los especímenes que cumplen el filtro actual (hasta el tope). */
+    /** Marca todos los especímenes que cumplen el filtro actual, también otras páginas. */
     public function seleccionarTodosFiltrados(BuscarEspecimenesHandler $handler): void
     {
-        $output = $handler->handle($this->construirInput(1, self::MAX_SELECCION));
-
-        foreach ($output->items as $item) {
-            $this->seleccionados[$item['id']] = true;
-        }
-
-        $this->mensaje = $output->total > self::MAX_SELECCION
-            ? 'Se seleccionaron los primeros '.self::MAX_SELECCION.' de '.$output->total.' resultados (tope de la pantalla).'
-            : $this->contarSeleccionados().' especímenes seleccionados.';
+        abort_unless(auth()->user()?->esCurador(), 403);
+        foreach (\App\Support\SeleccionExportacionCatalogo::ids($this->construirInput(1, 500)) as $id) $this->seleccionados[$id] = true;
+        $this->mensaje = $this->contarSeleccionados().' especímenes seleccionados.';
         $this->error = null;
     }
 
@@ -126,33 +114,15 @@ final class ExportarEspecimenesGbif extends Component
     }
 
     /** Descarga la selección como Excel formateado. */
-    public function exportar(ExportarEspecimenesSeleccionadosHandler $handler): ?StreamedResponse
+    public function exportar(string $perfil = 'catalogo'): ?StreamedResponse
     {
+        abort_unless(auth()->user()?->esCurador(), 403);
         $ids = array_keys(array_filter($this->seleccionados));
-
-        if ($ids === []) {
-            $this->error = 'Selecciona al menos un espécimen para exportar.';
-
-            return null;
-        }
-
-        $ids = array_slice($ids, 0, self::MAX_SELECCION);
-        $output = $handler->handle(new ExportarEspecimenesSeleccionadosInput(ids: $ids));
-        $xlsx = GeneradorEspecimenesXlsx::generar($output->columnas, $output->filas);
-
+        $filtrados = \App\Support\SeleccionExportacionCatalogo::ids($this->construirInput(1, 500));
+        $ids = $ids === [] ? $filtrados : array_values(array_intersect($filtrados, $ids));
         $this->error = null;
-        $this->mensaje = count($output->filas).' especímenes exportados.';
-
-        return response()->streamDownload(
-            function () use ($xlsx): void {
-                echo $xlsx;
-            },
-            'especimenes-seleccionados.xlsx',
-            [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Length' => (string) strlen($xlsx),
-            ]
-        );
+        $this->mensaje = count($ids).' especímenes exportados. Revisa los campos obligatorios vacíos antes de publicar en IPT.';
+        return app(\App\Support\ExportacionCatalogoExcel::class)->descargar($ids, $perfil);
     }
 
     private function construirInput(int $page, int $perPage): BuscarEspecimenesInput

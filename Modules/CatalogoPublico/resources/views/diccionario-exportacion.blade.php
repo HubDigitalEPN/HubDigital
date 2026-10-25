@@ -2,7 +2,7 @@
     <div class="mx-auto w-full max-w-5xl px-4 py-8">
         <h1 class="font-display text-3xl font-bold">Diccionario de descargas públicas</h1>
         <p class="my-4">Perfil <code>{{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</code> · revisión 5 de octubre de 2026. CSV y XLSX conservan campos distintos; ninguno acredita por sí solo la exactitud científica del dato.</p>
-        <p class="mb-4">CSV: texto UTF-8 con separador punto y coma, toda la selección aplicada. XLSX: libro de la especie seleccionada con todas sus páginas; identificadores como texto, fechas y números tipados cuando son válidos. Un vacío significa dato no informado o reservado. La incertidumbre desconocida nunca se sustituye por cero. N.º de catálogo puede repetirse: no lo uses como clave única para unir filas.</p>
+        <p class="mb-4">CSV: texto UTF-8 con separador punto y coma, toda la selección aplicada. Excel ofrece «Descargar todo el catálogo», con las columnas curatoriales, y «Descargar formato IPT (GBIF)», con las columnas, el orden y los formatos configurados por administración. Ambos incluyen todas las páginas de los filtros activos y respetan los campos reservados. Un vacío significa dato no informado o reservado. Si faltan obligatorios en IPT, se conservan los registros y se añade la hoja Revisión. Los códigos se conservan como texto y la incertidumbre desconocida no se sustituye por cero.</p>
         <x-grid-frame label="Diccionario de exportacion" :client="true">
 <table class="w-full border-collapse text-left text-sm">
                 <caption class="py-3 text-left font-semibold">Columnas, tipos y equivalencias de {{ \Modules\CatalogoPublico\Domain\ValueObjects\PerfilExportacionPublica::IDENTIFICADOR }}</caption>

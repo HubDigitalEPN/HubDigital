@@ -91,6 +91,14 @@ final class EspecimenIndex extends Component
     }
 
     public function ocultarTodasColumnas(): void { $this->columnasVisibles = []; $this->persistirColumnas(); }
+
+    public function exportarExcel(string $perfil = 'catalogo'): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless(auth()->user()?->esCurador(), 403);
+        $this->validate(self::REGLAS_FILTROS);
+        $ids = \App\Support\SeleccionExportacionCatalogo::ids($this->construirInput(1));
+        return app(\App\Support\ExportacionCatalogoExcel::class)->descargar($ids, $perfil);
+    }
     use GeneraSvgQr;
     use TraduceErroresPersistencia;
 

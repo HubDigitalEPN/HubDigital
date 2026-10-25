@@ -37,6 +37,14 @@ class ActualizarCatalogoIndex extends Component
 
     public function mount(): void { $this->autorizar(); }
 
+    public function exportarExcel(string $perfil = 'catalogo'): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $this->autorizar();
+        return app(\App\Support\ExportacionCatalogoExcel::class)->descargar(
+            DB::table('taxonomia.especimenes')->orderBy('fila_origen_excel')->orderBy('id')->pluck('id')->all(), $perfil,
+        );
+    }
+
     private function autorizar(): void
     {
         auth()->user()?->unsetRelation('roles');

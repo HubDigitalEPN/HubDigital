@@ -54,6 +54,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.textos-depositos');
     Route::get('/administracion/textos-sistema', \App\Livewire\Administracion\ConfiguracionTextosSistema::class)
         ->middleware('role:admin')->name('admin.textos-sistema');
+    Route::get('/administracion/formato-ipt', \App\Livewire\Administracion\ConfiguracionFormatoIpt::class)
+        ->middleware('role:admin')->name('admin.formato-ipt');
     Route::get('/administracion/textos-portal', \App\Livewire\Administracion\ConfiguracionTextosPortal::class)
         ->middleware('role:curador')->name('admin.textos-portal');
     Route::get('/administracion/fichas-taxonomicas', \App\Livewire\Administracion\FichasTaxonomicasPortal::class)

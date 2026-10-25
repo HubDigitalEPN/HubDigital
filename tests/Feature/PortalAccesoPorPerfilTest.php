@@ -33,7 +33,7 @@ test('el flag deshabilitado bloquea todas las descargas externas incluso por HTT
     }
     Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('cambiarVista', 'registros')->assertSet('vista', 'registros');
     $this->getJson(route('portal.lista-especies'))->assertStatus($rol === null ? 401 : 403);
-    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertStatus($rol === null ? 401 : 403);
+    foreach (['resultados', 'datos', 'ipt'] as $perfil) $this->getJson(route('portal.descarga', ['exportacion' => $perfil]))->assertStatus($rol === null ? 401 : 403);
 })->with([null, 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
 
 test('el permiso de descarga se aplica a cuentas verificadas y curaduría conserva su acceso', function (): void {

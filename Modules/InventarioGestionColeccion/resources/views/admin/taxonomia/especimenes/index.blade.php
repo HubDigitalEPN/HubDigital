@@ -222,6 +222,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                <x-catalogo-excel-menu accion="exportarExcel" />
                 <flux:button icon="funnel" variant="{{ $filtrosAbiertos ? 'filled' : 'ghost' }}"
                              wire:click="$toggle('filtrosAbiertos')">
                     Filtros @if(count($filtrosActivos) > 0)<span class="ml-1 rounded-full bg-science-blue px-1.5 text-xs text-white">{{ count($filtrosActivos) }}</span>@endif

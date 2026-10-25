@@ -28,7 +28,7 @@ Route::prefix('portal')
         Route::get('/', fn () => redirect()->route('portal.catalogo', ['vista' => 'mapa']))->name('inicio');
         Route::get('/estadisticas', PortalEstadisticas::class)->name('estadisticas');
         Route::get('/descargas/{exportacion}', \Modules\CatalogoPublico\Presentation\Http\Controllers\DescargarCatalogo::class)
-            ->whereIn('exportacion', ['datos', 'resultados', 'especies', 'mapa', 'filos', 'riqueza', 'decadas', 'calidad', 'raras', 'estacionalidad', 'altitud', 'metodos'])
+            ->whereIn('exportacion', ['datos', 'ipt', 'resultados', 'especies', 'mapa', 'filos', 'riqueza', 'decadas', 'calidad', 'raras', 'estacionalidad', 'altitud', 'metodos'])
             ->middleware(['auth', 'verified', 'throttle:20,1'])->name('descarga');
         // La PWA guarda el catálogo renderizado, no un placeholder que necesite
         // otra petición Livewire en cada apertura, incluso desde la caché.

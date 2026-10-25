@@ -1161,22 +1161,13 @@ final class PortalCatalogo extends Component
         $this->actualizarFiltros(normalizarEtiquetaProvincia: false);
     }
 
-    public function descargarDatos(): StreamedResponse
+    public function descargarDatos(string $perfil = 'catalogo'): StreamedResponse
     {
         \App\Support\DescargasCatalogo::autorizar();
 
-        if ($this->nivel !== 'species' || $this->taxon === '') abort(404);
         $ids = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon)
             ->orderBy('te.fila_origen_excel')->orderBy('te.id')->pluck('te.id')->all();
-        $output = $this->exportarHandler->handle(
-            new ExportarRegistrosEspecimenesInput($this->taxon, $ids)
-        );
-
-        return response()->streamDownload(
-            fn () => print ($output->contenidoXlsx),
-            $output->nombreArchivo,
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'X-HubDigital-Export-Profile' => PerfilExportacionPublica::IDENTIFICADOR],
-        );
+        return app(\App\Support\ExportacionCatalogoExcel::class)->descargar($ids, $perfil, publico: true);
     }
 
     public function descargarResultados(EloquentProveedorEspecimenesParaArbol $repositorio): StreamedResponse

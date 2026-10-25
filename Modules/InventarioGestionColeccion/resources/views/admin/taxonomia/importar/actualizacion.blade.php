@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-6xl space-y-5 p-4 sm:p-6" @if($carga && in_array($carga->estado, ['en_cola', 'procesando'])) wire:poll.3s="consultar" @endif>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div><h1 class="text-2xl font-semibold text-blue-navy">{{ \App\Support\PortalCopy::text('importacion.titulo') }}</h1><p class="mt-1 text-sm text-text-secondary">{{ \App\Support\PortalCopy::text('importacion.introduccion') }}</p></div>
-        <a href="{{ route('inventario.taxonomia.especimenes') }}" class="hub-ig-button">Ver catálogo</a>
+        <div class="flex flex-wrap items-center gap-3"><x-catalogo-excel-menu accion="exportarExcel" /><a href="{{ route('inventario.taxonomia.especimenes') }}" class="hub-ig-button">Ver catálogo</a></div>
     </div>
     @if($errorMessage)<div role="alert" class="rounded border border-red-200 bg-red-50 p-4 text-red-900">{{ $errorMessage }}</div>@endif
     @if($successMessage)<div role="status" class="rounded border border-green-200 bg-green-50 p-4 text-green-900">{{ $successMessage }}</div>@endif
