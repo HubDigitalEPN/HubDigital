@@ -47,12 +47,12 @@ async function prime(w, request) {const result = await w.serve(request); await r
 
 test('rutas públicas reciben su estrategia y R2, sesiones, cuentas y mutaciones quedan fuera del caché', () => {
     const w = worker();
-    for (const path of ['/build/assets/app-a.js', '/build/assets/app-a.css', '/vendor/flux/flux.js', '/livewire-1234abcd/livewire.min.js', '/images/foto.webp', ...logosPublicos, '/portal/referencias-fotograficas/12/jpg.webp']) assert.equal(w.pwa.policy(w.req(path)), 'assets', path);
+    for (const path of ['/build/assets/app-a.js', '/build/assets/app-a.css', '/js/interactive-grid.js?v=123', '/js/lov-origen.js?v=123', '/css/platform-information.css?v=123', '/vendor/flux/flux.js', '/livewire-1234abcd/livewire.min.js', '/images/foto.webp', ...logosPublicos, '/portal/referencias-fotograficas/12/jpg.webp']) assert.equal(w.pwa.policy(w.req(path)), 'assets', path);
     for (const path of ['/', '/portal/catalogo', '/portal/catalogo?vista=mapa']) assert.equal(w.pwa.policy(w.req(path)), 'pages');
     for (const path of ['/portal/explorador', '/portal/explorador?completo=1', '/portal/explorador/dibujo?vista=semicircular&escala=120']) assert.equal(w.pwa.policy(w.req(path)), 'initial-tree');
     for (const path of ['/portal/explorador/dibujo?vista=circular&escala=120', '/portal/explorador/dibujo?vista=semicircular&escala=120&rama=filo']) assert.equal(w.pwa.policy(w.req(path)), 'data');
     for (const path of ['/portal/explorador?padre=taxon', '/portal/explorador?busqueda=Arthro', '/portal/explorador?completo=1&taxon=uuid', '/portal/explorador?completo=1&conservar%5B%5D=filo', '/portal/filos?padre=taxon&busquedaTaxon=Arthro', '/portal/sugerencias?campo=filtroTaxon&texto=Arthro']) assert.equal(w.pwa.policy(w.req(path)), 'data');
-    for (const path of ['/portal/imagenes/objeto', '/portal/pwa/arranque.js', '/administracion/textos-portal', '/login', '/portal/catalogo?vista=mapa&fti=uuid']) assert.equal(w.pwa.policy(w.req(path)), 'network');
+    for (const path of ['/portal/imagenes/objeto', '/informacion/citar', '/portal/chat', '/portal/pwa/arranque.js', '/administracion/textos-portal', '/login', '/portal/catalogo?vista=mapa&fti=uuid']) assert.equal(w.pwa.policy(w.req(path)), 'network');
     assert.equal(w.pwa.policy(w.req('/livewire-1234abcd/update', 'POST')), 'network');
     assert.equal(w.pwa.policy(new Request('https://r2.example/foto.webp')), 'network');
 });
@@ -62,7 +62,7 @@ test('Cache First reutiliza los recursos y expira las entradas antiguas', async 
     assert.equal(await (await prime(w, request)).response.text(), 'original');
     w.state({body: 'nuevo'});
     assert.equal(await (await w.serve(request)).response.text(), 'original'); assert.equal(w.requests.length, 1);
-    const store = w.stores.get('hubdigital-public-v8-assets'), headers = new Headers(store.get(request.url).headers);
+    const store = w.stores.get('hubdigital-public-v9-assets'), headers = new Headers(store.get(request.url).headers);
     headers.set('X-Portal-Cached-At', String(Date.now() - 8 * 86400000));
     store.set(request.url, new Response('caducado', {headers}));
     assert.equal(await (await w.serve(request)).response.text(), 'nuevo'); assert.equal(w.requests.length, 2);
@@ -87,6 +87,17 @@ test('una precarga fallida no bloquea la PWA y los logos se pueden recuperar des
     await w.pwa.precacheLogos();
     w.state({offline: false});
     assert.equal(await (await prime(w, w.req('/images/logo-epn-v1.avif'))).response.text(), 'original');
+});
+
+test('los archivos de portada cambian con su versión y las conversaciones nunca se guardan', async () => {
+    const w = worker();
+    await prime(w, w.req('/css/platform-information.css?v=1'));
+    w.state({body: 'estilos nuevos'});
+    assert.equal(await (await prime(w, w.req('/css/platform-information.css?v=2'))).response.text(), 'estilos nuevos');
+    assert.equal(await (await w.serve(w.req('/css/platform-information.css?v=1'))).response.text(), 'original');
+    w.state({body: 'conversación privada', permission: ''});
+    await prime(w, w.req('/livewire-1234abcd/update', 'POST'));
+    assert.ok([...w.stores.values()].every(store => [...store.keys()].every(url => !url.includes('/update'))));
 });
 
 test('el documento consulta la sesión vigente y conserva sólo el respaldo público para desconexión', async () => {
@@ -118,14 +129,14 @@ test('una respuesta sin autorización pública elimina el documento previo y nun
     const w = worker(), request = w.req('/'); w.state({permission: 'document'});
     await prime(w, request); w.state({permission: '', body: 'cuenta privada'});
     const stale = await w.serve(request); await stale.background;
-    assert.equal(w.stores.get('hubdigital-public-v8-pages').size, 0);
+    assert.equal(w.stores.get('hubdigital-public-v9-pages').size, 0);
     w.state({offline: true}); assert.equal(await (await w.serve(request)).response.text(), 'offline');
 });
 
 test('el caché acota recursos y borra sólo sus versiones anteriores durante la activación', async () => {
     const w = worker();
     for (let i = 0; i < 162; i++) await prime(w, w.req('/images/foto-' + i + '.webp'));
-    assert.equal(w.stores.get('hubdigital-public-v8-assets').size, 160);
+    assert.equal(w.stores.get('hubdigital-public-v9-assets').size, 160);
     w.stores.set('hubdigital-public-v1-assets', new Map()); w.stores.set('otra-aplicacion', new Map()); w.stores.set('hubdigital-public-offline-v1', new Map());
     await w.pwa.activate();
     assert.equal(w.stores.has('hubdigital-public-v1-assets'), false); assert.equal(w.stores.has('otra-aplicacion'), true); assert.equal(w.stores.has('hubdigital-public-offline-v1'), true);
@@ -136,7 +147,7 @@ test('guardar un recurso lento no bloquea entregar ni consumir la respuesta orig
     const w = worker({deferWrites: true}), request = w.req('/build/assets/app-a.js');
     const result = await w.serve(request);
     assert.equal(await result.response.text(), 'original');
-    assert.equal(w.stores.get('hubdigital-public-v8-assets').size, 0);
+    assert.equal(w.stores.get('hubdigital-public-v9-assets').size, 0);
     w.releaseWrites(); await result.background;
     assert.equal(await (await w.serve(request)).response.text(), 'original');
     assert.equal(w.requests.length, 1, 'La copia guardada sigue siendo consumible después de entregar el body.');

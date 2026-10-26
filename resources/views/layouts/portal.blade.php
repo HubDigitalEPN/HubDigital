@@ -3,7 +3,8 @@
 <html lang="es" data-portal-theme="light">
 <head>
     @include('partials.head', ['portalClaro' => true, 'title' => request()->routeIs('portal.catalogo') ? \App\Support\PortalCopy::text('catalogo.titulo_pagina') : $title])
-    @if(request()->routeIs('home', 'portal.catalogo'))<link rel="preload" href="{{ route('portal.pwa-arranque') }}" as="script">@endif
+    @if(request()->routeIs('home'))<link rel="preload" href="{{ asset('images/portal-laboratorio-hero.jpg') }}" as="image" fetchpriority="high">@endif
+    @if(request()->routeIs('portal.catalogo'))<link rel="preload" href="{{ route('portal.pwa-arranque') }}" as="script">@endif
 </head>
 <body class="portal-publico flex min-h-screen flex-col bg-white text-text-primary antialiased">
     <x-estado-conectividad />
@@ -166,7 +167,7 @@
     @endif
 
     {{-- Descargar desde la cabecera sin bloquear el contenido. La sesión queda vigente antes de Livewire. --}}
-    @if(request()->routeIs('home', 'portal.catalogo'))<script src="{{ route('portal.pwa-arranque') }}"></script>@endif
+    @if(request()->routeIs('portal.catalogo'))<script src="{{ route('portal.pwa-arranque') }}"></script>@endif
     @fluxScripts
 </body>
 </html>

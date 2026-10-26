@@ -40,3 +40,22 @@ test('visitantes y depositantes no pueden abrir ni modificar el editor del porta
     $this->actingAs($depositante)->get(route('admin.textos-portal'))->assertForbidden();
     Livewire::actingAs($depositante)->test(ConfiguracionTextosPortal::class)->assertForbidden();
 });
+
+test('el administrador publica y restaura los párrafos de cada enlace del pie sin ejecutar HTML', function (string $grupo, string $campo): void {
+    $administrador = User::factory()->administrador()->create();
+    $panel = Livewire::actingAs($administrador)->test(ConfiguracionTextosPortal::class, ['grupo' => $grupo])
+        ->set('textos.'.$grupo.'.'.$campo, 'Texto editorial <script>alert(1)</script> {licencia}')
+        ->call('guardar')->assertHasNoErrors();
+
+    $html = $this->get(route('portal.'.$grupo))->assertOk()->getContent();
+    expect($html)->toContain('Texto editorial &lt;script&gt;alert(1)&lt;/script&gt;')
+        ->toContain('href="https://creativecommons.org/licenses/by/4.0/deed.es"')
+        ->not->toContain('<script>alert(1)</script>')->not->toContain('{licencia}');
+    expect(DB::table('usuarios.textos_portal')->where('clave', $grupo.'.'.$campo)->value('updated_by'))->toBe($administrador->id);
+
+    $panel->call('restaurar', $grupo, $campo)->call('guardar')->assertHasNoErrors();
+    expect(PortalCopy::text($grupo.'.'.$campo))->toBe(config('portal-copy.'.$grupo.'.'.$campo));
+})->with([
+    ['privacidad', 'uso_datos'], ['terminos', 'acceso'], ['licencia', 'contenido_propio'],
+    ['citar', 'plataforma'], ['creditos', 'autoria'],
+]);

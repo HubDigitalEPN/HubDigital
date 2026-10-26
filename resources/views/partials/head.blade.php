@@ -36,9 +36,9 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=hubTurnstileReady" async defer></script>
 @endif
 
-<script src="{{ asset('js/interactive-grid.js') }}?v={{ filemtime(public_path('js/interactive-grid.js')) }}"></script>
+<script src="{{ asset('js/interactive-grid.js') }}?v={{ filemtime(public_path('js/interactive-grid.js')) }}" defer></script>
 @livewireScriptConfig
-<script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}"></script>
+<script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}" defer></script>
 @vite(['resources/css/app.css', 'resources/css/portal.css', 'resources/js/app.js'])
 @unless($portalClaro ?? false)
     @fluxAppearance

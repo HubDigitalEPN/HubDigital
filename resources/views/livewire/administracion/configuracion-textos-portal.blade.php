@@ -10,6 +10,15 @@
             <label class="grid gap-2 text-sm font-semibold">Sección<select wire:model.live="grupo" class="rounded-md border border-border bg-surface p-2">@foreach($grupos as $claveGrupo => $nombreGrupo)<option value="{{ $claveGrupo }}">{{ $nombreGrupo }}</option>@endforeach</select></label>
             <label class="grid gap-2 text-sm font-semibold">Buscar texto<input type="search" x-model="busqueda" class="rounded-md border border-border p-2" placeholder="Escribe parte del texto original"></label>
         </div>
+        @if(in_array($grupo, ['privacidad', 'terminos', 'licencia', 'citar', 'creditos'], true))
+            <aside class="hub-panel space-y-2 p-4 text-sm text-text-secondary">
+                <p>Edita los párrafos que aparecen al abrir este enlace del pie de página. Puedes escribir saltos de línea; el contenido se publica como texto seguro.</p>
+                @if($grupo !== 'creditos')
+                    <p>Conserva las palabras entre llaves para mostrar enlaces y datos actualizados automáticamente: {{ implode(', ', array_unique(array_merge(...array_map(static function ($texto) { preg_match_all('/\{[a-z_]+\}/', $texto, $coincidencias); return $coincidencias[0]; }, array_values($campos))))) }}.</p>
+                @endif
+                <a href="{{ route('portal.'.$grupo) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center font-semibold text-science-blue underline">Ver contenido publicado ↗</a>
+            </aside>
+        @endif
         <div class="grid gap-4 lg:grid-cols-2" wire:key="editor-{{ $grupo }}">
             @foreach($campos as $clave => $defecto)
                 <section class="hub-panel space-y-3 p-4" wire:key="texto-{{ $grupo }}-{{ $clave }}" x-show="@js(mb_strtolower($defecto)).includes(busqueda.toLowerCase().trim())">

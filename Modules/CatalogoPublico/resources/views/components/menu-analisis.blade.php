@@ -13,7 +13,7 @@
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">{{ \App\Support\PortalCopy::text('catalogo.geojson') }}</button>@endif
         @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">{{ \App\Support\PortalCopy::text('catalogo.pdf') }}</button>@endif
         @endif
-        @if($tipo !== 'filos')<button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ \App\Support\PortalCopy::text($tipo === 'mapa' ? 'catalogo.alternar_agrupaciones' : 'catalogo.alternar_grafico') }}</button>@endif
+        @if(!in_array($tipo, ['filos', 'mapa'], true))<button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ \App\Support\PortalCopy::text('catalogo.alternar_grafico') }}</button>@endif
         <button type="button" role="menuitem" x-on:click="indice()">{{ \App\Support\PortalCopy::text('catalogo.explicar_metrica') }}</button>
     </div>
     <span class="sr-only" role="status" x-text="aviso"></span>

@@ -1,5 +1,19 @@
 # Distribución de cobertura
 
+Los párrafos de privacidad, términos, licencia, citación y créditos se administran
+en Textos del portal. `PortalTextosAdministracionTest` cubre publicación,
+restauración, autoría y escape de HTML para los cinco enlaces; `PlatformFooterTest`
+conserva sus datos de release y enlaces públicos, sin el subtítulo duplicado de
+citación. `portal-pwa-cache.test.mjs` cubre los archivos CSS/JS versionados de la
+portada y la exclusión de conversaciones. El HTML conserva Network First para
+respetar la sesión actual. `PortalPwaPublicoTest` comprueba que Inicio entrega el
+token vigente sin repetir la petición de arranque que conserva la colección.
+El recorrido canónico mantiene los casos exclusivos de
+tooltip y morph, comprueba la ausencia de alternancia en el menú del mapa y el
+conteo con la unidad registros. No se duplican estos casos en Gherkin. La revisión
+manual en Opera Neon se reserva para las dos líneas de portada, presentación del
+chat, foco, adaptación y frecuencia del llamado del asistente.
+
 Las descargas Excel configurables de IPT se cubren en `tests/Unit/PerfilIptGbifTest.php` (69 cabeceras del ejemplo, fechas parciales, tipos, anchos, códigos y fórmula literal) y `tests/Feature/ExportacionCatalogoIptTest.php` (administración y concurrencia, filtros entre páginas, conservación de incompletos y privacidad del origen antes de mapear destinos). Se ejecutan exclusivamente mediante `crear-paquete-oci`; no se añaden Gherkin duplicados. El recorrido manual en Opera Neon se reserva para presentación, navegación por teclado, persistencia y descargas del catálogo real. Fuentes y decisiones: `docs/exportaciones-excel-ipt.md`.
 
 El árbol de diversidad inicial tiene contratos exclusivos en `tests/Frontend/portal-taxonomy-diversity.test.mjs`: multifurcaciones y padres publicados, sectores contiguos, cadenas profundas, ramas extensas, terminales, encuadre, precisión de zoom hacia el cursor, conservación de distancias y topología, composición orgánica sin pisos, radios decrecientes y cajas con profundidad real. `tests/Frontend/portal-taxonomy-tooltip.test.mjs` cubre solicitudes de leyenda agrupadas, aborto, respuestas tardías, cierre y fallos de red sin alterar la selección; los permisos del endpoint ya pertenecen a Pest. No se duplican en Gherkin. `tests/Browser/portal-livewire.mjs` comprueba la perspectiva inicial, acercamientos superiores a 3×, restauración con Inicio, Ctrl + arrastrar sin cambiar la raíz ni trasladar el centro de la vista, giro con teclado, iconos de igual tamaño sin Ajustar ni Reintentar y alternancia retirando el motor previo; conserva la regresión completa de esferas. Las suites se ejecutan exclusivamente dentro de `crear-paquete-oci`. La inspección manual complementaria con Opera Neon se reserva para legibilidad, volumen y composición, aparición progresiva de clados, leyendas del catálogo real, foco, adaptación y fluidez.

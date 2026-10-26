@@ -22,7 +22,7 @@ test('el arranque público entrega la sesión actual sin almacenamiento y rechaz
     $this->withHeader('Sec-Fetch-Site', 'cross-site')->get('/portal/pwa/arranque.js')->assertForbidden();
 });
 
-test('el portal descarga el arranque por adelantado y presenta el contenido antes de ejecutarlo', function (): void {
+test('la colección descarga el arranque por adelantado y presenta el contenido antes de ejecutarlo', function (): void {
     $html = $this->get('/portal/catalogo?vista=mapa')->assertOk()->getContent();
     $preload = strpos($html, '<link rel="preload" href="'.route('portal.pwa-arranque').'" as="script">');
     $script = strpos($html, '<script src="'.route('portal.pwa-arranque').'"></script>');
@@ -31,6 +31,12 @@ test('el portal descarga el arranque por adelantado y presenta el contenido ante
     expect($preload)->toBeLessThan(strpos($html, '</head>'));
     expect($script)->toBeGreaterThan(strpos($html, '</main>'));
     expect($html)->toContain('atlas-dashboard')->not->toContain('wire:lazy');
+});
+
+test('la portada entrega el token vigente sin repetir una petición de arranque antes del chat', function (): void {
+    $html = $this->get('/')->assertOk()->getContent();
+    expect($html)->toContain('<meta name="csrf-token" content="'.csrf_token().'"')
+        ->toContain('chat-bot-trigger')->not->toContain(route('portal.pwa-arranque'));
 });
 
 test('los portales declaran su tema claro incluso para una cuenta autenticada', function (): void {

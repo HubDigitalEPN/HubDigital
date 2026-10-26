@@ -361,6 +361,16 @@ img, svg, video, canvas, iframe, embed, object {
     text-wrap: balance;
 }
 
+.portal-hero-description { max-width: 38rem; }
+@media (min-width: 1024px) {
+    .portal-hero-description {
+        width: max-content;
+        max-width: calc(100vw - 2 * clamp(1.25rem, 4.2vw, 5rem));
+        font-size: clamp(.875rem, 1.05vw, 1.125rem);
+    }
+    .portal-hero-description span { display: block; }
+}
+
 .portal-responsive-actions {
     display: flex;
     flex-wrap: wrap;
@@ -421,14 +431,63 @@ img, svg, video, canvas, iframe, embed, object {
     width: clamp(44px, 7dvh, 56px);
     height: clamp(44px, 7dvh, 56px);
     flex: none;
-    animation: portal-chat-pulse 6s ease-in-out 2s infinite;
 }
-#chat-bot-trigger:hover, #chat-bot-trigger:focus-visible, #chat-bot-trigger[aria-expanded="true"] { animation: none; }
+#chat-bot-trigger, #portal-chat-mobile-trigger { animation: portal-chat-pulse 3s ease-in-out 1s infinite; }
+#chat-bot-trigger:hover, #chat-bot-trigger:focus-visible, #chat-bot-trigger[aria-expanded="true"],
+#portal-chat-mobile-trigger:hover, #portal-chat-mobile-trigger:focus-visible, #portal-chat-mobile-trigger[aria-expanded="true"] { animation: none; }
 @keyframes portal-chat-pulse {
     0%, 14%, 32%, 100% { transform: translateY(0) scale(1); box-shadow: 0 4px 12px rgb(16 43 70 / 25%); }
     6%, 22% { transform: translateY(-2px) scale(1.08); box-shadow: 0 0 0 8px rgb(0 105 168 / 15%), 0 6px 16px rgb(16 43 70 / 28%); }
 }
-@media (prefers-reduced-motion: reduce) { #chat-bot-trigger { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { #chat-bot-trigger, #portal-chat-mobile-trigger { animation: none; transition: none; } }
+
+.portal-chat-shell #chat-bot-panel { border-radius: 1rem; border-color: #d8e0e5; }
+.portal-chat-heading { background: #102d48; padding-block: .85rem .55rem; }
+.portal-chat-subtitle { margin-top: .25rem; font-size: .7rem; color: #d3e4ef; }
+.portal-chat-messages {
+    background-color: #efeae2;
+    background-image: radial-gradient(#b4a58c26 .75px, transparent .75px);
+    background-size: 16px 16px;
+    padding: 1.15rem;
+    overscroll-behavior: contain;
+}
+.portal-chat-message-avatar { display: none; }
+.portal-chat-shell .portal-chat-bubble {
+    position: relative;
+    max-width: 92%;
+    border: 0;
+    border-radius: .75rem;
+    padding: .7rem .85rem;
+    color: #203445;
+    line-height: 1.5;
+    box-shadow: 0 1px 2px #20344520;
+}
+.portal-chat-shell .portal-chat-bubble-incoming { background: #fff; border-top-left-radius: 0; }
+.portal-chat-shell .portal-chat-bubble-outgoing { background: #d9fdd3; border-top-right-radius: 0; }
+.portal-chat-bubble::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 8px;
+    height: 10px;
+    background: inherit;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.portal-chat-bubble-incoming::before { left: -7px; }
+.portal-chat-bubble-outgoing::before { right: -7px; transform: scaleX(-1); }
+.portal-chat-suggestions button, .portal-chat-suggestions a {
+    border-radius: 1rem;
+    background: #fff;
+    border-color: #bacdd6;
+    line-height: 1.4;
+}
+.portal-chat-suggestions :is(button, a):focus-visible { outline: 2px solid #0069a8; outline-offset: 2px; }
+.portal-chat-typing { width: fit-content; padding: .5rem .75rem; border-radius: .75rem; background: #fff; }
+.portal-chat-typing span { letter-spacing: .15rem; }
+.portal-chat-shell .portal-chat-composer { background: #f0f2f5; border: 0; padding: .65rem; align-items: center; }
+html body .portal-chat-shell .portal-chat-composer input { min-block-size: 2.75rem; border: 1px solid #d6dfe3; border-radius: 1.5rem; background: #fff; padding: .6rem 1rem; }
+.portal-chat-shell .portal-chat-composer button { inline-size: 2.75rem; min-inline-size: 2.75rem; block-size: 2.75rem; flex: 0 0 2.75rem; margin: 0; align-self: center; border-radius: 50%; background: #00695c; }
+.portal-chat-shell .portal-chat-composer button:hover { background: #00564c; }
 
 /* Los workspace internos ocupan el ancho operativo disponible. Los límites de
    lectura deben vivir en tarjetas y párrafos, no en la superficie completa. */

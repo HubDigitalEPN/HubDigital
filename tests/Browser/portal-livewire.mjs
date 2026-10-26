@@ -185,7 +185,7 @@ try {
     await conexion.send('Fetch.disable');
     await reposo();
     assert.match(await evaluar('window.location.search'), /vista=mapa/);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
     // El pie se alcanza completo y sus enlaces abren información sin perder el mapa.
     await evaluar('window.scrollTo(0, document.scrollingElement.scrollHeight)'); await reposo();
     assert.ok(await evaluar(`(() => {
@@ -241,7 +241,7 @@ try {
     await evaluar("[...document.querySelectorAll('[aria-labelledby=\"titulo-riqueza\"] .atlas-ranked-row')].find(b=>b.textContent.includes('Orellana')).click()");
     await visible("document.querySelector('#titulo-riqueza')?.textContent === 'Registros por localidad'"); await reposo();
     assert.equal(await evaluar("document.activeElement?.classList.contains('atlas-territory-back')"), true);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(12\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(12 registros\)$/);
     const peticionesAntesLocalidad = totalPeticiones;
     await evaluar("(() => {const input=document.querySelector('#buscar-localidad-panel'); input.value='browser uno'; input.dispatchEvent(new Event('input',{bubbles:true}));})()");
     await reposo(); assert.equal(totalPeticiones, peticionesAntesLocalidad);
@@ -251,7 +251,7 @@ try {
     await evaluar("document.querySelector('.atlas-territory-back').click()");
     await visible("document.querySelector('#titulo-riqueza')?.textContent === 'Registros por provincia'"); await reposo();
     assert.equal(await evaluar("document.activeElement?.id"), 'titulo-riqueza');
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
     await evaluar("document.querySelector('[aria-labelledby=\"titulo-riqueza\"] .atlas-panel-tools > button').click(); [...document.querySelectorAll('#menu-riqueza button')].find(b => b.getAttribute('x-on:click') === 'alternarGrafico()').click()");
     await visible("window.HubDigitalChart.getChart(document.querySelector('[aria-labelledby=\"titulo-riqueza\"] canvas'))?.scales.y.ticks.some(t => t.label === 'Orellana')");
     assert.deepEqual(await evaluar("window.HubDigitalChart.getChart(document.querySelector('[aria-labelledby=\"titulo-riqueza\"] canvas')).scales.y.ticks.map(t=>t.label).sort()"), ['Orellana', 'Pichincha']);
@@ -264,14 +264,18 @@ try {
     await visible("document.querySelector('.research-search [role=listbox] [role=option]')?.textContent.length > 0");
     await evaluar("[...document.querySelectorAll('.research-search [role=option]')][0].dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}))");
     await reposo(); assert.equal(totalPeticiones, peticionesAntesTexto);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
     await conexion.send('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13});
     await conexion.send('Input.dispatchKeyEvent', {type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13});
-    await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(1)'"); await reposo();
+    await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(1 registros)'"); await reposo();
     await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroCatalogo')).click()");
-    await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(18)'"); await reposo();
+    await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(18 registros)'"); await reposo();
     await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
-    await evaluar("[...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b => b.textContent.includes('Alternar agrupaciones')).click()");
+    assert.equal(await evaluar("[...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].some(b => b.textContent.includes('Alternar agrupaciones'))"), false);
+    // Preparar ubicaciones originales mantiene la regresión exclusiva de tooltip
+    // y morph; la alternancia ya no se ofrece en el menú público.
+    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
+    await evaluar("Alpine.$data(document.querySelector('.atlas-dashboard')).ubicacionesIndividuales = true; Alpine.$data(document.querySelector('.atlas-dashboard')).programarPintado()");
     await visible("document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]').length === 3");
     assert.deepEqual(await evaluar("[...document.querySelectorAll('.atlas-map-count-label strong')].map(n => Number(n.textContent)).sort((a,b) => a-b)"), [5, 12], 'Los registros que comparten una coordenada muestran su cantidad sin multiplicar ubicaciones.');
     async function mostrarTooltip() {
@@ -292,11 +296,11 @@ try {
     await evaluar(`document.querySelector('.research-check-list input[value=${JSON.stringify(datos.filos[0])}]').click()`);
     await visible("document.querySelector('.research-sidebar').inert && document.querySelector('.research-filter-lock').disabled");
     await reposo();
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17 registros\)$/);
     await mostrarTooltip();
     await evaluar(`document.querySelector('.research-check-list input[value=${JSON.stringify(datos.filos[0])}]').click()`);
     await reposo();
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
     await mostrarTooltip();
     await conexion.send('Network.emulateNetworkConditions', {offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1});
 
@@ -459,7 +463,7 @@ try {
     }
     const raizETE = ".portal-branch-row[aria-label^=" + JSON.stringify('Browsersuborder' + token + '0,') + "]";
     await buscarEnArbol('FiloBrowser' + token);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
     await evaluar("document.querySelector('#sugerencias-explorador button').click()");
     await visible("document.querySelector('.portal-taxonomy-branch-pane')?.dataset.nombre===" + JSON.stringify('FiloBrowser' + token));
     await visible("document.querySelector('.portal-three-scene')?.dataset.nombre===" + JSON.stringify('FiloBrowser' + token));
@@ -535,7 +539,7 @@ try {
     await visible("document.querySelector('.portal-taxonomy-branch-pane')?.dataset.nombre===" + JSON.stringify(datos.taxonBusqueda + ' alfa') + " && !document.querySelector('#sugerencias-explorador').checkVisibility()"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
     assert.equal(totalPeticiones, antesEnterArbol, 'Localizar un taxón no modifica el mapa ni Livewire.');
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
     const cabeceraETE = await evaluar("(() => {const r=document.querySelector('.taxonomy-explorer-header').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+15};})()");
     await conexion.send('Input.dispatchMouseEvent', {type:'mousePressed',button:'left',clickCount:1,...cabeceraETE});
     await conexion.send('Input.dispatchMouseEvent', {type:'mouseMoved',button:'left',buttons:1,x:cabeceraETE.x+35,y:cabeceraETE.y-20});
@@ -605,10 +609,10 @@ try {
     await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver en el mapa').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('atlas-map')"); await reposo();
     assert.equal(await evaluar("new URL(location.href).searchParams.get('fti')"), datos.especies[0]);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17\)$/);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17 registros\)$/);
     await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroTaxonId')).click()"); await reposo();
     await evaluar("(() => {const b=document.querySelector('input[placeholder=\"Nombre científico en cualquier rango\"]');b.focus();b.value=" + JSON.stringify(datos.taxonBusqueda) + ";b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()"); await reposo();
-    await visible("document.querySelector('.atlas-collection-count').textContent.trim()==='(18)'");
+    await visible("document.querySelector('.atlas-collection-count').textContent.trim()==='(18 registros)'");
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);

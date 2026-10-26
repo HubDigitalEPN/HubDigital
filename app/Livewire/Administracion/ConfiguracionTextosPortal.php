@@ -64,7 +64,7 @@ final class ConfiguracionTextosPortal extends Component
 
     public function render(): View
     {
-        $grupos = ['inicio' => 'Inicio', 'navegacion' => 'Cabecera y pie de página', 'contacto' => 'Contacto', 'depositos' => 'Portal de depósitos', 'catalogo' => 'Colección Biológica', 'importacion' => 'Importar y actualizar catálogo', 'creditos' => 'Créditos y financiamiento', 'indicadores' => 'Explicaciones de indicadores', 'figuras' => 'Pies de figuras'];
+        $grupos = ['inicio' => 'Inicio', 'navegacion' => 'Cabecera y pie de página', 'contacto' => 'Contacto', 'depositos' => 'Portal de depósitos', 'catalogo' => 'Colección Biológica', 'importacion' => 'Importar y actualizar catálogo', 'privacidad' => 'Política de privacidad', 'terminos' => 'Términos de uso', 'licencia' => 'Licencia', 'citar' => 'Cómo citar', 'creditos' => 'Créditos y financiamiento', 'indicadores' => 'Explicaciones de indicadores', 'figuras' => 'Pies de figuras'];
         abort_unless(array_key_exists($this->grupo, $grupos), 422);
         return view('livewire.administracion.configuracion-textos-portal', ['grupos' => $grupos, 'campos' => config('portal-copy.'.$this->grupo, [])]);
     }

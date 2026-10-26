@@ -162,7 +162,7 @@ test('los filtros públicos se aplican también a la lista CSV y respetan la ubi
     $destino = $redireccion->baseResponse->headers->get('Location');
     expect($destino)->toContain('fprov=Pichincha', 'fmes=6', 'vista=mapa');
     $mapa = $this->get($destino)->assertOk()
-        ->assertSee('<small class="atlas-collection-count">(1)</small>', false)
+        ->assertSee('<small class="atlas-collection-count">(1 registros)</small>', false)
         ->assertSee(\Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::clave($metodo))->assertSee($metodo);
     // Los nombres científicos públicos del árbol lateral siguen disponibles;
     // los resultados del mapa y CSV deben conservar la selección y sus permisos.

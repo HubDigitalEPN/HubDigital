@@ -198,6 +198,26 @@ return [
         'plantilla_ayuda' => 'Modifica los campos Darwin Core y la guía de la plantilla. Al subirla nuevamente al sistema, se actualizarán las modificaciones para las siguientes descargas.',
         'provisionales_ayuda' => 'Las identificaciones con códigos provisionales se conservan para revisión, asociadas al género; no crean especies válidas a partir del código.',
     ],
+    'privacidad' => [
+        'uso_datos' => 'Esta plataforma del Laboratorio de Invertebrados de la Escuela Politécnica Nacional utiliza los datos de registro para administrar cuentas y perfiles, tramitar solicitudes de depósito y mantener la trazabilidad de documentos y actuaciones. El catálogo público presenta únicamente los campos autorizados para divulgación; la autenticación no hace públicos los documentos privados de una solicitud.',
+        'sesion_derechos' => 'La sesión permite reconocer al usuario y aplicar sus permisos. Consulte la documentación institucional sobre tratamiento de datos personales y sus derechos en el {acuerdo_epn}. El canal institucional para consultas sobre datos personales es {correo_datos}.',
+        'alcance' => 'Este aviso describe el uso de datos de la plataforma y remite a la normativa institucional; no reemplaza los documentos oficiales de la EPN.',
+    ],
+    'terminos' => [
+        'acceso' => 'La exploración de los grupos taxonómicos, imágenes autorizadas, mapas y estadísticas agregadas es pública. Consultar registros individuales y descargar o exportar datos requiere una cuenta verificada con perfil de administración o curaduría. Los demás perfiles acceden a las funciones correspondientes a su actividad.',
+        'uso_contenido' => 'Utilice la información de forma responsable, conserve su procedencia y cite la versión consultada. El contenido propio del laboratorio está disponible bajo {licencia}: atribuya la autoría, enlace la licencia e indique los cambios. Los materiales de terceros conservan sus licencias originales. Esta licencia se refiere al contenido publicado, no a credenciales, datos personales ni documentos privados.',
+        'actualizacion' => 'Los datos científicos pueden actualizarse con la revisión curatorial. La clasificación publicada no representa por sí misma una filogenia ni una escala temporal.',
+        'referencia' => 'Como referencia institucional, consulte las {politicas_epn}, que incluyen la Política de Uso de la Información, Activos de Información Institucional y Seguridad Informática.',
+    ],
+    'licencia' => [
+        'contenido_propio' => '© {anio} Escuela Politécnica Nacional. El contenido propio del laboratorio se publica bajo {licencia_completa}.',
+        'atribucion_terceros' => 'Conserve la atribución de autoría, enlace la licencia e indique cualquier modificación. Se reservan los derechos sobre marcas y materiales de terceros según sus condiciones originales. Las fotografías externas conservan la licencia, autoría y fuente indicadas en su ficha; CC BY 4.0 no sustituye esas condiciones.',
+    ],
+    'citar' => [
+        'plataforma' => 'Plataforma de Gestión de Información y Base de Datos del Laboratorio de Invertebrados. Versión {version}. Departamento de Biología, Facultad de Ciencias, Escuela Politécnica Nacional. Versión en línea en {sitio}. Fecha de consulta: {fecha_consulta}.',
+        'fotografias' => 'Fomentamos el uso de imágenes del laboratorio. En publicaciones impresas o digitales, recomendamos citar a la persona autora, el año, el código único del espécimen y el sitio de origen. Ejemplo: Juan Pérez, 2026, MEPNINV00001, labinvepn.org. Incluya el enlace a la licencia e indique cualquier modificación.',
+        'sitios_web' => 'En sitios web, identifique a la persona autora y la procedencia e incluya un enlace activo a la página de origen de la fotografía. Las imágenes externas conservan sus licencias y créditos originales.',
+    ],
     'creditos' => [
         'autoria' => 'La plataforma es una creación del Arq. de Software Hernán Troya y del Laboratorio de ADN, Facultad de Ingeniería en Sistemas, Escuela Politécnica Nacional, Quito, Ecuador.',
         'colaboraciones' => 'Créditos: Hernán Troya, Alejandro Alemán, Jimmy Valladares, Michael Trocellier, Miguel Mendoza y Paul Cajas. Comentarios y observaciones: Carlos Anchundia, PhD., y Pamela Flores, PhD. Comentarios de forma y diseño: Adrian Troya, PhD.',

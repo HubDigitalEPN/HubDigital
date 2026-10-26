@@ -1,6 +1,6 @@
 /* Cache Storage contiene únicamente recursos y respuestas públicas autorizadas. */
 const portalPwa = (() => {
-    const VERSION = 'hubdigital-public-v8';
+    const VERSION = 'hubdigital-public-v9';
     const names = {assets: VERSION + '-assets', pages: VERSION + '-pages', data: VERSION + '-data'};
     const limits = {assets: 160, pages: 8, data: 48};
     const ages = {assets: 7 * 86400000, pages: 300000, data: 120000};
@@ -11,7 +11,10 @@ const portalPwa = (() => {
         if (url.origin !== self.location.origin || request.method !== 'GET') return 'network';
         if (url.pathname.startsWith('/portal/imagenes/')) return 'network';
         if (logos.includes(url.pathname)) return 'assets';
-        const script = /\.(?:css|m?js)$/.test(url.pathname) && /^\/(?:build|vendor|livewire(?:-[a-f0-9]{8})?|flux)\//.test(url.pathname);
+        const script = /\.(?:css|m?js)$/.test(url.pathname) && (
+            /^\/(?:build|vendor|livewire(?:-[a-f0-9]{8})?|flux)\//.test(url.pathname)
+            || /^\/(?:css|js)\//.test(url.pathname) && url.searchParams.has('v')
+        );
         const photo = /^\/images\/.*\.(?:avif|webp|png|jpe?g|gif|svg)$/i.test(url.pathname)
             || /^\/portal\/referencias-fotograficas\/[0-9]+\/(?:jpg|jpeg|png)\.webp$/.test(url.pathname);
         if (script || photo) return 'assets';
@@ -75,8 +78,8 @@ const portalPwa = (() => {
             try { return await network(request, 'pages', event); }
             catch { return await read(request, 'pages').catch(() => null) || caches.match('/offline.html'); }
         }
-        if (type === 'pages' || type === 'initial-tree') {
-            const group = type === 'pages' ? 'pages' : 'data';
+        if (type === 'initial-tree') {
+            const group = 'data';
             const cached = await read(request, group).catch(() => null);
             const refresh = network(request, group, event).then(async response => {
                 if (type === 'initial-tree' && cached && response.ok

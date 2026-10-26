@@ -8,8 +8,9 @@
                         <h1 id="titulo-portada" class="portal-hero-title font-display font-bold leading-[1.04] tracking-[-0.035em] text-blue-navy">
                             {{ $inicio('hero_titulo') }}
                         </h1>
-                        <p class="mt-6 max-w-xl text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
-                            {{ $inicio('hero_descripcion') }}
+                        @php($descripcionPortada = explode(' con la sociedad ', $inicio('hero_descripcion'), 2))
+                        <p class="portal-hero-description mt-6 text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
+                            <span>{{ $descripcionPortada[0] }}</span>@if(isset($descripcionPortada[1])) <span>con la sociedad {{ $descripcionPortada[1] }}</span>@endif
                         </p>
 
                         <div class="portal-responsive-actions portal-home-actions mt-8">
