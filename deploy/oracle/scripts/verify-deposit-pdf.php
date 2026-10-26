@@ -9,6 +9,16 @@ require $proyecto.'/vendor/autoload.php';
 $app = require $proyecto.'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
+// El paquete mide el plazo exclusivamente en localhost. Las VM conservan
+// todas las comprobaciones criptográficas, de estructura y de contenido.
+$medirTiempoLocal = in_array('--medir-tiempo-local', $_SERVER['argv'] ?? [], true);
+if ($medirTiempoLocal && (! $app->environment('local') || ! in_array(
+    parse_url((string) config('app.url'), PHP_URL_HOST), ['localhost', '127.0.0.1', '::1', '[::1]'], true,
+))) {
+    fwrite(STDERR, "NO OK medición de firma: requiere entorno local y URL de localhost.\n");
+    exit(1);
+}
+
 $archivoValido = tempnam(sys_get_temp_dir(), 'hd-pdf-ok-');
 $archivoFalso = tempnam(sys_get_temp_dir(), 'hd-pdf-no-');
 $directorioFirma = sys_get_temp_dir().'/hd-firma-'.bin2hex(random_bytes(8));
@@ -105,8 +115,8 @@ try {
     config()->set('firma-electronica.java_signature_trust_dir', $directorioFirma);
     if (in_array(PHP_OS_FAMILY, ['Linux', 'Windows'], true)) {
         // El motor de producción debe rechazar esta confianza temporal.
-        // Preparar otro motor privado conserva ese aislamiento y el plazo de
-        // tres segundos del adaptador, sin medir el arranque de una JVM fría.
+        // Preparar otro motor privado conserva ese aislamiento. La medición
+        // local de tres segundos comienza con el motor preparado.
         $entorno = \Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTemporalHubDigital::entornoProcesos();
         $socketPrueba = $directorioFirma.'/firma.sock';
         $windows = PHP_OS_FAMILY === 'Windows';
@@ -200,11 +210,11 @@ try {
     $clientePreparado = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\ClienteFirmadorPreparado::class);
     $clientePreparado->prepararOriginal($contenidoOficio);
     // El respaldo CLI frío no debe ocultar una regresión de latencia.
-    $inicioCreacion = microtime(true);
+    $inicioCreacion = $medirTiempoLocal ? microtime(true) : null;
     $salidaPreparada = $directorioOficial.'/firmado-preparado.pdf';
     $creacionPreparada = $clientePreparado->firmar($originalOficial, $salidaPreparada,
         $directorioOficial.'/persona.p12', 'prueba-temporal', 'solicitud-deposito:depositante:v1');
-    $duracionCreacion = microtime(true) - $inicioCreacion;
+    $duracionCreacion = $medirTiempoLocal ? microtime(true) - $inicioCreacion : null;
     if (! is_array($creacionPreparada) || ! is_file($salidaPreparada)
         || ($creacionPreparada['aceptable'] ?? false) !== true
         || ! in_array($creacionPreparada['status'] ?? null, ['firmado', 'firmado_sin_revocacion'], true)) {
@@ -216,19 +226,19 @@ try {
         throw new \RuntimeException('El motor preparado no confirmó la creación y comprobación de la firma: '.$diagnostico
             .($motorPrueba !== null ? "\nMotor sintético: ".$motorPrueba->getErrorOutput() : ''));
     }
-    if ($duracionCreacion > 3) {
+    if ($medirTiempoLocal && $duracionCreacion > 3) {
         throw new \RuntimeException('La creación y comprobación de la firma superó tres segundos.');
     }
-    $inicioValidacion = microtime(true);
+    $inicioValidacion = $medirTiempoLocal ? microtime(true) : null;
     $resultado = $adaptador->verificarFirma($firmado);
-    $duracionFirma = microtime(true) - $inicioValidacion;
+    $duracionFirma = $medirTiempoLocal ? microtime(true) - $inicioValidacion : null;
     if (! in_array($resultado, [
         \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::Firmado,
         \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::FirmadoSinRevocacion,
     ], true)) {
         throw new \RuntimeException('El adaptador PHP/Java rechazó una firma sintética íntegra: '.$resultado->value);
     }
-    if ($duracionFirma > 3) {
+    if ($medirTiempoLocal && $duracionFirma > 3) {
         throw new \RuntimeException('La validación de la firma íntegra superó tres segundos.');
     }
 
@@ -239,18 +249,20 @@ try {
     }
     $contenido[7] = $contenido[7] === '6' ? '7' : '6';
     file_put_contents($alterado, $contenido);
-    $inicioValidacion = microtime(true);
+    $inicioValidacion = $medirTiempoLocal ? microtime(true) : null;
     $resultadoAlterado = $adaptador->verificarFirma($alterado);
-    $duracionAlterado = microtime(true) - $inicioValidacion;
+    $duracionAlterado = $medirTiempoLocal ? microtime(true) - $inicioValidacion : null;
     if ($resultadoAlterado !== \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::FirmaInvalida) {
         throw new \RuntimeException('El adaptador PHP/Java aceptó un PDF firmado y alterado.');
     }
-    if ($duracionAlterado > 3) {
+    if ($medirTiempoLocal && $duracionAlterado > 3) {
         throw new \RuntimeException('La validación de la firma alterada superó tres segundos.');
     }
 
     echo "OK solución PDF depósitos: número mágico en byte cero, estructura y contenido activo comprobados; PDF falso rechazado; PHP/Java verificó firma válida, alterada y ausente.\n";
-    echo 'Tiempos de firma: creación y comprobación='.round($duracionCreacion * 1000).' ms; íntegra='.round($duracionFirma * 1000).' ms; alterada='.round($duracionAlterado * 1000)." ms.\n";
+    if ($medirTiempoLocal) {
+        echo 'Tiempos de firma: creación y comprobación='.round($duracionCreacion * 1000).' ms; íntegra='.round($duracionFirma * 1000).' ms; alterada='.round($duracionAlterado * 1000)." ms.\n";
+    }
 } catch (\Throwable $error) {
     $fallo = 'NO OK solución PDF depósitos: '.$error->getMessage();
     // Diagnóstico de los procesos sintéticos: clases y tiempos, nunca credenciales ni PDF.
