@@ -7,7 +7,7 @@
     </div>
 
     @if(session('fuente-guardada'))
-        <p role="status" class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2 text-sm">{{ session('fuente-guardada') }}</p>
+        <p data-hub-feedback="success" role="status" class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2 text-sm">{{ session('fuente-guardada') }}</p>
     @endif
 
     <x-interactive-grid :rows="$fuentes" label="Revocación de firmas" :columns="['Entidad', 'Emisor', 'CRL', 'OCSP', 'Estado', 'Acciones']">
@@ -23,7 +23,7 @@
         <div class="space-y-3">
             <div>
                 <flux:heading size="lg">{{ $editandoCodigo ? 'Editar entidad' : 'Nueva entidad' }}</flux:heading>
-                <p class="mt-1 text-xs text-text-secondary">Las URL son alternativas para el emisor indicado. Si la revocación no responde, la firma puede seguir siendo válida.</p>
+
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
                 <div><flux:input wire:model="codigo" label="Código" :disabled="$editandoCodigo !== null" maxlength="50" /><flux:error name="codigo" /></div>

@@ -8,7 +8,7 @@
     </flux:breadcrumbs>
 
     @if(!$solicitud)
-        <flux:callout variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
     @else
 
         {{-- Encabezado --}}
@@ -112,9 +112,7 @@
                             <flux:heading size="base" level="2" class="font-display">Resolución</flux:heading>
                         </div>
                         <div class="p-5 space-y-4">
-                            <flux:text class="text-text-secondary text-sm">
-                                Revisa la información y decide si apruebas la solicitud o la devuelves con observaciones.
-                            </flux:text>
+
                             <div class="flex flex-col gap-2">
                                 <flux:button variant="primary" icon="check-circle"
                                     wire:click="$set('showAprobacionModal', true)">
@@ -171,9 +169,7 @@
     <flux:modal wire:model="showAprobacionModal" class="max-w-2xl">
         <div class="space-y-5 p-2">
             <flux:heading size="lg">Aprobar solicitud de préstamo</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Configura las condiciones del préstamo antes de generar el acta.
-            </flux:text>
+
             <flux:separator />
 
             <flux:field>
@@ -258,9 +254,7 @@
     <flux:modal wire:model="showMotivoModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Devolver con observaciones</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Indica el motivo por el que la solicitud debe ser corregida por el investigador.
-            </flux:text>
+
             <flux:field>
                 <flux:label>Motivo de la observación</flux:label>
                 <flux:textarea wire:model="motivoObservacion" rows="4"

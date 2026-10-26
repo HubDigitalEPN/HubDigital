@@ -195,9 +195,7 @@
                         <flux:heading size="base" level="2" class="font-display text-science-blue">Devolución registrada por el investigador</flux:heading>
                     </div>
                     <div class="p-5 space-y-3">
-                        <p class="text-sm text-text-secondary">
-                            El investigador ha declarado que los especímenes fueron enviados de vuelta. Registra el resultado de la inspección para cerrar el préstamo.
-                        </p>
+
                         <div class="pt-1">
                             <flux:button variant="primary" wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $prestamoId) }}">
                                 Registrar resultado y cerrar
@@ -217,11 +215,9 @@
                         <flux:heading size="base" level="2" class="font-display text-warning">Trámite de exportación pendiente</flux:heading>
                     </div>
                     <div class="p-5 space-y-4">
-                        <p class="text-sm text-text-secondary">
-                            Sube el documento de aprobación del Ministerio del Ambiente para habilitar el envío de especímenes al exterior.
-                        </p>
+
                         @if($successMessage)
-                            <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+                            <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
                         @endif
                         <flux:field>
                             <flux:label>Documento de aprobación del ministerio (PDF)</flux:label>
@@ -235,7 +231,7 @@
                                     wire:model="documentoExportacion" accept=".pdf"
                                     x-on:change="nombre = $event.target.files[0]?.name ?? ''"
                                     class="sr-only" />
-                                <p class="mt-1.5 text-xs text-text-secondary" x-text="nombre || 'Ningún archivo seleccionado'"></p>
+
                                 <div wire:loading wire:target="documentoExportacion" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
                                     <flux:icon name="arrow-path" class="animate-spin size-3" />
                                     Subiendo archivo...
@@ -353,7 +349,7 @@
                              x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
                              x-transition.opacity
                              @click="show = false">
-                            <flux:callout variant="success" icon="check-circle" class="cursor-pointer">
+                            <flux:callout data-hub-feedback="success" variant="success" icon="check-circle" class="cursor-pointer">
                                 Recordatorio de vencimiento reenviado al investigador.
                             </flux:callout>
                         </div>
@@ -392,7 +388,7 @@
         <div class="space-y-5 p-1">
             <div>
                 <flux:heading size="lg" level="2">Personalizar recordatorios de este préstamo</flux:heading>
-                <flux:text class="text-text-secondary text-sm mt-1">Estos recordatorios sobreescriben la configuración global para este préstamo.</flux:text>
+
             </div>
 
             <div class="flex items-center gap-6 rounded-lg bg-bg-main border border-border px-4 py-3">
@@ -412,7 +408,7 @@
             <flux:separator />
 
             <div>
-                <flux:text class="text-xs text-text-secondary mb-2">Cadencia sugerida — selecciona para activar o desactivar</flux:text>
+
                 <div class="flex flex-wrap gap-2">
                     @foreach([30, 15, 7, 3, 1] as $preset)
                         @php $activo = in_array($preset, array_map('intval', $diasAntesModal), true); @endphp

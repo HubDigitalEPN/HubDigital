@@ -11,17 +11,17 @@
     </header>
 
     <nav class="hub-curator-shortcuts" aria-label="Accesos principales">
-        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="rectangle-stack" class="size-6" /><span><strong>Colecciones</strong><small>Gestionar y consultar</small></span></a>
-        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Buscar</strong><small>Objetos, lotes y registros</small></span></a>
-        <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><flux:icon name="tag" class="size-6" /><span><strong>Ingresos</strong><small>Revisar nuevos materiales</small></span></a>
-        <a href="{{ route('divulgacion.imagenes') }}" wire:navigate><flux:icon name="photo" class="size-6" /><span><strong>Imágenes</strong><small>Archivo de la colección</small></span></a>
-        <a href="{{ route('divulgacion.analisis-diversidad') }}"><flux:icon name="chart-bar" class="size-6" /><span><strong>Análisis de diversidad</strong><small>Índices de la colección</small></span></a>
-        <button type="button" wire:click="descargarReporteDepositos"><flux:icon name="arrow-down-tray" class="size-6" /><span><strong>Reportes</strong><small>Descargar movimientos</small></span></button>
+        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="rectangle-stack" class="size-6" /><span><strong>Colecciones</strong></span></a>
+        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Buscar</strong></span></a>
+        <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><flux:icon name="tag" class="size-6" /><span><strong>Ingresos</strong></span></a>
+        <a href="{{ route('divulgacion.imagenes') }}" wire:navigate><flux:icon name="photo" class="size-6" /><span><strong>Imágenes</strong></span></a>
+        <a href="{{ route('divulgacion.analisis-diversidad') }}"><flux:icon name="chart-bar" class="size-6" /><span><strong>Análisis de diversidad</strong></span></a>
+        <button type="button" wire:click="descargarReporteDepositos"><flux:icon name="arrow-down-tray" class="size-6" /><span><strong>Reportes</strong></span></button>
     </nav>
 
     <div class="hub-curator-grid">
         <section class="hub-curator-card hub-curator-card--main" aria-labelledby="recepcion-title">
-            <div class="hub-curator-card__heading"><flux:icon name="cube" class="size-6" /><div><h2 id="recepcion-title">Recepción y depósitos</h2><p>Seguimiento de materiales en proceso de ingreso.</p></div></div>
+            <div class="hub-curator-card__heading"><flux:icon name="cube" class="size-6" /><div><h2 id="recepcion-title">Recepción y depósitos</h2></div></div>
             <div class="hub-curator-metrics hub-curator-metrics--four">
                 <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depPorRevisar, 0, ',', '.') }}</strong><span>Depósitos<br>por revisar</span></a>
                 <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depEnviadas, 0, ',', '.') }}</strong><span>Solicitudes<br>recibidas</span></a>
@@ -39,7 +39,7 @@
         </section>
 
         <section class="hub-curator-card hub-curator-card--main" aria-labelledby="archivo-title">
-            <div class="hub-curator-card__heading hub-curator-card__heading--split"><flux:icon name="photo" class="size-6" /><div><h2 id="archivo-title">Imagen del archivo</h2><p>Fotografías de la colección y documentos de depósitos.</p></div></div>
+            <div class="hub-curator-card__heading hub-curator-card__heading--split"><flux:icon name="photo" class="size-6" /><div><h2 id="archivo-title">Imagen del archivo</h2></div></div>
             @if($archivoActual)
                 <label class="hub-curator-file-picker">Explorar archivo
                     <select wire:model.live="archivoSeleccion" aria-label="Seleccionar fotografía o documento del archivo">
@@ -59,7 +59,7 @@
                     <div>
                         <strong>{{ $archivoActual['titulo'] }}</strong>
                         <small>{{ $archivoActual['detalle'] }}</small>
-                        <p>{{ $archivoActual['tipo'] === 'imagen' ? 'Imagen conservada en el archivo digital de la colección.' : 'Documento del expediente almacenado en R2.' }}</p>
+
                         <a href="{{ $archivoActual['url'] }}" target="_blank" rel="noopener">Abrir {{ $archivoActual['tipo'] === 'imagen' ? 'imagen' : 'documento' }} <flux:icon name="arrow-top-right-on-square" class="size-3" /></a>
                         @if(isset($archivoActual['expediente']))
                             <a href="{{ $archivoActual['expediente'] }}" wire:navigate>Revisar expediente <flux:icon name="arrow-right" class="size-3" /></a>
@@ -67,7 +67,7 @@
                     </div>
                 </div>
             @else
-                <div class="hub-curator-preview-empty"><flux:icon name="photo" class="size-9" /><strong>El archivo aún no tiene imágenes ni documentos.</strong><p>Al registrar fotografías de especímenes o recibir expedientes, podrás consultarlos aquí.</p><a href="{{ route('divulgacion.imagenes') }}" wire:navigate>Gestionar imágenes <flux:icon name="arrow-right" class="size-4" /></a></div>
+                <div class="hub-curator-preview-empty"><flux:icon name="photo" class="size-9" /><strong>El archivo aún no tiene imágenes ni documentos.</strong><a href="{{ route('divulgacion.imagenes') }}" wire:navigate>Gestionar imágenes <flux:icon name="arrow-right" class="size-4" /></a></div>
             @endif
             <div class="hub-curator-pending">
                 <div><flux:icon name="clock" class="size-5" /><h3>Acciones pendientes</h3></div>
@@ -80,7 +80,7 @@
         </section>
 
         <section class="hub-curator-card hub-curator-card--summary" aria-labelledby="coleccion-title">
-            <div class="hub-curator-card__heading"><flux:icon name="circle-stack" class="size-6" /><div><h2 id="coleccion-title">La colección</h2><p>Resumen general de los registros en el sistema.</p></div><a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate>Ir a la colección <flux:icon name="arrow-right" class="size-4" /></a></div>
+            <div class="hub-curator-card__heading"><flux:icon name="circle-stack" class="size-6" /><div><h2 id="coleccion-title">La colección</h2></div><a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate>Ir a la colección <flux:icon name="arrow-right" class="size-4" /></a></div>
             <div class="hub-curator-metrics hub-curator-metrics--four">
                 <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><strong>{{ number_format($colEspecimenes, 0, ',', '.') }}</strong><span>Registros</span></a>
                 <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depLotesRecibidos, 0, ',', '.') }}</strong><span>Lotes recibidos</span></a>
@@ -89,7 +89,7 @@
             </div>
         </section>
         <section class="hub-curator-card hub-curator-card--summary" aria-labelledby="prestamos-title">
-            <div class="hub-curator-card__heading"><flux:icon name="book-open" class="size-6" /><div><h2 id="prestamos-title">Préstamos</h2><p>Materiales de la colección en préstamo.</p></div><a href="{{ route('prestamos.curador.prestamos') }}" wire:navigate>Ver préstamos <flux:icon name="arrow-right" class="size-4" /></a></div>
+            <div class="hub-curator-card__heading"><flux:icon name="book-open" class="size-6" /><div><h2 id="prestamos-title">Préstamos</h2></div><a href="{{ route('prestamos.curador.prestamos') }}" wire:navigate>Ver préstamos <flux:icon name="arrow-right" class="size-4" /></a></div>
             <div class="hub-curator-metrics hub-curator-metrics--three">
                 <a href="{{ route('prestamos.curador.prestamos') }}" wire:navigate><strong>{{ number_format($prestActivos, 0, ',', '.') }}</strong><span>Préstamos activos</span></a>
                 <a href="{{ route('prestamos.curador.solicitudes') }}" wire:navigate><strong>{{ number_format($statSolicitudesPendientes, 0, ',', '.') }}</strong><span>En evaluación</span></a>

@@ -39,7 +39,6 @@
             </div>
         </section>
 
-
         <section id="catalogo" class="scroll-mt-28 bg-blue-navy text-white" aria-labelledby="titulo-catalogo">
             <div class="portal-container mx-auto py-14 lg:py-20">
                 <div class="grid gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:gap-16">

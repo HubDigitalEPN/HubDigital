@@ -8,7 +8,7 @@
     </flux:breadcrumbs>
 
     @if(!$solicitud)
-        <flux:callout variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
     @else
 
         {{-- Encabezado --}}
@@ -30,7 +30,7 @@
 
         {{-- Observación del curador --}}
         @if($solicitud->estado === 'observada' && $solicitud->comentarioCurador)
-            <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:callout data-hub-feedback="warning" variant="warning" icon="exclamation-triangle">
                 <flux:heading size="sm">Observación del curador</flux:heading>
                 <flux:text class="mt-1 text-sm">{{ $solicitud->comentarioCurador }}</flux:text>
             </flux:callout>

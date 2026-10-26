@@ -66,9 +66,7 @@
                 <flux:heading size="base" level="2" class="font-display">Decisión</flux:heading>
             </div>
             <div class="p-5 space-y-4">
-                <p class="text-sm text-text-secondary">
-                    Al aprobar, el préstamo quedará en estado <strong class="text-text-primary">Activo</strong> y el investigador podrá comenzar a trabajar con los especímenes.
-                </p>
+
                 <div class="flex items-center gap-3">
                     <flux:button variant="primary" icon="check-circle" wire:click="aprobar" wire:loading.attr="disabled">
                         <flux:icon wire:loading wire:target="aprobar" name="arrow-path" class="animate-spin" />
@@ -83,7 +81,7 @@
         </div>
 
     @else
-        <flux:callout variant="warning" icon="exclamation-triangle">
+        <flux:callout data-hub-feedback="warning" variant="warning" icon="exclamation-triangle">
             <flux:heading size="sm">Sin verificación registrada</flux:heading>
             <flux:text class="mt-1 text-sm">El investigador aún no ha reportado la recepción de los especímenes.</flux:text>
         </flux:callout>

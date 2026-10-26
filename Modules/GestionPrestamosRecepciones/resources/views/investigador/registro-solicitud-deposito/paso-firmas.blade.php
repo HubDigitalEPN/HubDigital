@@ -25,7 +25,7 @@
             <flux:icon :name="$sinValidar ? 'shield-exclamation' : 'shield-check'" class="mt-0.5 size-5 shrink-0 {{ $sinValidar ? 'text-error' : 'text-science-blue' }}" />
             <div>
                 <p class="text-sm font-semibold text-text-primary">{{ $soloFallaRevocacion ? 'No se pudo comprobar la revocación' : ($sinValidar ? 'Corrige las firmas para continuar' : 'Firmas electrónicas verificadas') }}</p>
-                @if($sinValidar)<p class="text-xs text-text-secondary">Revisa el resultado de cada PDF. Puedes volver a comprobar las firmas cuando falte una respuesta del servicio o un certificado emisor.</p>@endif
+                @if($sinValidar)@endif
             </div>
         </div>
         <div class="grid gap-1 sm:grid-cols-2">

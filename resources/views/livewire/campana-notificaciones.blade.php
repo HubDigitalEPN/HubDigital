@@ -79,8 +79,7 @@
                 <flux:icon name="check-circle" class="size-3.5" />
                 Avisos activos · Desactivar
             </button>
-            <p x-show="pwaMessage" x-text="pwaMessage" aria-live="polite"
-                class="mt-1.5 text-center text-[11px] text-text-secondary"></p>
+
         </div>
 
         <div class="max-h-96 overflow-y-auto divide-y divide-border">

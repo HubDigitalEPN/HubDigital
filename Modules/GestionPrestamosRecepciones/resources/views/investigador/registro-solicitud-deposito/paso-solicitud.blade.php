@@ -60,7 +60,7 @@
                     <div x-show="dialogo" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-blue-navy/75 p-4" role="presentation">
                         <section role="dialog" aria-modal="true" aria-labelledby="titulo-firma-solicitud" x-trap.inert.noscroll="dialogo" x-on:click.outside="cerrarDialogo()" class="hub-signature-dialog space-y-3 rounded-xl border border-border bg-surface p-4 text-text-primary shadow-2xl">
                             <div class="flex items-start justify-between gap-3">
-                                <div><h3 id="titulo-firma-solicitud" class="text-lg font-semibold">Firma electrónica del oficio</h3><p class="mt-1 text-xs text-text-secondary">Selecciona tu certificado y escribe su clave.</p></div>
+                                <div><h3 id="titulo-firma-solicitud" class="text-lg font-semibold">Firma electrónica del oficio</h3></div>
                                 <button type="button" x-on:click="cerrarDialogo()" x-bind:disabled="estado === 'procesando'" class="cursor-pointer rounded border border-border px-2 text-xl" aria-label="Cerrar diálogo de firma">×</button>
                             </div>
                             <flux:select x-model="metodo" label="Método de firma" x-bind:disabled="estado === 'procesando'">
@@ -78,7 +78,7 @@
                                 <select id="token-certificado" x-model="tokenAlias" class="w-full rounded border border-border p-2" x-bind:disabled="estado === 'procesando'"><option value="">Selecciona un certificado</option><template x-for="cert in tokenCertificados" :key="cert.alias"><option :value="cert.alias" x-text="cert.nombre"></option></template></select>
                             </flux:field>
                             <flux:input x-ref="clave" type="password" autocomplete="off" label="Clave del certificado o PIN del token" x-bind:disabled="estado === 'procesando'" x-bind:aria-invalid="Boolean(error).toString()" aria-describedby="error-firma-solicitud" required />
-                            <p id="error-firma-solicitud" x-show="error" x-text="error" x-cloak role="alert" class="hub-signature-error"></p>
+
                             <div class="flex flex-wrap items-center justify-end gap-2">
                                 <flux:button variant="ghost" x-on:click="cerrarDialogo()" x-bind:disabled="estado === 'procesando'">Cancelar</flux:button>
                                 <flux:button variant="primary" icon="lock-closed" x-on:click="firmar" x-bind:disabled="estado === 'procesando' || pdfPreparando" x-bind:aria-busy="(estado === 'procesando' || pdfPreparando).toString()">

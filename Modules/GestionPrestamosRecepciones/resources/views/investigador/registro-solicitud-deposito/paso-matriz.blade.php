@@ -1,13 +1,13 @@
 <section class="space-y-4" aria-labelledby="registro-biologico-nativo">
     <div>
         <flux:heading id="registro-biologico-nativo" size="lg" level="2">Subir datos · Especímenes y lotes</flux:heading>
-        <p class="mt-2 text-sm text-text-secondary">Carga la tabla Excel con los campos Darwin Core del material que vas a depositar. Una fila corresponde a un registro; conserva los nombres de las columnas.</p>
+
     </div>
     <flux:button wire:click="descargarPlantillaMatriz" wire:loading.attr="disabled" icon="arrow-down-tray">Descargar plantilla Excel</flux:button>
     <flux:field>
         <flux:label for="matriz-dwc">Tabla Darwin Core (.xlsx)</flux:label>
-        <input id="matriz-dwc" type="file" wire:model="archivoMatriz" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full rounded border border-border bg-surface p-3 text-sm" aria-describedby="matriz-dwc-ayuda" />
-        <p id="matriz-dwc-ayuda" class="text-xs text-text-secondary">Máximo 10 MB. Puedes reemplazar el archivo; una carga rechazada conserva los datos guardados anteriormente.</p>
+        <input id="matriz-dwc" type="file" wire:model="archivoMatriz" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full rounded border border-border bg-surface p-3 text-sm" />
+
     </flux:field>
     <p wire:loading wire:target="archivoMatriz" role="status" class="text-sm text-science-blue">Cargando y validando el Excel…</p>
     @if($matrizId)

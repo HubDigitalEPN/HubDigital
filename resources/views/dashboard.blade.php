@@ -12,7 +12,7 @@
                 <flux:icon name="check-circle" variant="outline" class="mt-px size-5 shrink-0 text-success" />
                 <div class="flex-1">
                     <p class="text-sm font-medium text-text-primary">¡Tu cuenta fue verificada correctamente!</p>
-                    <p class="text-xs text-text-secondary">Ya puedes acceder a todas las funcionalidades de la plataforma.</p>
+
                 </div>
                 <button type="button" x-on:click="show = false" class="text-text-secondary hover:text-text-primary">
                     <flux:icon name="x-mark" variant="outline" class="size-4" />

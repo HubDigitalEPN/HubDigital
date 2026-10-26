@@ -15,9 +15,7 @@
             </div>
             <div class="flex-1 text-center sm:text-left">
                 <p class="text-sm font-semibold text-text-primary">Préstamo activo</p>
-                <p class="text-xs text-text-secondary mt-1">
-                    Cuando hayas enviado los especímenes de vuelta, registra la devolución para notificar al curador.
-                </p>
+
             </div>
             <div class="flex flex-col gap-2 sm:flex-row shrink-0">
                 <flux:button variant="ghost" icon="calendar-days" wire:navigate
@@ -40,9 +38,7 @@
             </div>
             <div class="flex-1 text-center sm:text-left">
                 <p class="text-sm font-semibold text-text-primary">Especímenes en camino</p>
-                <p class="text-xs text-text-secondary mt-1">
-                    Cuando recibas los especímenes debes reportar su estado para activar el préstamo.
-                </p>
+
             </div>
             <flux:button variant="primary" wire:navigate
                 href="{{ route('prestamos.investigador.prestamo.verificacion-entrega', $detalle->prestamoId) }}"

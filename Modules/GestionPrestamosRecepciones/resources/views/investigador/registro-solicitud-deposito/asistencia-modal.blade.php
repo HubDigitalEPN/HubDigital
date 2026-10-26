@@ -52,7 +52,7 @@
                     <flux:icon name="paper-airplane" class="size-5" />
                 </button>
             </form>
-            <p class="hub-doc-chat-hint">Hasta 240 caracteres · Puedes hacer preguntas de seguimiento.</p>
+
         </footer>
     </div>
 </flux:modal>

@@ -6,7 +6,7 @@
     </header>
 
     @if(session('wizard-textos'))
-        <p role="status" class="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-success">{{ session('wizard-textos') }}</p>
+        <p data-hub-feedback="success" role="status" class="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-success">{{ session('wizard-textos') }}</p>
     @endif
 
     <form wire:submit="guardar" class="space-y-5">
@@ -20,7 +20,7 @@
                     @foreach($campos as $nombre => $defecto)
                         @php $clave = $grupo.'.'.$nombre; @endphp
                         <flux:textarea wire:model="textos.{{ $grupo }}.{{ $nombre }}" label="{{ str_replace('_', ' ', ucfirst($nombre)) }}" rows="2" maxlength="1000" />
-                        @error('textos.'.$clave) <p class="text-xs text-error">{{ $message }}</p> @enderror
+                        @error('textos.'.$clave) <p data-hub-feedback="error" class="text-xs text-error">{{ $message }}</p> @enderror
                     @endforeach
                 </div>
             </details>

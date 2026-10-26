@@ -22,7 +22,7 @@
                     </span>
                     <div class="min-w-0">
                         <p class="text-sm font-semibold leading-tight">Asistente HubDigital</p>
-                        <p class="text-xs text-white/75">Portal, colección y fuentes públicas</p>
+
                     </div>
                 </div>
                 <button type="button" x-on:click="abierto = false; $nextTick(() => devolverFoco())"

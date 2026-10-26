@@ -17,7 +17,7 @@
     </summary>
     <form wire:submit="aplicarBorrador" class="research-filter-form" aria-label="{{ $filtroTexto('filtros') }}">
         <fieldset class="research-filter-lock" wire:loading.attr="disabled">
-        @if($errors->any())<p class="research-filter-error" role="alert">{{ $errors->first() }}</p>@endif
+        @if($errors->any())<p data-hub-feedback="error" class="research-filter-error" role="alert">{{ $errors->first() }}</p>@endif
         <x-catalogopublico::busqueda-predictiva campo="filtroCatalogo" :etiqueta="$filtroTexto('numero_catalogo')" :placeholder="$filtroTexto('catalogo_placeholder')" :maxlength="240" :activo="$activo('filtroCatalogo')" />
         <x-catalogopublico::busqueda-predictiva campo="filtroTaxon" :etiqueta="$filtroTexto('taxon')" :placeholder="$filtroTexto('taxon_placeholder')" :activo="$activo('filtroTaxon')" />
         @php($panelFilos = $this->arbolFiloPanel)
@@ -32,13 +32,13 @@
                             <svg viewBox="0 0 16 16" aria-hidden="true" :class="{'is-expanded': expandidos.includes(nodo.clave)}"><path d="m6 3 5 5-5 5"/></svg>
                         </button>
                         <label><input type="checkbox" :value="nodo.id" :checked="marcado(nodo)" :aria-label="nodo.nombre + ', ' + nodo.etiqueta" x-on:change="seleccionar(nodo, $event.target.checked, $event.target)" x-on:keydown="teclado($event, nodo)"><span x-text="nodo.nombre" :title="nodo.nombre + ' · ' + nodo.etiqueta"></span></label>
-                        <small x-text="Number(nodo.total).toLocaleString('es-EC')"></small>
+
                     </div>
                 </template>
                 <div aria-hidden="true" :style="{height: espacioInferior + 'px'}"></div>
                 <p class="research-filter-note" x-show="filas.length === 0">No hay filos públicos para el taxón seleccionado.</p>
             </div>
-            <p class="research-filter-error" x-cloak x-show="error" role="alert" x-text="error"></p>
+
         </fieldset>
 
         @if(($aplicados['filtroLatMin'] ?? '') !== ($aplicados['filtroLatMax'] ?? '') || ($aplicados['filtroLonMin'] ?? '') !== ($aplicados['filtroLonMax'] ?? ''))<p class="research-filter-active research-filter-note">Área seleccionada en el mapa</p>@endif
@@ -56,9 +56,9 @@
                 @if($biomas !== [])<fieldset @class(['research-filter-active' => $activo('filtroBiomas')])><legend>{{ $filtroTexto('bioma') }}</legend><div class="research-check-list">@foreach($biomas as $bioma)<label><input type="checkbox" wire:model.live.debounce.400ms="borradorFiltros.filtroBiomas" aria-invalid="{{ $errors->has('filtroBiomas') ? 'true' : 'false' }}" aria-describedby="error-filtroBiomas" value="{{ $bioma }}">{{ $bioma }}</label>@endforeach</div></fieldset>@endif
                 <label @class(['research-filter-active' => $activo('filtroHabitat')])><span>{{ $filtroTexto('habitat') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroHabitat" aria-invalid="{{ $errors->has('filtroHabitat') ? 'true' : 'false' }}" aria-describedby="error-filtroHabitat" placeholder="{{ $filtroTexto('habitat_placeholder') }}" maxlength="120"></label>
                 <label @class(['research-filter-active' => $activo('filtroTipo')])><span>{{ $filtroTexto('tipo') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroTipo" aria-invalid="{{ $errors->has('filtroTipo') ? 'true' : 'false' }}" aria-describedby="error-filtroTipo" placeholder="{{ $filtroTexto('tipo_placeholder') }}" maxlength="120"></label>
-                <label @class(['research-filter-active' => $activo('filtroDisposicion')])><span>{{ $filtroTexto('disposicion') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroDisposicion" aria-invalid="{{ $errors->has('filtroDisposicion') ? 'true' : 'false' }}" aria-describedby="error-filtroDisposicion" placeholder="{{ $filtroTexto('disposicion_placeholder') }}" maxlength="120"><small>{{ $filtroTexto('disposicion_ayuda') }}</small></label>
+                <label @class(['research-filter-active' => $activo('filtroDisposicion')])><span>{{ $filtroTexto('disposicion') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroDisposicion" aria-invalid="{{ $errors->has('filtroDisposicion') ? 'true' : 'false' }}" aria-describedby="error-filtroDisposicion" placeholder="{{ $filtroTexto('disposicion_placeholder') }}" maxlength="120"></label>
                 <label @class(['research-filter-active' => $activo('filtroCasta')])><span>{{ $filtroTexto('casta') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroCasta" aria-invalid="{{ $errors->has('filtroCasta') ? 'true' : 'false' }}" aria-describedby="error-filtroCasta" placeholder="{{ $filtroTexto('casta_placeholder') }}" maxlength="120"></label>
-                <label @class(['research-filter-active' => $activo('filtroEstadio')])><span>{{ $filtroTexto('estadio') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroEstadio" aria-invalid="{{ $errors->has('filtroEstadio') ? 'true' : 'false' }}" aria-describedby="error-filtroEstadio" placeholder="{{ $filtroTexto('estadio_placeholder') }}" maxlength="120"><small>{{ $filtroTexto('estadio_ayuda') }}</small></label>
+                <label @class(['research-filter-active' => $activo('filtroEstadio')])><span>{{ $filtroTexto('estadio') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroEstadio" aria-invalid="{{ $errors->has('filtroEstadio') ? 'true' : 'false' }}" aria-describedby="error-filtroEstadio" placeholder="{{ $filtroTexto('estadio_placeholder') }}" maxlength="120"></label>
             </div>
         </details>
 

@@ -5,7 +5,7 @@
     </div>
 
     @if($mensajeExito)
-        <flux:callout variant="success" icon="check-circle">{{ $mensajeExito }}</flux:callout>
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $mensajeExito }}</flux:callout>
     @endif
 
     {{-- Card de configuración global --}}
@@ -25,7 +25,7 @@
 
             {{-- Sin configuración --}}
             @if($configuracionId === '' && !$modoEdicion)
-                <flux:callout variant="info" icon="information-circle">
+                <flux:callout data-hub-feedback="info" variant="info" icon="information-circle">
                     No hay una configuración global definida. Los préstamos usarán la cadencia por defecto del sistema (30, 15, 7 y 1 día antes del vencimiento).
                 </flux:callout>
                 <div class="mt-4">
@@ -55,7 +55,7 @@
                 <div class="space-y-5">
 
                     <div>
-                        <p class="text-xs text-text-secondary mb-2">Cadencia sugerida — selecciona para activar o desactivar</p>
+
                         <div class="flex flex-wrap gap-2">
                             @foreach([30, 15, 7, 3, 1] as $preset)
                                 @php $activo = in_array($preset, array_map('intval', $diasAntes), true); @endphp
@@ -128,12 +128,9 @@
             <flux:heading size="base" level="2" class="font-display flex-1">Patente del laboratorio (año {{ $anioPatente }})</flux:heading>
         </div>
         <div class="p-5 space-y-4">
-            <flux:text class="text-text-secondary text-sm">
-                Código de patente vigente ante el MAATE para el año en curso. Consta en cada acta de préstamo que se genere. Sin patente registrada para el año, no se podrá firmar ni descargar el acta.
-            </flux:text>
 
             @if($mensajePatente)
-                <flux:callout variant="success" icon="check-circle">{{ $mensajePatente }}</flux:callout>
+                <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $mensajePatente }}</flux:callout>
             @endif
 
             <div class="max-w-md">
@@ -154,11 +151,9 @@
     </div>
 
     {{-- Nota informativa --}}
-    <flux:callout variant="warning" icon="exclamation-triangle">
+    <flux:callout data-hub-feedback="warning" variant="warning" icon="exclamation-triangle">
         <flux:heading size="sm">Alcance de la configuración global</flux:heading>
-        <flux:text class="mt-1 text-sm">
-            Esta configuración aplica a todos los préstamos activos. Los recordatorios se generan automáticamente al aprobar una acta o al aprobar una prórroga. Puedes personalizar la cadencia de recordatorios en cada préstamo individual desde la vista de auditoría.
-        </flux:text>
+
     </flux:callout>
 
 </div>

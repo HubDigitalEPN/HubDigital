@@ -196,7 +196,7 @@ new class extends Component {
 
                 <div class="space-y-2 text-center">
                     <flux:heading size="lg">{{ $this->modalConfig['title'] }}</flux:heading>
-                    <flux:text>{{ $this->modalConfig['description'] }}</flux:text>
+
                 </div>
             </div>
 
@@ -234,7 +234,7 @@ new class extends Component {
                 </div>
             @else
                 @error('setupData')
-                    <flux:callout variant="danger" icon="x-circle" heading="{{ $message }}"/>
+                    <flux:callout data-hub-feedback="danger" variant="danger" icon="x-circle" heading="{{ $message }}"/>
                 @enderror
 
                 <div class="flex justify-center">

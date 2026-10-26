@@ -64,56 +64,6 @@
             <p class="text-sm font-semibold text-text-primary leading-snug">
                 Matriz de especímenes · Darwin Core
             </p>
-            <div
-                x-data="{
-                    infoAbierta: false,
-                    x: 0,
-                    y: 0,
-                    abrir() {
-                        const r = this.$el.getBoundingClientRect();
-                        this.x = Math.max(8, r.right - 256);
-                        this.y = r.bottom + 6;
-                        this.infoAbierta = true;
-                    }
-                }"
-                x-on:mouseenter="abrir()"
-                x-on:mouseleave="infoAbierta = false"
-                class="shrink-0"
-            >
-                <span
-                    x-on:click.stop="infoAbierta ? infoAbierta = false : abrir()"
-                    :class="infoAbierta ? 'text-science-blue' : 'text-text-secondary'"
-                    class="-m-2 flex cursor-help p-2 transition-colors duration-200"
-                    aria-label="Más información sobre este archivo"
-                >
-                    <flux:icon name="information-circle" class="size-4" />
-                </span>
-
-                <template x-teleport="body">
-                    <div
-                        x-show="infoAbierta"
-                        x-cloak
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 -translate-y-1 scale-[0.97]"
-                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave-end="opacity-0 -translate-y-1 scale-[0.97]"
-                        :style="'position:fixed;left:'+x+'px;top:'+y+'px;z-index:9999'"
-                        class="w-64 max-w-[calc(100dvi-2rem)] origin-top-right overflow-hidden rounded-lg bg-surface shadow-lg ring-1 ring-science-blue/30 sm:w-72"
-                    >
-                        <div class="flex gap-2.5 p-3">
-                            <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-science-blue/15 ring-1 ring-science-blue/20">
-                                <flux:icon name="light-bulb" class="size-4 text-science-blue" />
-                            </div>
-                            <div class="space-y-0.5">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-science-blue">¿Qué subo aquí?</p>
-                                <p class="text-xs text-text-secondary leading-relaxed">Hoja de cálculo con una fila por espécimen y columnas en formato Darwin Core (scientificName, kingdom, phylum, class, etc.). Descarga la plantilla para ver el formato exacto esperado.</p>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
         </div>
 
         <div class="flex items-center gap-2 mt-1 flex-wrap">

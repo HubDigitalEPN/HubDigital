@@ -3,7 +3,7 @@
     {{-- Header --}}
     <div class="flex flex-col gap-1 text-center">
         <h1 class="font-display text-2xl font-bold text-blue-navy">Crear cuenta</h1>
-        <p class="text-sm text-text-secondary">Únete al Hub Digital y gestiona tus especímenes de forma eficiente.</p>
+
     </div>
 
     {{-- Fortify centraliza validación, normalización, hash y evento Registered. --}}
@@ -16,7 +16,7 @@
         x-on:hub-register-turnstile-passed.window="turnstileVerified = true"
         x-on:hub-register-turnstile-reset.window="turnstileVerified = false">
         @csrf
-        <p class="text-xs text-text-secondary">El triángulo rojo identifica los campos obligatorios.</p>
+
         @if (config('services.turnstile.enabled'))
             <input type="hidden" name="cf-turnstile-response" value="">
         @endif
@@ -48,9 +48,7 @@
                        x-bind:class="role === 'PRESTAMISTA' ? 'text-science-blue' : 'text-text-primary'">
                         Solicitante
                     </p>
-                    <p class="mt-0.5 text-xs leading-snug text-text-secondary">
-                        Solicito préstamos de especímenes
-                    </p>
+
                 </div>
             </label>
 
@@ -75,16 +73,14 @@
                        x-bind:class="role === 'DEPOSITANTE' ? 'text-science-blue' : 'text-text-primary'">
                         Depositante
                     </p>
-                    <p class="mt-0.5 text-xs leading-snug text-text-secondary">
-                        Deposito material biológico
-                    </p>
+
                 </div>
             </label>
 
         </div>
 
         @error('rol')
-            <p class="flex items-center gap-1 text-xs text-error">
+            <p data-hub-feedback="error" class="flex items-center gap-1 text-xs text-error">
                 <flux:icon name="exclamation-circle" variant="outline" class="size-3.5 shrink-0" />
                 {{ $message }}
             </p>
@@ -182,12 +178,12 @@
                     required
                     minlength="8"
                     aria-required="true"
-                    aria-describedby="register-password-help"
+
                     placeholder="Mínimo 8 caracteres"
                     autocomplete="new-password"
                 />
                 <flux:error name="password" />
-                <flux:description id="register-password-help">Mínimo 8 caracteres.@if(app()->isProduction()) Incluye mayúsculas, minúsculas, números y símbolos; utiliza una contraseña que no haya sido expuesta.@endif</flux:description>
+
             </flux:field>
 
             <flux:field>
@@ -206,7 +202,7 @@
         </div>
 
         @error('form')
-            <p class="flex items-center gap-1 text-xs text-error">
+            <p data-hub-feedback="error" class="flex items-center gap-1 text-xs text-error">
                 <flux:icon name="exclamation-circle" variant="outline" class="size-3.5 shrink-0" />
                 {{ $message }}
             </p>
@@ -238,7 +234,5 @@
             Inicie sesión aquí
         </a>
     </p>
-
-
 
 </div>

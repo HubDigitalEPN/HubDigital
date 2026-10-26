@@ -26,12 +26,12 @@
         <flux:button class="mt-3" :href="route('prestamos.curador.matriz.columnas')">Configurar columnas de la matriz de depósito</flux:button>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <section class="rounded-lg border border-border bg-surface p-4 shadow-sm" aria-labelledby="columnas-portal-titulo">
         <flux:heading id="columnas-portal-titulo" size="lg" level="2">Columnas del portal público</flux:heading>
-        <p class="mt-1 text-sm text-text-secondary">Selecciona las columnas que verán los visitantes en las tablas de registros y ubicaciones. Todas se muestran inicialmente; se conservan los permisos de publicación de cada dato.</p>
+
         <form wire:submit="guardarColumnasPublicas" class="mt-4 space-y-4">
             <fieldset class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <legend class="sr-only">Columnas públicas visibles</legend>
@@ -39,7 +39,7 @@
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="columnasPublicas" value="{{ $columna['clave'] }}" class="size-4 accent-blue-700">{{ $columna['etiqueta'] }}</label>
                 @endforeach
             </fieldset>
-            @error('columnasPublicas')<p class="text-sm text-error" role="alert">{{ $message }}</p>@enderror
+            @error('columnasPublicas')<p data-hub-feedback="error" class="text-sm text-error" role="alert">{{ $message }}</p>@enderror
             <div class="flex flex-wrap gap-3">
                 <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar columnas públicas</flux:button>
                 <flux:button type="button" wire:click="mostrarTodasPublicas" wire:loading.attr="disabled">Mostrar todas</flux:button>
@@ -65,11 +65,7 @@
                 <div><span class="font-medium text-text-primary">Opcional</span> — información descriptiva o suplementaria. Mostrada en gris.</div>
             </div>
         </div>
-        <p class="text-xs text-text-secondary mt-3 italic">
-            La prioridad solo cambia el <strong>color y el énfasis</strong> de la columna. Qué columnas se ven se
-            controla directamente en la tabla de <strong>Especímenes</strong> (con su botón de columnas), y esa
-            elección se recuerda por usuario. El exportador a Darwin Core Archive usa su propia lista fija de columnas.
-        </p>
+
     </div>
 
     {{-- Por cada pantalla --}}

@@ -18,7 +18,7 @@
     </div>
 
     @if(!$acta)
-        <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
         {{-- Documento: se embebe el PDF real generado por DomPDF (el mismo que se
              descarga/imprime), no el HTML de la plantilla. Fuente de verdad única. --}}

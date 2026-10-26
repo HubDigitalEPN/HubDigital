@@ -6,7 +6,7 @@
     $datosGrafico = $tipoPanel === 'metodos' ? array_map(static fn (array $fila): array => $fila + ['etiqueta' => \Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::etiqueta($fila['metodo'])], $filasPanel) : $filasPanel;
 @endphp
 <section class="atlas-panel" wire:key="grafico-{{ $tipoPanel }}-{{ sha1(json_encode($filasPanel)) }}" aria-labelledby="titulo-{{ $tipoPanel }}" x-data="portalGrafico(@js($tipoPanel), @js($datosGrafico), @js($configPanel['titulo']))" x-on:alternar-tipo-grafico="alternar($event.detail)">
-    <div class="atlas-panel-header"><div><h2 id="titulo-{{ $tipoPanel }}">{{ $configPanel['titulo'] }}</h2><p class="atlas-panel-subtitle">{{ $configPanel['subtitulo'] }}</p></div><x-catalogopublico::menu-analisis :tipo="$tipoPanel" :datos="$filasPanel" /></div>
+    <div class="atlas-panel-header"><div><h2 id="titulo-{{ $tipoPanel }}">{{ $configPanel['titulo'] }}</h2></div><x-catalogopublico::menu-analisis :tipo="$tipoPanel" :datos="$filasPanel" /></div>
     <x-catalogopublico::grafico-panel :titulo="$configPanel['titulo']" />
     <div class="atlas-ranked-chart" x-show="modo === 'barras' || tablaAbierta">
         @forelse($filasPanel as $filaPanel)

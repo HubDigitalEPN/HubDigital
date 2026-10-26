@@ -1,7 +1,6 @@
 <div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-4"
     x-data
-    @toast.window="$flux.toast($event.detail.message)"
-    @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
+    @toast.window="$flux.toast($event.detail.message)">
 
     <flux:breadcrumbs class="hub-form-breadcrumbs">
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.curador.depositos') }}">
@@ -31,7 +30,7 @@
     @if($mensajeEstadoSincronizado)
         <div class="rounded-lg border border-info/30 bg-info/5 px-4 py-3" role="status" aria-live="polite">
             <p class="text-sm font-semibold text-text-primary">{{ $mensajeEstadoSincronizado }}</p>
-            <p class="mt-0.5 text-xs text-text-secondary">La vista se actualizó con el estado persistido; no se generó otro código QR.</p>
+
         </div>
     @endif
 
@@ -129,10 +128,7 @@
                     <div class="p-5 flex flex-col flex-1">
                         <div class="space-y-4">
                         @if($hayAlertasPendientes)
-                            <flux:text class="text-text-secondary text-sm">
-                                Esta solicitud tiene justificaciones de alertas por revisar. Acepta todas para aprobarla,
-                                o rechaza las que no consideres válidas.
-                            </flux:text>
+
                             <div class="flex flex-col gap-2">
                                 <flux:button variant="primary" icon="check-circle"
                                     wire:click="pedirConfirmacion('justificaciones')">
@@ -144,9 +140,7 @@
                                 </flux:button>
                             </div>
                         @else
-                            <flux:text class="text-text-secondary text-sm">
-                                Revisa la documentación y decide si apruebas la solicitud o la rechazas con un motivo.
-                            </flux:text>
+
                             <div class="flex flex-col gap-2">
                                 @if($esDonacion)
                                     <flux:button variant="primary" icon="check-circle"
@@ -196,9 +190,7 @@
                     </div>
                     <div class="p-5 flex flex-col flex-1">
                         <div class="space-y-4">
-                            <flux:text class="text-text-secondary text-sm">
-                                Esta revisión atiende incertidumbres de los documentos. Una decisión favorable devuelve el expediente al consultor: todavía debe completar sus datos, generar, firmar y enviar la solicitud antes de la decisión final.
-                            </flux:text>
+
                             @php
                                 $hallazgosRevision = $deposito->extraccion_metadatos['revision_documental']['hallazgos'] ?? [];
                             @endphp
@@ -267,9 +259,7 @@
                                 >
                                     Registrar devolución al depositante
                                 </flux:button>
-                                <flux:text class="text-text-secondary text-xs mt-1.5">
-                                    Cierra el trámite y retira los especímenes de la colección.
-                                </flux:text>
+
                             </div>
                         @endif
 
@@ -299,7 +289,7 @@
 
             {{-- Estado resuelto distinto a aprobado --}}
             @if(in_array($deposito->estado, ['Requiere Corrección', 'Rechazo Permanente'], true))
-                <flux:callout :variant="$deposito->estado === 'Rechazo Permanente' ? 'danger' : 'warning'" icon="information-circle">
+                <flux:callout data-hub-feedback="info" :variant="$deposito->estado === 'Rechazo Permanente' ? 'danger' : 'warning'" icon="information-circle">
                     <flux:callout.heading>{{ $deposito->estado }}</flux:callout.heading>
                     <flux:callout.text>La solicitud ya fue resuelta y notificada al depositante.</flux:callout.text>
                 </flux:callout>
@@ -307,7 +297,7 @@
 
             {{-- Estados sin decisión documental disponible (no enviada / en asesoría) --}}
             @if($deposito->estado === 'Pausada para Asesoría')
-                <flux:callout variant="warning" icon="pause-circle">
+                <flux:callout data-hub-feedback="warning" variant="warning" icon="pause-circle">
                     <flux:callout.heading>En espera de asesoría curatorial</flux:callout.heading>
                     <flux:callout.text>
                         Esta solicitud se pausó para asesoría y aún no está en la cola de revisión documental,
@@ -315,7 +305,7 @@
                     </flux:callout.text>
                 </flux:callout>
             @elseif($deposito->estado === 'En Borrador')
-                <flux:callout variant="secondary" icon="pencil-square">
+                <flux:callout data-hub-feedback="secondary" variant="secondary" icon="pencil-square">
                     <flux:callout.heading>Solicitud aún no enviada</flux:callout.heading>
                     <flux:callout.text>
                         El depositante todavía no ha enviado esta solicitud para revisión documental.
@@ -410,14 +400,7 @@
                     @if($nRevision > 0 && $esPendiente)
                         <div class="mx-6 my-5 flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3.5">
                             <flux:icon name="information-circle" class="size-4 text-warning shrink-0 mt-0.5" />
-                            <p class="text-xs text-text-secondary leading-relaxed">
-                                Las celdas resaltadas requieren atención. Si es un detalle de formato —una coordenada, una
-                                fecha, un conteo— puedes corregirlo aquí mismo con el lápiz de la celda: queda registrado a
-                                tu nombre y el depositante lo verá en su solicitud.
-                                Si el problema es de fondo o afecta a la identificación de la especie, devuelve la solicitud
-                                con <span class="font-medium text-text-primary">Rechazar solicitud → Subsanable</span>
-                                para que el depositante corrija y reenvíe la matriz.
-                            </p>
+
                         </div>
                     @endif
 
@@ -677,10 +660,7 @@
                                 </tbody>
                             </table></x-grid-frame>
                         </div>
-                        <p class="text-xs text-text-secondary mt-2 flex items-center gap-1.5">
-                            <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0" />
-                            Las celdas en naranja tienen advertencias de formato o campos obligatorios vacíos. Desplázate horizontalmente para ver las columnas.
-                        </p>
+
                     </div>
 
                     {{-- Tarjetas por espécimen — móvil --}}
@@ -879,10 +859,7 @@
                                             </div>
                                         @endforeach
                                     </dl>
-                                    <p class="mt-3 text-[11px] text-text-secondary leading-relaxed">
-                                        Contrasta los valores <span class="text-success font-medium">extraídos</span> con el documento abierto a la izquierda.
-                                        Si algo no coincide, devuelve la solicitud con <span class="font-medium text-text-primary">Rechazar → Subsanable</span>.
-                                    </p>
+
                                 @else
                                     <flux:text class="text-sm text-text-secondary">No hay datos registrados para esta solicitud.</flux:text>
                                 @endif
@@ -932,7 +909,7 @@
                  o el comentario de la decisión actual. --}}
             @if($deposito->comentario_curador)
                 @php $esReenvioPendiente = $deposito->rechazada_en && $deposito->estado === 'Pendiente de Revisión por Curaduría'; @endphp
-                <flux:callout variant="warning" icon="chat-bubble-left-ellipsis">
+                <flux:callout data-hub-feedback="warning" variant="warning" icon="chat-bubble-left-ellipsis">
                     <flux:callout.heading>{{ $esReenvioPendiente ? 'Observaciones de la devolución anterior' : 'Comentario para el depositante' }}</flux:callout.heading>
                     <flux:callout.text>
                         {{ $deposito->comentario_curador }}
@@ -1037,13 +1014,11 @@
     <flux:modal wire:model="showRechazoModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Rechazar solicitud</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Indica el tipo de rechazo y el motivo. Quedará registrado como comentario para el depositante.
-            </flux:text>
+
             @if($hallazgosMatriz > 0)
                 <div class="flex items-start gap-2 rounded-lg bg-warning/5 border border-warning/30 px-3 py-2">
                     <flux:icon name="exclamation-triangle" class="size-3.5 text-warning shrink-0 mt-0.5" />
-                    <p class="text-xs text-text-secondary">Recordatorio: la matriz tiene {{ $hallazgosMatriz }} {{ $hallazgosMatriz === 1 ? 'especie' : 'especies' }} para revisión curatorial que puedes citar en el motivo.</p>
+
                 </div>
             @endif
             <flux:field>
@@ -1052,10 +1027,7 @@
                     <flux:select.option value="Subsanable">Subsanable (requiere corrección)</flux:select.option>
                     <flux:select.option value="Definitivo">Definitivo (rechazo permanente)</flux:select.option>
                 </flux:select>
-                <flux:description>
-                    <span class="font-medium">Subsanable:</span> el depositante corrige y reenvía.
-                    <span class="font-medium">Definitivo:</span> cierra la solicitud sin posibilidad de corregir.
-                </flux:description>
+
                 <flux:error name="tipoRechazo" />
             </flux:field>
             <flux:field>
@@ -1079,9 +1051,7 @@
     <flux:modal wire:model="showRechazoJustificacionesModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Rechazar justificaciones</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Selecciona las justificaciones que no aceptas. La solicitud pasará a "Requiere corrección".
-            </flux:text>
+
             <div class="space-y-2">
                 @foreach($alertas as $alerta)
                     @if($alerta->estado_revision === 'Pendiente de Revisión')

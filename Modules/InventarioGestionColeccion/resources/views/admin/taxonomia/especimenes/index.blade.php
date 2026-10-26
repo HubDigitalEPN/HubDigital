@@ -187,8 +187,8 @@
         </div>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage && !$showModal && !$showEditModal)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage && !$showModal && !$showEditModal)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     {{-- ── Barra de herramientas ───────────────────────────────────────────── --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm">
@@ -206,7 +206,7 @@
                 <button type="button" wire:click="preset('{{ $clave }}')" class="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors {{ $fIncidencia === $valorIncidencia ? 'border-science-blue bg-science-blue/10 text-blue-navy' : 'border-border hover:bg-bg-main' }}">{{ $etiqueta }}</button>
             @endforeach
         </div>
-        <p class="px-3 pt-2 text-xs text-text-secondary">IDs repetidos compara código de catálogo, catalogNumber y occurrenceID. Trazas de coordenadas muestra valores originales o avisos conservados; la migración anterior no registró cada fila modificada.</p>
+
         <div class="flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
             {{-- Búsqueda rápida: una sola caja contra códigos, taxón, colector y localidad. --}}
             <div class="relative flex-1 min-w-0">
@@ -363,7 +363,7 @@
                             <option value="nombres_corregidos">Grafía científica corregida</option>
                             <option value="nombres_sin_revisar">Nombre sin revisar o modificado</option>
                         </flux:select>
-                        <flux:description>El contraste científico es documental. Una falta de coincidencia requiere revisión y no demuestra que el nombre sea inexistente.</flux:description>
+
                     </flux:field>
 
                     <flux:field class="sm:col-span-2 lg:col-span-3">
@@ -403,7 +403,7 @@
         <section class="hub-panel space-y-4 p-4">
             <h2 class="hub-section-title">Columnas del catálogo</h2>
             <form wire:submit="crearColumna" class="grid gap-3 sm:grid-cols-3"><flux:input wire:model="nuevaColumna" label="Título de la columna"/><flux:input wire:model="descripcionColumna" label="Instrucción de la guía"/><flux:button type="submit" variant="primary">Crear columna</flux:button></form>
-            <p class="text-sm">Se conservan las columnas usadas y su historial. Los campos nuevos se pueden editar en la tabla y en la ficha.</p>
+
             <div class="max-h-64 overflow-auto"><ul>@foreach($definicionColumnas as $c)<li class="flex items-center justify-between gap-3 border-b p-2"><span data-copy-preserve>{{ $c['cabecera'] }}</span><flux:button wire:click="eliminarColumna('{{ $c['campo'] }}')" wire:confirm="Se eliminará la columna únicamente si nunca se ha usado. ¿Continuar?">Eliminar si está sin uso</flux:button></li>@endforeach</ul></div>
         </section>
         @endif
@@ -413,9 +413,7 @@
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <flux:heading size="md" level="2" class="text-text-primary">Configurar columnas</flux:heading>
-                        <p class="mt-1 text-xs text-text-secondary">
-                            Marca las columnas visibles y usa ↑↓ para reordenarlas. Se guardan en este navegador.
-                        </p>
+
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <flux:button size="sm" variant="ghost" wire:click="restaurarColumnas">Por defecto</flux:button>
@@ -478,7 +476,7 @@
                 codigo: @js($qrEspecimenCodigo),
                 imprimir() {
                     const w = window.open('', '_blank', 'width=400,height=520');
-                    if (! w) { window.alert('Habilita las ventanas emergentes para imprimir la etiqueta.'); return; }
+                    if (! w) { window.hubNotify({message: 'Habilita las ventanas emergentes para imprimir la etiqueta.', variant: 'warning'}); return; }
                     const d = w.document;
                     d.title = 'QR ' + this.codigo;
                     d.body.style.cssText = 'margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif';
@@ -508,9 +506,6 @@
                     <flux:heading size="lg" class="text-text-primary">
                         Código QR de {{ $qrEspecimenCodigo }}
                     </flux:heading>
-                    <p class="text-sm text-text-secondary">
-                        Imprime este código y pégalo en el espécimen. Al escanearlo desde el móvil se abre su ficha digital.
-                    </p>
 
                     <div class="flex flex-wrap gap-2">
                         <flux:button variant="primary" icon="printer" @click="imprimir()">
@@ -869,18 +864,15 @@
                         <flux:heading size="lg" class="text-text-primary break-all">
                             {{ $fichaDatos['codigoCatalogo'] ?? 'Ficha del espécimen' }}
                         </flux:heading>
-                        <p class="mt-1 text-sm text-text-secondary">
-                            Todas las columnas del catálogo. Los campos con fondo editable se pueden
-                            corregir aquí; cada cambio queda registrado y se puede deshacer.
-                        </p>
+
                     </div>
                     {!! $renderCelda($fichaDatos, 'estadoRevision') !!}
                 </div>
 
-                @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
+                @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
                 @if(! empty($fichaDatos['motivoRevision']))
-                    <flux:callout variant="warning">{{ $fichaDatos['motivoRevision'] }}</flux:callout>
+                    <flux:callout data-hub-feedback="warning" variant="warning">{{ $fichaDatos['motivoRevision'] }}</flux:callout>
                 @endif
 
                 <div class="max-h-[60vh] space-y-5 overflow-y-auto pr-1">
@@ -954,7 +946,7 @@
                     </p>
                 </div>
 
-                @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
+                @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <flux:field>
@@ -998,9 +990,7 @@
                             Solo palabras completas
                             <span class="text-xs text-text-secondary">(evita que «sp» toque «Aspidosperma»)</span>
                         </label>
-                        <p class="text-xs text-text-secondary">
-                            El texto se busca tal cual se escribe; no se interpreta como expresión regular.
-                        </p>
+
                     </div>
                 @else
                     <flux:field>
@@ -1093,10 +1083,7 @@
             <div class="space-y-4 p-1">
                 <div>
                     <flux:heading size="lg" class="text-text-primary">Historial de ediciones</flux:heading>
-                    <p class="mt-1 text-sm text-text-secondary">
-                        Cada edición se puede deshacer una vez. Las filas que hayan cambiado después
-                        no se tocan: revertirlas borraría un cambio más reciente.
-                    </p>
+
                 </div>
 
                 @if(count($historial) === 0)
@@ -1143,7 +1130,7 @@
         @if($showModal)
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Nuevo especímen</flux:heading>
-            @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
+            @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:field><flux:label>Código de Catálogo</flux:label><flux:input wire:model="codigoCatalogo" /><flux:error name="codigoCatalogo" /></flux:field>
                 <flux:field><flux:label>Fecha de Colecta</flux:label><flux:input type="date" wire:model="fechaColecta" /><flux:error name="fechaColecta" /></flux:field>
@@ -1160,7 +1147,7 @@
                 </flux:select>
                 <flux:error name="taxonId" />
             </flux:field>
-            <p class="text-sm text-text-secondary">El portal mostrará juntas las tres localidades cuando el registro y su localidad estén autorizados para publicación. Deja el área vacía si no está documentada.</p>
+
             <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="localidad" maxlength="255" /><flux:error name="localidad" /></flux:field>
             <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="localidad2" maxlength="255" /><flux:error name="localidad2" /></flux:field>
             <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="localidad3" maxlength="500" /><flux:error name="localidad3" /></flux:field>
@@ -1223,9 +1210,9 @@
         @if($showEditModal)
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Editar especímen</flux:heading>
-            @if($errors->any())<div role="alert" class="text-sm text-error">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
-            @if($errorMessage)<flux:callout variant="danger">{{ $errorMessage }}</flux:callout>@endif
-            <p class="text-sm text-text-secondary">El portal mostrará juntas las tres localidades cuando el registro y su localidad estén autorizados para publicación. Deja el área vacía si no está documentada.</p>
+            @if($errors->any())<div data-hub-feedback="error" role="alert" class="text-sm text-error">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+            @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
+
             <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="editLocalidad" maxlength="255" /><flux:error name="editLocalidad" /></flux:field>
             <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="editLocalidad2" maxlength="255" /><flux:error name="editLocalidad2" /></flux:field>
             <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="editLocalidad3" maxlength="500" /><flux:error name="editLocalidad3" /></flux:field>

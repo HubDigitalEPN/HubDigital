@@ -2,10 +2,7 @@
     <div class="mx-auto max-w-xl">
         <div class="mb-6">
             <flux:heading size="xl" class="font-serif text-blue-navy">Activar rol de Depositante</flux:heading>
-            <flux:text class="mt-1 text-text-secondary">
-                Con este rol podrás depositar material biológico en la colección. Declara tu cargo e
-                institución: se usan en el Acta de recepción-depósito.
-            </flux:text>
+
         </div>
 
         {{-- novalidate: la validación la resuelve el servidor y se muestra con los estilos

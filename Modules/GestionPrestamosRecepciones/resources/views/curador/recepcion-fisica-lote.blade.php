@@ -8,8 +8,7 @@
 
 <div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-5"
     x-data
-    @toast.window="$flux.toast($event.detail.message)"
-    @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
+    @toast.window="$flux.toast($event.detail.message)">
 
     <flux:breadcrumbs class="hub-form-breadcrumbs">
         <flux:breadcrumbs.item wire:navigate href="{{ route('prestamos.receptor.depositos') }}">
@@ -63,7 +62,7 @@
             <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-navy/8 text-blue-navy"><flux:icon name="document-check" class="size-5" /></span>
             <div class="min-w-0">
                 <h2 id="documentacion-entrega" class="font-display text-base font-semibold text-blue-navy">Documentación que acompaña la entrega</h2>
-                <p class="mt-1 text-sm text-text-secondary">Contrasta estos códigos con los documentos físicos y etiquetas presentados por el consultor antes de marcar conformidad.</p>
+
                 <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                     <div class="rounded-md bg-bg-main/70 px-3 py-2"><dt class="text-xs text-text-secondary">Permiso de recolección</dt><dd class="mt-1 font-mono font-medium text-text-primary">{{ $recepcion->nroPermisoRecoleccion ?? 'No declarado' }}</dd></div>
                     <div class="rounded-md bg-bg-main/70 px-3 py-2"><dt class="text-xs text-text-secondary">Guía o permiso de movilización</dt><dd class="mt-1 font-mono font-medium text-text-primary">{{ $recepcion->nroPermisoMovilizacion ?? 'No declarado' }}</dd></div>
@@ -73,7 +72,7 @@
     </section>
 
     @if (! $recepcion->recepcionIniciada)
-        <flux:callout variant="info" icon="hand-raised">
+        <flux:callout data-hub-feedback="info" variant="info" icon="hand-raised">
             <flux:callout.heading>Constatación pendiente de inicio</flux:callout.heading>
             <flux:callout.text>
                 Confirma que el lote físico y sus documentos están presentes antes de abrir la lista de verificación. Este registro dejará constancia del inicio de la recepción por ventanilla.
@@ -88,7 +87,7 @@
 
     {{-- Estado terminal: verificado (conforme o con observaciones) --}}
     @if($verificado)
-        <flux:callout variant="success" icon="check-badge">
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-badge">
             <flux:callout.heading>Lote recibido y constatado</flux:callout.heading>
             <flux:callout.text>
                 La cadena de custodia quedó registrada. Se envió a curaduría una alerta con enlace
@@ -111,7 +110,7 @@
 
     {{-- Estado terminal: suspendida --}}
     @if($suspendida)
-        <flux:callout variant="warning" icon="arrow-path">
+        <flux:callout data-hub-feedback="warning" variant="warning" icon="arrow-path">
             <flux:callout.heading>Recepción suspendida</flux:callout.heading>
             <flux:callout.text>
                 Anomalía subsanable: <span class="font-semibold">{{ $recepcion->motivoFallo }}</span>.
@@ -211,14 +210,9 @@
         {{-- Zona de decisión --}}
         <div class="rounded-lg border border-border bg-surface shadow-sm p-5">
             <flux:heading size="base" level="2" class="font-display">Decisión de recepción</flux:heading>
-            <flux:text class="text-text-secondary text-sm mt-1">
-                Al aprobar, si todos los ítems están conformes la recepción se verifica por completo; si algún
-                ítem no lo está, se registrará con observaciones. Usa "Suspender y devolver" cuando la anomalía es
-                subsanable y el lote debe regresar al depositante.
-            </flux:text>
 
             @error('estadoCriterio')
-                <p class="mt-3 text-sm font-medium text-error" role="alert">{{ $message }}</p>
+                <p data-hub-feedback="error" class="mt-3 text-sm font-medium text-error" role="alert">{{ $message }}</p>
             @enderror
 
             <div class="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
@@ -239,10 +233,7 @@
     <flux:modal wire:model="showRechazoModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Suspender la recepción</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Indica el fallo de integridad subsanable. Se emitirá la orden de acción correctiva para el
-                depositante y el Código QR seguirá vigente para reintentar la recepción.
-            </flux:text>
+
             <flux:field>
                 <flux:label>Fallo de integridad <span class="text-error">*</span></flux:label>
                 <flux:select wire:model="motivoFallo" placeholder="Selecciona un fallo...">

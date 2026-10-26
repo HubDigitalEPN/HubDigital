@@ -8,7 +8,7 @@
     </flux:breadcrumbs>
 
     @if(!$deposito)
-        <flux:callout variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">Solicitud no encontrada.</flux:callout>
     @else
         @php
             $badgeVariant = match($deposito->estado) {
@@ -40,7 +40,7 @@
                                         <span class="font-medium">Observaciones del curador:</span> {{ $deposito->comentario_curador }}
                                     </p>
                                 @else
-                                    <p class="text-sm text-text-secondary">Corrige lo indicado y reenvía tu solicitud.</p>
+
                                 @endif
                             </div>
                         </div>
@@ -77,7 +77,7 @@
                             </div>
                             <div>
                                 <flux:heading size="base" level="2" class="font-display">¡Solicitud aprobada! Tu Código QR está listo</flux:heading>
-                                <flux:text class="text-text-secondary text-xs">Imprímelo y adjúntalo a la entrega física de las muestras.</flux:text>
+
                             </div>
                         </div>
                         <div class="p-5 flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -89,7 +89,7 @@
                                     <flux:icon name="printer" class="size-4 text-white!" />
                                     Imprimir QR
                                 </a>
-                                <p class="max-w-xs text-center text-xs leading-5 text-text-secondary sm:text-left">En la ventana de impresión puedes elegir “Guardar como PDF”.</p>
+
                                 @if($deposito->tipo_tramite === 'Donación' && $actaTransferenciaDisponible)
                                     <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
                                         target="_blank" rel="noopener"
@@ -122,7 +122,7 @@
                                         <p class="mt-1 text-sm text-text-secondary">Entrega anunciada para <strong class="text-text-primary">@fechaEc($deposito->entrega_programada_para, 'd/m/Y H:i')</strong>. Recepción EPN ya puede preparar la constatación.</p>
                                         @if($deposito->entrega_nota)<p class="mt-1 text-sm text-text-secondary">Nota para recepción: {{ $deposito->entrega_nota }}</p>@endif
                                     @else
-                                        <p class="mt-1 text-sm text-text-secondary">Antes de trasladarte, anuncia la fecha prevista. Lleva el lote rotulado, los documentos originales y el QR emitido por HubDigital.</p>
+
                                     @endif
                                 </div>
                             </div>
@@ -145,7 +145,7 @@
                             </div>
                             <div>
                                 <flux:heading size="base" level="2" class="font-display text-warning">Importante: consideraciones para la entrega física</flux:heading>
-                                <flux:text class="text-text-secondary text-xs">Prepara tus muestras según estos requisitos antes de entregarlas en el laboratorio. No cumplirlos puede retrasar la recepción.</flux:text>
+
                             </div>
                         </div>
 
@@ -331,9 +331,7 @@
                                 <flux:icon name="shield-check" variant="outline" class="size-6 shrink-0 text-success" />
                                 <div>
                                     <flux:heading size="sm">Acta de recepción-depósito</flux:heading>
-                                    <flux:text class="text-text-secondary text-xs">
-                                        Firmada electrónicamente por el curador. Constancia oficial de la recepción de tus muestras.
-                                    </flux:text>
+
                                 </div>
                             </div>
                             <a href="{{ route('prestamos.deposito.acta-recepcion', $deposito->id) }}"
@@ -507,10 +505,7 @@
                                             Curaduría corrigió {{ count($correccionesCuraduria) }}
                                             {{ count($correccionesCuraduria) === 1 ? 'dato de formato' : 'datos de formato' }}
                                         </p>
-                                        <p class="text-xs text-text-secondary mt-0.5">
-                                            Se ajustaron para que la matriz cumpla el estándar, sin devolverte la solicitud.
-                                            La identificación de las especies no se modificó.
-                                        </p>
+
                                     </div>
                                 </div>
                                 <ul class="space-y-1.5 pl-7">
@@ -627,9 +622,7 @@
                             </div>
                             <p class="text-sm font-semibold text-text-primary">En espera de asesoría curatorial</p>
                         </div>
-                        <p class="text-sm text-text-secondary">
-                            El funcionario responsable revisará tu caso y se pondrá en contacto contigo directamente. No necesitas realizar ninguna acción por ahora.
-                        </p>
+
                     </div>
                 @endif
 

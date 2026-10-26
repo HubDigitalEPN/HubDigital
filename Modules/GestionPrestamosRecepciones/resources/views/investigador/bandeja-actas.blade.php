@@ -3,9 +3,7 @@
     {{-- Encabezado --}}
     <div>
         <flux:heading size="xl" level="1" class="font-display">Mis actas</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Actas de préstamo pendientes de firma y validadas.
-        </flux:text>
+
     </div>
 
     {{-- Panel de filtros --}}

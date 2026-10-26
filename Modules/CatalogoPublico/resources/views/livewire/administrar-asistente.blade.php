@@ -67,15 +67,15 @@
             <h2 class="mb-3 font-display text-lg font-semibold text-blue-navy">{{ $nodeId ? 'Editar respuesta' : 'Nueva respuesta' }}</h2>
             <form wire:submit="save" class="space-y-3 text-sm">
                 <label class="block font-medium text-blue-navy">Título<input type="text" wire:model="title" maxlength="160" class="mt-1 w-full rounded-lg border border-border px-3 py-2" required /></label>
-                @error('title') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                @error('title') <p data-hub-feedback="error" class="text-xs text-red-700">{{ $message }}</p> @enderror
                 <label class="block font-medium text-blue-navy">Nodo padre<select wire:model="parentId" class="mt-1 w-full rounded-lg border border-border px-3 py-2"><option value="">Raíz</option>@foreach($nodes as $candidate) @if($candidate->id !== $nodeId)<option value="{{ $candidate->id }}">{{ $candidate->title }}</option>@endif @endforeach</select></label>
-                @error('parentId') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                @error('parentId') <p data-hub-feedback="error" class="text-xs text-red-700">{{ $message }}</p> @enderror
                 <label class="block font-medium text-blue-navy">Respuesta institucional<textarea wire:model="answer" rows="4" maxlength="3000" class="mt-1 w-full rounded-lg border border-border px-3 py-2" required></textarea></label>
-                @error('answer') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                @error('answer') <p data-hub-feedback="error" class="text-xs text-red-700">{{ $message }}</p> @enderror
                 <label class="block font-medium text-blue-navy">Preguntas equivalentes <span class="font-normal text-text-secondary">(una por línea)</span><textarea wire:model="aliasesText" rows="3" class="mt-1 w-full rounded-lg border border-border px-3 py-2"></textarea></label>
                 <label class="block font-medium text-blue-navy">Variantes de respuesta <span class="font-normal text-text-secondary">(peso|activo|texto o peso|inactivo|texto, una por línea)</span><textarea wire:model="variantsText" rows="3" class="mt-1 w-full rounded-lg border border-border px-3 py-2"></textarea></label>
                 <div class="grid grid-cols-2 gap-3">
-                    <p class="text-xs text-text-secondary">Guardar crea un borrador. Publica desde el árbol después de probarlo.</p>
+
                     <label class="block font-medium text-blue-navy">Enlace<select wire:model="action" class="mt-1 w-full rounded-lg border border-border px-3 py-2"><option value="">Ninguno</option><option value="DEPOSIT_LINK">Depósitos</option><option value="MY_REQUESTS_LINK">Mis solicitudes</option><option value="CATALOG_LINK">Catálogo</option><option value="LOGIN_LINK">Iniciar sesión</option><option value="CONTACT_LINK">Contacto</option></select></label>
                 </div>
                 <label class="flex items-center gap-2 text-blue-navy"><input type="checkbox" wire:model="needsReview" /> Requiere revisión curatorial antes de publicarse</label>
@@ -156,7 +156,7 @@
 
     <section class="rounded-xl border border-border bg-white p-4 shadow-sm">
         <h2 class="font-display text-lg font-semibold text-blue-navy">Ajustes del ranking</h2>
-        <p class="mt-1 text-xs text-text-secondary">Los pesos se normalizan al guardar. La coincidencia textual sigue predominando sobre el historial.</p>
+
         <form wire:submit="saveRanking" class="mt-3 space-y-3 text-sm">
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                 @foreach($rankingWeights as $name => $weight)
@@ -168,8 +168,8 @@
                     <label class="text-blue-navy">{{ $name }}<input type="number" min="0" max="1" step="0.01" wire:model="rankingThresholds.{{ $name }}" class="mt-1 w-full rounded border border-border px-2 py-1"></label>
                 @endforeach
             </div>
-            @error('rankingWeights')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
-            @error('rankingThresholds')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
+            @error('rankingWeights')<p data-hub-feedback="error" class="text-xs text-red-700">{{ $message }}</p>@enderror
+            @error('rankingThresholds')<p data-hub-feedback="error" class="text-xs text-red-700">{{ $message }}</p>@enderror
             <label class="block text-blue-navy">Comentario de esta versión<input type="text" maxlength="240" wire:model="rankingComment" class="mt-1 w-full rounded border border-border px-2 py-1" /></label>
             <button type="submit" class="rounded-lg bg-blue-navy px-4 py-2 font-semibold text-white">Guardar ajustes</button>
         </form>
@@ -178,13 +178,13 @@
 
     <section class="rounded-xl border border-border bg-white p-4 shadow-sm">
         <h2 class="font-display text-lg font-semibold text-blue-navy">Transferir conocimiento</h2>
-        <p class="mt-1 text-xs text-text-secondary">El archivo contiene nodos, aliases, variantes, sinónimos y ranking. No incluye conversaciones, usuarios ni analítica. Los nodos importados quedan como borradores; los sinónimos y pesos se aplican al confirmar.</p>
+
         <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
             <button type="button" wire:click="downloadKnowledge" class="rounded-lg border border-blue-navy px-3 py-2 font-semibold text-blue-navy">Exportar JSON</button>
             <input type="file" wire:model="importFile" accept=".json,application/json" aria-label="Archivo JSON de conocimiento" class="max-w-full text-sm" />
             <button type="button" wire:click="previewImport" class="rounded-lg border border-border px-3 py-2 font-semibold">Previsualizar importación</button>
         </div>
-        @error('importFile')<p class="mt-2 text-sm text-red-700">{{ $message }}</p>@enderror
+        @error('importFile')<p data-hub-feedback="error" class="mt-2 text-sm text-red-700">{{ $message }}</p>@enderror
         @if($importPreview)
             <p class="mt-3 text-sm text-blue-navy">{{ $importPreview['nodes'] }} nodos ({{ $importPreview['new_nodes'] }} nuevos), {{ $importPreview['synonyms'] }} sinónimos y configuración de ranking. Publica los borradores tras revisarlos.</p>
             <button type="button" wire:click="importKnowledge" wire:confirm="¿Importar el conocimiento previsualizado? Los nodos existentes conservarán su versión pública hasta publicar los borradores." class="mt-2 rounded-lg bg-blue-navy px-3 py-2 text-sm font-semibold text-white">Confirmar importación</button>
@@ -193,7 +193,7 @@
 
     <section class="rounded-xl border border-border bg-white p-4 shadow-sm">
         <h2 class="font-display text-lg font-semibold text-blue-navy">Preguntas por revisar</h2>
-        <p class="mb-3 text-xs text-text-secondary">Las direcciones de correo y números se omiten antes de guardar una muestra. Asocia solo preguntas que tengan una respuesta institucional confirmada.</p>
+
         @forelse($unmatched as $question)
             <div class="flex flex-wrap items-center gap-2 border-t border-border py-2 text-sm">
                 <span class="min-w-0 flex-1 break-words text-blue-navy"><strong>{{ $question->sample }}</strong> <small class="text-text-secondary">Ocurrencias: {{ $question->occurrences }} · Posible intención: {{ $question->candidate ?: 'ninguna' }} · Score: {{ $question->best_score }}</small><br><small class="text-text-secondary">Variantes: {{ implode(' · ', $question->variants) }}</small></span>

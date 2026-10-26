@@ -5,25 +5,8 @@
         </div>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
-
-    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-fechas-revision">
-        <p>
-            Cada tarjeta agrupa los especímenes que comparten el mismo texto de fecha original
-            (formatos como <code>"25 a 27-May-09"</code>, <code>"10/18-22/2007"</code>, <code>"s/f"</code>).
-        </p>
-        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Si la tarjeta dice <strong>"Sugerencia disponible"</strong> (chip azul), los campos ya vienen
-                pre-llenados con lo que el sistema intuyó. Revisa y aplica.</li>
-            <li>Si dice <strong>"No se pudo interpretar"</strong> (chip naranja), escribe tú la fecha de inicio
-                (y de fin si es un rango).</li>
-            <li>Botón <strong>"Ver especímenes"</strong>: abre el grupo, verás cada ejemplar y podrás
-                <strong>marcar solo algunos</strong> (útil cuando el mismo texto esconde fechas distintas).</li>
-            <li>Con el grupo cerrado, "Aplicar" afecta a <strong>todos</strong>; con el grupo abierto, solo a los
-                <strong>marcados</strong>.</li>
-        </ol>
-    </x-inventariogestioncoleccion::bandeja-ayuda>
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
@@ -165,7 +148,7 @@
         <div class="rounded-lg border border-border bg-surface p-8 text-center">
             <flux:icon name="check-circle" class="mx-auto size-12 text-success mb-2" />
             <p class="text-text-primary font-medium">No quedan fechas por normalizar</p>
-            <p class="text-sm text-text-secondary mt-1">Todos los especímenes con un texto de fecha ya tienen su fecha real asignada.</p>
+
         </div>
     @endforelse
 

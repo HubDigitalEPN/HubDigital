@@ -13,9 +13,7 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Solicitar prórroga</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Pide una extensión del plazo de devolución antes de que el préstamo venza.
-        </flux:text>
+
     </div>
 
     {{-- Contexto del plazo actual --}}

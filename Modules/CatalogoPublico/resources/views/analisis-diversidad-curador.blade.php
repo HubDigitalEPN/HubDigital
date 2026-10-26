@@ -26,7 +26,6 @@
                 <select name="sitio_b" class="mt-1 block h-10 w-full rounded-md border border-border bg-white px-2 text-sm font-normal"><option value="">Sin comparación</option>@foreach($localidades as $localidad)<option value="{{ $localidad->id }}" @selected(($filtros['sitio_b'] ?? '') === $localidad->id)>{{ $localidad->nombre_canonico }} · {{ $localidad->state_province }} · {{ substr($localidad->id, 0, 6) }}</option>@endforeach</select>
             </label>
         </div>
-        <p class="mt-2 text-xs text-text-secondary">Beta compara A y B; gamma usa la unión de ambos cuando se seleccionan. Los demás índices usan A, o toda la selección si A está vacía.</p>
 
         <fieldset class="mt-6 border-t border-border pt-5">
             <legend class="font-display text-lg font-bold text-blue-navy">2. Elegir indicadores</legend>
@@ -68,21 +67,16 @@
             </div>
             @if(in_array('abundancia', $metricas, true))
                 <div class="mt-5 overflow-hidden rounded-xl border border-border bg-white shadow-sm">
-                    <div class="border-b border-border p-5"><h3 class="font-display text-lg font-bold text-blue-navy">Abundancia por especie</h3><p class="text-xs text-text-secondary">Treinta especies con mayor conteo conocido. El porcentaje usa {{ number_format($resultado['individuos'], 0, ',', '.') }} individuos como denominador.</p></div>
+                    <div class="border-b border-border p-5"><h3 class="font-display text-lg font-bold text-blue-navy">Abundancia por especie</h3></div>
                     <div class="max-h-96 overflow-auto"><x-grid-frame><table class="w-full min-w-[30rem] text-left text-sm"><thead class="sticky top-0 bg-[#f3f7fb]"><tr><th class="px-4 py-2">Especie</th><th class="px-4 py-2 text-right">Individuos</th><th class="px-4 py-2 text-right">Relativa</th></tr></thead><tbody class="divide-y divide-border">@forelse(($resultado['valores']['abundancia'] ?? []) as $fila)<tr><td class="px-4 py-2 italic">{{ $fila['especie'] }}</td><td class="px-4 py-2 text-right tabular-nums">{{ number_format($fila['individuos'], 0, ',', '.') }}</td><td class="px-4 py-2 text-right tabular-nums">{{ number_format($fila['porcentaje'], 2, ',', '.') }} %</td></tr>@empty<tr><td colspan="3" class="px-4 py-4 text-text-secondary">Sin datos suficientes</td></tr>@endforelse</tbody></table></x-grid-frame></div>
                 </div>
             @endif
             @if(in_array('acumulacion', $metricas, true))
-                <div class="mt-5 rounded-xl border border-border bg-white p-5 shadow-sm"><h3 class="font-display text-lg font-bold text-blue-navy">Acumulación observada por muestra</h3><p class="mt-1 text-xs text-text-secondary">Muestras en orden de identificador; la curva muestra riqueza observada y no extrapola esfuerzo de muestreo futuro.</p><div class="mt-4 h-72"><canvas id="curva-acumulacion" role="img" aria-label="Curva de especies observadas por muestras"></canvas></div></div>
+                <div class="mt-5 rounded-xl border border-border bg-white p-5 shadow-sm"><h3 class="font-display text-lg font-bold text-blue-navy">Acumulación observada por muestra</h3><div class="mt-4 h-72"><canvas id="curva-acumulacion" role="img" aria-label="Curva de especies observadas por muestras"></canvas></div></div>
             @endif
         </section>
     @endif
 
-    <aside class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
-        <h2 class="font-display text-lg font-bold">Límites de interpretación</h2>
-        <p class="mt-2">Estos índices describen los ejemplares y muestras conservados, no una estimación automática de la biodiversidad del hábitat. Simpson D es la probabilidad de que dos individuos sin reemplazo correspondan a la misma especie. Beta usa disimilitud de Sørensen entre dos localidades. Chao1 usa especies con uno o dos individuos; Jackknife de primer orden usa especies presentes en una sola muestra. Una localidad con muy poco esfuerzo de colecta puede producir valores inestables.</p>
-        <p class="mt-2"><strong>Modelos depredador-presa:</strong> no se calculan con esta hoja porque no registra relaciones tróficas verificadas ni series temporales comparables de abundancia para pares de especies. Se requieren esos datos antes de ajustar ecuaciones de población.</p>
-    </aside>
 </div>
 <script>
 (() => {

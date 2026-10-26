@@ -1,8 +1,8 @@
 <div data-copy-preserve class="hub-workspace mx-auto max-w-7xl space-y-4 p-4">
     <h1 class="hub-page-title">Textos de todas las pantallas</h1>
-    <p>Edita títulos, botones, instrucciones, etiquetas y mensajes, incluidos los del mapa. Los nombres de campos del catálogo se administran desde Especímenes y conservan el idioma elegido.</p>
+
     <div class="flex flex-wrap gap-4"><a href="{{ route('admin.textos-portal') }}" wire:navigate class="underline">Contenido del portal y mapa</a><a href="{{ route('admin.textos-depositos') }}" wire:navigate class="underline">Contenido de depósitos</a></div>
-    @if(session('textos-sistema'))<p role="status">{{ session('textos-sistema') }}</p>@endif
+    @if(session('textos-sistema'))<p data-hub-feedback="success" role="status">{{ session('textos-sistema') }}</p>@endif
     <div class="hub-panel grid gap-3 p-4 sm:grid-cols-2">
         <flux:input type="search" label="Buscar texto" wire:model.live.debounce.400ms="busqueda"/>
         <label>Pantalla<select wire:model.live="pantalla" class="block w-full rounded border p-2"><option value="">Todas las pantallas</option>@foreach($pantallas as $nombre)<option value="{{ $nombre }}">{{ $nombre }}</option>@endforeach</select></label>

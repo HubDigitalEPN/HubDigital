@@ -26,7 +26,7 @@
 
     <section class="rounded-xl border border-border bg-white p-4" aria-labelledby="instituciones-pendientes">
         <flux:heading id="instituciones-pendientes" size="lg">Nombres por identificar</flux:heading>
-        <p class="mt-1 text-sm text-text-secondary">Estos textos se conservan como referencia y requieren confirmar la entidad antes de añadirla al catálogo.</p>
+
         <flux:input class="mt-3" wire:model.live.debounce.300ms="busquedaPendientes" label="Filtrar nombres por identificar" />
         <div class="mt-3 space-y-3">
             @forelse($pendientes as $pendiente)
@@ -45,7 +45,7 @@
         <div class="space-y-4">
             <div>
                 <flux:heading size="lg">{{ $editandoId ? 'Editar institución' : 'Nueva institución' }}</flux:heading>
-                <p class="mt-1 text-xs text-text-secondary">El nombre aparecerá en la lista del depositante.</p>
+
             </div>
             <flux:input wire:model="nombre" label="Nombre" maxlength="160" autofocus />
             <flux:error name="nombre" />

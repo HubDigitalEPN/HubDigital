@@ -5,8 +5,10 @@ import './pwa-notifications';
 import './connectivity-status';
 import './portal-pwa';
 import './portal-theme';
+import { bootNotifications } from './hub-notifications';
 
 window.hubDigitalLov = crearLov;
+bootNotifications(Livewire);
 
 // El mapa, los gráficos y el explorador no participan en la portada ni en el
 // acceso. Cargarlos antes de Alpine sólo en las rutas que los necesitan.

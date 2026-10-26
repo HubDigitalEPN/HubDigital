@@ -4,9 +4,7 @@
     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl" level="1" class="font-display">Mis solicitudes</flux:heading>
-            <flux:text class="text-text-secondary text-sm mt-1">
-                Gestiona tus solicitudes de préstamo de especímenes entomológicos.
-            </flux:text>
+
         </div>
         <flux:button variant="primary" icon="plus"
             wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}"
@@ -65,7 +63,7 @@
             </div>
             <div>
                 <flux:heading size="lg" level="2">Aún no tienes solicitudes</flux:heading>
-                <flux:text class="text-text-secondary mt-1 text-sm">Crea tu primera solicitud de préstamo para comenzar.</flux:text>
+
             </div>
             <flux:button variant="primary" wire:navigate href="{{ route('prestamos.investigador.solicitud.crear') }}">
                 Crear solicitud

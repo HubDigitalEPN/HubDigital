@@ -4,8 +4,7 @@
     @if($mensaje)<p role="status" class="rounded border border-green-200 bg-green-50 p-4 text-green-900">{{ $mensaje }}</p>@endif
     <section class="space-y-4 rounded border border-border bg-white p-5">
         <a href="{{ route('inventario.taxonomia.importar.plantilla') }}" class="hub-ig-button">Modificación/visualización plantilla original</a>
-        <p class="text-sm text-text-secondary">{{ \App\Support\PortalCopy::text('importacion.plantilla_ayuda') }}</p>
-        <p class="text-sm">Edita los encabezados de la primera hoja y su entrada correspondiente en Guía. Conserva el campo estable en la columna Campo; cambia descripción, requisito y formato según corresponda. occurrenceID identifica cada ficha. Esta configuración no cambia los requisitos de las solicitudes de depósito.</p>
+
         <label for="plantilla-catalogo-modificada" class="block font-semibold">Plantilla modificada (.xlsx)</label>
         <input id="plantilla-catalogo-modificada" type="file" wire:model="archivo" accept=".xlsx" class="block w-full rounded border border-border p-3"/><flux:error name="archivo"/>
         <flux:button variant="primary" wire:click="guardar" wire:loading.attr="disabled" wire:target="archivo,guardar" wire:confirm="Se actualizarán la plantilla y sus reglas para las próximas importaciones. ¿Continuar?">Subir plantilla modificada</flux:button>

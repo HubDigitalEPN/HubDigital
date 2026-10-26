@@ -38,7 +38,7 @@
                 @endisset
             </div>
             @if($descripcion)
-                <p class="mt-1 text-xs text-text-secondary leading-relaxed">{{ $descripcion }}</p>
+
             @endif
         </div>
     </div>

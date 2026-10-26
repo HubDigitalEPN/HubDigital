@@ -3,7 +3,7 @@
         <div><h1 class="hub-page-title">Localidades de Ecuador</h1></div>
         <flux:button wire:click="nueva" variant="primary" icon="plus">Nueva localidad</flux:button>
     </header>
-    @if(session('localidad-guardada'))<p role="status" class="rounded-lg bg-success/10 p-3 text-sm text-success">{{ session('localidad-guardada') }}</p>@endif
+    @if(session('localidad-guardada'))<p data-hub-feedback="success" role="status" class="rounded-lg bg-success/10 p-3 text-sm text-success">{{ session('localidad-guardada') }}</p>@endif
     <x-interactive-grid :rows="$localidades" label="Localidades de Ecuador" :columns="['Localidad', 'Provincia', 'Parroquia / cantón', 'Estado', 'Acciones']">
         <x-slot:filters>        <flux:select x-model="filterValues.provinciaFiltro" data-grid-filter="provinciaFiltro" label="Provincia">
             <option value="">Todas las provincias</option>

@@ -15,9 +15,6 @@
                 <div class="min-w-0 max-w-4xl">
                     <h1 id="titulo-depositos" class="portal-hero-title portal-depositos-title font-display font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy">{{ $depositosTexto('titulo') }}</h1>
                     <div class="mt-5 h-1 w-14 rounded-full bg-bio-green" aria-hidden="true"></div>
-                    <p class="mt-6 max-w-4xl text-lg leading-8 text-text-secondary">
-                        {{ $depositosTexto('descripcion') }}
-                    </p>
 
                     <div class="portal-responsive-actions portal-depositos-actions mt-8">
                         @auth
@@ -89,7 +86,7 @@
                     </div>
                     <h2 id="preparar-expediente" class="font-display text-2xl font-bold text-blue-navy">{{ $depositosTexto('preparar_titulo') }}</h2>
                 </div>
-                <p class="mt-4 leading-7 text-text-secondary">{{ $depositosTexto('preparar_descripcion') }}</p>
+
                 <ul class="mt-6 space-y-3 text-sm leading-6 text-text-secondary">
                     <li class="flex gap-3"><flux:icon name="check-circle" class="mt-0.5 size-5 shrink-0 text-bio-green" /><span>{{ $depositosTexto('requisito_solicitud') }}</span></li>
                     <li class="flex gap-3"><flux:icon name="check-circle" class="mt-0.5 size-5 shrink-0 text-bio-green" /><span>{{ $depositosTexto('requisito_permisos') }}</span></li>

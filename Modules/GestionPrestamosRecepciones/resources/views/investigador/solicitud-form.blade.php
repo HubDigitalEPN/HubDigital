@@ -21,19 +21,17 @@
             <flux:heading size="xl" level="1" class="font-display">
                 {{ $this->solicitudId ? 'Editar solicitud de préstamo' : 'Nueva solicitud de préstamo' }}
             </flux:heading>
-            <flux:text class="mt-1 text-text-secondary text-sm">
-                Completa las tres secciones para poder enviar tu solicitud al curador.
-            </flux:text>
+
         </div>
 
         {{-- Alerta de éxito --}}
         @if($successMessage)
-            <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+            <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
         @endif
 
         {{-- Observación del curador --}}
         @if($comentarioCurador)
-            <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:callout data-hub-feedback="warning" variant="warning" icon="exclamation-triangle">
                 <flux:heading size="sm">Observación del curador</flux:heading>
                 <flux:text class="mt-1 text-sm">{{ $comentarioCurador }}</flux:text>
             </flux:callout>
@@ -80,9 +78,7 @@
                                x-bind:class="alcance === 'nacional' ? 'text-science-blue' : 'text-text-primary'">
                                 Nacional
                             </p>
-                            <p class="mt-0.5 text-xs text-text-secondary leading-snug">
-                                Dentro de Ecuador — proceso estándar
-                            </p>
+
                         </div>
                         <div
                             x-show="alcance === 'nacional'"
@@ -116,9 +112,7 @@
                                x-bind:class="alcance === 'internacional' ? 'text-science-blue' : 'text-text-primary'">
                                 Internacional
                             </p>
-                            <p class="mt-0.5 text-xs text-text-secondary leading-snug">
-                                Fuera de Ecuador — requiere trámite de exportación
-                            </p>
+
                         </div>
                         <div
                             x-show="alcance === 'internacional'"
@@ -268,9 +262,7 @@
                             class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3"
                         >
                             <flux:icon name="exclamation-triangle" class="mt-0.5 size-4 shrink-0 text-warning" />
-                            <p class="text-xs text-warning">
-                                Las solicitudes de más de 12 meses requieren una justificación adicional que será evaluada por el curador.
-                            </p>
+
                         </div>
 
                         <div
@@ -330,9 +322,7 @@
                             placeholder="Buscar por nombre científico o código de catálogo…"
                         />
                         <flux:error name="busquedaEspecimen" />
-                        <flux:description>
-                            Escribe al menos tres letras. Solo aparecen los especímenes disponibles en la colección.
-                        </flux:description>
+
                     </flux:field>
 
                     @if($busquedaEspecimen !== '')
@@ -435,9 +425,7 @@
                             <flux:icon name="beaker" class="size-7 text-text-secondary/50" />
                         </div>
                         <p class="text-sm font-medium text-text-primary">Sin especímenes aún</p>
-                        <p class="text-xs text-text-secondary mt-1">
-                            Búscalos en el catálogo para agregarlos a la solicitud.
-                        </p>
+
                     </div>
                 @endif
             </div>

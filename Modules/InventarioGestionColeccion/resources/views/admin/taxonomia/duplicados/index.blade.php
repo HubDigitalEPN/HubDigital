@@ -5,20 +5,8 @@
         </div>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
-
-    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-duplicados-catalog">
-        <p>
-            Cada grupo muestra especímenes que comparten el mismo <code>catalog_number</code>. Hay dos casos válidos:
-        </p>
-        <ul class="list-disc pl-6 space-y-1 text-xs text-text-secondary">
-            <li><strong>Eventos legítimos</strong> — dos colectas diferentes con el mismo número físico (raro pero ocurre).
-                Si las fechas/colectores son distintos, el chip azul lo indica. Click "Eventos distintos" → todos pasan a "confirmada".</li>
-            <li><strong>Error de catalogación</strong> — el numerador se repitió por error. Chip naranja si la fecha coincide.
-                Escribe un motivo y click "Marcar error" → los especímenes quedan pendientes para investigar y corregir.</li>
-        </ul>
-    </x-inventariogestioncoleccion::bandeja-ayuda>
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
@@ -97,9 +85,6 @@
                         <flux:button variant="ghost" size="sm" wire:click="limpiarSeleccion({{ $idx }})">Ninguno</flux:button>
                     </div>
                 </div>
-                <p class="text-xs text-text-secondary">
-                    Marca especímenes para actuar solo sobre ellos; sin selección, la decisión aplica a todo el grupo.
-                </p>
 
                 @php
                     $badge = fn ($estado) => match ($estado ?? 'pendiente') {

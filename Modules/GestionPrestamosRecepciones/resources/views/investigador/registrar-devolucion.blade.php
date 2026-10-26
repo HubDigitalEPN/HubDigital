@@ -13,9 +13,7 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Registrar devolución</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Confirma que has enviado los especímenes de vuelta a la colección.
-        </flux:text>
+
     </div>
 
     {{-- Aviso informativo --}}

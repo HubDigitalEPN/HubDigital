@@ -8,24 +8,8 @@
         </flux:button>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
-
-    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-taxones-revision">
-        <p>
-            Cada tarjeta agrupa los especímenes que traían el mismo nombre de taxón sin resolver
-            (e.g. <code>"Acragas_sp.1"</code>).
-        </p>
-        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Te mostramos <strong>candidatos sugeridos</strong> por parecido. Elige el correcto, o usa
-                <strong>"Buscar otro nombre"</strong> si no está en la lista.</li>
-            <li>Botón <strong>"Ver especímenes"</strong>: abre el grupo para revisar cada ejemplar y
-                <strong>marcar solo algunos</strong> (por si el mismo texto esconde especies distintas).</li>
-            <li>Con el grupo cerrado, se aplica a <strong>todos</strong>; con el grupo abierto, solo a los <strong>marcados</strong>.</li>
-            <li>Si un ejemplar es irrecuperable, déjalo sin resolver — advertencia: esos especímenes
-                <strong>no se exportan a GBIF</strong>.</li>
-        </ol>
-    </x-inventariogestioncoleccion::bandeja-ayuda>
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <div class="rounded-lg border border-border bg-surface shadow-sm p-4 flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm font-medium text-text-primary">
@@ -208,9 +192,7 @@
                             Crear y enlazar
                         </flux:button>
                     </div>
-                    <p class="text-xs text-text-secondary">
-                        Crea un taxón con ese nombre (por defecto morfoespecie) y {{ $abierto ? 'lo aplica a los especímenes seleccionados' : 'lo aplica a todo el grupo' }}.
-                    </p>
+
                 </div>
 
                 <div class="border-t border-border pt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

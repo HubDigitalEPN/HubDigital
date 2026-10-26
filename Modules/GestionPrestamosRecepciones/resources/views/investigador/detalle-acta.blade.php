@@ -8,7 +8,7 @@
     </flux:breadcrumbs>
 
     @if($successMessage)
-        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
 
     {{-- Encabezado --}}
@@ -67,33 +67,31 @@
                         $acta->documentoIdentidadRuta === null ? 'el documento de identidad' : null,
                     ])->filter()->implode(' y ');
                 @endphp
-                <flux:callout variant="warning" icon="arrow-uturn-left">
+                <flux:callout data-hub-feedback="warning" variant="warning" icon="arrow-uturn-left">
                     <flux:heading size="sm">Debes volver a cargar {{ $docsDevueltos ?: 'los documentos' }}</flux:heading>
                     <flux:text class="mt-1 text-sm">{{ $acta->motivoDevolucion }}</flux:text>
                 </flux:callout>
             @elseif($acta->estado === 'pendiente_firma' && $acta->pdfFirmadoRuta && !$successMessage)
-                <flux:callout variant="success" icon="check-circle">
+                <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">
                     <flux:heading size="sm">Firma digital registrada</flux:heading>
-                    <flux:text class="mt-1 text-sm">
-                        Sube tu documento de identidad (cédula o pasaporte) para completar el proceso.
-                    </flux:text>
+
                 </flux:callout>
             @elseif($acta->estado === 'pendiente_firma')
-                <flux:callout variant="info" icon="information-circle">
+                <flux:callout data-hub-feedback="info" variant="info" icon="information-circle">
                     El acta está lista. Visualízala, imprímela, fírmala y adjunta el PDF firmado
                     junto con tu documento de identidad (cédula o pasaporte).
                 </flux:callout>
             @elseif($acta->estado === 'pendiente_validacion')
-                <flux:callout variant="info" icon="information-circle">
+                <flux:callout data-hub-feedback="info" variant="info" icon="information-circle">
                     Tus documentos están en revisión por el curador.
                 </flux:callout>
             @elseif($acta->estado === 'validada')
                 @if($acta->prestamoEstado === 'en_transito')
-                    <flux:callout variant="success" icon="check-circle">
+                    <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">
                         El acta ha sido validada. Los especímenes serán despachados a tu dirección. Cuando los recibas, deberás confirmar la recepción desde el detalle del préstamo.
                     </flux:callout>
                 @elseif($acta->prestamoEstado === 'pendiente_aprobacion_verificacion')
-                    <flux:callout variant="info" icon="clock">
+                    <flux:callout data-hub-feedback="info" variant="info" icon="clock">
                         Has reportado la recepción de los especímenes. El curador está revisando tu informe.
                     </flux:callout>
                 @endif
@@ -438,16 +436,14 @@
             class="space-y-4 p-2"
         >
             <flux:heading size="lg">Firmar acta digitalmente</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Dibuja tu firma en el recuadro de abajo con el mouse o el dedo.
-            </flux:text>
+
             <div class="rounded-lg border-2 border-border bg-white overflow-hidden" style="cursor: crosshair;">
                 <svg x-ref="firmaCanvas"
                     style="width: 100%; height: 220px; display: block; touch-action: none; cursor: crosshair; background: white;"
                     @pointerdown="startDraw($event)" @pointermove="draw($event)"
                     @pointerup="stopDraw()" @pointerleave="stopDraw()"></svg>
             </div>
-            <p x-show="errorMensaje" x-text="errorMensaje" class="text-xs text-error text-center"></p>
+
             <p x-show="!errorMensaje" class="text-xs text-text-secondary text-center">— Área de firma —</p>
             <div class="flex items-center justify-between gap-2">
                 <flux:button variant="ghost" size="sm" icon="arrow-path" @click="limpiar()">Limpiar</flux:button>
@@ -466,11 +462,7 @@
     <flux:modal wire:model="showUploadModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">{{ $acta->documentoIdentidadRuta ? 'Subir acta firmada' : 'Subir documentos para validación' }}</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                {{ $acta->documentoIdentidadRuta
-                    ? 'Tu documento de identidad sigue válido. Adjunta solo el acta firmada en PDF (máximo 10 MB).'
-                    : 'Debes adjuntar dos documentos en PDF (máximo 10 MB cada uno).' }}
-            </flux:text>
+
             <flux:field>
                 <flux:label>Acta firmada (PDF)</flux:label>
                 @if($pdfFirmado)
@@ -531,9 +523,7 @@
     <flux:modal wire:model="showIdentidadModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Subir documento de identidad</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Tu firma digital ya fue registrada. Adjunta tu documento de identidad (cédula o pasaporte) en PDF (máximo 10 MB).
-            </flux:text>
+
             <flux:field>
                 <flux:label>Documento de identidad — cédula o pasaporte (PDF)</flux:label>
                 @if($documentoIdentidadSolo)

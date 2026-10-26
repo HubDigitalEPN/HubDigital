@@ -98,7 +98,7 @@ new #[Title('Configuración de seguridad')] class extends Component {
     @include('partials.settings-heading')
 
     @if(auth()->user()->must_change_password)
-        <flux:callout variant="warning" icon="key">Debes cambiar la contraseña inicial asignada por el administrador para continuar.</flux:callout>
+        <flux:callout data-hub-feedback="warning" variant="warning" icon="key">Debes cambiar la contraseña inicial asignada por el administrador para continuar.</flux:callout>
     @endif
 
     <flux:heading class="sr-only">{{ __('Configuración de seguridad') }}</flux:heading>
@@ -146,14 +146,10 @@ new #[Title('Configuración de seguridad')] class extends Component {
         @if ($canManageTwoFactor)
             <section class="mt-12">
                 <flux:heading>{{ __('Autenticación de dos factores') }}</flux:heading>
-                <flux:subheading>{{ __('Administra tu configuración de autenticación de dos factores') }}</flux:subheading>
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
                         <div class="space-y-4">
-                            <flux:text>
-                                {{ __('Durante el inicio de sesión se te pedirá un PIN seguro y aleatorio, que puedes obtener desde la aplicación TOTP en tu teléfono.') }}
-                            </flux:text>
 
                             <div class="flex justify-start">
                                 <flux:button
@@ -168,9 +164,6 @@ new #[Title('Configuración de seguridad')] class extends Component {
                         </div>
                     @else
                         <div class="space-y-4">
-                            <flux:text variant="subtle">
-                                {{ __('Al activar la autenticación de dos factores, se te pedirá un PIN seguro al iniciar sesión. Puedes obtenerlo desde una aplicación TOTP en tu teléfono.') }}
-                            </flux:text>
 
                             <flux:modal.trigger name="two-factor-setup-modal">
                                 <flux:button

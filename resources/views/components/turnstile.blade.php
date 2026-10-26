@@ -9,6 +9,6 @@
         @else
             <p class="text-sm text-error" role="alert">La verificación de seguridad no está configurada. Solicita asistencia.</p>
         @endif
-        @error('cf-turnstile-response')<p class="text-sm text-error" role="alert">{{ $message }}</p>@enderror
+        @error('cf-turnstile-response')<p data-hub-feedback="error" class="text-sm text-error" role="alert">{{ $message }}</p>@enderror
     </div>
 @endif

@@ -50,9 +50,6 @@
             <flux:heading size="base" level="2" class="font-display">Resultado de la devolución</flux:heading>
         </div>
         <div class="p-5">
-            <p class="text-sm text-text-secondary mb-4">
-                Selecciona el resultado tras inspeccionar los especímenes devueltos.
-            </p>
 
             <div class="flex flex-col gap-3">
                 <label class="flex items-start gap-4 cursor-pointer rounded-lg border-2 p-4 transition-all
@@ -63,7 +60,7 @@
                         class="mt-0.5 accent-bio-green shrink-0" />
                     <div class="flex-1">
                         <p class="text-sm font-semibold text-text-primary">Sin novedades</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Los especímenes fueron devueltos en condiciones óptimas. El préstamo cerrará como <strong>cerrado</strong>.</p>
+
                     </div>
                     @if($resultado === 'sin novedades')
                         <flux:icon name="check-circle" class="size-5 text-bio-green shrink-0" />
@@ -78,7 +75,7 @@
                         class="mt-0.5 accent-warning shrink-0" />
                     <div class="flex-1">
                         <p class="text-sm font-semibold text-text-primary">Con observación</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Se detectaron anomalías o daños en los especímenes. El préstamo cerrará como <strong>cerrado con observación</strong>.</p>
+
                     </div>
                     @if($resultado === 'con observación')
                         <flux:icon name="exclamation-triangle" class="size-5 text-warning shrink-0" />
@@ -87,7 +84,7 @@
             </div>
 
             @error('resultado')
-                <p class="text-xs text-error mt-2">{{ $message }}</p>
+                <p data-hub-feedback="error" class="text-xs text-error mt-2">{{ $message }}</p>
             @enderror
 
             {{-- Novedades por espécimen + nota general (solo si hay observación) --}}
@@ -95,11 +92,11 @@
                 <div class="mt-5 space-y-4">
                     <div>
                         <p class="text-sm font-semibold text-text-primary">Novedades por espécimen</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Describe el estado de cada espécimen que presente alguna anomalía. Deja en blanco los que estén correctos.</p>
+
                     </div>
 
                     @error('observaciones')
-                        <p class="text-xs text-error">{{ $message }}</p>
+                        <p data-hub-feedback="error" class="text-xs text-error">{{ $message }}</p>
                     @enderror
 
                     @php $items = collect($items); @endphp

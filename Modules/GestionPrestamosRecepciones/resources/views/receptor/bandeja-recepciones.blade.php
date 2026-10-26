@@ -1,19 +1,14 @@
 <div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-4">
     <div>
         <flux:heading size="xl" level="1" class="font-display">Recepción física de lotes</flux:heading>
-        <flux:text class="mt-1 text-sm text-text-secondary">Verifica el código QR, el inventario entregado, el embalaje, el estado y el rotulado.</flux:text>
-    </div>
 
-    <p class="flex items-start gap-2 rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-sm text-text-secondary">
-        <flux:icon name="information-circle" class="mt-0.5 size-4 shrink-0 text-info" />
-        <span><strong class="text-text-primary">Cadena de custodia:</strong> la constatación registra usuario, fecha y resultado; Curaduría genera y firma el acta final después.</span>
-    </p>
+    </div>
 
     <section class="rounded-xl border border-border bg-surface p-4 shadow-sm">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Ingreso de ventanilla</h2>
-                <p class="mt-1 text-sm text-text-secondary">Escanea el QR impreso por el consultor o ingresa el código del comprobante para abrir exactamente su expediente.</p>
+
             </div>
             <form wire:submit="abrirPorCodigo" class="flex w-full gap-2 lg:w-[28rem]">
                 <flux:input wire:model="codigoQr" class="flex-1" icon="qr-code" placeholder="LOTE-ABC123" aria-label="Código QR del lote" autocomplete="off" />

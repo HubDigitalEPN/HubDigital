@@ -1,7 +1,7 @@
 <div class="space-y-4">
     <div class="border-b border-blue-navy/10 pb-3 sm:flex sm:items-baseline sm:gap-4">
         <flux:heading size="lg" level="2" class="shrink-0 font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('origen.titulo') }}</flux:heading>
-        <flux:text class="mt-1 text-sm leading-5 text-text-secondary sm:mt-0">Selecciona la ubicación de recolección y la documentación disponible.</flux:text>
+
     </div>
 
     <p class="text-sm font-semibold text-blue-navy">Zona de recolección</p>
@@ -28,7 +28,7 @@
                     <button type="button" wire:click="$set('situacionRegulatoria', '{{ $opcion['valor'] }}')" data-situacion="{{ $opcion['valor'] }}" aria-pressed="{{ $situacionRegulatoria === $opcion['valor'] ? 'true' : 'false' }}"
                         class="flex min-h-20 items-start gap-3 rounded-lg border p-3 text-left transition {{ $situacionRegulatoria === $opcion['valor'] ? 'border-blue-navy bg-blue-navy/5' : 'border-border hover:border-science-blue' }}">
                         <flux:icon :name="$opcion['icono']" class="mt-0.5 size-5 shrink-0 text-science-blue" />
-                        <span><strong class="block text-sm text-blue-navy">{{ $opcion['valor'] }}</strong><small class="mt-1 block text-xs leading-4 text-text-secondary">{{ $opcion['descripcion'] }}</small></span>
+                        <span><strong class="block text-sm text-blue-navy">{{ $opcion['valor'] }}</strong></span>
                     </button>
                 @endforeach
             </div>

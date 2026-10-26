@@ -4,7 +4,7 @@
     </div>
 
     @if($errorMessage)
-        <flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>
     @endif
 
     {{-- Buscador --}}
@@ -33,7 +33,7 @@
                 codigo: @js($qrEspecimenCodigo),
                 imprimir() {
                     const w = window.open('', '_blank', 'width=400,height=520');
-                    if (! w) { window.alert('Habilita las ventanas emergentes para imprimir la etiqueta.'); return; }
+                    if (! w) { window.hubNotify({message: 'Habilita las ventanas emergentes para imprimir la etiqueta.', variant: 'warning'}); return; }
                     const d = w.document;
                     d.title = 'QR ' + this.codigo;
                     d.body.style.cssText = 'margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif';
@@ -60,7 +60,6 @@
 
                 <div class="min-w-0 flex-1 space-y-3 pr-10">
                     <flux:heading size="lg" class="text-text-primary">Código QR de {{ $qrEspecimenCodigo }}</flux:heading>
-                    <p class="text-sm text-text-secondary">Imprime este código y pégalo en el espécimen.</p>
 
                     <div class="flex flex-wrap gap-2">
                         <flux:button variant="primary" icon="printer" @click="imprimir()">Imprimir</flux:button>

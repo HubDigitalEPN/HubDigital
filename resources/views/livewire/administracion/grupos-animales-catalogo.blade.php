@@ -22,7 +22,7 @@
     <flux:modal name="grupo-animal-editor" class="w-full max-w-md">
         <div class="space-y-3">
             <flux:heading size="lg">{{ $editandoCodigo ? 'Editar grupo' : 'Nuevo grupo' }}</flux:heading>
-            <p class="text-xs text-text-secondary">Confirma el nombre científico y el rango en GBIF antes de agregar un grupo.</p>
+
             <flux:input wire:model="codigo" label="Código científico" maxlength="50" :disabled="$editandoCodigo !== null" />
             <flux:error name="codigo" />
             <flux:input wire:model="nombre" label="Nombre para el depositante" maxlength="160" />

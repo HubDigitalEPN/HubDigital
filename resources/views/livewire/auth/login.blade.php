@@ -3,7 +3,7 @@
     {{-- Header --}}
     <div class="flex flex-col gap-1 text-center">
         <h1 class="font-display text-2xl font-bold text-blue-navy">Iniciar Sesión</h1>
-        <p class="text-sm text-text-secondary">Accede a tu cuenta del laboratorio</p>
+
     </div>
 
     {{-- Form --}}
@@ -61,10 +61,7 @@
 
         <div class="flex flex-col gap-1.5">
             <flux:checkbox name="remember" value="1" :checked="old('remember')" label="Recordarme en este dispositivo" />
-            <p class="flex items-start gap-1 text-xs text-text-secondary">
-                <flux:icon name="shield-check" variant="outline" class="mt-px size-3.5 shrink-0" />
-                Mantiene tu sesión iniciada en este dispositivo. Úsalo solo en equipos personales y de confianza.
-            </p>
+
         </div>
 
         <x-turnstile />
@@ -99,7 +96,5 @@
             </a>
         </p>
     @endif
-
-
 
 </div>

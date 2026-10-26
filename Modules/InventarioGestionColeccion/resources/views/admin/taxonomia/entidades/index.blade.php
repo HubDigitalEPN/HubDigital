@@ -6,8 +6,8 @@
         </flux:button>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage && !$showModal && !$showEditModal)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage && !$showModal && !$showEditModal)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <div class="rounded-lg border border-border bg-surface shadow-sm overflow-hidden">
         {{-- Escritorio --}}
@@ -105,7 +105,7 @@
             <flux:heading size="lg" class="text-text-primary">Nueva entidad depositante</flux:heading>
 
             @if($errorMessage)
-                <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
+                <flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>
             @endif
 
             <flux:field>
@@ -149,7 +149,7 @@
             <flux:heading size="lg" class="text-text-primary">Editar entidad depositante</flux:heading>
 
             @if($errorMessage)
-                <flux:callout variant="danger">{{ $errorMessage }}</flux:callout>
+                <flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>
             @endif
 
             <flux:field>
@@ -191,7 +191,7 @@
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Acta generada</flux:heading>
 
-            <flux:callout variant="success">
+            <flux:callout data-hub-feedback="success" variant="success">
                 El acta de entrega para <strong>{{ $actaEntidadNombre }}</strong> ha sido generada correctamente.
             </flux:callout>
 

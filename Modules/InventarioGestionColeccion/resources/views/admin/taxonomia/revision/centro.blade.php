@@ -62,7 +62,7 @@
         </flux:button>
     </div>
 
-    @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     {{-- Métricas globales --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -90,27 +90,6 @@
     </div>
 
     {{-- Ayuda general --}}
-    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Qué es esto? Lee antes de empezar" storage-key="centro-revision-ayuda">
-        <p>
-            Cuando se importó el Excel (~48.000 filas) algunos datos no pudieron interpretarse automáticamente —
-            taxa con typos, localidades sin canonizar, fechas con formato raro, catalog_numbers repetidos.
-            En vez de descartarlos, el sistema los marcó como <strong>pendientes</strong> y los agrupó en
-            <strong>5 bandejas de revisión</strong> para que tú decidas caso por caso.
-        </p>
-        <p>
-            <strong>Orden recomendado</strong> (las flechas indican que la primera desbloquea más matches en la siguiente):
-        </p>
-        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Localidades — registra primero las canónicas en <code>/localidades</code>, después enlaza los verbatims.</li>
-            <li>Taxa — registra morfoespecies en <code>/taxones</code> si hace falta, después enlaza los verbatims.</li>
-            <li>Fechas — bulk-apply de fechas no parseadas.</li>
-            <li>Duplicados de catalog# — caso por caso (eventos distintos vs error).</li>
-            <li>Muestras de colecta — confirma/descarta en bulk.</li>
-        </ol>
-        <p class="text-xs text-text-secondary">
-            Cuando todas las bandejas estén en 0, el catálogo está completamente curado y listo para exportar a GBIF.
-        </p>
-    </x-inventariogestioncoleccion::bandeja-ayuda>
 
     {{-- Tarjetas de bandejas --}}
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -130,7 +109,7 @@
                     <flux:icon name="{{ $t['icon'] }}" class="size-5 {{ $colorTexto }}" />
                 </div>
                 <div class="font-medium text-text-primary mb-1">{{ $t['titulo'] }}</div>
-                <p class="text-xs text-text-secondary mb-4">{{ $t['descripcion'] }}</p>
+
                 <div class="flex items-end justify-between gap-2">
                     <div>
                         <div class="text-3xl font-bold {{ $colorTexto }}">{{ number_format($t['count']) }}</div>
@@ -153,12 +132,7 @@
             <flux:icon name="information-circle" class="size-5 text-text-secondary" />
             <div class="text-sm font-semibold text-text-primary">Falta de información en el origen</div>
         </div>
-        <p class="mb-4 text-xs text-text-secondary">
-            Estos especímenes <strong>no</strong> aparecen en las bandejas de arriba: el Excel no trae ningún
-            texto que enlazar (ni nombre de taxón, ni fecha, ni localidad), así que no se pueden resolver
-            asignando un valor —no hay de dónde partir—. Quedan registrados como <strong>falta de información</strong>
-            de la fuente; depende del dato original y se corrige re-importando un Excel más completo.
-        </p>
+
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div class="rounded-lg border border-border bg-bg-main p-3">
                 <div class="text-xs text-text-secondary">Sin taxón de origen</div>

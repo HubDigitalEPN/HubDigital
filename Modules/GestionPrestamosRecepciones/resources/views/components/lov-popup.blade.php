@@ -39,7 +39,7 @@
                 x-on:keydown.enter.prevent="escoger()" />
             <button type="button" class="hub-lov-search-button" x-on:click="buscar(); $refs.busqueda.focus()" aria-label="Buscar opciones"><flux:icon name="magnifying-glass" class="size-4" /></button>
             </div>
-            <p class="sr-only" role="status" x-text="{{ $busquedaRemota ? "cargando ? 'Buscando localidades…' : " : '' }}filtradas.length + (filtradas.length === 1 ? ' opción' : ' opciones')"></p>
+
             <div class="hub-lov-results">
             @if($busquedaRemota)<p x-show="cargando" class="hub-lov-empty">Buscando localidades…</p>@endif
             <div id="{{ $idLov }}-lista" class="hub-lov-list" role="listbox" aria-label="{{ $label }}" x-ref="lista" @if($busquedaRemota) x-bind:aria-busy="cargando.toString()" @endif>

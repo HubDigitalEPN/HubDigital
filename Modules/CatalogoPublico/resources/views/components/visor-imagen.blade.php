@@ -10,5 +10,5 @@
         </div>
     </header>
     <img :src="url" :alt="alt" decoding="async" />
-    <p x-show="alt" x-text="alt"></p>
+
 </dialog>

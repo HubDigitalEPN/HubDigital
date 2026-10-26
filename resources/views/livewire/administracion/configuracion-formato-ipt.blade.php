@@ -1,8 +1,8 @@
 <div class="hub-workspace space-y-5 p-4 sm:p-6">
-    <header><h1 class="hub-page-title">Formato IPT (GBIF)</h1><p class="mt-2 text-sm text-text-secondary">Configura las columnas, su orden, el origen de los datos, el formato de las celdas y su ancho. Se aplica a las descargas IPT del portal y de administración. La descarga de catálogo completo conserva la plantilla del catálogo.</p></header>
-    <p class="text-sm">El perfil inicial reproduce las 69 columnas del ejemplo EPN: hoja <code>occurrence</code>, cabeceras en la fila 1 y datos desde la fila 2. Los valores ausentes permanecen vacíos y requieren revisión; no se omiten registros. La publicación y los metadatos del recurso se completan en IPT.</p>
+    <header><h1 class="hub-page-title">Formato IPT (GBIF)</h1></header>
+
     <p class="text-sm"><a class="text-science-blue underline" href="{{ route('inventario.taxonomia.dataset.config') }}" wire:navigate>Configurar institución, licencia y tipo de registro del dataset</a></p>
-    @error('formato')<p role="alert" class="text-error">{{ $message }}</p>@enderror
+    @error('formato')<p data-hub-feedback="error" role="alert" class="text-error">{{ $message }}</p>@enderror
     @if($mensaje)<p role="status" class="text-success">{{ $mensaje }}</p>@endif
     <div class="flex flex-wrap items-end gap-3">
         <flux:field><flux:label>Nueva columna Darwin Core</flux:label><select wire:model="nuevoCampo" class="rounded border border-border bg-surface p-2"><option value="">Seleccionar término…</option>@foreach($terminos as $t)@if(!in_array($t, array_column($columnas, 'campo'), true))<option value="{{ $t }}">{{ $t }}</option>@endif @endforeach</select></flux:field>
@@ -11,7 +11,7 @@
         <flux:button variant="primary" wire:click="guardar" wire:loading.attr="disabled">Guardar formato</flux:button>
         <strong>{{ count($columnas) }} columnas</strong>
     </div>
-    <p class="text-xs text-text-secondary">Texto literal conserva ceros iniciales e identificadores. Fecha ISO conserva fechas parciales e intervalos sin inventar días. Los campos reservados permanecen ocultos en el portal, aunque se seleccionen como origen.</p>
+
     <datalist id="ipt-origenes">@foreach($origenes as $o)@if($o !== '')<option value="{{ $o }}"></option>@endif @endforeach</datalist>
     <div class="overflow-auto rounded border border-border"><table class="w-full text-sm"><thead><tr class="bg-bg-main text-left"><th class="p-3">Orden</th><th class="p-3">Cabecera IPT</th><th class="p-3">Campo de origen</th><th class="p-3">Formato</th><th class="p-3">Ancho</th><th class="p-3">Acciones</th></tr></thead><tbody>
     @foreach($columnas as $i => $c)

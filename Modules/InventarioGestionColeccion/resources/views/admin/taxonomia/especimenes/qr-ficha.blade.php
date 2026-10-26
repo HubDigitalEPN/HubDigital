@@ -96,9 +96,6 @@
                 </div>
             </div>
 
-            <p class="mt-4 text-center text-xs text-text-secondary">
-                Ficha verificada mediante el código QR físico del espécimen.
-            </p>
         </main>
 
         @fluxScripts

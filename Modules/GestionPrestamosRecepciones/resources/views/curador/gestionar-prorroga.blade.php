@@ -92,9 +92,7 @@
 <flux:modal wire:model="showAprobarModal" class="max-w-md">
     <div class="space-y-5 p-2">
         <flux:heading size="lg">Aprobar prórroga</flux:heading>
-        <flux:text class="text-text-secondary text-sm">
-            Confirma la nueva fecha de vencimiento para el préstamo.
-        </flux:text>
+
         <flux:field>
             <flux:label>Nueva fecha de vencimiento <span class="text-error">*</span></flux:label>
             <flux:input type="date" wire:model="nuevaFechaFin" min="{{ now()->addDay()->format('Y-m-d') }}" />
@@ -117,9 +115,7 @@
 <flux:modal wire:model="showRechazarModal" class="max-w-md">
     <div class="space-y-4 p-2">
         <flux:heading size="lg">Rechazar prórroga</flux:heading>
-        <flux:text class="text-text-secondary text-sm">
-            Indica el motivo del rechazo. El préstamo conservará su fecha de vencimiento original.
-        </flux:text>
+
         <flux:field>
             <flux:label>Motivo del rechazo <span class="text-error">*</span></flux:label>
             <flux:textarea wire:model="comentarioRechazo" rows="4"

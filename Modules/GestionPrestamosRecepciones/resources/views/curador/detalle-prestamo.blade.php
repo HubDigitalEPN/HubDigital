@@ -8,7 +8,7 @@
     </flux:breadcrumbs>
 
     @if($successMessage)
-        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
 
     <div class="grid gap-6 lg:grid-cols-3">
@@ -77,9 +77,7 @@
                         <flux:heading size="base" level="2" class="font-display text-science-blue">Devolución registrada por el investigador</flux:heading>
                     </div>
                     <div class="p-5 space-y-3">
-                        <p class="text-sm text-text-secondary">
-                            El investigador ha declarado que los especímenes fueron enviados de vuelta. Registra el resultado de la inspección para cerrar el préstamo.
-                        </p>
+
                         <div class="pt-1">
                             <flux:button variant="primary" wire:navigate href="{{ route('prestamos.curador.prestamo.cerrar', $detalle->prestamoId) }}">
                                 Registrar resultado y cerrar
@@ -99,9 +97,7 @@
                         <flux:heading size="base" level="2" class="font-display text-warning">Trámite de exportación pendiente</flux:heading>
                     </div>
                     <div class="p-5 space-y-4">
-                        <p class="text-sm text-text-secondary">
-                            Sube el documento de aprobación del Ministerio del Ambiente para habilitar el envío de especímenes al exterior.
-                        </p>
+
                         <flux:field>
                             <flux:label>Documento de aprobación del ministerio (PDF)</flux:label>
                             <div x-data="{ nombre: '' }">
@@ -114,7 +110,7 @@
                                     wire:model="documentoExportacion" accept=".pdf"
                                     x-on:change="nombre = $event.target.files[0]?.name ?? ''"
                                     class="sr-only" />
-                                <p class="mt-1.5 text-xs text-text-secondary" x-text="nombre || 'Ningún archivo seleccionado'"></p>
+
                                 <div wire:loading wire:target="documentoExportacion" class="flex items-center gap-1.5 mt-1 text-xs text-text-secondary">
                                     <flux:icon name="arrow-path" class="animate-spin size-3" />
                                     Subiendo archivo...

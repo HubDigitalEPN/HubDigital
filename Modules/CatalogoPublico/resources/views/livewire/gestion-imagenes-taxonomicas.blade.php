@@ -95,7 +95,6 @@
                                     wire:model="sufijoPersonalizado"
                                     label="Sufijo personalizado"
                                     placeholder="Ej. V, LD, ant"
-                                    description="Si no entra en las categorías anteriores, escribe la inicial o iniciales de la vista."
                                     maxlength="4"
                                 />
                             @else

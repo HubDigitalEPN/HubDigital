@@ -1,9 +1,10 @@
+import { showNotification } from './hub-notifications';
+
 const SELECTOR = '[data-hub-notification-id]';
 const TOAST_STORAGE_KEY = 'hubdigital:in-app-notifications-v3';
 const MAX_REMEMBERED_NOTIFICATIONS = 80;
 const CONFIG_URL = '/pwa/configuracion';
 const SUBSCRIPTIONS_URL = '/pwa/suscripciones';
-const TOAST_TRAY_ID = 'hub-in-app-toast-tray';
 let observerInitialized = false;
 const enMemoria = new Set();
 const entregasPorComponente = new Map();
@@ -72,49 +73,17 @@ function confirmarEntrega(entrega) {
 function showInAppToast(aviso) {
     const id = aviso?.eventId;
     if (!id || !aviso?.body || wasRemembered(TOAST_STORAGE_KEY, id)) return false;
-    document.querySelector(`[data-hub-in-app-toast-id="${CSS.escape(id)}"]`)?.remove();
-    const toast = document.createElement('aside');
-    toast.dataset.hubInAppToastId = id;
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    toast.className = 'hub-in-app-toast';
-    const content = document.createElement('div');
-    content.className = 'hub-in-app-toast__content';
-    const title = document.createElement('p');
-    title.className = 'hub-in-app-toast__title';
-    title.textContent = aviso.title || 'HubDigital · Curaduría';
-    const message = document.createElement('p');
-    message.className = 'hub-in-app-toast__message';
-    message.textContent = aviso.body;
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'hub-in-app-toast__action';
-    action.textContent = aviso.action || 'Abrir expediente';
-    action.addEventListener('click', () => navigateToNotification(safeSameOriginUrl(aviso.url || '/dashboard')));
-    content.append(title, message, action);
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'hub-in-app-toast__close';
-    close.setAttribute('aria-label', 'Cerrar aviso');
-    close.textContent = '×';
-    close.addEventListener('click', () => toast.remove());
-    toast.append(content, close);
-    toastTray().append(toast);
+    showNotification({
+        id,
+        title: aviso.title || 'HubDigital · Curaduría',
+        message: aviso.body,
+        action: aviso.action || 'Abrir expediente',
+        onAction: () => navigateToNotification(safeSameOriginUrl(aviso.url || '/dashboard')),
+    });
     remember(TOAST_STORAGE_KEY, id);
-    window.setTimeout(() => toast.remove(), 12000);
     return true;
 }
 
-function toastTray() {
-    let tray = document.getElementById(TOAST_TRAY_ID);
-    if (tray) return tray;
-    tray = document.createElement('div');
-    tray.id = TOAST_TRAY_ID;
-    tray.className = 'hub-in-app-toast-tray';
-    tray.setAttribute('aria-label', 'Avisos operativos');
-    document.body.append(tray);
-    return tray;
-}
 
 function rememberedIds(key) {
     try {

@@ -4,19 +4,19 @@
     <div class="overflow-hidden rounded-xl border border-science-blue/25 bg-surface shadow-sm">
         <div class="border-b border-science-blue/20 bg-science-blue/5 px-3 py-2">
             <p class="text-sm font-semibold text-blue-navy">Solicitante</p>
-            <p class="text-xs text-text-secondary">{{ \App\Support\WizardCopy::text('datos.perfil') }}</p>
+
         </div>
         <dl class="grid gap-px bg-border sm:grid-cols-3">
             <div class="bg-white p-2.5">
                 <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Nombre
-                    <flux:tooltip content="Nombre de la persona que presenta la solicitud de depósito."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
+
                 </dt>
                 <dd class="text-sm text-text-primary">{{ auth()->user()->name }}</dd>
             </div>
             <div @class(['relative bg-white p-2.5', 'border border-error' => trim($cargoConsultor) === ''])>
                 @if(trim($cargoConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Cargo faltante"></span>@endif
                 <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Cargo
-                    <flux:tooltip content="Función o puesto que desempeñas en la institución que presenta la solicitud."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
+
                 </dt>
                 <dd @class(['text-sm', 'italic text-error' => trim($cargoConsultor) === '', 'text-text-primary' => trim($cargoConsultor) !== ''])>{{ trim($cargoConsultor) === '' ? 'Falta ingresar' : $cargoConsultor }}</dd>
                 <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
@@ -24,7 +24,7 @@
             <div @class(['relative bg-white p-2.5', 'border border-error' => trim($institucionConsultor) === ''])>
                 @if(trim($institucionConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Institución faltante"></span>@endif
                 <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Institución
-                    <flux:tooltip content="Entidad a la que perteneces y en cuyo nombre gestionas el depósito."><flux:icon name="information-circle" class="size-3 cursor-help" /></flux:tooltip>
+
                 </dt>
                 <dd @class(['text-sm', 'italic text-error' => trim($institucionConsultor) === '', 'text-text-primary' => trim($institucionConsultor) !== ''])>{{ trim($institucionConsultor) === '' ? 'Falta ingresar' : $institucionConsultor }}</dd>
                 <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
@@ -35,32 +35,24 @@
 
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
     @if($advertenciaExtraccion === 'error_modelo')
-        <flux:callout variant="warning" icon="cpu-chip">
-            <flux:heading>La extracción automática no está disponible</flux:heading>
-            <flux:text>
-                El servicio de IA no respondió, así que los datos no se completaron solos.
-                No te preocupes: puedes ingresarlos tú mismo y continuar sin problemas.
-            </flux:text>
+        <div>
+            <p data-hub-feedback="warning">No se pudieron recuperar los datos automáticamente.</p>
             <flux:button size="sm" variant="primary" icon="pencil-square" href="#datos-manuales" class="mt-3">
-                Clic aquí para completar manualmente
+                Completar datos manualmente
             </flux:button>
-        </flux:callout>
+        </div>
     @elseif($advertenciaExtraccion === 'error_cola')
-        <flux:callout variant="warning" icon="queue-list">
-            <flux:heading>La extracción automática no está disponible</flux:heading>
-            <flux:text>
-                El procesamiento en segundo plano no está activo, así que los datos no se completaron solos.
-                No te preocupes: puedes ingresarlos tú mismo y continuar sin problemas.
-            </flux:text>
+        <div>
+            <p data-hub-feedback="warning">No se pudieron recuperar los datos automáticamente.</p>
             <flux:button size="sm" variant="primary" icon="pencil-square" href="#datos-manuales" class="mt-3">
-                Clic aquí para completar manualmente
+                Completar datos manualmente
             </flux:button>
-        </flux:callout>
+        </div>
     @endif
 
     {{-- Estado documental --}}
     @if($estadoDocumental === 'Requiere Corrección')
-        <flux:callout variant="warning" icon="exclamation-triangle">
+        <flux:callout data-hub-feedback="warning" variant="warning" icon="exclamation-triangle">
             <flux:heading>Documentación requiere corrección</flux:heading>
             <flux:text>El Permiso de Movilización es obligatorio para la provincia de <strong>{{ $provincia }}</strong> pero no fue adjuntado. Regresa al paso anterior para cargarlo.</flux:text>
         </flux:callout>
@@ -146,15 +138,7 @@
             <div class="space-y-4">
                 <div>
                     <flux:heading size="lg" level="2" id="titulo-editor-dato-deposito">{{ $campoEditorManual }}</flux:heading>
-                    <p class="mt-1 text-xs leading-relaxed text-text-secondary">
-                        {{ match($campoEditorManual) {
-                            'Cargo' => 'Selecciona tu cargo de la lista administrada por el administrador.',
-                            'Institución' => 'Selecciona la entidad a la que perteneces. El administrador mantiene esta lista.',
-                            'Provincia' => 'Selecciona la provincia donde se recolectó el material. Debe coincidir con la zona de recolección.',
-                            'Localidad' => 'Este dato es opcional. Selecciona un lugar del catálogo público o déjalo vacío.',
-                            default => $tooltipsPorCampo[$campoEditorManual] ?? 'Completa este dato de la solicitud de depósito.',
-                        } }}
-                    </p>
+
                 </div>
                 <div>
                     @if($campoEditorManual === 'Cargo')

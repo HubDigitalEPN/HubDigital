@@ -31,7 +31,7 @@
         </section>
 
         <section class="atlas-panel atlas-taxa-panel" wire:key="grafico-filos-{{ sha1(json_encode($datosMapa['filos'])) }}" aria-labelledby="titulo-filos" x-data="portalGrafico('filos', @js($datosMapa['filos']), @js($dashboardTexto('composicion')))" x-on:alternar-tipo-grafico="alternar($event.detail)">
-            <div class="atlas-panel-header"><div><h2 id="titulo-filos">{{ $dashboardTexto('composicion') }}</h2><p class="atlas-panel-subtitle">{{ $dashboardTexto('composicion_ayuda') }}</p></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-filos">{{ $dashboardTexto('composicion') }}</h2></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
             <x-catalogopublico::grafico-panel :titulo="$dashboardTexto('composicion')" />
             <div class="atlas-taxon-body" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['filos'] as $filo => $cantidad)
@@ -56,7 +56,7 @@
                 @php $ilustracionesMosaico = array_values(array_filter(array_slice($datosMapa['ilustraciones_mosaico'] ?? [], 0, 4), static fn (array $imagen): bool => ($imagen['foto_real'] ?? false) && ($imagen['morfologia'] ?? false) && is_string($imagen['url'] ?? null) && $imagen['url'] !== '')); @endphp
                 <x-catalogopublico::fotografia-mosaico :taxon="$datosMapa['taxon_mosaico'] ?? []" :fotos="$ilustracionesMosaico" :descripcion-inicial="$datosMapa['descripcion_mosaico'] ?? ''" :limite="1" :retrato="true" contexto="composicion" />
             @endif
-            @if(($datosMapa['mosaico'] ?? []) !== [])<p class="atlas-taxa-note">Fotografía publicada de {{ $datosMapa['mosaico'][0]['taxon'] ?? $datosMapa['mosaico'][0]['nombre'] }}. Corresponde a un ejemplar de la selección actual; sus datos públicos se consultan en el catálogo.</p>@endif
+            @if(($datosMapa['mosaico'] ?? []) !== [])@endif
             @endif
             <x-catalogopublico::figura-panel tipo="filos" />
         </section>
@@ -66,9 +66,9 @@
         <section class="atlas-panel" wire:key="grafico-riqueza-{{ sha1(json_encode([$territorio, $provinciasSeleccionadas])) }}" aria-labelledby="titulo-riqueza" x-data="portalGrafico('riqueza', @js(array_slice($territorio, 0, 10)), @js($tituloTerritorio))" x-on:alternar-tipo-grafico="alternar($event.detail)">
             <div class="atlas-panel-header"><div><div class="atlas-territory-heading"><h2 id="titulo-riqueza" tabindex="-1">{{ $tituloTerritorio }}</h2>
                 @if($porLocalidad)<button type="button" class="atlas-territory-back" wire:click="volverProvincias" wire:loading.attr="disabled" aria-label="{{ $dashboardTexto('volver_provincias') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h16"/></svg></button>@endif
-            </div><p class="atlas-panel-subtitle">{{ $porLocalidad ? implode(' · ', $provinciasSeleccionadas).' · '.$dashboardTexto('localidad_ayuda') : $dashboardTexto('provincia_ayuda') }}</p></div><x-catalogopublico::menu-analisis tipo="riqueza" :datos="$territorio" /></div>
+            </div></div><x-catalogopublico::menu-analisis tipo="riqueza" :datos="$territorio" /></div>
             <x-catalogopublico::grafico-panel :titulo="$tituloTerritorio" />
-            <p class="atlas-panel-subtitle px-4" x-show="modo === 'grafico'">{{ $dashboardTexto('territorio_grafico_ayuda') }}</p>
+
             <div x-data="{busquedaLocalidad: '', normalizar(valor) { return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' '); }}" x-show="modo === 'barras' || tablaAbierta">
                 @if($porLocalidad && $territorio !== [])<label class="atlas-territory-search" for="buscar-localidad-panel">{{ $dashboardTexto('buscar_localidad') }}<input id="buscar-localidad-panel" type="search" x-model="busquedaLocalidad" placeholder="{{ $dashboardTexto('buscar_nombre') }}" autocomplete="off"></label>@endif
             <div class="atlas-ranked-chart">
@@ -85,7 +85,7 @@
             <x-catalogopublico::figura-panel tipo="riqueza" />
         </section>
         <section class="atlas-panel" wire:key="grafico-decadas-{{ sha1(json_encode($datosMapa['decadas'])) }}" aria-labelledby="titulo-decadas" x-data="portalGrafico('decadas', @js($datosMapa['decadas']), @js($dashboardTexto('cobertura_temporal')))" x-on:alternar-tipo-grafico="alternar($event.detail)">
-            <div class="atlas-panel-header"><div><h2 id="titulo-decadas">{{ $dashboardTexto('cobertura_temporal') }}</h2><p class="atlas-panel-subtitle">{{ $dashboardTexto('decadas_ayuda') }}</p></div><x-catalogopublico::menu-analisis tipo="decadas" :datos="$datosMapa['decadas']" /></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-decadas">{{ $dashboardTexto('cobertura_temporal') }}</h2></div><x-catalogopublico::menu-analisis tipo="decadas" :datos="$datosMapa['decadas']" /></div>
             <x-catalogopublico::grafico-panel :titulo="$dashboardTexto('cobertura_temporal')" />
             <div class="atlas-ranked-chart atlas-ranked-chart--time" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['decadas'] as $fila)

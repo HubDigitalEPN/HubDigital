@@ -5,7 +5,7 @@
 
     <div class="hub-wizard-copy-header border-b border-blue-navy/10 pb-4">
         <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('documentos.titulo') }}</flux:heading>
-        <flux:text class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{{ !empty($documentosRequeridos) ? \App\Support\WizardCopy::text('documentos.intro_con_archivos') : \App\Support\WizardCopy::text('documentos.intro_sin_archivos') }}</flux:text>
+
     </div>
 
     {{-- Procesando documentos (polling activo) --}}
@@ -55,30 +55,6 @@
                 </div>
             </div>
 
-            {{-- Qué pasó --}}
-            <p class="text-sm text-text-secondary">
-                {{ \App\Support\WizardCopy::text('documentos.pausa_explicacion') }}
-            </p>
-
-            {{-- Próximos pasos --}}
-            <div class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-wide text-text-secondary">¿Qué sigue?</p>
-                <ul class="space-y-2">
-                    <li class="flex items-start gap-2 text-sm text-text-primary">
-                        <flux:icon name="check-circle" class="size-4 text-success shrink-0 mt-0.5" />
-                        Tu solicitud quedó registrada con el estado <strong>Pausada para asesoría</strong>.
-                    </li>
-                    <li class="flex items-start gap-2 text-sm text-text-primary">
-                        <flux:icon name="envelope" class="size-4 text-science-blue shrink-0 mt-0.5" />
-                        Recibirás una notificación cuando el funcionario responsable inicie el contacto contigo.
-                    </li>
-                    <li class="flex items-start gap-2 text-sm text-text-primary">
-                        <flux:icon name="clock" class="size-4 text-text-secondary shrink-0 mt-0.5" />
-                        No es necesario que hagas nada más por ahora.
-                    </li>
-                </ul>
-            </div>
-
             <flux:button icon="arrow-left" href="{{ route('prestamos.investigador.mis-depositos') }}" wire:navigate>
                 Ver mis depósitos
             </flux:button>
@@ -92,25 +68,18 @@
         @if($estadoValidacionContenido === 'rechazado' || !empty($erroresDocumentales))
             @php $falloTecnico = in_array($estadoValidacionContenido, ['error_procesamiento', 'error_modelo', 'error_cola'], true); @endphp
             <flux:callout
+                data-hub-feedback="error"
                 variant="danger"
                 icon="x-circle"
                 :heading="$falloTecnico ? 'No fue posible completar la lectura' : 'Los documentos no superaron la validación de contenido'"
             >
-                <p class="mb-2 text-sm">
-                    {{ $falloTecnico
-                        ? 'El expediente y los archivos cargados permanecen guardados para que puedas volver a ejecutar el análisis.'
-                        : 'HubDigital revisa el contenido de cada documento por separado; no se basa en el nombre del archivo.' }}
-                </p>
+
                 <ul class="list-disc space-y-1 pl-5 text-sm">
                     @foreach($erroresDocumentales as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
-                <p class="mt-2 text-xs">
-                    {{ $falloTecnico
-                        ? 'Vuelve a pulsar «Validar documentos». Reemplaza un archivo únicamente si el mensaje indica que el PDF no puede leerse.'
-                        : 'Reemplaza el archivo incorrecto y vuelve a ejecutar el análisis.' }}
-                </p>
+
             </flux:callout>
         @endif
 
@@ -179,7 +148,7 @@
             </section>
             @if(array_intersect($firmasElectronicas, ['revocacion_no_comprobable', 'verificacion_no_disponible', 'almacen_incompleto', 'no_verificado', 'validando']) !== [])
                 <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-xs text-text-primary" role="alert">
-                    <p>Cada PDF conserva su resultado de firma. Puedes reintentar las comprobaciones pendientes o interrumpidas; espera a que termine un intento que acaba de iniciar.</p>
+
                     <flux:button size="xs" variant="outline" icon="arrow-path" wire:click="repetirVerificacionFirmas" wire:loading.attr="disabled" wire:target="repetirVerificacionFirmas">Volver a comprobar</flux:button>
                 </div>
             @endif
@@ -190,7 +159,7 @@
                 </span>
                 <div class="min-w-0">
                     <p class="text-sm font-semibold text-text-primary">Sin archivos requeridos</p>
-                    <p class="mt-1 text-sm leading-5 text-text-secondary">{{ \App\Support\WizardCopy::text('documentos.sin_archivos_explicacion') }}</p>
+
                 </div>
             </div>
         @endif
@@ -202,9 +171,7 @@
                 <flux:icon name="question-mark-circle" class="size-5 text-text-secondary shrink-0 mt-0.5" />
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-text-primary">¿No cuentas con ningún documento disponible?</p>
-                    <p class="text-xs text-text-secondary mt-0.5">
-                        {{ \App\Support\WizardCopy::text('documentos.asistencia_explicacion') }}
-                    </p>
+
                 </div>
             </div>
             <flux:modal.trigger name="asistencia-depositos">

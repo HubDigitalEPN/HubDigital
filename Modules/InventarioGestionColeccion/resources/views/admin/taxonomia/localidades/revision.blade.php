@@ -8,21 +8,8 @@
         </flux:button>
     </div>
 
-    @if($successMessage)<flux:callout variant="success" dismissible>{{ $successMessage }}</flux:callout>@endif
-    @if($errorMessage)<flux:callout variant="danger" dismissible>{{ $errorMessage }}</flux:callout>@endif
-
-    <x-inventariogestioncoleccion::bandeja-ayuda titulo="¿Cómo uso esta pantalla?" storage-key="ayuda-localidades-revision">
-        <p>
-            Cada tarjeta agrupa los especímenes que traían el mismo texto de localidad sin resolver.
-        </p>
-        <ol class="list-decimal pl-6 space-y-1 text-xs text-text-secondary">
-            <li>Te mostramos <strong>candidatos sugeridos</strong> por parecido. Elige el correcto, o usa
-                <strong>"Buscar otra localidad"</strong> si no está en la lista.</li>
-            <li>Botón <strong>"Ver especímenes"</strong>: abre el grupo para revisar cada ejemplar y
-                <strong>marcar solo algunos</strong>.</li>
-            <li>Con el grupo cerrado se aplica a <strong>todos</strong>; con el grupo abierto, solo a los <strong>marcados</strong>.</li>
-        </ol>
-    </x-inventariogestioncoleccion::bandeja-ayuda>
+    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     {{-- Especímenes sin coordenadas (incluye los que tampoco tienen localidad) --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm border-l-4 border-l-warning overflow-hidden">
@@ -35,10 +22,7 @@
                         {{ $sinCoordTotal }}
                     </span>
                 </div>
-                <p class="text-xs text-text-secondary mt-1">
-                    No se les puede autocompletar la ubicación por coordenadas. Se muestra su ubicación
-                    actual y la <strong>ubicación anterior</strong> (la del Excel) cuando la reemplazamos.
-                </p>
+
             </div>
             @if($sinCoordTotal > 0)
                 <flux:button variant="ghost" size="sm"
@@ -293,9 +277,7 @@
                             Crear y enlazar
                         </flux:button>
                     </div>
-                    <p class="text-xs text-text-secondary">
-                        Crea una localidad canónica con ese nombre y {{ $abierto ? 'la aplica a los especímenes seleccionados' : 'la aplica a todo el grupo' }}.
-                    </p>
+
                 </div>
 
                 <div class="border-t border-border pt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

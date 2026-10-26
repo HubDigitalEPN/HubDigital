@@ -15,7 +15,7 @@
     </div>
 
     @unless($recibida)
-        <flux:callout variant="warning" icon="clock">
+        <flux:callout data-hub-feedback="warning" variant="warning" icon="clock">
             <flux:callout.heading>Pendiente de recepción física</flux:callout.heading>
             <flux:callout.text>
                 Curaduría podrá generar el acta únicamente cuando Recepción EPN marque el lote como recibido y constatado.
@@ -38,11 +38,8 @@
         </div>
 
         @unless($recepcion->actaEmitida)
-            <flux:callout variant="info" icon="document-text">
+            <flux:callout data-hub-feedback="info" variant="info" icon="document-text">
                 <flux:callout.heading>Generar documento oficial</flux:callout.heading>
-                <flux:callout.text>
-                    HubDigital completará el acta con los datos aprobados, la constatación física y la identidad del curador.
-                </flux:callout.text>
                 <x-slot name="actions">
                     <flux:button wire:click="generar" wire:loading.attr="disabled" variant="primary" icon="document-plus">
                         Generar acta final
@@ -50,7 +47,7 @@
                 </x-slot>
             </flux:callout>
         @elseif($recepcion->actaFirmada)
-            <flux:callout variant="success" icon="shield-check">
+            <flux:callout data-hub-feedback="success" variant="success" icon="shield-check">
                 <flux:callout.heading>Firma electrónica validada</flux:callout.heading>
                 <flux:callout.text>
                     El acta quedó cerrada, habilitó el ingreso del lote a la colección en estado
@@ -65,7 +62,7 @@
                 </x-slot>
             </flux:callout>
         @elseif(! $originalDisponible)
-            <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:callout data-hub-feedback="warning" variant="warning" icon="exclamation-triangle">
                 <flux:callout.heading>El original oficial no está disponible</flux:callout.heading>
                 <flux:callout.text>
                     No se puede firmar una versión regenerada silenciosamente. Emita una nueva versión y revísela completa antes de firmar.
@@ -80,9 +77,7 @@
             <div class="rounded-xl border border-border bg-surface shadow-sm overflow-hidden">
                 <div class="border-b border-border p-5">
                     <flux:heading size="lg" level="2">Firmador HubDigital</flux:heading>
-                    <flux:text class="mt-1 text-text-secondary">
-                        Revise el acta y fírmela aquí con su certificado institucional o personal .p12/.pfx.
-                    </flux:text>
+
                 </div>
 
                 <div class="grid gap-6 p-5 lg:grid-cols-[1.1fr_.9fr]"
@@ -101,7 +96,7 @@
                     </div>
 
                     <div class="space-y-4">
-                        <flux:callout variant="info" icon="lock-closed">
+                        <flux:callout data-hub-feedback="info" variant="info" icon="lock-closed">
                             <flux:callout.heading>Firma y verificación con Java</flux:callout.heading>
                             <flux:callout.text>
                                 El certificado y la contraseña se entregan temporalmente a Java para firmar el original oficial. Se eliminan al terminar el intento; el expediente conserva el PDF firmado y su validación.
@@ -123,9 +118,6 @@
                             <input type="checkbox" required class="mt-1 rounded border-border" x-ref="consentimiento" />
                             <span>Confirmo que revisé el documento y que el certificado seleccionado me pertenece o estoy autorizado para usarlo.</span>
                         </label>
-
-                        <p x-show="error" x-text="error" class="rounded-lg bg-error/10 p-3 text-sm text-error" role="alert"></p>
-                        <p x-show="progreso" x-text="progreso" class="text-sm text-text-secondary" aria-live="polite"></p>
 
                         <flux:button x-on:click="if (!$refs.consentimiento.checked) { error = 'Debe confirmar la revisión y autorización.' } else { firmar() }"
                             x-bind:disabled="estado === 'procesando'" variant="primary" icon="key" class="w-full">

@@ -7,7 +7,7 @@
                 </span>
                 <div>
                     <flux:heading size="xl" level="2" class="font-display">Configuración de cuenta</flux:heading>
-                    <flux:subheading class="mt-1">Administra tu perfil, seguridad y preferencias de tu cuenta.</flux:subheading>
+
                 </div>
             </div>
         </header>
@@ -16,21 +16,21 @@
             <nav class="hub-settings-rail flex gap-2 overflow-x-auto border-b border-border pb-4 md:flex-col md:overflow-visible md:border-b-0 md:border-e md:pb-0 md:pe-5" aria-label="Secciones de configuración">
                 <button type="button" x-on:click="section = 'profile'" x-bind:aria-current="section === 'profile' ? 'page' : null" class="hub-settings-rail__item">
                     <flux:icon name="user" class="size-5" />
-                    <span><strong>Perfil</strong><small>Tu información personal</small></span>
+                    <span><strong>Perfil</strong></span>
                 </button>
                 @unless(auth()->user()->esUsuarioInterno())
                     <button type="button" x-on:click="section = 'roles'" x-bind:aria-current="section === 'roles' ? 'page' : null" class="hub-settings-rail__item">
                         <flux:icon name="arrows-right-left" class="size-5" />
-                        <span><strong>Roles</strong><small>Depositos y prestamos</small></span>
+                        <span><strong>Roles</strong></span>
                     </button>
                 @endunless
                 <button type="button" x-on:click="section = 'security'" x-bind:aria-current="section === 'security' ? 'page' : null" class="hub-settings-rail__item">
                     <flux:icon name="lock-closed" class="size-5" />
-                    <span><strong>Seguridad</strong><small>Contraseña y verificación</small></span>
+                    <span><strong>Seguridad</strong></span>
                 </button>
                 <button type="button" x-on:click="section = 'danger'" x-bind:aria-current="section === 'danger' ? 'page' : null" class="hub-settings-rail__item hub-settings-rail__item--danger">
                     <flux:icon name="trash" class="size-5" />
-                    <span><strong>Eliminar cuenta</strong><small>Elimina tu cuenta y datos</small></span>
+                    <span><strong>Eliminar cuenta</strong></span>
                 </button>
             </nav>
 
@@ -38,7 +38,7 @@
                 <section x-show="section === 'profile'" x-cloak aria-labelledby="settings-profile-title">
                     <div class="mb-5">
                         <h3 id="settings-profile-title" class="font-display text-xl font-semibold text-blue-navy">Perfil</h3>
-                        <p class="mt-1 text-sm text-text-secondary">Actualiza tu nombre y correo electrónico.</p>
+
                     </div>
                     <livewire:pages::settings.profile :modal-mode="true" :key="'account-settings-profile-'.auth()->id()" />
                 </section>
@@ -46,7 +46,7 @@
                 @unless(auth()->user()->esUsuarioInterno())
                     <section x-show="section === 'roles'" x-cloak aria-labelledby="settings-roles-title">
                         <h3 id="settings-roles-title" class="font-display text-xl font-semibold text-blue-navy">Cambiar de rol</h3>
-                        <p class="mt-1 mb-5 text-sm text-text-secondary">Utiliza la misma cuenta para depositos y prestamos.</p>
+
                         <livewire:selector-rol-activo />
                     </section>
                 @endunless
@@ -54,7 +54,7 @@
                 <section x-show="section === 'security'" x-cloak aria-labelledby="settings-security-title">
                     <div class="mb-5">
                         <h3 id="settings-security-title" class="font-display text-xl font-semibold text-blue-navy">Seguridad</h3>
-                        <p class="mt-1 text-sm text-text-secondary">Protege el acceso a tu cuenta y administra el segundo factor.</p>
+
                     </div>
                     <div class="grid gap-3">
                         <a href="{{ route('security.edit') }}" wire:navigate class="group flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:border-bio-green/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bio-green">
@@ -63,7 +63,7 @@
                             </span>
                             <span class="min-w-0 flex-1">
                                 <strong class="block text-sm text-text-primary">Cambiar contraseña</strong>
-                                <small class="mt-1 block text-text-secondary">Confirma tu contraseña actual y establece una nueva.</small>
+
                             </span>
                             <flux:icon name="chevron-right" class="size-5 text-text-secondary transition group-hover:translate-x-0.5" />
                         </a>
@@ -73,13 +73,11 @@
                             </span>
                             <span class="min-w-0 flex-1">
                                 <strong class="block text-sm text-text-primary">Verificación en dos pasos (2FA)</strong>
-                                <small class="mt-1 block text-text-secondary">Añade una capa adicional de protección a tu cuenta.</small>
+
                             </span>
                             <flux:icon name="chevron-right" class="size-5 text-text-secondary transition group-hover:translate-x-0.5" />
                         </a>
-                        <p class="rounded-lg bg-bg-main px-4 py-3 text-xs leading-5 text-text-secondary">
-                            Estas acciones abren el área protegida y pueden solicitar nuevamente tu contraseña.
-                        </p>
+
                     </div>
                 </section>
 

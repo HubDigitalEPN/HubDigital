@@ -188,9 +188,7 @@
                         <span wire:loading wire:target="mantenerNombreOriginal('{{ $registroId }}')">Enviando a curaduría...</span>
                     </flux:button>
                 </div>
-                <p class="text-xs text-text-secondary/75">
-                    Si el nombre original es correcto, se conservará sin cambios y curaduría lo revisará antes del ingreso.
-                </p>
+
                 @foreach($advertencias as $adv)
                     @php $advBloqueante = in_array($adv['campo'] ?? '', $camposBloqueantes, true); @endphp
                     <span @class([

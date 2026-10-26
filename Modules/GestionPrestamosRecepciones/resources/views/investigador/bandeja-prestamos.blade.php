@@ -3,9 +3,7 @@
     {{-- Encabezado --}}
     <div>
         <flux:heading size="xl" level="1" class="font-display">Mis préstamos</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Préstamos activos, en tránsito y cerrados.
-        </flux:text>
+
     </div>
 
     {{-- Panel de filtros --}}

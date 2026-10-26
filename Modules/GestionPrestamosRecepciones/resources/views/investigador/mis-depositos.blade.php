@@ -27,9 +27,7 @@
         <div>
             <p class="hub-page-kicker">Portal del depositante</p>
             <h1 class="mt-1 hub-page-title">Mis depósitos</h1>
-            <flux:text class="text-text-secondary text-sm mt-1">
-                Historial de tus solicitudes de depósito de especímenes.
-            </flux:text>
+
         </div>
         <flux:button variant="primary" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}" class="shrink-0 self-start sm:self-auto">
             {{ $borrador ? 'Continuar borrador' : 'Nueva solicitud' }}
@@ -126,7 +124,6 @@
                 <flux:error name="filtroHasta" id="depositos-hasta-error" />
             </flux:field>
 
-
         </div>
     </div>
 
@@ -149,9 +146,7 @@
                 <flux:icon name="archive-box" class="size-7 text-science-blue/50" />
                 <div>
                     <flux:heading size="lg" level="2">Aún no tienes solicitudes de depósito</flux:heading>
-                    <flux:text class="text-text-secondary mt-1 text-sm max-w-xs">
-                        Inicia el proceso para depositar especímenes en la colección de la EPN.
-                    </flux:text>
+
                 </div>
                 <flux:button variant="filled" icon="plus" wire:navigate href="{{ route('prestamos.investigador.deposito.crear') }}">
                     Nueva solicitud de depósito
@@ -163,9 +158,9 @@
 
         {{-- Alerta retenidas --}}
         @if($activas->where('estado', EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value)->isNotEmpty())
-            <flux:callout variant="warning" icon="pause-circle">
+            <flux:callout data-hub-feedback="warning" variant="warning" icon="pause-circle">
                 <flux:heading>{{ $activas->where('estado', EstadoSolicitudDeposito::RetenidaParaAsesoriaCuratorial->value)->count() }} solicitud(es) retenida(s) para Asesoría Curatorial</flux:heading>
-                <flux:text>El funcionario responsable se pondrá en contacto contigo próximamente. No necesitas hacer nada por ahora.</flux:text>
+
             </flux:callout>
         @endif
 

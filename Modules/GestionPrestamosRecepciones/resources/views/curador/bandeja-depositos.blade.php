@@ -1,7 +1,6 @@
 <div class="hub-transactional-ui hub-depositos-ui hub-workspace p-4 sm:p-6 space-y-5"
     x-data
-    @toast.window="$flux.toast($event.detail.message)"
-    @domain-error.window="$flux.toast({ text: $event.detail.message, variant: 'danger' })">
+    @toast.window="$flux.toast($event.detail.message)">
 
     {{-- Encabezado --}}
     <header class="hub-page-header">

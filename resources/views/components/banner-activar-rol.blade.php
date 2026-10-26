@@ -26,7 +26,7 @@
                 <flux:icon name="x-mark" class="size-4" />
             </button>
             <p class="pr-6 text-sm font-semibold text-text-primary">{{ $mensajeBanner }}</p>
-            <p class="mt-1 text-xs leading-5 text-text-secondary">Puedes activarlo desde Configuracion y cambiar de rol con la misma cuenta.</p>
+
         </aside>
     @endif
 @endauth

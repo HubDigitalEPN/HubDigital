@@ -62,7 +62,7 @@
                                 <li :id="'sugerencia-explorador-' + indice" role="option" :aria-selected="indice === sugerenciaActiva">
                                     <button type="button" tabindex="-1" x-on:click="filtrarArbol(sugerencia)" :class="{'is-active': indice === sugerenciaActiva}">
                                         <strong x-text="sugerencia.nombre"></strong><span x-text="sugerencia.etiqueta + ' · ' + numero(sugerencia.total) + ' registros'"></span>
-                                        <small x-text="sugerencia.linaje"></small>
+
                                     </button>
                                 </li>
                             </template>
@@ -71,7 +71,7 @@
                     <p class="taxonomy-explorer-error" x-show="error" role="alert"><span x-text="error"></span>
                         <button type="button" x-show="!nodos.length" x-on:click="consultar()">Reintentar</button>
                     </p>
-                    <p class="taxonomy-explorer-status" x-show="hayMas">Se muestran las primeras 50 coincidencias. Escribe un nombre más específico para acotar la búsqueda.</p>
+
                 </div>
                 <div class="taxonomy-navigator-zoom" role="group" aria-label="Zoom del árbol">
                     <button type="button" :disabled="!visorDisponible || visorCargando || buscando || zoomActual <= zoomMinimo" x-on:click="zoomETE(1 / 1.25)" aria-label="Alejar árbol" title="Alejar árbol"><span aria-hidden="true">−</span></button>
@@ -81,7 +81,7 @@
             <section class="taxonomy-navigator-main" x-ref="ramas" aria-label="Taxones de la rama seleccionada">
                 <div class="portal-ete-host" x-ref="ete" wire:ignore x-show="nodos.length && visorDisponible"
                     aria-label="Jerarquía taxonómica con árbol de diversidad y visualización alternativa de esferas 3D" :aria-busy="(buscando || visorCargando) ? 'true' : 'false'"></div>
-                <p class="taxonomy-navigator-start" x-show="listo && nodos.length && !visorDisponible">Escoge un filo para explorar sus ramas.</p>
+
                 <p class="portal-ete-loading" x-cloak x-show="visorDisponible && visorCargando" role="status">Abriendo visor…</p>
                 <p class="taxonomy-navigator-empty" x-show="listo && !buscando && !nodos.length" role="status">No hay taxones publicados para esta selección.</p>
                 <p class="taxonomy-explorer-error" x-show="visorError" role="alert"><span x-text="visorError"></span>
@@ -116,7 +116,7 @@
                         </button>
                         <button type="button" class="taxonomy-explorer-name" :disabled="buscando || mostrandoMapa"
                             x-on:click.stop="seleccionar(nodo)" x-on:keydown="teclado($event, nodo)">
-                            <small class="taxonomy-explorer-rank" x-text="nodo.etiqueta"></small>
+
                             <em x-text="nodo.nombre"></em>
                             <span class="taxonomy-explorer-node-count"><strong x-text="numero(nodo.total)"></strong><span aria-hidden="true">reg.</span><span class="sr-only" x-text="nodo.total === 1 ? 'registro' : 'registros'"></span></span>
                             <span class="taxonomy-explorer-selected-mark" x-show="(destacado || seleccionado) === nodo.id" aria-hidden="true">✓</span>

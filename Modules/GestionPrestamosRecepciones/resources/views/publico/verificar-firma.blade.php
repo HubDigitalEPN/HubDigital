@@ -29,7 +29,7 @@
     @if($numero)
         <dl><dt>Documento</dt><dd>{{ $numero }} · versión {{ $version }}</dd><dt>Fecha de firma</dt><dd>{{ $fecha }} (Ecuador)</dd></dl>
     @endif
-    <p class="nota">Esta consulta confirma el estado del ejemplar conservado. El oficio y los datos personales permanecen privados.</p>
+
 </main>
 </body>
 </html>

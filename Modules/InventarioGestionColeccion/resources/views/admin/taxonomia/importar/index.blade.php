@@ -12,10 +12,10 @@
     </div>
 
     @if($successMessage)
-        <flux:callout variant="success" icon="check-circle" dismissible>{{ $successMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
     @if($errorMessage)
-        <flux:callout variant="danger" icon="exclamation-triangle" dismissible>{{ $errorMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">{{ $errorMessage }}</flux:callout>
     @endif
 
     {{-- Guía rápida --}}
@@ -132,19 +132,13 @@
                 <flux:select.option value=";">Punto y coma ( ; )</flux:select.option>
                 <flux:select.option value="&#9;">Tabulación</flux:select.option>
             </flux:select>
-            <flux:description>Se usa solo si subes un archivo .csv. Los Excel lo ignoran.</flux:description>
+
         </flux:field>
 
         {{-- Autocompletar ubicación por coordenadas --}}
         <div class="rounded-lg border border-border bg-bg-main p-3 space-y-1.5">
             <flux:switch wire:model="geocodificar" label="Completar ubicación por coordenadas" />
-            <p class="text-xs text-text-secondary">
-                Cuando una fila trae coordenadas pero le falta país, provincia, cantón o localidad, se
-                deducen con OpenStreetMap. Se aplica solo al <strong>importar</strong> (no al validar) y
-                puede ser <strong>lento</strong> (~1 consulta por segundo). En esta pantalla se consultan
-                hasta 250 coordenadas nuevas por corrida; para el catálogo completo usa el comando
-                <code class="text-xs">php artisan inventario:importar-catalogo --geocodificar</code>.
-            </p>
+
         </div>
 
         {{-- Acciones --}}
@@ -245,10 +239,7 @@
                             </div>
                         @endforeach
                     </div>
-                    <p class="text-xs text-text-secondary mt-2">
-                        Estos especímenes se guardaron igual, pero quedan pendientes en el
-                        <a href="{{ route('inventario.taxonomia.revision') }}" wire:navigate class="text-science-blue hover:text-blue-navy underline">Centro de revisión</a>.
-                    </p>
+
                 </div>
             @endif
 

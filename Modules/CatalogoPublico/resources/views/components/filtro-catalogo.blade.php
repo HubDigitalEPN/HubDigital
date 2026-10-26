@@ -102,11 +102,7 @@
                         N.° de catálogo
                         <span class="font-normal text-white/50">(código)</span>
                     </span>
-                    <flux:tooltip content="Ingrese uno o más códigos separados por coma, ejemplo: EPN-001, EPN-002">
-                        <button type="button" tabindex="-1" aria-label="Información sobre número de catálogo">
-                            <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
-                        </button>
-                    </flux:tooltip>
+
                 </div>
                 <input
                     x-model="filtroCatalogo"
@@ -124,11 +120,7 @@
                         Tipo de recoleccion
                         <span class="font-normal text-white/50">(preparations)</span>
                     </span>
-                    <flux:tooltip content="Forma en que los especímenes están preservados, por ejemplo húmedo o seco">
-                        <button type="button" tabindex="-1" aria-label="Información sobre tipo de colección">
-                            <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
-                        </button>
-                    </flux:tooltip>
+
                 </div>
                 @if(count($preparaciones) > 0)
                     <div x-data="{ open: false }" class="relative">
@@ -177,11 +169,7 @@
             <div>
                 <div class="mb-1 flex items-center gap-1">
                     <span class="text-xs font-medium text-white">Taxonomía</span>
-                    <flux:tooltip content="Indique el elemento taxonómico que desea buscar, ejemplo: Coleoptera. El sistema buscará en todos los niveles">
-                        <button type="button" tabindex="-1" aria-label="Información sobre Taxonomía">
-                            <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
-                        </button>
-                    </flux:tooltip>
+
                 </div>
                 <input
                     x-model="filtroTaxon"
@@ -200,11 +188,7 @@
             <div>
                 <div class="mb-1 flex items-center gap-1">
                     <span class="text-xs font-medium text-white">Geografía</span>
-                    <flux:tooltip content="Indique la localidad que desea buscar, ejemplo: Pichincha. Separe múltiples valores con coma">
-                        <button type="button" tabindex="-1" aria-label="Información sobre Geografía">
-                            <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
-                        </button>
-                    </flux:tooltip>
+
                 </div>
                 <input
                     x-model.lazy="filtroGeografias"
@@ -272,11 +256,7 @@
                             Colector
                             <span class="font-normal text-white/50">(recordedBy)</span>
                         </span>
-                        <flux:tooltip content="Indique el colector que desea buscar. El sistema buscará coincidencias parciales">
-                            <button type="button" tabindex="-1">
-                                <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
-                            </button>
-                        </flux:tooltip>
+
                     </div>
                     <input
                         x-model="filtroColector"
@@ -380,11 +360,7 @@
                             Coordenadas
                             <span class="font-normal text-white/50">(decimalLatitude / decimalLongitude)</span>
                         </span>
-                        <flux:tooltip content="Límites en grados decimales. También puedes seleccionar un rectángulo desde el mapa de estadísticas.">
-                            <button type="button" tabindex="-1">
-                                <flux:icon name="information-circle" class="size-3.5 cursor-help text-white/50 transition-colors hover:text-white/80" />
-                            </button>
-                        </flux:tooltip>
+
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <input x-model="filtroLatMin" type="number" step="any" min="-90" max="90" aria-label="Latitud mínima" placeholder="Lat. mín." class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30" />

@@ -35,8 +35,5 @@
     <div class="flex min-w-0 flex-col">
         <span class="text-2xl font-semibold leading-tight text-blue-navy tabular-nums">{{ $mostrado }}</span>
         <span class="text-sm text-text-secondary">{{ $label }}</span>
-        @if($hint)
-            <span class="mt-0.5 text-xs text-text-secondary">{{ $hint }}</span>
-        @endif
     </div>
 </{{ $tag }}>

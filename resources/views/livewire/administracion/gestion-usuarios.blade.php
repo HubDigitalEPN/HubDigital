@@ -29,9 +29,7 @@
         <section class="hub-panel p-5">
             <div class="mb-5">
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Nueva cuenta</h2>
-                <p class="text-sm text-text-secondary">
-                    Las cuentas internas deben usar un correo institucional EPN. Las cuentas creadas aqui quedan habilitadas de inmediato. La clave inicial debera cambiarse en el primer acceso.
-                </p>
+
             </div>
 
             <form
@@ -64,12 +62,9 @@
                 <flux:input wire:model="institucion" name="institucion" label="Institución" :required="$rol === \App\Enums\RolUsuario::DEPOSITANTE->value" autocomplete="off" />
                 <flux:input name="password" type="password" label="Contraseña inicial" required minlength="12" maxlength="72" autocomplete="new-password" />
                 <flux:input name="password_confirmation" type="password" label="Confirmar contraseña" required minlength="12" maxlength="72" autocomplete="new-password" />
-                <p class="md:col-span-2 text-xs text-text-secondary">
-                    Usa al menos 12 caracteres, mayúsculas, minúsculas, números y símbolos. El sistema exigira cambiar la contraseña inicial al primer ingreso.
-                </p>
 
                 @if ($errors->any())
-                    <div role="alert" class="md:col-span-2 rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">
+                    <div data-hub-feedback="error" role="alert" class="md:col-span-2 rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">
                         {{ $errors->first() }}
                     </div>
                 @endif
@@ -88,7 +83,7 @@
             <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil de usuario</h2>
-                    <p class="text-sm text-text-secondary">Actualiza el correo, el perfil y los roles autorizados.</p>
+
                 </div>
                 <flux:button wire:click="cancelarEdicion" variant="ghost" icon="x-mark">Cancelar</flux:button>
             </div>
@@ -99,7 +94,7 @@
                 <flux:input wire:model="edicionEmail" type="email" label="Correo electronico" required autocomplete="off" />
                 <div class="md:col-span-2 rounded-lg border border-border bg-bg-main/45 p-4">
                     <p class="text-sm font-semibold text-blue-navy">Roles asignados</p>
-                    <p class="mt-1 text-xs leading-5 text-text-secondary">Los roles internos EPN son exclusivos. Los perfiles externos pueden combinar Depositante y Solicitante.</p>
+
                     <div class="mt-3 grid gap-2 sm:grid-cols-2">
                         @foreach ($roles as $opcionRol)
                             <label class="flex min-h-11 items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary">
@@ -108,7 +103,7 @@
                             </label>
                         @endforeach
                     </div>
-                    @error('edicionRoles') <p class="mt-2 text-xs text-error">{{ $message }}</p> @enderror
+                    @error('edicionRoles') <p data-hub-feedback="error" class="mt-2 text-xs text-error">{{ $message }}</p> @enderror
                 </div>
                 <flux:select wire:model="edicionRol" label="Rol operativo principal" required>
                     @foreach ($roles as $opcionRol)
@@ -119,7 +114,7 @@
                 <flux:input wire:model="edicionInstitucion" class="md:col-span-2" label="Institución" :required="in_array(\App\Enums\RolUsuario::DEPOSITANTE->value, $edicionRoles, true)" autocomplete="off" />
 
                 @if ($errors->any())
-                    <div role="alert" class="md:col-span-2 rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">{{ $errors->first() }}</div>
+                    <div data-hub-feedback="error" role="alert" class="md:col-span-2 rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">{{ $errors->first() }}</div>
                 @endif
 
                 <div class="md:col-span-2 flex justify-end">
@@ -133,7 +128,7 @@
         <section class="hub-panel border-error/30 p-5" role="alertdialog" aria-label="Confirmar eliminacion de usuario" aria-modal="true">
             <h2 class="font-display text-lg font-semibold text-error">Eliminar cuenta definitivamente</h2>
             <p class="mt-2 text-sm text-text-secondary">Se eliminara la cuenta de la base de datos. Si tiene depositos, archivos en R2 o prestamos historicos, el sistema protegera la trazabilidad y bloqueara esta accion.</p>
-            @error('usuarioPorEliminar') <p class="mt-2 text-sm text-error">{{ $message }}</p> @enderror
+            @error('usuarioPorEliminar') <p data-hub-feedback="error" class="mt-2 text-sm text-error">{{ $message }}</p> @enderror
             <div class="mt-4 flex gap-2">
                 <flux:button wire:click="cancelarEliminacion" variant="ghost">Cancelar</flux:button>
                 <flux:button wire:click="eliminarDefinitivamente" variant="danger">Eliminar definitivamente</flux:button>

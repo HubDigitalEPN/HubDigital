@@ -5,17 +5,16 @@
     @endphp
     @if(\App\Support\DescargasCatalogo::permitidas())
         <div class="flex flex-wrap items-center justify-end gap-3 border-b border-border bg-surface px-4 py-2">
-            <span class="text-xs text-text-secondary">Ambos formatos incluyen todos los registros de los filtros activos, también otras páginas.</span>
             <x-catalogo-excel-menu :catalogo-url="$this->urlDescarga('datos')" :ipt-url="$this->urlDescarga('ipt')" />
         </div>
     @endif
     @if($avisoSeleccionUrl !== '')<p role="status" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">{{ $avisoSeleccionUrl }}</p>@endif
     <div x-cloak x-show="errorHistorial" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
-        <p x-text="errorHistorial" role="alert"></p>
+
         <button type="button" class="mt-2 underline text-science-blue" x-on:click="window.location.reload()">{{ $catalogoTexto('recargar_seleccion') }}</button>
     </div>
     <div x-cloak x-show="errorConsulta" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">
-        <p x-text="errorConsulta" role="alert"></p>
+
         <a :href="enlaceReintento" class="mt-2 inline-block underline text-science-blue">{{ $catalogoTexto('reintentar_seleccion') }}</a>
     </div>
     @if($vista === 'tarjetas')
@@ -102,7 +101,6 @@
 
     @endif {{-- fin breadcrumb del modo árbol --}}
     @endif {{-- fin navegación de tarjetas --}}
-
 
     <div class="collection-loading" wire:loading.delay wire:target="borradorFiltros,cambiarVista,aplicarBorrador,aplicarBusquedaTexto,limpiarFiltros,retirarCriterio,seleccionarFilo,seleccionarProvincia,cambiarProvinciaPanel,seleccionarLocalidad,volverProvincias,seleccionarDecada,seleccionarMes,seleccionarAltitud,seleccionarMetodo,seleccionarArea,explorarNivel,navegar,cambiarPagina,cambiarPaginaHermanos,abrirFichaRegistro">
         <span class="collection-loading-indicator" role="status" aria-live="polite"><span class="atlas-spinner" aria-hidden="true"></span><span>{{ $catalogoTexto('actualizando') }}</span></span>
@@ -197,7 +195,6 @@
                 </h1>
             </div>
         </div>
-
 
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             @if(count($hijos) === 0)
@@ -498,7 +495,7 @@
                             @endif
                         </div>@endif
                     </div>
-                    @if(count($especimenes) > 0 && \App\Support\DescargasCatalogo::permitidas())<p class="mb-4 text-xs text-text-secondary">Ambas descargas incluyen todos los registros filtrados de esta especie, también otras páginas. El formato IPT usa las columnas configuradas por administración; los datos obligatorios faltantes quedan vacíos y se indican en la hoja Revisión. Los campos reservados no se divulgan.</p>@endif
+                    @if(count($especimenes) > 0 && \App\Support\DescargasCatalogo::permitidas())@endif
 
                     {{-- ══════════════════════════════════
                          IMAGEN DESTACADA DE LA ESPECIE (portada por defecto)
@@ -949,8 +946,7 @@
             <div class="collection-taxon-explanation">
                 <header><h2 id="titulo-ayuda-taxon">Resumen de <em x-text="taxonAyuda.nombre"></em></h2><button type="button" autofocus x-on:click="cerrarTaxon()" aria-label="Cerrar explicación">×</button></header>
                 <div class="collection-taxon-help-photograph" x-html="taxonAyuda.fotografia"></div>
-                <p x-show="descripciones[taxonAyuda.nombre]" x-text="descripciones[taxonAyuda.nombre]"></p>
-                <p x-show="!descripciones[taxonAyuda.nombre]">No hay una descripción de historia natural publicada para este taxón. Este resumen muestra su clasificación y los registros disponibles en la selección.</p>
+
                 <p>Rango publicado: <strong x-text="taxonAyuda.nivel"></strong>. Linaje de la selección: <span x-text="Object.values(taxonAyuda.jerarquia || {}).join(' → ')"></span>.</p>
                 <p><strong x-text="taxonAyuda.registros.toLocaleString('es-EC')"></strong> <span x-text="Number(taxonAyuda.registros) === 1 ? 'registro público' : 'registros públicos'"></span> de este taxón en la selección actual.</p>
                 <ul class="collection-taxon-descendants" x-show="Object.keys(taxonAyuda.stats).length > 0">

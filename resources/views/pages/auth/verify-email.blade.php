@@ -29,17 +29,10 @@
         {{-- Aviso: revisar carpeta de spam --}}
         <div class="flex items-start gap-2 rounded-lg border border-info/30 bg-info/5 p-3">
             <flux:icon name="information-circle" variant="outline" class="mt-px size-4 shrink-0 text-info" />
-            <p class="text-xs text-text-primary">
-                ¿No encuentras el correo? Revisa tu carpeta de <span class="font-medium">spam o correo no deseado</span>.
-                Si lo hallas allí, márcalo como <span class="font-medium">«No es spam»</span> para recibir sin problemas los próximos mensajes.
-            </p>
+
         </div>
 
         {{-- Nota de vigencia --}}
-        <p class="flex items-start gap-1 text-xs text-text-secondary">
-            <flux:icon name="clock" variant="outline" class="mt-px size-3.5 shrink-0" />
-            Por seguridad, el enlace caduca a los {{ config('auth.verification.expire', 60) }} minutos. Si expira, solicita uno nuevo aquí.
-        </p>
 
         {{-- Acciones --}}
         <div class="flex flex-col gap-3">

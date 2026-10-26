@@ -12,7 +12,7 @@
             </div>
             <div>
                 <p class="font-semibold text-text-primary">Solicitudes</p>
-                <p class="text-xs text-text-secondary mt-0.5">Revisar y aprobar solicitudes de préstamo</p>
+
             </div>
         </a>
 
@@ -23,7 +23,7 @@
             </div>
             <div>
                 <p class="font-semibold text-text-primary">Actas</p>
-                <p class="text-xs text-text-secondary mt-0.5">Enviar y validar actas de préstamo</p>
+
             </div>
         </a>
 
@@ -34,7 +34,7 @@
             </div>
             <div>
                 <p class="font-semibold text-text-primary">Préstamos</p>
-                <p class="text-xs text-text-secondary mt-0.5">Auditar y gestionar préstamos activos</p>
+
             </div>
         </a>
     </div>

@@ -12,7 +12,7 @@
 
     <div class="border-b border-blue-navy/10 pb-3">
         <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('tramite.titulo') }}</flux:heading>
-        <flux:text class="mt-1 text-sm leading-5 text-text-secondary">{{ \App\Support\WizardCopy::text('tramite.intro') }}</flux:text>
+
     </div>
 
     <flux:error name="tipoTramite" />
@@ -54,10 +54,8 @@
     </div>
 
     <div x-show="tipo === 'Depósito'" x-cloak class="space-y-3">
-        <flux:callout variant="info" icon="information-circle">
-            <flux:text class="text-sm">
-                {{ \App\Support\WizardCopy::text('tramite.aviso_deposito') }}
-            </flux:text>
+        <flux:callout data-hub-feedback="info" variant="info" icon="information-circle">
+
         </flux:callout>
         <div class="border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-4 py-3">
             <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-navy">{{ \App\Support\WizardCopy::text('tramite.documentos_titulo') }}</p>
@@ -79,14 +77,12 @@
                     {{ \App\Support\WizardCopy::text('tramite.requisito_datos') }}
                 </li>
             </ul>
-            <p class="text-xs text-text-secondary/60 mt-2 italic">{{ \App\Support\WizardCopy::text('tramite.nota_requisitos') }}</p>
+
         </div>
     </div>
     <div x-show="tipo === 'Donación'" x-cloak class="space-y-3">
-        <flux:callout variant="info" icon="information-circle">
-            <flux:text class="text-sm">
-                {{ \App\Support\WizardCopy::text('tramite.aviso_donacion') }}
-            </flux:text>
+        <flux:callout data-hub-feedback="info" variant="info" icon="information-circle">
+
         </flux:callout>
         <div class="border-l-2 border-bio-green/30 bg-[#F8FAFC] px-4 py-3">
             <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-blue-navy">{{ \App\Support\WizardCopy::text('tramite.documentos_titulo') }}</p>

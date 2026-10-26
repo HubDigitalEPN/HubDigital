@@ -37,7 +37,7 @@
         @if($mensajeEstadoSincronizado)
             <div class="w-full max-w-xl rounded-lg border border-info/30 bg-info/5 px-4 py-3 text-left" role="status" aria-live="polite">
                 <p class="text-sm font-semibold text-text-primary">{{ $mensajeEstadoSincronizado }}</p>
-                <p class="mt-0.5 text-xs text-text-secondary">Actualizamos esta pantalla con el estado guardado por la otra sesión.</p>
+
             </div>
         @endif
 
@@ -162,7 +162,7 @@
 
         <div class="border-b border-blue-navy/10 pb-2">
             <flux:heading size="lg" level="2" class="font-display tracking-tight text-blue-navy">{{ \App\Support\WizardCopy::text('envio.titulo') }}</flux:heading>
-            <flux:text class="mt-0.5 text-xs text-text-secondary">Revisa y firma la solicitud antes de enviarla.</flux:text>
+
         </div>
 
         {{-- Resumen de la solicitud --}}

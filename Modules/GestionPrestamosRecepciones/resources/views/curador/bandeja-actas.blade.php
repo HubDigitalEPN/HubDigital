@@ -5,7 +5,7 @@
     </div>
 
     @if($successMessage)
-        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
 
     {{-- Panel de filtros --}}

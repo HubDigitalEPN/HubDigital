@@ -55,9 +55,7 @@ new class extends Component {
             <flux:icon.lock-closed variant="outline" class="size-4"/>
             <flux:heading size="lg" level="3">{{ __('Códigos de recuperación 2FA') }}</flux:heading>
         </div>
-        <flux:text variant="subtle">
-            {{ __('Los códigos de recuperación te permiten recuperar el acceso si pierdes tu dispositivo 2FA. Guárdalos en un gestor de contraseñas seguro.') }}
-        </flux:text>
+
     </div>
 
     <div class="px-6">
@@ -107,7 +105,7 @@ new class extends Component {
         >
             <div class="mt-3 space-y-3">
                 @error('recoveryCodes')
-                    <flux:callout variant="danger" icon="x-circle" heading="{{$message}}"/>
+                    <flux:callout data-hub-feedback="danger" variant="danger" icon="x-circle" heading="{{$message}}"/>
                 @enderror
 
                 @if (filled($recoveryCodes))
@@ -126,9 +124,7 @@ new class extends Component {
                             </div>
                         @endforeach
                     </div>
-                    <flux:text variant="subtle" class="text-xs">
-                        {{ __('Cada código de recuperación puede usarse una sola vez para acceder a tu cuenta y será eliminado tras su uso. Si necesitas más, haz clic en Regenerar códigos arriba.') }}
-                    </flux:text>
+
                 @endif
             </div>
         </div>

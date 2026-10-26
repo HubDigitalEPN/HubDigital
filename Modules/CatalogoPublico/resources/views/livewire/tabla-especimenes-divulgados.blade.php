@@ -15,7 +15,7 @@
     </div>
 
     @if($configGuardada)
-        <flux:callout variant="success" icon="check-circle">
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">
             Configuración de visibilidad guardada correctamente.
         </flux:callout>
     @endif
@@ -193,10 +193,6 @@
                     <p class="text-xs text-text-secondary font-mono mt-1">{{ $occurrenceIDActivo }}</p>
                 @endif
             </div>
-
-            <p class="text-sm text-text-secondary">
-                Seleccione los campos que serán visibles en el catálogo público.
-            </p>
 
             @php
                 $grupos = [

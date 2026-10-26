@@ -783,6 +783,7 @@ select:focus[data-flux-control] {
 /* Aviso operativo en primer plano: mantiene la jerarquía visual de la PWA
    sin incrustar estilos en JavaScript. */
 .hub-in-app-toast {
+    position: relative;
     display: flex;
     gap: .75rem;
     width: min(24.375rem, calc(100dvi - 2rem));
@@ -797,20 +798,34 @@ select:focus[data-flux-control] {
 
 .hub-in-app-toast-tray {
     position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
     right: 1rem;
-    bottom: 1rem;
+    top: 1rem;
     z-index: 2147483647;
     display: flex;
     width: min(24.375rem, calc(100dvi - 2rem));
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: .75rem;
     pointer-events: none;
 }
+
+.hub-in-app-toast-tray[popover]:not(:popover-open) { display: none; }
 
 .hub-in-app-toast-tray .hub-in-app-toast {
     width: 100%;
     pointer-events: auto;
 }
+
+.hub-in-app-toast[data-variant="error"] { border-inline-start: 4px solid var(--color-error); }
+.hub-in-app-toast[data-variant="warning"] { border-inline-start: 4px solid var(--color-warning); }
+.hub-in-app-toast[data-variant="success"] { border-inline-start: 4px solid var(--color-bio-green); }
+.hub-in-app-toast[data-variant="info"] { border-inline-start: 4px solid var(--color-science-blue); }
+.hub-in-app-toast__message { white-space: pre-line; overflow-wrap: anywhere; }
 
 .hub-connectivity-status {
     position: fixed;

@@ -8,11 +8,11 @@
     </flux:breadcrumbs>
 
     @if($successMessage)
-        <flux:callout variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
+        <flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $successMessage }}</flux:callout>
     @endif
 
     @if(!$acta)
-        <flux:callout variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
+        <flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">Acta no encontrada.</flux:callout>
     @else
 
         {{-- Encabezado --}}
@@ -258,9 +258,7 @@
                 @endif
             </div>
             @unless($investigadorFirmoEnCanvas)
-                <p class="text-xs text-text-secondary text-right">
-                    El investigador subió su acta firmada como archivo; adjunta tu versión firmada para validar.
-                </p>
+
             @endunless
         @endif
     @endif
@@ -269,9 +267,7 @@
     <flux:modal wire:model="showMotivoModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Devolver para refirmar</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Selecciona qué documentos debe corregir el investigador e indica el motivo.
-            </flux:text>
+
             <flux:field>
                 <flux:label>Documentos a devolver</flux:label>
                 <div class="space-y-2">
@@ -379,16 +375,14 @@
             class="space-y-4 p-2"
         >
             <flux:heading size="lg">Firmar y validar el acta</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Dibuja tu firma en el recuadro. Al confirmar, el acta quedará validada y el proceso de préstamo continuará.
-            </flux:text>
+
             <div class="rounded-lg border-2 border-border bg-white overflow-hidden" style="cursor: crosshair;">
                 <svg x-ref="firmaCanvas"
                     style="width: 100%; height: 220px; display: block; touch-action: none; cursor: crosshair; background: white;"
                     @pointerdown="startDraw($event)" @pointermove="draw($event)"
                     @pointerup="stopDraw()" @pointerleave="stopDraw()"></svg>
             </div>
-            <p x-show="errorMensaje" x-text="errorMensaje" class="text-xs text-error text-center"></p>
+
             <p x-show="!errorMensaje" class="text-xs text-text-secondary text-center">— Área de firma —</p>
             <div class="flex items-center justify-between gap-2">
                 <flux:button variant="ghost" size="sm" icon="arrow-path" @click="limpiar()">Limpiar</flux:button>
@@ -408,9 +402,7 @@
     <flux:modal wire:model="showUploadModal" class="max-w-md">
         <div class="space-y-4 p-2">
             <flux:heading size="lg">Subir acta firmada</flux:heading>
-            <flux:text class="text-text-secondary text-sm">
-                Adjunta el acta firmada por ti en PDF (máximo 10 MB). Al validarla, el proceso de préstamo continuará.
-            </flux:text>
+
             <flux:field>
                 <flux:label>Acta firmada (PDF)</flux:label>
                 @if($pdfFirmadoCurador)

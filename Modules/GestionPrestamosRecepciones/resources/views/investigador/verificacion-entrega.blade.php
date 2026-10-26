@@ -13,9 +13,7 @@
 
     <div>
         <flux:heading size="xl" level="1" class="font-display">Reportar recepción de especímenes</flux:heading>
-        <flux:text class="text-text-secondary text-sm mt-1">
-            Indica el estado en que recibiste los especímenes para activar el préstamo.
-        </flux:text>
+
     </div>
 
     {{-- Sección 1: Estado general --}}
@@ -36,7 +34,7 @@
                         class="mt-0.5 accent-bio-green shrink-0" />
                     <div class="flex-1">
                         <p class="text-sm font-semibold text-text-primary">Sin novedades</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Todos los especímenes llegaron en buen estado y en la cantidad correcta.</p>
+
                     </div>
                     @if($estadoEnvio === 'sin_novedades')
                         <flux:icon name="check-circle" class="size-5 text-bio-green shrink-0" />
@@ -51,7 +49,7 @@
                         class="mt-0.5 accent-error shrink-0" />
                     <div class="flex-1">
                         <p class="text-sm font-semibold text-text-primary">Con novedades</p>
-                        <p class="text-xs text-text-secondary mt-0.5">Uno o más especímenes presentan daños, faltan individuos o hay irregularidades.</p>
+
                     </div>
                     @if($estadoEnvio === 'con_novedades')
                         <flux:icon name="exclamation-triangle" class="size-5 text-error shrink-0" />
@@ -78,7 +76,7 @@
                     <flux:text class="text-xs text-text-secondary">No hay especímenes registrados en esta solicitud.</flux:text>
                 @else
                     @error('observaciones')
-                        <p class="text-xs text-error">{{ $message }}</p>
+                        <p data-hub-feedback="error" class="text-xs text-error">{{ $message }}</p>
                     @enderror
 
                     @foreach($observaciones as $i => $obs)

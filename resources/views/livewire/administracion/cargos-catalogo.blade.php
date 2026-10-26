@@ -28,7 +28,7 @@
         <div class="space-y-4">
             <div>
                 <flux:heading size="lg">{{ $editandoId ? 'Editar cargo' : 'Nuevo cargo' }}</flux:heading>
-                <p class="mt-1 text-xs text-text-secondary">El nombre aparecerá en la lista del depositante.</p>
+
             </div>
             <flux:input wire:model="nombre" label="Nombre" maxlength="120" autofocus />
             <flux:error name="nombre" />

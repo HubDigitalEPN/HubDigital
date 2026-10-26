@@ -5,9 +5,7 @@
                 <flux:icon name="shield-check" class="size-6" />
             </span>
             <h1 class="font-display text-2xl font-bold text-blue-navy">Administrador inicial</h1>
-            <p class="text-sm leading-6 text-text-secondary">
-                Alta única para el ambiente de desarrollo. El acceso se desactiva al crear la cuenta. Después deberás verificar tu correo mediante el enlace enviado.
-            </p>
+
         </div>
 
         <form
@@ -74,12 +72,8 @@
                 autocomplete="new-password"
             />
 
-            <p class="text-xs text-text-secondary">
-                Usa al menos 12 caracteres, mayúsculas, minúsculas, números y símbolos. La contraseña inicial no vence automáticamente; puedes cambiarla desde tu cuenta.
-            </p>
-
             @if ($errors->any())
-                <div role="alert" class="rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">
+                <div data-hub-feedback="error" role="alert" class="rounded-lg border border-error/25 bg-error/5 p-3 text-sm text-error">
                     {{ $errors->first() }}
                 </div>
             @endif

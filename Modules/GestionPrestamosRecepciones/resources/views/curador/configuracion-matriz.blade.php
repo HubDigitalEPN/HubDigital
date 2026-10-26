@@ -1,11 +1,11 @@
 <div class="space-y-5 p-4 sm:p-6" data-matriz-config x-data
     x-effect="if ($wire.editando) $nextTick(() => requestAnimationFrame(() => document.getElementById($wire.campoAnterior === null ? 'matriz-campo-dwc' : 'matriz-cabecera-excel')?.focus({ preventScroll: true })))">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div><flux:heading size="xl" level="1">Columnas de la matriz de depósito</flux:heading><p class="mt-1 text-sm text-text-secondary">Cabeceras, alias y requisitos del Excel de Subir datos. Los cambios se aplican a las siguientes cargas y no modifican matrices guardadas.</p></div>
+        <div><flux:heading size="xl" level="1">Columnas de la matriz de depósito</flux:heading></div>
         <flux:button wire:click="editar" variant="primary" icon="plus">Nueva columna</flux:button>
     </div>
     <flux:input wire:model.live.debounce.300ms="busqueda" label="Buscar columna" placeholder="Nombre, cabecera, alias o requisito" />
-    <p class="text-sm text-text-secondary">{{ count($columnas) }} {{ count($columnas) === 1 ? 'columna' : 'columnas' }} · Obligatorio bloquea datos vacíos; recomendado y opcional permiten dejarlos vacíos. Uso interno y predeterminado no se exigen al depositante.</p>
+
     <x-grid-frame label="Columnas de la matriz de depósito">
         <div class="max-h-[65vh] overflow-auto" tabindex="0" aria-label="Configuración de columnas de la matriz">
             <table class="w-full text-sm">
@@ -22,7 +22,7 @@
         <form wire:submit="guardar" class="space-y-4">
             <flux:heading size="lg">{{ $campoAnterior === null ? 'Nueva columna' : 'Editar columna' }}</flux:heading>
             <div class="grid gap-4 sm:grid-cols-2"><flux:input id="matriz-campo-dwc" wire:model="columna.campo" label="Campo Darwin Core" :readonly="$campoAnterior !== null" /><flux:input id="matriz-cabecera-excel" wire:model="columna.cabecera" label="Cabecera Excel" /></div>
-            <flux:input wire:model="aliasTexto" label="Otros nombres admitidos" description="Separa los alias por comas. El campo y la cabecera también se admiten." />
+            <flux:input wire:model="aliasTexto" label="Otros nombres admitidos" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:select wire:model="columna.requisito" label="Requisito"><option value="obligatorio">Obligatorio</option><option value="recomendado">Recomendado</option><option value="opcional">Opcional</option><option value="interno">Uso interno</option><option value="predeterminado">Predeterminado</option></flux:select>
                 <flux:select wire:model="columna.formato" label="Formato"><option value="texto">Texto o número</option><option value="fecha">Fecha</option></flux:select>

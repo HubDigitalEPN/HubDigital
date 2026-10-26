@@ -1,21 +1,18 @@
 <div class="space-y-4">
     <div>
         <flux:heading size="lg" class="text-blue-navy font-semibold">Exportar especímenes seleccionados</flux:heading>
-        <p class="text-sm text-text-secondary mt-1">
-            Filtra, marca con las casillas los especímenes que quieras y descárgalos como Excel formateado.
-            La selección se conserva aunque cambies de página. Sin casillas marcadas, se exportan todos los registros filtrados.
-        </p>
+
     </div>
 
-    @if($mensaje)<flux:callout variant="success" icon="check-circle" dismissible>{{ $mensaje }}</flux:callout>@endif
-    @if($error)<flux:callout variant="danger" icon="exclamation-triangle" dismissible>{{ $error }}</flux:callout>@endif
+    @if($mensaje)<flux:callout data-hub-feedback="success" variant="success" icon="check-circle">{{ $mensaje }}</flux:callout>@endif
+    @if($error)<flux:callout data-hub-feedback="danger" variant="danger" icon="exclamation-triangle">{{ $error }}</flux:callout>@endif
 
     {{-- Filtros --}}
     <div class="rounded-lg border border-border bg-bg-main p-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <flux:field>
             <flux:label>Taxón (cualquier nivel)</flux:label>
             <flux:input wire:model="fTaxon" wire:keydown.enter="buscar" placeholder="Ej. Animalia, Lepidoptera, Nymphalidae, Morpho" />
-            <flux:description>Reino, filo, clase, orden, familia, género o especie: trae todo lo que cuelga debajo.</flux:description>
+
         </flux:field>
         <flux:field><flux:label>Localidad</flux:label><flux:input wire:model="fLocalidad" wire:keydown.enter="buscar" /></flux:field>
         <flux:field><flux:label>Colector</flux:label><flux:input wire:model="fColector" wire:keydown.enter="buscar" /></flux:field>
