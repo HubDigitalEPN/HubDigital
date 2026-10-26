@@ -29,7 +29,7 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
     registrosParaContratoChat();
     DB::table('taxonomia.columnas_portal_publico')->delete();
     $servicio = app(ColumnasRegistroPublico::class);
-    expect($servicio->visibles())->toHaveCount(26)
+    expect($servicio->visibles())->toHaveCount(31)
         ->and(array_column($servicio->visibles(), 'campo'))->toContain('disposition');
     $id = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->value('id');
     DB::table('taxonomia.especimenes')->where('id', $id)->update(['colector' => 'COLECTOR-RESERVADO-FICHA',
@@ -38,7 +38,7 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
 
     $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'fc' => 'QA3-CHAT-1'])->test(PortalCatalogo::class);
     $dom = domRegistrosPublicos($catalogo->html());
-    expect($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')->length)->toBe(26)
+    expect($dom->query('//table[@class="atlas-record-table"]/thead/tr/th')->length)->toBe(31)
         ->and($dom->query('//table[@class="atlas-record-table"]/thead/tr/th[normalize-space(.)="disposition"]')->length)->toBe(1)
         ->and($dom->query('//dialog[contains(@class,"portal-record-dialog")]')->length)->toBe(1);
 
@@ -55,6 +55,40 @@ test('la tabla pública ofrece todas las columnas permitidas y aplica la selecci
         ->assertSee('verbatimLocality')->assertSee('ORIGINAL-PUBLICO-FICHA');
     expect($catalogo->instance()->fichaRegistro['registro']->recorded_by)->toBeNull();
     $catalogo->call('cerrarFichaRegistro')->assertSet('registroFichaId', null);
+});
+
+test('las columnas taxonómicas completan nombres y conservan las reservas y la identificación provisional', function (): void {
+    $this->actingAs(\App\Models\User::factory()->curador()->create());
+    jerarquiaGenerosChat();
+    DB::table('taxonomia.columnas_portal_publico')->delete();
+    $ejemplar = DB::table('taxonomia.especimenes')->where('codigo_catalogo', 'QA3-CHAT-1')->first();
+    $genero = DB::table('taxonomia.taxones')->where('nombre_cientifico', 'Chatobius')->first();
+    $catalogo = Livewire::withQueryParams(['vista' => 'registros', 'fc' => 'QA3-CHAT-1'])->test(PortalCatalogo::class);
+    $fila = $catalogo->viewData('registrosVista')[0];
+    expect([$fila->phylum, $fila->class, $fila->order, $fila->family, $fila->genus, $fila->scientific_name])
+        ->toBe(['Chatarthropoda', 'Chatinsecta', 'Chathymenoptera', 'Chatformicidae', 'Chatobius', 'Chatobius alpha']);
+
+    DB::table('taxonomia.taxones')->where('id', $ejemplar->taxon_id)->update(['nombre_cientifico' => 'OtroGenero alpha']);
+    $catalogo->call('$refresh');
+    expect($catalogo->viewData('registrosVista')[0]->scientific_name)->toBe('OtroGenero alpha');
+    DB::table('taxonomia.taxones')->where('id', $ejemplar->taxon_id)->update(['nombre_cientifico' => 'alpha']);
+    $catalogo->call('$refresh');
+    expect($catalogo->viewData('registrosVista')[0]->scientific_name)->toBe('Chatobius alpha');
+    DB::table('taxonomia.especimenes')->where('id', $ejemplar->id)->update([
+        'taxon_id' => $genero->id, 'taxon_verbatim' => 'Chatobius_ACY2018', 'estado_revision' => 'pendiente',
+    ]);
+    $catalogo->call('$refresh')->assertSee('Chatobius ACY2018')->assertSee('clasificación pendiente de revisión');
+    expect($catalogo->viewData('registrosVista')[0]->taxon_en_revision)->toBeTrue();
+    expect(DB::table('taxonomia.especimenes')->where('id', $ejemplar->id)->value('taxon_id'))->toBe($genero->id);
+
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $ejemplar->id)->update(['family_visible' => false, 'genus_visible' => false]);
+    $catalogo->call('$refresh');
+    $fila = $catalogo->viewData('registrosVista')[0];
+    expect(get_object_vars($fila))->not->toHaveKey('family')->not->toHaveKey('genus')
+        ->and($fila->phylum)->toBe('Chatarthropoda');
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $ejemplar->id)->update(['scientific_name_visible' => false]);
+    $catalogo->call('$refresh')->assertDontSee('Chatobius ACY2018');
+    expect($catalogo->viewData('registrosVista'))->toBe([]);
 });
 
 test('la ficha usa la selección aplicada y comprueba de nuevo coordenadas y publicación sin revelar otro registro', function (string $caso): void {

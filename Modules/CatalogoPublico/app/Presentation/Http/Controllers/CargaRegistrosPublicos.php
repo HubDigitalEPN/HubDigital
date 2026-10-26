@@ -81,6 +81,13 @@ trait CargaRegistrosPublicos
                     'especimen_id' => $dto->especimenId,
                     'occurrence_id' => $g($ver(fn (EspecimenDivulgable $d) => $d->occurrenceIDVisible()), $dto->occurrenceId),
                     'scientific_name' => $g($ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()), $dto->scientificName),
+                    ...($cfg->scientificNameVisible() ? [
+                        'phylum' => $dto->phylum,
+                        'class' => $dto->class,
+                        'order' => $dto->order,
+                        ...($cfg->familyVisible() ? ['family' => $dto->family] : []),
+                        ...($cfg->genusVisible() ? ['genus' => $dto->genus] : []),
+                    ] : []),
                     'taxon_en_revision' => $ver(fn (EspecimenDivulgable $d) => $d->scientificNameVisible()) && ($dto->taxonomiaEnRevision || ! CalidadDatoPublico::esTextoValido($dto->scientificName)),
                     'individual_count' => $g($ver(fn (EspecimenDivulgable $d) => $d->individualCountVisible()), $dto->individualCount),
                     'type_status' => $g($ver(fn (EspecimenDivulgable $d) => $d->typeStatusVisible()), $dto->typeStatus),

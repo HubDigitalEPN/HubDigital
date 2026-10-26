@@ -469,6 +469,7 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->whereIn('e.id', $especimenIds)
             ->select([
                 'e.*',
+                't.rango as rango_taxon',
                 DB::raw(\Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico::revisionTaxonomicaSql('e.taxon_id').' AS taxonomia_en_revision'),
                 DB::raw("COALESCE(NULLIF(btrim(e.sampling_protocol), ''), NULLIF(btrim(mc.sampling_protocol), '')) AS sampling_protocol"),
                 'loc.referencia_inec',
@@ -480,6 +481,48 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             ->orderBy('e.fila_origen_excel')
             ->orderBy('e.id')
             ->get();
+
+        $taxonIds = $filas->pluck('taxon_id')->filter()->unique()->values()->all();
+        $jerarquias = [];
+        if ($taxonIds !== []) {
+            $parametros = implode(',', array_fill(0, count($taxonIds), '?'));
+            // Una consulta acotada por página, incluidos rangos intermedios y ciclos.
+            $ancestros = DB::select(<<<SQL
+                WITH RECURSIVE cadena AS (
+                    SELECT t.id AS raiz, t.id, t.padre_id, t.rango, t.nombre_cientifico,
+                        0 AS profundidad, ARRAY[t.id] AS camino
+                    FROM taxonomia.taxones t WHERE t.id IN ($parametros)
+                    UNION ALL
+                    SELECT c.raiz, t.id, t.padre_id, t.rango, t.nombre_cientifico,
+                        c.profundidad + 1, c.camino || t.id
+                    FROM cadena c JOIN taxonomia.taxones t ON t.id = c.padre_id
+                    WHERE c.profundidad < 29 AND NOT t.id = ANY(c.camino)
+                ) SELECT raiz, rango, nombre_cientifico FROM cadena ORDER BY profundidad
+                SQL, $taxonIds);
+            $rangos = ['phylum' => 'phylum', 'clase' => 'class', 'orden' => 'order', 'familia' => 'family', 'genero' => 'genus'];
+            foreach ($ancestros as $ancestro) {
+                if (isset($rangos[$ancestro->rango])) {
+                    $jerarquias[$ancestro->raiz][$rangos[$ancestro->rango]] ??= $ancestro->nombre_cientifico;
+                }
+            }
+        }
+        foreach ($filas as $fila) {
+            foreach (['phylum', 'class', 'order', 'family', 'genus'] as $rango) {
+                $fila->{$rango} = $jerarquias[$fila->taxon_id][$rango] ?? null;
+            }
+            $genero = trim($fila->genus ?? '');
+            // Un nombre ya compuesto conserva su grafía y autoridad, incluso si el linaje requiere cotejo.
+            if ($fila->rango_taxon === 'especie' && $genero !== '' && ! preg_match('/\s/u', trim($fila->nombre_cientifico))) {
+                $fila->nombre_cientifico = $genero.' '.$fila->nombre_cientifico;
+            } elseif ($fila->rango_taxon === 'genero' && $fila->estado_revision === 'pendiente' && $genero !== '') {
+                // Conserva el identificador provisional original sin elevarlo a especie confirmada.
+                $original = trim(preg_replace('/[\s_]+/u', ' ', $fila->taxon_verbatim ?? '') ?? '');
+                if (str_starts_with($original, $genero.' ')) {
+                    $fila->nombre_cientifico = $original;
+                    $fila->taxonomia_en_revision = true;
+                }
+            }
+        }
 
         return $filas->map(fn ($fila) => $this->traducir($fila))->all();
     }
@@ -503,6 +546,9 @@ final class InventarioGestionColeccionEspecimenAdapter implements ProveedorEspec
             taxonomiaEnRevision: (bool) ($fila->taxonomia_en_revision ?? false),
             family: $fila->family,
             genus: $fila->genus,
+            phylum: $fila->phylum ?? null,
+            class: $fila->class ?? null,
+            order: $fila->order ?? null,
             country: $fila->country,
             localityName: LocalidadPublica::desdeFila($fila),
             decimalLatitude: $fila->decimal_latitude !== null ? (float) $fila->decimal_latitude : null,

@@ -19,6 +19,11 @@ final class ColumnasRegistroPublico
     private const MAPA = [
         'occurrence_id' => ['codigoCatalogo', 'catalogNumber'],
         'scientific_name' => ['taxonNombre', 'scientificName'],
+        'phylum' => ['phylum', 'phylum'],
+        'class' => ['class', 'class'],
+        'order' => ['order', 'order'],
+        'family' => ['family', 'family'],
+        'genus' => ['genus', 'genus'],
         'event_date' => ['fechaVerbatim', 'eventDate'],
         'recorded_by' => ['colector', 'recordedBy'],
         'country' => ['country', 'country'],

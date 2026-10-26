@@ -102,6 +102,7 @@ html body .hub-ig-dialog :is(input[type=search], select) { display: block; width
 .hub-ig-column-list label:hover { background: var(--ig-soft); }
 .hub-ig-column-list input { width: 1rem; height: 1rem; accent-color: #056ac8; }
 .hub-ig-text-button { padding: .25rem 0; border: 0; background: transparent; color: #056ac8; font: inherit; cursor: pointer; }
+.hub-ig-column-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
 .hub-ig-dialog-footer { display: flex; justify-content: flex-end; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid var(--ig-border); background: var(--ig-soft); }
 .hub-ig .hub-ig-button-primary { border-color: #056ac8 !important; background: #056ac8 !important; color: #fff !important; }
 .hub-ig-sort-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }

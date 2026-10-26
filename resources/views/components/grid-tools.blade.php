@@ -53,8 +53,11 @@
                 <input type="checkbox" :checked="!draftHidden.includes(index)" x-on:change="toggleDraft(index)"><span x-text="column"></span>
             </label></template>
         </div>
-        <button type="button" class="hub-ig-text-button" x-on:click="draftHidden = []">Mostrar todas las columnas</button>
-        <button type="button" class="hub-ig-text-button" x-on:click="draftHidden = columns.map((_, index) => index)">Ocultar todas las columnas</button>
+        <div class="hub-ig-column-actions">
+            <button type="button" class="hub-ig-text-button" x-on:click="draftHidden = []">Mostrar todas las columnas</button>
+            <span aria-hidden="true">|</span>
+            <button type="button" class="hub-ig-text-button" x-on:click="draftHidden = columns.map((_, index) => index)">Ocultar todas las columnas</button>
+        </div>
     </div>
     <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.columnsDialog.close()">Cancelar</button><button type="button" class="hub-ig-button hub-ig-button-primary" x-on:click="applyColumnSelection()">Aplicar</button></div>
 </dialog>

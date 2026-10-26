@@ -133,6 +133,8 @@ La puerta de navegador consulta sus servidores de loopback con `node:http` y con
 
 ## Ayudas, avisos y publicación GBIF (25 de octubre de 2026)
 
+- `PortalRegistrosUsabilidadTest` y `PortalColumnasCuradorTest` comprueban las 31 columnas públicas, los cinco rangos taxonómicos añadidos, sus permisos, la composición del nombre sin duplicar género y la presentación del identificador provisional original sin cambiar el taxón confirmado. La separación visual de mostrar/ocultar columnas se revisa en localhost con Opera Neon; no se añaden escenarios Gherkin duplicados. Las suites se ejecutan únicamente mediante el paquete completo.
+
 - Se retiran las instrucciones de interfaz del portal, catálogo, administración, préstamos, depósitos y cuenta. Se conservan etiquetas, estados, datos curatoriales, información legal y confirmaciones de acciones. La guía incorporada en los Excel y los documentos generados no cambia.
 - `hub-notifications.test.mjs` cubre el presentador común: texto sin HTML, conservación del foco, cierre a los cuatro segundos, cierre manual, lectura con foco, acción del expediente, eventos existentes, agrupación de errores de formulario y fallos HTTP sin exponer la respuesta técnica. La PWA conserva su registro y confirmación de entrega; comparte solamente el presentador. No se duplica esta cobertura en Gherkin.
 - `DepositosUxEstadosTest` comprueba los estados de procesamiento, ausencia de archivos y acceso al expediente sin exigir la ayuda retirada. Conserva los contratos del QR, criterios de recepción y configuración de textos.

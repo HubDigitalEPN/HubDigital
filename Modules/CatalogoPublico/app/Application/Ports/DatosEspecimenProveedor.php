@@ -35,5 +35,8 @@ final readonly class DatosEspecimenProveedor
         public ?string $coordinateReference = null,
         public bool $taxonomiaEnRevision = false,
         public ?string $disposition = null,
+        public ?string $phylum = null,
+        public ?string $class = null,
+        public ?string $order = null,
     ) {}
 }

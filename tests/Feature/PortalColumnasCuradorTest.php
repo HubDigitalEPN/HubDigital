@@ -18,7 +18,7 @@ it('permite al curador definir columnas públicas y restablecer todas sin public
         ->toBe(['occurrence_id', 'scientific_name', 'decimal_latitude']);
     $panel->call('mostrarTodasPublicas')->assertHasNoErrors();
     $claves = array_column(app(ColumnasRegistroPublico::class)->visibles(), 'clave');
-    expect($claves)->toHaveCount(26)->toContain('disposition', 'fotografias', 'ficha')->not->toContain('estado_revision', 'motivo_revision', 'archivo_r2');
+    expect($claves)->toHaveCount(31)->toContain('phylum', 'class', 'order', 'family', 'genus', 'disposition', 'fotografias', 'ficha')->not->toContain('estado_revision', 'motivo_revision', 'archivo_r2');
 });
 
 it('rechaza columnas públicas desconocidas conservando la configuración anterior', function () {
