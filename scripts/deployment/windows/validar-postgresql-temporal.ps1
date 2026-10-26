@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$Proyecto,
-    [Parameter(Mandatory)] [string]$Php
+    [Parameter(Mandatory)] [string]$Php,
+    [switch]$ValidarPdfLocal
 )
 
 $ErrorActionPreference = 'Stop'
@@ -150,6 +151,24 @@ try {
         }
         Remove-Item -LiteralPath $copia -Force
         $env:DB_DATABASE = $env:TEST_DB_DATABASE = $basesAisladas[0]
+
+        if ($ValidarPdfLocal) {
+            # El adaptador PDF consulta esta base aislada. No depende de que el
+            # usuario haya iniciado PostgreSQL antes de crear-paquete-oci.
+            $appEnvAnterior = $env:APP_ENV
+            $appUrlAnterior = $env:APP_URL
+            try {
+                $env:APP_ENV = 'local'
+                $env:APP_URL = 'http://localhost:8000'
+                Write-Host 'Comprobando admision PDF y firma PHP/Java en localhost con PostgreSQL aislado...' -ForegroundColor Cyan
+                & $Php deploy/oracle/scripts/verify-deposit-pdf.php --medir-tiempo-local
+                if ($LASTEXITCODE -ne 0) { throw 'Fallo la comprobacion integral PDF/PHP/Java en localhost.' }
+            }
+            finally {
+                $env:APP_ENV = $appEnvAnterior
+                $env:APP_URL = $appUrlAnterior
+            }
+        }
 
         # Node necesita el ejecutable nativo: php en PATH puede ser un shim .cmd.
         # Se resuelve dentro del comando central, sin invocar un shell desde Node.

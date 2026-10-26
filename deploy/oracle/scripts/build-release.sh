@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# El runtime debe ser legible por www-data aunque el operador use umask 077.
+umask 0022
+
 # Construye desde una selección explícita hacia un staging nuevo. No lee ni
 # obliga a borrar .env del árbol de trabajo; los archivos no seleccionados no
 # pueden entrar al artefacto por accidente.

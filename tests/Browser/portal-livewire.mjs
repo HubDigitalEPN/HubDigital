@@ -108,6 +108,10 @@ try {
         LARAVEL_STORAGE_PATH: almacenamiento, VIEW_COMPILED_PATH: path.join(almacenamiento, 'framework/views'),
         HUBDIGITAL_TEMPORARY_DIRECTORY: path.join(almacenamiento, 'document-processing'),
         APP_CONFIG_CACHE: path.join(temporal, 'config.php'), APP_ROUTES_CACHE: path.join(temporal, 'routes.php')};
+    // Produccion prepara las vistas con optimize antes de servir peticiones.
+    // Compilarlas en este storage aislado evita gastar el limite HTTP de PHP
+    // en el primer arranque frio de Blade en Windows. No cambia los plazos.
+    execFileSync(php, ['artisan', 'view:cache', '--no-interaction'], {cwd: proyecto, env: entorno, stdio: 'pipe'});
     const respuestaFixture = execFileSync(php, ['tests/Browser/portal-fixture.php', 'crear', token, fixture], {cwd: proyecto, env: entorno, encoding: 'utf8'});
     let datos;
     try { datos = JSON.parse(respuestaFixture); }
@@ -172,7 +176,7 @@ try {
     const url = `${origen}/portal/catalogo?vista=mapa&ft=${encodeURIComponent(datos.taxonBusqueda)}`;
     // El GET entrega el catálogo completo para que la PWA conserve contenido,
     // sin repetir una petición Livewire para resolver un placeholder.
-    const primera = await esperar(async () => { try { const r = await obtenerLocal(url); respuestaInicial = {estado: r.status, tipo: r.tipo, bytes: Buffer.byteLength(r.texto), mapa: /atlas-dashboard/.test(r.texto), filtros: /research-phylum-tree/.test(r.texto), errorMapa: /mapa-error-titulo/.test(r.texto)}; return r.ok && r.texto; } catch { return false; } }, 'primera respuesta del portal');
+    const primera = await esperar(async () => { try { const r = await obtenerLocal(url); respuestaInicial = {estado: r.status, tipo: r.tipo, bytes: Buffer.byteLength(r.texto), mapa: /atlas-dashboard/.test(r.texto), filtros: /research-phylum-tree/.test(r.texto), errorMapa: /mapa-error-titulo/.test(r.texto), titulo: /<title>([^<]{0,120})<\/title>/i.exec(r.texto)?.[1], erroresPhp: [...r.texto.matchAll(/<b>(Fatal error|Parse error|Warning|Notice)<\/b>:\s*(?:Uncaught\s+)?([A-Za-z_\\]+)/g)].map(m => ({tipo:m[1],clase:m[2]}))}; return r.ok && r.texto; } catch { return false; } }, 'primera respuesta del portal');
     assert.ok(/atlas-dashboard/.test(primera) && /research-phylum-tree/.test(primera), 'La primera respuesta incluye mapa, paneles y filtros ya renderizados.');
     assert.ok(!/Cargando los registros públicos y sus filtros|wire:lazy/.test(primera), 'La apertura no depende de un placeholder ni una segunda petición de carga.');
     // Una descarga lenta del bundle no debe adelantar Alpine a sus componentes.

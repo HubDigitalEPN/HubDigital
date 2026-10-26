@@ -1,0 +1,126 @@
+PRODUCCION - SUBIR Y ACTIVAR EN https://labinvepn.org
+==================================================
+
+El flujo es como en DEV: transferir, preparar candidato, preparar release y
+activar. Se ejecutan archivos ya generados; no hay que crear scripts pegando
+bloques largos. Cada comando muestra el siguiente comando completo.
+
+Paquete: __PACKAGE_ID__
+Commit: __GIT_COMMIT__
+VM PROD: ubuntu@150.136.219.112
+
+Si llego a crear el asistente de la version anterior de esta guia, borre solo
+ese archivo dentro de la VM PROD con:
+
+rm -f -- "$HOME/hubdigital-prod-__PACKAGE_ID__.sh"
+
+Ese comando no borra respaldos. No se da por ejecutado ningun respaldo previo:
+el nuevo archivo lo crea automaticamente antes de preparar el candidato.
+
+PASO PROD 1 - TRANSFERIR DESDE OCI CLOUD SHELL
+-------------------------------------------
+En Cloud Shell > Menu > Upload suba estos DOS archivos de la carpeta del paquete:
+
+__SOURCE_ARCHIVE__
+__PROD_SCRIPT__
+
+La clave privada de PROD debe estar en ~/equiframe-dw-a1-2026-09-30.key.
+Si falta, subala una vez. Es una clave diferente de la usada para DEV.
+Ejecute en Cloud Shell:
+
+cd ~
+bash ./__PROD_SCRIPT__
+
+Comprueba el SHA-256 y copia el bundle y el script a /tmp de PROD mediante SSH.
+La primera conexion puede pedir confirmar la huella SSH: compruebela contra la
+identidad registrada de la VM antes de aceptarla. No se transfiere ningun .env.
+Al terminar muestra este comando de conexion; ejecutelo:
+
+ssh -i ~/equiframe-dw-a1-2026-09-30.key -o IdentitiesOnly=yes ubuntu@150.136.219.112
+
+PASO PROD 2 - PREPARAR EL CANDIDATO EN LA VM
+------------------------------------------
+Dentro de la VM PROD ejecute, como hizo en DEV:
+
+cd /tmp
+bash ./__PROD_SCRIPT__
+
+El script comprueba que esta en labinvepn.org y conserva su configuracion.
+Crea automaticamente el respaldo de codigo, entorno, PostgreSQL y servicios.
+Si ya existe un respaldo completo de este paquete, lo conserva y lo reutiliza.
+Construye el candidato Linux mediante los scripts oficiales del bundle.
+Todavia no aplica migraciones, no cambia current y no detiene el portal.
+Continue solo cuando diga "Candidato PROD preparado correctamente".
+
+PASO PROD 3 - PREPARAR LA RELEASE CON MIGRACIONES
+-----------------------------------------------
+Copie y ejecute el comando que aparece bajo
+"COPIE Y PEGUE EN ESTA VM (CON MIGRACIONES)". Para este paquete es:
+
+sudo bash /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh preparar
+
+Este paso entra en mantenimiento, detiene escritores y toma un respaldo fresco
+antes de las migraciones. Aplica APPLY_MIGRATIONS=1 con deploy-release.sh,
+conservando la base y los datos propios de PROD. Valida el candidato y deja la
+release en mantenimiento, igual que la preparacion realizada en DEV.
+Continue solo tras "Release PROD preparada en mantenimiento".
+
+PASO PROD 4 - ACTIVAR PRODUCCION
+-------------------------------
+Copie y ejecute el comando que aparece bajo
+"COPIE Y PEGUE EN ESTA VM PARA ACTIVAR PRODUCCION". Para este paquete es:
+
+sudo bash /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh activar
+
+Ejecuta activate-release.sh y sus comprobaciones. En esa MISMA orden completa
+el retorno a produccion: HUBDIGITAL_VALIDATION_MODE=false, caches, worker en la
+cola default y consumidor R2 segun la configuracion. Recupera el estado previo
+del scheduler. No hace falta ejecutar un paso adicional de "completar".
+
+El despliegue termina solamente cuando aparece:
+
+PRODUCCION_COMPLETA_OK=ID
+COMMIT_PUBLICO=__GIT_COMMIT__
+
+Revise https://labinvepn.org/version y luego el portal con Opera Neon QA,
+zoom inicial 75 %, y Ctrl+F5. El ID se calcula en la VM; no copie el ID de DEV.
+
+IMPORTANTE
+----------
+- Use el archivo __PROD_SCRIPT__ para PROD.
+  El archivo *-cloudshell-vm.sh del flujo DEV instala un entorno de DEV y no debe
+  ejecutarse en produccion.
+- El bundle publicado se conserva intacto: el nuevo .sh es el asistente externo
+  de transferencia y operacion, no modifica las fuentes identificadas del bundle.
+- Si falla un paso, detengase y conserve la salida. No ejecute el siguiente
+  comando, no borre respaldos ni cambie current manualmente.
+- Los registros y respaldos estan en:
+  /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod
+- Si los dos primeros pasos ya terminaron correctamente, continue con el comando
+  mostrado; no vuelva a empezar ni fuerce sobrescrituras de una release.
+- Para reenviar solamente el nuevo .sh cuando el bundle ya esta en /tmp de PROD,
+  puede subir solo ese archivo a Cloud Shell y ejecutar:
+  bash ./__PROD_SCRIPT__ --solo-script
+- crear-paquete-oci genera estos archivos e instrucciones; no despliega en PROD.
+
+REANUDAR EL FALLO "Could not open input file: artisan"
+----------------------------------------------------
+Si la preparacion ya fallo con ese mensaje, no repita staging ni preparar.
+Descargue la version corregida de __PROD_SCRIPT__ y sustituya
+el archivo del mismo nombre mediante Upload en Cloud Shell. En Cloud Shell:
+
+cd ~
+bash ./__PROD_SCRIPT__ --solo-script
+
+Conectese a PROD con el comando SSH mostrado y ejecute dentro de la VM:
+
+sudo bash /tmp/__PROD_SCRIPT__ reanudar
+
+Esta orden confirma que el candidato fallo por permisos y que la release
+anterior sigue en mantenimiento. Conserva los respaldos, el candidato fallido
+y sus registros, reconstruye el bundle Linux con permisos de lectura correctos
+y vuelve a ejecutar TODA la preparacion oficial con un nuevo respaldo fresco.
+No modifica las fuentes del commit ni restaura o borra la base de datos.
+Solo cuando termine con "Release PROD preparada en mantenimiento", ejecute
+el comando activar que muestre. Si la comprobacion no coincide con este fallo,
+se detiene para diagnosticar; no fuerce cambios de permisos ni de current.

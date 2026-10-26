@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# tar --no-same-permissions debe conservar lectura del runtime para www-data.
+umask 0022
+
 # Valida y prepara un candidato sin cambiar current. Tras una migración no hay
 # reversión automática de código: el destino queda en mantenimiento para que un
 # operador evalúe compatibilidad de esquema y datos.
@@ -62,6 +65,12 @@ install -d -m 0750 -o www-data -g www-data \
     "${release_dir}/storage/framework/sessions" "${release_dir}/storage/framework/views" \
     "${release_dir}/storage/logs" "${release_dir}/bootstrap/cache"
 chown -R www-data:www-data "${release_dir}/storage" "${release_dir}/bootstrap/cache"
+for runtime_file in artisan vendor/autoload.php config/app.php; do
+    runuser -u www-data -- test -r "${release_dir}/${runtime_file}" || {
+        echo "www-data no puede leer ${release_dir}/${runtime_file}; revise los permisos antes de ejecutar Artisan." >&2
+        exit 65
+    }
+done
 [[ -d /var/log/php8.4-fpm ]] || { echo 'Falta el directorio del slowlog FPM.' >&2; exit 66; }
 
 candidate_artisan() {

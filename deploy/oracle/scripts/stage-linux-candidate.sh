@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# No heredar la mascara privada de un asistente que tambien crea respaldos.
+umask 0022
+
 # Recibe un bundle fuente ya filtrado y construye/valida un artefacto Linux en
 # staging. No crea base, no lee el entorno protegido y no inicia servicios.
 if [[ "${EUID}" -ne 0 ]]; then

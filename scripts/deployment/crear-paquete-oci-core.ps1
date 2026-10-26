@@ -124,6 +124,167 @@ function Convertir-NombreSeguro {
     return $seguro.ToLowerInvariant()
 }
 
+function Get-ArchivosProduccionOci {
+    param(
+        [Parameter(Mandatory)] [string]$Identificador,
+        [Parameter(Mandatory)] [string]$ArchivoFuente,
+        [Parameter(Mandatory)] [string]$CommitFuente,
+        [Parameter(Mandatory)] [string]$ShaFuente,
+        [Parameter(Mandatory)] [string]$NombreScript
+    )
+
+    # Una sola sustitucion sirve a la validacion previa y a los archivos finales.
+    # El texto Bash permanece literal; PowerShell no interpreta sus variables.
+    $datos = [ordered]@{
+        '__PACKAGE_ID__' = $Identificador
+        '__SOURCE_ARCHIVE__' = $ArchivoFuente
+        '__GIT_COMMIT__' = $CommitFuente
+        '__SOURCE_SHA256__' = $ShaFuente
+        '__PROD_SCRIPT__' = $NombreScript
+    }
+    $archivos = @{}
+    foreach ($plantilla in @('instrucciones-produccion-oci.txt', 'produccion-vm.sh.template')) {
+        $contenido = [IO.File]::ReadAllText((Join-Path $directorioScript $plantilla), [Text.Encoding]::UTF8)
+        foreach ($marcador in $datos.Keys) { $contenido = $contenido.Replace($marcador, $datos[$marcador]) }
+        if ($contenido -match '__[A-Z0-9_]+__') { throw "Marcador sin resolver en ${plantilla}: $($matches[0])" }
+        $archivos[$plantilla] = $contenido.Replace("`r`n", "`n").TrimEnd() + "`n"
+    }
+    return @{
+        Script = $archivos['produccion-vm.sh.template']
+        Instrucciones = $archivos['instrucciones-produccion-oci.txt']
+    }
+}
+
+function Get-ScriptTransferenciaDev {
+    param(
+        [Parameter(Mandatory)] [string]$ArchivoFuente,
+        [Parameter(Mandatory)] [string]$ArchivoChecksum,
+        [Parameter(Mandatory)] [string]$ArchivoEntorno
+    )
+
+    $contenidoScript = @'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+package_name='__PACKAGE__'
+checksum_name='__CHECKSUM__'
+environment_name='__ENVIRONMENT__'
+kit_name="${package_name%.tar.gz}-cloudshell-upload.tar.gz"
+vm_host="${VM_HOST:-129.153.23.57}"
+vm_user="${VM_USER:-ubuntu}"
+key_path="${SSH_KEY_PATH:-${HOME}/ssh-key-2026-09-18.key}"
+self_path="$(readlink -f -- "$0")"
+base_dir="$(dirname -- "${self_path}")"
+stage_script='/srv/hubdigital/current/deploy/oracle/scripts/stage-linux-candidate.sh'
+
+fail() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+verify_transfer() {
+    [[ -f "${base_dir}/${package_name}" ]] || fail "Falta ${base_dir}/${package_name}"
+    [[ -f "${base_dir}/${checksum_name}" ]] || fail "Falta ${base_dir}/${checksum_name}"
+    [[ -f "${base_dir}/${environment_name}" ]] || fail "Falta ${base_dir}/${environment_name}"
+    (cd "${base_dir}" && sha256sum -c "${checksum_name}")
+}
+
+install_environment() {
+    local source="${base_dir}/${environment_name}"
+    local target='/etc/hubdigital/hubdigital.env'
+    local required=(
+        APP_KEY APP_ENV APP_URL DB_CONNECTION DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD
+        DEPOSIT_STORAGE_DRIVER R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT
+        TURNSTILE_ENABLED TURNSTILE_SITE_KEY TURNSTILE_SECRET TURNSTILE_EXPECTED_HOSTNAME
+        VAPID_SUBJECT VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY
+    )
+    grep -Eq '<[^>]+>' "${source}" && fail "${environment_name} conserva marcadores sin resolver."
+    for key in "${required[@]}"; do
+        grep -Eq "^${key}=.+$" "${source}" || fail "Falta ${key} en ${environment_name}."
+    done
+    sudo install -o root -g www-data -m 0600 "${source}" "${target}"
+    sudo /srv/hubdigital/current/deploy/oracle/scripts/configure-postgres.sh
+    sudo rm -f -- "${source}"
+    printf 'Entorno OCI completo instalado automaticamente en %s.\n' "${target}"
+}
+
+if [[ -f "${stage_script}" ]]; then
+    printf 'Entorno detectado: VM OCI.\n'
+    verify_transfer
+    install_environment
+    stage_log="/tmp/${package_name%.tar.gz}-stage.log"
+    sudo "${stage_script}" "${base_dir}/${package_name}" | tee "${stage_log}"
+
+    candidate="$(awk -F= '$1 == "candidate" {print $2}' "${stage_log}" | tail -n 1)"
+    checksum="$(awk -F= '$1 == "checksum" {print $2}' "${stage_log}" | tail -n 1)"
+    staging="$(awk -F= '$1 == "staging" {print $2}' "${stage_log}" | tail -n 1)"
+    [[ "${candidate}" =~ ^[A-Za-z0-9._-]+\.tar\.gz$ ]] || fail 'El staging no devolvio un candidato valido.'
+    [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || fail 'El staging no devolvio un checksum valido.'
+    [[ "${staging}" =~ ^/srv/hubdigital/staging/[0-9a-f]{16}$ ]] || fail 'El staging no devolvio una ruta valida.'
+    release_id="${checksum:0:16}"
+
+    rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${base_dir}/${environment_name}" "${self_path}"
+    printf '\nCandidato preparado correctamente.\n'
+    printf 'Archivos temporales enviados a /tmp eliminados.\n'
+    printf 'Registro conservado: %s\n' "${stage_log}"
+    printf 'Candidato: %s\n' "${candidate}"
+    printf 'Staging: %s\n' "${staging}"
+    printf 'Release ID previsto: %s\n\n' "${release_id}"
+    printf '\n============================================================\n'
+    printf 'COPIE Y PEGUE ESTE COMANDO EN LA VM (CON MIGRACIONES):\n'
+    printf '============================================================\n'
+    printf 'sudo env APPLY_MIGRATIONS=1 %q %q %q\n' \
+        "${staging}/deploy/oracle/scripts/deploy-release.sh" \
+        "/srv/hubdigital/staging/${candidate}" \
+        "/srv/hubdigital/staging/${candidate}.sha256"
+    printf '============================================================\n'
+    printf '\nSOLAMENTE SI EL COMANDO ANTERIOR TERMINA CON\n'
+    printf '"Release preparada en mantenimiento", active la release con:\n'
+    printf 'sudo %q %q\n' \
+        "/srv/hubdigital/releases/${release_id}/deploy/oracle/scripts/activate-release.sh" \
+        "${release_id}"
+    exit 0
+fi
+
+printf 'Entorno detectado: OCI Cloud Shell.\n'
+verify_transfer
+[[ -f "${key_path}" ]] || fail "No se encontro la clave SSH: ${key_path}"
+chmod 600 "${key_path}"
+scp -i "${key_path}" \
+    "${base_dir}/${package_name}" \
+    "${base_dir}/${checksum_name}" \
+    "${base_dir}/${environment_name}" \
+    "${self_path}" \
+    "${vm_user}@${vm_host}:/tmp/"
+
+printf '\nTransferencia a la VM completada.\n'
+cleanup_failed=0
+for transferred_file in \
+    "${base_dir}/${package_name}" \
+    "${base_dir}/${checksum_name}" \
+    "${base_dir}/${environment_name}" \
+    "${self_path}" \
+    "${HOME}/${kit_name}"; do
+    if [[ -e "${transferred_file}" ]] && ! rm -f -- "${transferred_file}"; then
+        printf 'ADVERTENCIA: no se pudo eliminar de Cloud Shell: %s\n' "${transferred_file}" >&2
+        cleanup_failed=1
+    fi
+done
+if [[ "${cleanup_failed}" -eq 0 ]]; then
+    printf 'Limpieza Cloud Shell: OK. Paquete, entorno, checksum, script y kit eliminados.\n'
+    printf 'Clave SSH conservada: %s\n' "${key_path}"
+else
+    printf 'Limpieza Cloud Shell: NO OK. Revise las advertencias anteriores.\n' >&2
+fi
+printf 'Conectate con:\nssh -i %q %q\n' "${key_path}" "${vm_user}@${vm_host}"
+printf '\nDentro de la VM verifica y ejecuta:\n'
+printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "${self_path}")"
+'@
+    $contenidoScript = $contenidoScript.Replace('__PACKAGE__', $ArchivoFuente).Replace('__CHECKSUM__', $ArchivoChecksum).Replace('__ENVIRONMENT__', $ArchivoEntorno)
+    if ($contenidoScript -match '__[A-Z0-9_]+__') { throw "Marcador sin resolver en el script DEV: $($matches[0])" }
+    return $contenidoScript.Replace("`r`n", "`n").Trim() + "`n"
+}
+
 function Invoke-TarConProgreso {
     param(
         [Parameter(Mandatory)] [string[]]$Argumentos,
@@ -397,15 +558,32 @@ if (-not $php) {
 }
 $phpPrograma = if ($php -and $php.PSObject.Properties['Source'] -and $php.Source) { $php.Source } elseif ($php) { $php.FullName } else { $null }
 $archivosPhp = @($archivosCambiados | Where-Object { $_ -match '\.php$' -and $_ -notmatch '\.blade\.php$' })
-$archivosShell = @($archivosCambiados | Where-Object { $_ -match '\.sh$' })
+$archivosShell = @($archivosCambiados | Where-Object { $_ -match '\.sh(?:\.template)?$' })
+$bashGit = Join-Path (Split-Path -Parent (Split-Path -Parent (Get-Command git.exe).Source)) 'bin\bash.exe'
+if (-not (Test-Path -LiteralPath $bashGit -PathType Leaf)) { throw 'Falta Bash de Git para comprobar los scripts de despliegue y las guias generadas.' }
 if ($archivosShell) {
-    $bashGit = Join-Path (Split-Path -Parent (Split-Path -Parent (Get-Command git.exe).Source)) 'bin\bash.exe'
-    if (-not (Test-Path -LiteralPath $bashGit -PathType Leaf)) { throw 'Falta Bash de Git para comprobar los scripts de despliegue modificados.' }
     foreach ($archivoShell in $archivosShell) {
         $rutaShell = Join-Path $Proyecto $archivoShell
         if (Test-Path -LiteralPath $rutaShell -PathType Leaf) {
             Invoke-Comando -Programa $bashGit -Argumentos @('-n', $rutaShell.Replace('\', '/')) -Descripcion "Validando sintaxis Bash: $archivoShell" -DirectorioTrabajo $Proyecto
         }
+    }
+}
+# Validar la misma generacion que se usara al empaquetar, antes del commit/push.
+# Son archivos temporales sin credenciales: Bash solo analiza, nunca los ejecuta.
+$archivosProduccionPrueba = Get-ArchivosProduccionOci -Identificador 'validacion-oci' -ArchivoFuente 'validacion-oci.tar.gz' -CommitFuente ('0' * 40) -ShaFuente ('0' * 64) -NombreScript 'validacion-oci-produccion-vm.sh'
+$scriptsGeneradosPrueba = [ordered]@{
+    DEV = (Get-ScriptTransferenciaDev -ArchivoFuente 'validacion-oci.tar.gz' -ArchivoChecksum 'validacion-oci.tar.gz.sha256' -ArchivoEntorno 'validacion-oci.env')
+    PROD = $archivosProduccionPrueba.Script
+}
+foreach ($entornoPrueba in $scriptsGeneradosPrueba.Keys) {
+    $scriptPrueba = Join-Path ([IO.Path]::GetTempPath()) ("hubdigital-guia-{0}-{1}.sh" -f [Guid]::NewGuid().ToString('N'), $entornoPrueba)
+    try {
+        [IO.File]::WriteAllText($scriptPrueba, $scriptsGeneradosPrueba[$entornoPrueba], [Text.UTF8Encoding]::new($false))
+        Invoke-Comando -Programa $bashGit -Argumentos @('-n', $scriptPrueba.Replace('\', '/')) -Descripcion "Validando el script generado y marcadores de la guia $entornoPrueba" -DirectorioTrabajo $Proyecto
+    }
+    finally {
+        if (Test-Path -LiteralPath $scriptPrueba -PathType Leaf) { Remove-Item -LiteralPath $scriptPrueba -Force }
     }
 }
 if ($php) {
@@ -438,18 +616,18 @@ if ($php) {
         if ($SinPostgres) {
             Write-Host "`n==> Suite PostgreSQL omitida mediante -SinPostgres" -ForegroundColor Yellow
         } else {
-            # Resolver primero los contratos PDF y su plazo de firma evita repetir
-            # la suite larga por un fallo del motor, sin omitir ninguna puerta.
-            Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-deposit-pdf.php', '--medir-tiempo-local') -Descripcion 'Comprobando admision PDF y firma integrada PHP/Java con medicion exclusiva en localhost' -DirectorioTrabajo $Proyecto
-            $solucionPdfComprobada = $true
+            # El contrato PDF consulta fuentes de revocacion en PostgreSQL.
+            # Se comprueba con la primera base aislada lista, antes de la suite,
+            # conservando el mismo limite local de tres segundos.
             $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
             if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
             Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
                 '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
-                '-Proyecto', $Proyecto, '-Php', $phpPrograma
+                '-Proyecto', $Proyecto, '-Php', $phpPrograma, '-ValidarPdfLocal'
             ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
             $suitePostgresCompletada = $true
             $suiteNavegadorCompletada = $true
+            $solucionPdfComprobada = $true
         }
 
     }
@@ -633,14 +811,16 @@ $nombre = "$identificadorPaquete.tar.gz"
 $nombreScriptTransferencia = "$identificadorPaquete-cloudshell-vm.sh"
 $nombreKitCloudShell = "$identificadorPaquete-cloudshell-upload.tar.gz"
 $nombreInstruccionesCloudShell = "$identificadorPaquete-INSTRUCCIONES-CLOUD-SHELL.txt"
+$nombreScriptProduccion = "$identificadorPaquete-produccion-vm.sh"
 $nombreEntornoOci = "$identificadorPaquete-hubdigital.env"
 $paquete = Join-Path $directorioPaquete $nombre
 $suma = "$paquete.sha256"
 $scriptTransferencia = Join-Path $directorioPaquete $nombreScriptTransferencia
 $kitCloudShell = Join-Path $directorioPaquete $nombreKitCloudShell
 $instruccionesCloudShell = Join-Path $directorioPaquete $nombreInstruccionesCloudShell
+$scriptProduccion = Join-Path $directorioPaquete $nombreScriptProduccion
 $entornoOci = Join-Path $directorioPaquete $nombreEntornoOci
-foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell, $entornoOci)) {
+foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell, $scriptProduccion, $entornoOci)) {
     if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
 }
 
@@ -874,126 +1054,8 @@ try {
         [Text.UTF8Encoding]::new($false)
     )
 
-    $contenidoScript = @'
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-package_name='__PACKAGE__'
-checksum_name='__CHECKSUM__'
-environment_name='__ENVIRONMENT__'
-kit_name="${package_name%.tar.gz}-cloudshell-upload.tar.gz"
-vm_host="${VM_HOST:-129.153.23.57}"
-vm_user="${VM_USER:-ubuntu}"
-key_path="${SSH_KEY_PATH:-${HOME}/ssh-key-2026-09-18.key}"
-self_path="$(readlink -f -- "$0")"
-base_dir="$(dirname -- "${self_path}")"
-stage_script='/srv/hubdigital/current/deploy/oracle/scripts/stage-linux-candidate.sh'
-
-fail() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-verify_transfer() {
-    [[ -f "${base_dir}/${package_name}" ]] || fail "Falta ${base_dir}/${package_name}"
-    [[ -f "${base_dir}/${checksum_name}" ]] || fail "Falta ${base_dir}/${checksum_name}"
-    [[ -f "${base_dir}/${environment_name}" ]] || fail "Falta ${base_dir}/${environment_name}"
-    (cd "${base_dir}" && sha256sum -c "${checksum_name}")
-}
-
-install_environment() {
-    local source="${base_dir}/${environment_name}"
-    local target='/etc/hubdigital/hubdigital.env'
-    local required=(
-        APP_KEY APP_ENV APP_URL DB_CONNECTION DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD
-        DEPOSIT_STORAGE_DRIVER R2_ACCOUNT_ID R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT
-        TURNSTILE_ENABLED TURNSTILE_SITE_KEY TURNSTILE_SECRET TURNSTILE_EXPECTED_HOSTNAME
-        VAPID_SUBJECT VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY
-    )
-    grep -Eq '<[^>]+>' "${source}" && fail "${environment_name} conserva marcadores sin resolver."
-    for key in "${required[@]}"; do
-        grep -Eq "^${key}=.+$" "${source}" || fail "Falta ${key} en ${environment_name}."
-    done
-    sudo install -o root -g www-data -m 0600 "${source}" "${target}"
-    sudo /srv/hubdigital/current/deploy/oracle/scripts/configure-postgres.sh
-    sudo rm -f -- "${source}"
-    printf 'Entorno OCI completo instalado automaticamente en %s.\n' "${target}"
-}
-
-if [[ -f "${stage_script}" ]]; then
-    printf 'Entorno detectado: VM OCI.\n'
-    verify_transfer
-    install_environment
-    stage_log="/tmp/${package_name%.tar.gz}-stage.log"
-    sudo "${stage_script}" "${base_dir}/${package_name}" | tee "${stage_log}"
-
-    candidate="$(awk -F= '$1 == "candidate" {print $2}' "${stage_log}" | tail -n 1)"
-    checksum="$(awk -F= '$1 == "checksum" {print $2}' "${stage_log}" | tail -n 1)"
-    staging="$(awk -F= '$1 == "staging" {print $2}' "${stage_log}" | tail -n 1)"
-    [[ "${candidate}" =~ ^[A-Za-z0-9._-]+\.tar\.gz$ ]] || fail 'El staging no devolvio un candidato valido.'
-    [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || fail 'El staging no devolvio un checksum valido.'
-    [[ "${staging}" =~ ^/srv/hubdigital/staging/[0-9a-f]{16}$ ]] || fail 'El staging no devolvio una ruta valida.'
-    release_id="${checksum:0:16}"
-
-    rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${base_dir}/${environment_name}" "${self_path}"
-    printf '\nCandidato preparado correctamente.\n'
-    printf 'Archivos temporales enviados a /tmp eliminados.\n'
-    printf 'Registro conservado: %s\n' "${stage_log}"
-    printf 'Candidato: %s\n' "${candidate}"
-    printf 'Staging: %s\n' "${staging}"
-    printf 'Release ID previsto: %s\n\n' "${release_id}"
-    printf '\n============================================================\n'
-    printf 'COPIE Y PEGUE ESTE COMANDO EN LA VM (CON MIGRACIONES):\n'
-    printf '============================================================\n'
-    printf 'sudo env APPLY_MIGRATIONS=1 %q %q %q\n' \
-        "${staging}/deploy/oracle/scripts/deploy-release.sh" \
-        "/srv/hubdigital/staging/${candidate}" \
-        "/srv/hubdigital/staging/${candidate}.sha256"
-    printf '============================================================\n'
-    printf '\nSOLAMENTE SI EL COMANDO ANTERIOR TERMINA CON\n'
-    printf '"Release preparada en mantenimiento", active la release con:\n'
-    printf 'sudo %q %q\n' \
-        "/srv/hubdigital/releases/${release_id}/deploy/oracle/scripts/activate-release.sh" \
-        "${release_id}"
-    exit 0
-fi
-
-printf 'Entorno detectado: OCI Cloud Shell.\n'
-verify_transfer
-[[ -f "${key_path}" ]] || fail "No se encontro la clave SSH: ${key_path}"
-chmod 600 "${key_path}"
-scp -i "${key_path}" \
-    "${base_dir}/${package_name}" \
-    "${base_dir}/${checksum_name}" \
-    "${base_dir}/${environment_name}" \
-    "${self_path}" \
-    "${vm_user}@${vm_host}:/tmp/"
-
-printf '\nTransferencia a la VM completada.\n'
-cleanup_failed=0
-for transferred_file in \
-    "${base_dir}/${package_name}" \
-    "${base_dir}/${checksum_name}" \
-    "${base_dir}/${environment_name}" \
-    "${self_path}" \
-    "${HOME}/${kit_name}"; do
-    if [[ -e "${transferred_file}" ]] && ! rm -f -- "${transferred_file}"; then
-        printf 'ADVERTENCIA: no se pudo eliminar de Cloud Shell: %s\n' "${transferred_file}" >&2
-        cleanup_failed=1
-    fi
-done
-if [[ "${cleanup_failed}" -eq 0 ]]; then
-    printf 'Limpieza Cloud Shell: OK. Paquete, entorno, checksum, script y kit eliminados.\n'
-    printf 'Clave SSH conservada: %s\n' "${key_path}"
-else
-    printf 'Limpieza Cloud Shell: NO OK. Revise las advertencias anteriores.\n' >&2
-fi
-printf 'Conectate con:\nssh -i %q %q\n' "${key_path}" "${vm_user}@${vm_host}"
-printf '\nDentro de la VM verifica y ejecuta:\n'
-printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "${self_path}")"
-'@
-    $contenidoScript = $contenidoScript.Replace('__PACKAGE__', $nombre).Replace('__CHECKSUM__', [IO.Path]::GetFileName($suma)).Replace('__ENVIRONMENT__', $nombreEntornoOci)
-    [IO.File]::WriteAllText($scriptTransferencia, ($contenidoScript.TrimStart() + "`n"), [Text.UTF8Encoding]::new($false))
+    $contenidoScript = Get-ScriptTransferenciaDev -ArchivoFuente $nombre -ArchivoChecksum ([IO.Path]::GetFileName($suma)) -ArchivoEntorno $nombreEntornoOci
+    [IO.File]::WriteAllText($scriptTransferencia, $contenidoScript, [Text.UTF8Encoding]::new($false))
 
     $hash = (Get-FileHash -LiteralPath $paquete -Algorithm SHA256).Hash.ToLowerInvariant()
     $hashScript = (Get-FileHash -LiteralPath $scriptTransferencia -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -1038,7 +1100,7 @@ antes de activar la release.
 
 ARCHIVOS GENERADOS EN WINDOWS
 -----------------------------
-La carpeta de este paquete contiene cinco archivos:
+La carpeta de este paquete contiene seis archivos:
 
 1. $nombreKitCloudShell
    Es el unico archivo que debe subir manualmente a Cloud Shell. Contiene el
@@ -1052,6 +1114,9 @@ La carpeta de este paquete contiene cinco archivos:
    Automatiza Cloud Shell y el staging dentro de la VM.
 5. $nombreInstruccionesCloudShell
    Es este manual; no necesita subirlo.
+6. $nombreScriptProduccion
+   Asistente exclusivo de PROD. Se usa junto al bundle fuente segun el apartado
+   de produccion al final de este manual; no esta dentro del kit DEV.
 
 REQUISITOS PREVIOS
 ------------------
@@ -1252,6 +1317,9 @@ REGLAS IMPORTANTES
 - No borre la clave SSH ni la release activa.
 - Ante cualquier NO OK, detengase y revise la causa antes de reintentar.
 "@
+    $archivosProduccion = Get-ArchivosProduccionOci -Identificador $identificadorPaquete -ArchivoFuente $nombre -CommitFuente $commit -ShaFuente $hash -NombreScript $nombreScriptProduccion
+    [IO.File]::WriteAllText($scriptProduccion, $archivosProduccion.Script, [Text.UTF8Encoding]::new($false))
+    $contenidoInstruccionesCloudShell = $contenidoInstruccionesCloudShell.TrimEnd() + "`r`n`r`n" + $archivosProduccion.Instrucciones.Trim()
     [IO.File]::WriteAllText(
         $instruccionesCloudShell,
         ($contenidoInstruccionesCloudShell.Trim() + "`r`n"),
@@ -1286,8 +1354,10 @@ Write-Host "Directorio: $directorioPaquete"
 Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"
 Write-Host "Script:    $scriptTransferencia"
+Write-Host "Script PROD: $scriptProduccion"
 Write-Host "Kit unico: $kitCloudShell"
 Write-Host "Guia:      $instruccionesCloudShell"
+Write-Host "Produccion: siga el apartado PROD de la guia; usa el bundle fuente y $nombreScriptProduccion."
 Write-Host "SHA-256:   $hash"
 Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"

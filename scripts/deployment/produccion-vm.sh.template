@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+trap '' PIPE
+umask 077
+
+package='__PACKAGE_ID__'
+commit='__GIT_COMMIT__'
+archive_name='__SOURCE_ARCHIVE__'
+source_sha='__SOURCE_SHA256__'
+script_name='__PROD_SCRIPT__'
+self_path="$(readlink -f -- "$0")"
+base_dir="$(dirname -- "$self_path")"
+action="${1:-staging}"
+fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+if [[ ! -f /srv/hubdigital/current/artisan ]]; then
+    # Cloud Shell transfiere solo codigo y este asistente, nunca un entorno DEV.
+    key_path="${SSH_KEY_PATH:-${HOME}/equiframe-dw-a1-2026-09-30.key}"
+    [[ -f "$key_path" ]] || fail "Falta la clave privada de PROD: $key_path"
+    chmod 600 "$key_path"
+    case "$action" in
+        staging)
+            [[ -f "$base_dir/$archive_name" ]] || fail "Falta $archive_name junto al script."
+            [[ "$(sha256sum "$base_dir/$archive_name" | awk '{print $1}')" == "$source_sha" ]] || fail 'SHA-256 del bundle distinto del esperado.'
+            scp -i "$key_path" -o IdentitiesOnly=yes \
+                "$base_dir/$archive_name" "$self_path" ubuntu@150.136.219.112:/tmp/
+            ;;
+        --solo-script)
+            scp -i "$key_path" -o IdentitiesOnly=yes "$self_path" ubuntu@150.136.219.112:/tmp/
+            ;;
+        *) fail 'En Cloud Shell use el script sin argumentos o con --solo-script.' ;;
+    esac
+    printf '\nTransferencia a PROD completada. Conectese con:\n'
+    printf 'ssh -i %q -o IdentitiesOnly=yes ubuntu@150.136.219.112\n' "$key_path"
+    printf '\nDentro de PROD ejecute:\ncd /tmp\nbash ./%s\n' "$script_name"
+    exit 0
+fi
+
+if [[ "$EUID" -ne 0 ]]; then exec sudo bash "$self_path" "$action"; fi
+trap 'printf "ERROR en %s. No continue; conserve la salida y los respaldos.\n" "$action" >&2' ERR
+case "$action" in staging|preparar|activar|reanudar) ;; *) fail 'Use staging, preparar, activar o reanudar.' ;; esac
+
+env_file=/etc/hubdigital/hubdigital.env
+backup="/var/backups/hubdigital/deploy-${package}-prod"
+context="$backup/candidate.json"
+read_env() { sed -n "s/^$1=//p" "$env_file" | tail -n 1 | tr -d '\r'; }
+[[ -r "$env_file" ]]
+app_url="$(read_env APP_URL)"
+[[ "${app_url%/}" == https://labinvepn.org && "$(read_env TURNSTILE_EXPECTED_HOSTNAME)" == labinvepn.org ]]
+[[ "$(grep -c '^HUBDIGITAL_VALIDATION_MODE=' "$env_file")" == 1 ]]
+current="$(readlink -f /srv/hubdigital/current)"
+[[ "$current" == /srv/hubdigital/releases/* && -f "$current/artisan" ]]
+if systemctl is-active --quiet cloudflared-hubdigital.service; then fail 'Tunnel activo; revisar antes de continuar.'; fi
+artisan_at() {
+    local directory="$1"; shift
+    systemd-run --quiet --wait --collect --pipe --property=User=www-data --property=Group=www-data \
+        --property=EnvironmentFile="$env_file" --working-directory="$directory" /usr/bin/php8.4 artisan "$@"
+}
+stop_writers() {
+    for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.timer hubdigital-schedule.service; do
+        if systemctl cat "$unit" >/dev/null 2>&1; then systemctl stop "$unit"; fi
+    done
+}
+ensure_backup() {
+    [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == false ]]
+    if [[ -e "$backup" ]]; then
+        [[ -f "$backup/BACKUP_OK" && -s "$backup/database.dump" && -s "$backup/hubdigital.env" ]]
+        [[ -s "$backup/services-before.txt" && -s "$backup/scheduler-enabled-before.txt" ]]
+        [[ "$current" == "$(cat "$backup/previous-current")" ]]
+        [[ "$(sed -n 's/^HUBDIGITAL_VALIDATION_MODE=//p' "$backup/hubdigital.env" | tr -d '\r')" == false ]]
+        printf 'Respaldo existente conservado: %s\n' "$backup"
+        return
+    fi
+    previous_commit="$(jq -er .git_commit "$current/SOURCE-METADATA.json")"
+    [[ "$previous_commit" =~ ^[0-9a-f]{40}$ && "$previous_commit" != "$commit" ]]
+    db_name="$(read_env DB_DATABASE)"
+    [[ "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]{0,44}$ ]]
+    install -d -m 0700 "$backup"
+    printf '%s\n' "$current" > "$backup/previous-current"
+    install -m 0600 "$env_file" "$backup/hubdigital.env"
+    cp -a /etc/nginx/sites-available/hubdigital "$backup/nginx-hubdigital"
+    cp -a "$current" "$backup/previous-release"
+    for unit in hubdigital-worker.service hubdigital-r2-signatures.service hubdigital-schedule.service \
+        hubdigital-schedule.timer php8.4-fpm.service nginx.service; do
+        printf '%s=%s\n' "$unit" "$(systemctl is-active "$unit" || true)" >> "$backup/services-before.txt"
+    done
+    printf '%s\n' "$(systemctl is-enabled hubdigital-schedule.timer 2>/dev/null || true)" > "$backup/scheduler-enabled-before.txt"
+    runuser -u postgres -- pg_dump --format=custom --dbname="$db_name" > "$backup/database.dump"
+    chmod 0600 "$backup/database.dump"
+    [[ -s "$backup/database.dump" ]]
+    pg_restore --list "$backup/database.dump" > "$backup/database-contents.txt"
+    touch "$backup/BACKUP_OK"
+    printf 'RESPALDO_OK=%s\n' "$backup"
+}
+load_candidate() {
+    [[ -s "$context" && "$(jq -er .git_commit "$context")" == "$commit" ]]
+    release_id="$(jq -er .release_id "$context")"
+    candidate="$(jq -er .candidate "$context")"
+    [[ "$release_id" =~ ^[0-9a-f]{16}$ && "$candidate" =~ ^hubdigital-${commit}-[0-9a-f]{12}\.tar\.gz$ ]]
+    stage_dir="/srv/hubdigital/staging/$release_id"
+    release_dir="/srv/hubdigital/releases/$release_id"
+    state_file="/var/lib/hubdigital/migration/release-$release_id.json"
+}
+
+stage_production() {
+    [[ "$(sha256sum "$backup/source.tar.gz" | awk '{print $1}')" == "$source_sha" ]]
+    tar -xOzf "$backup/source.tar.gz" deploy/oracle/scripts/stage-linux-candidate.sh > "$backup/stage-linux-candidate.sh"
+    chmod 0700 "$backup/stage-linux-candidate.sh"
+    # Los respaldos siguen privados con 077. Solo el runtime debe ser legible
+    # por www-data: tar --no-same-permissions hereda la mascara de este hijo.
+    (umask 0022; bash "$backup/stage-linux-candidate.sh" "$backup/source.tar.gz") 2>&1 | tee "$backup/staging.log"
+    candidate="$(awk -F= '$1 == "candidate" {print $2}' "$backup/staging.log" | tail -n 1)"
+    checksum="$(awk -F= '$1 == "checksum" {print $2}' "$backup/staging.log" | tail -n 1)"
+    stage_dir="$(awk -F= '$1 == "staging" {print $2}' "$backup/staging.log" | tail -n 1)"
+    [[ "$checksum" =~ ^[0-9a-f]{64}$ ]]
+    release_id="${checksum:0:16}"
+    [[ "$stage_dir" == "/srv/hubdigital/staging/$release_id" && "$candidate" =~ ^hubdigital-${commit}-[0-9a-f]{12}\.tar\.gz$ ]]
+    [[ "$(jq -er .git_commit "$stage_dir/SOURCE-METADATA.json")" == "$commit" ]]
+    for runtime_file in artisan vendor/autoload.php config/app.php; do
+        runuser -u www-data -- test -r "$stage_dir/$runtime_file" || fail "www-data no puede leer $stage_dir/$runtime_file"
+    done
+    jq -n --arg commit "$commit" --arg candidate "$candidate" --arg id "$release_id" \
+        '{git_commit:$commit,candidate:$candidate,release_id:$id}' > "$context"
+    chmod 0600 "$context"
+}
+
+case "$action" in
+staging)
+    [[ -f "$base_dir/$archive_name" ]]
+    ensure_backup
+    [[ ! -e "$context" && ! -e "$backup/source.tar.gz" ]]
+    install -m 0600 "$base_dir/$archive_name" "$backup/source.tar.gz"
+    install -m 0700 "$self_path" "$backup/operar-produccion.sh"
+    stage_production
+    printf '\nCandidato PROD preparado correctamente: %s\n' "$release_id"
+    printf '\nCOPIE Y PEGUE EN ESTA VM (CON MIGRACIONES):\n'
+    printf 'sudo bash %q preparar\n' "$backup/operar-produccion.sh"
+    ;;
+preparar)
+    load_candidate
+    [[ -f "$backup/BACKUP_OK" && "$current" == "$(cat "$backup/previous-current")" ]]
+    [[ ! -e "$release_dir" ]]
+    if [[ "${2:-}" == --recuperacion-permisos ]]; then
+        [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true && -f "$current/storage/framework/down" ]]
+        grep -Fxq "$release_id" "$backup/PERMISSIONS_RECOVERY_READY"
+        fresh_dump="$backup/database-before-retry-$release_id.dump"
+    else
+        [[ -z "${2:-}" && "$(read_env HUBDIGITAL_VALIDATION_MODE)" == false ]]
+        fresh_dump="$backup/database-before-activation.dump"
+    fi
+    [[ ! -e "$fresh_dump" ]]
+    [[ "$(read_env HUBDIGITAL_ALLOW_AUTH_EMAILS)" == true && "$(read_env MAIL_MAILER)" == smtp ]]
+    [[ "$(jq -er .git_commit "$stage_dir/SOURCE-METADATA.json")" == "$commit" ]]
+    db_name="$(read_env DB_DATABASE)"
+    [[ "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]{0,44}$ ]]
+    artisan_at "$current" down --retry=60 --no-interaction
+    stop_writers
+    runuser -u postgres -- pg_dump --format=custom --dbname="$db_name" > "$fresh_dump"
+    chmod 0600 "$fresh_dump"
+    [[ -s "$fresh_dump" ]]
+    pg_restore --list "$fresh_dump" > "$fresh_dump.contents.txt"
+    sed -i 's/^HUBDIGITAL_VALIDATION_MODE=.*/HUBDIGITAL_VALIDATION_MODE=true/' "$env_file"
+    [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true ]]
+    (umask 0022; env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org APPLY_MIGRATIONS=1 \
+        "$stage_dir/deploy/oracle/scripts/deploy-release.sh" \
+        "/srv/hubdigital/staging/$candidate" "/srv/hubdigital/staging/$candidate.sha256") \
+        2>&1 | tee "$backup/preparar.log"
+    [[ "$(jq -er .estado "$state_file")" == validado_en_mantenimiento ]]
+    touch "$backup/PREPARED_OK"
+    printf '\nRelease PROD preparada en mantenimiento: %s\n' "$release_id"
+    printf '\nCOPIE Y PEGUE EN ESTA VM PARA ACTIVAR PRODUCCION:\n'
+    printf 'sudo bash %q activar\n' "$backup/operar-produccion.sh"
+    ;;
+reanudar)
+    # Solo recupera el fallo anterior a Artisan causado por permisos privados.
+    # No restaura la base ni altera las fuentes del commit publicado.
+    load_candidate
+    [[ -f "$backup/BACKUP_OK" && -s "$backup/database-before-activation.dump" ]]
+    [[ "$current" == "$(cat "$backup/previous-current")" && -f "$current/storage/framework/down" ]]
+    [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true && ! -e "$state_file" ]]
+    [[ ! -e "$backup/PREPARED_OK" && ! -e "$backup/ACTIVATED_OK" && ! -e "$backup/PRODUCTION_OK" ]]
+    [[ -f "$release_dir/artisan" && "$(jq -er .git_commit "$release_dir/SOURCE-METADATA.json")" == "$commit" ]]
+    grep -Fxq 'Could not open input file: artisan' "$backup/preparar.log"
+    if runuser -u www-data -- test -r "$release_dir/artisan"; then
+        fail 'Artisan ya es legible; el fallo no coincide con esta recuperacion. Conserve la salida.'
+    fi
+    incident="$backup/incidente-permisos-$release_id"
+    [[ ! -e "$incident" ]]
+    install -d -m 0700 "$incident"
+    cp -p "$context" "$backup/preparar.log" "$backup/staging.log" "$incident/"
+    cp -p "/srv/hubdigital/staging/$candidate" "/srv/hubdigital/staging/$candidate.sha256" "$incident/"
+    stat -c '%a %U:%G %n' "$release_dir/artisan" "$release_dir/bootstrap" "$release_dir/vendor" > "$incident/permisos.txt"
+    stop_writers
+    install -m 0700 "$self_path" "$backup/operar-produccion.sh"
+    stage_production
+    [[ ! -e "/srv/hubdigital/releases/$release_id" ]]
+    printf '%s\n' "$release_id" > "$backup/PERMISSIONS_RECOVERY_READY"
+    printf '\nCandidato reconstruido con permisos de runtime. Reanudando la preparacion completa...\n'
+    exec bash "$backup/operar-produccion.sh" preparar --recuperacion-permisos
+    ;;
+activar)
+    load_candidate
+    [[ -f "$backup/PREPARED_OK" && ! -e "$backup/PRODUCTION_OK" ]]
+    [[ "$current" == "$(cat "$backup/previous-current")" ]]
+    [[ "$(jq -er .git_commit "$release_dir/SOURCE-METADATA.json")" == "$commit" ]]
+    env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org \
+        "$release_dir/deploy/oracle/scripts/activate-release.sh" "$release_id" \
+        2>&1 | tee "$backup/activar.log"
+    [[ "$(readlink -f /srv/hubdigital/current)" == "$release_dir" ]]
+    [[ "$(jq -er .estado "$state_file")" == activo_local_validacion ]]
+    touch "$backup/ACTIVATED_OK"
+    # Completa PROD en esta misma orden; no obliga a un cuarto comando en la VM.
+    [[ "$(sed -n 's/^HUBDIGITAL_VALIDATION_MODE=//p' "$backup/hubdigital.env" | tr -d '\r')" == false ]]
+    [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true ]]
+    stop_writers
+    sed -i 's/^HUBDIGITAL_VALIDATION_MODE=.*/HUBDIGITAL_VALIDATION_MODE=false/' "$env_file"
+    artisan_at "$release_dir" config:clear
+    artisan_at "$release_dir" optimize
+    systemctl restart php8.4-fpm.service hubdigital-worker.service
+    if [[ "$(read_env DEPOSIT_SIGNATURE_ASYNC)" == true ]]; then
+        systemctl restart hubdigital-r2-signatures.service
+        systemctl is-active --quiet hubdigital-r2-signatures.service
+    fi
+    case "$(cat "$backup/scheduler-enabled-before.txt")" in
+        enabled) systemctl enable hubdigital-schedule.timer ;;
+        enabled-runtime) systemctl enable --runtime hubdigital-schedule.timer ;;
+    esac
+    if grep -Fxq 'hubdigital-schedule.timer=active' "$backup/services-before.txt"; then
+        systemctl start hubdigital-schedule.timer
+        systemctl is-active --quiet hubdigital-schedule.timer
+    fi
+    for unit in hubdigital-worker.service php8.4-fpm.service nginx.service hubdigital-ete.service hubdigital-signature.service; do
+        systemctl is-active --quiet "$unit"
+        printf 'SERVICIO_OK=%s\n' "$unit"
+    done
+    [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == false ]]
+    for endpoint in / /depositos /portal/catalogo; do
+        status="$(curl --silent --show-error --location --max-time 45 --output /dev/null \
+            --write-out '%{http_code}' "https://labinvepn.org$endpoint")"
+        [[ "$status" == 200 ]]
+        printf 'HTTP_OK=%s:%s\n' "$endpoint" "$status"
+    done
+    curl --fail --silent --show-error --max-time 30 -H 'Cache-Control: no-cache' \
+        https://labinvepn.org/version > "$backup/version-publica.json"
+    [[ "$(jq -er .commit "$backup/version-publica.json")" == "$commit" ]]
+    jq -n --arg commit "$commit" --arg id "$release_id" --arg completed "$(date --utc +%FT%TZ)" \
+        '{environment:"prod",git_commit:$commit,release_id:$id,validation_mode:false,completed_at_utc:$completed}' \
+        > "/var/lib/hubdigital/migration/production-activation-$release_id.json"
+    chmod 0600 "/var/lib/hubdigital/migration/production-activation-$release_id.json"
+    touch "$backup/PRODUCTION_OK"
+    printf '\nPRODUCCION_COMPLETA_OK=%s\nCOMMIT_PUBLICO=%s\nRESPALDO=%s\n' "$release_id" "$commit" "$backup"
+    ;;
+esac
