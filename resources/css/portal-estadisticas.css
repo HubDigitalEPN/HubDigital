@@ -492,15 +492,16 @@
 .collection-table-scroll:focus-visible { outline:2px solid #17699b; outline-offset:-2px; }
 @media(max-width:900px) { .collection-table-hint { display:block; } }
 .collection-image-dialog { width:min(72rem,96vw); max-width:96vw; max-height:92dvh; margin:auto; padding:1rem; border:1px solid #b4cad9; border-radius:.6rem; background:#fff; color:#18354d; overflow:auto; overscroll-behavior:contain; }
-.collection-image-dialog[open] { display:grid; grid-template-rows:auto minmax(0,1fr) auto; gap:.75rem; }
+.collection-image-dialog[open] { display:flex; flex-direction:column; gap:.75rem; }
 .collection-image-dialog::backdrop { background:#102d48db; }
 .collection-image-dialog header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
 .collection-image-dialog h2 { margin:0; font:700 1.05rem Georgia,serif; }
 .collection-image-dialog header > div { display:flex; flex:none; align-items:center; gap:.5rem; }
 .collection-image-dialog header a, .collection-image-dialog header button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-height:2.5rem; border:1px solid #b4cad9; border-radius:.3rem; padding:.45rem .65rem; background:#f3f7fa; color:#155d91; font-size:.8rem; }
 .collection-image-dialog header a:focus-visible, .collection-image-dialog header button:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
-.collection-image-dialog > img { justify-self:center; display:block; min-height:0; max-width:100%; max-height:calc(92dvh - 10rem); object-fit:contain; }
+.collection-image-dialog > img { align-self:center; display:block; flex:none; min-height:0; max-width:100%; max-height:62dvh; object-fit:contain; }
 .collection-image-dialog > p { margin:0; text-align:center; font-size:.8rem; overflow-wrap:anywhere; }
+.collection-image-dialog > .collection-photo-view { text-align:left; justify-self:start; font-weight:700; }
 .collection-card-pagination { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:1rem; margin:0 0 1.5rem; font-size:.8rem; color:#506b80; }
 .collection-card-pagination button { border:1px solid #b4cad9; border-radius:.3rem; padding:.6rem 1rem; background:#fff; color:#155d91; }
 .collection-card-pagination button:disabled { opacity:.45; }

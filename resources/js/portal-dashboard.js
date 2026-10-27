@@ -398,12 +398,16 @@ const registrarDashboard = () => {
         url: '',
         alt: '',
         filename: 'imagen',
+        atribuciones: {},
+        vista: '',
         invocador: null,
         abrir(datos) {
             this.invocador = datos.invocador || document.activeElement;
             this.url = datos.url;
             this.alt = datos.alt || '';
             this.filename = nombreDescargaImagen(datos.nombreArchivo);
+            this.atribuciones = datos.atribuciones || {};
+            this.vista = datos.vista || this.atribuciones.view || '';
             if (!this.$el.open) this.$el.showModal();
             this.$nextTick(() => this.$refs.cerrar.focus({preventScroll: true}));
         },

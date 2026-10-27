@@ -25,7 +25,8 @@ final class StorageImagenesAdapter implements AlmacenamientoImagenesPort
         $ruta = self::CARPETA.'/'.Str::uuid().'-'.$nombreOriginal;
 
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contenido) ?: 'application/octet-stream';
-        if (! str_starts_with($mime, 'image/')) {
+        if (! in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'], true)
+            || @getimagesizefromstring($contenido) === false) {
             throw new \InvalidArgumentException('El archivo de divulgacion debe ser una imagen valida.');
         }
         $this->almacenamiento->guardarContenido($ruta, $contenido, $mime);

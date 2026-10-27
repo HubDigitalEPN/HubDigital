@@ -8,6 +8,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Modules\CatalogoPublico\Application\UseCases\ConsultarGaleriaTaxon\ConsultarGaleriaTaxonHandler;
@@ -16,6 +17,8 @@ use Modules\CatalogoPublico\Application\UseCases\SeleccionarImagenPorDefecto\Sel
 use Modules\CatalogoPublico\Application\UseCases\SeleccionarImagenPorDefecto\SeleccionarImagenPorDefectoInput;
 use Modules\CatalogoPublico\Application\UseCases\SubirImagenEspecimen\SubirImagenEspecimenHandler;
 use Modules\CatalogoPublico\Application\UseCases\SubirImagenEspecimen\SubirImagenEspecimenInput;
+use Modules\CatalogoPublico\Domain\ValueObjects\AtribucionImagen;
+use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\ImagenTaxonomicaEloquentModel;
 
 #[Layout('layouts.app', params: ['title' => 'Imágenes por nivel taxonómico'])]
 final class GestionImagenesTaxonomicas extends Component
@@ -33,6 +36,16 @@ final class GestionImagenesTaxonomicas extends Component
     public string $nombreAutor = '';
 
     public string $apellidoAutor = '';
+
+    public string $photographer = '';
+    public string $license = '';
+    public string $licenseHolder = '';
+    public string $licenseInstitution = '';
+    public string $contact = '';
+    public string $viewLabel = '';
+
+    #[Locked]
+    public ?string $imagenEditada = null;
 
     public string $vista = 'L';
 
@@ -66,6 +79,7 @@ final class GestionImagenesTaxonomicas extends Component
             ->orderBy('te.occurrence_id')
             ->value('te.occurrence_id');
         $this->reset('mensaje', 'error');
+        $this->cancelarEdicion();
     }
 
     public function subir(SubirImagenEspecimenHandler $handler): void
@@ -86,6 +100,10 @@ final class GestionImagenesTaxonomicas extends Component
             return;
         }
 
+        $this->validarAtribuciones();
+        $this->validate(['imagen' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,avif', 'max:25600']]);
+        abort_unless($this->baseDivulgados()->where('te.occurrence_id', $this->occurrenceSeleccionado)->exists(), 422);
+
         try {
             $salida = $handler->handle(new SubirImagenEspecimenInput(
                 occurrenceID: $this->occurrenceSeleccionado,
@@ -94,13 +112,70 @@ final class GestionImagenesTaxonomicas extends Component
                 nombreAutor: $this->nombreAutor,
                 apellidoAutor: $this->apellidoAutor,
                 vistaSufijo: $vistaSufijo,
+                atribucion: $this->atribucion(AtribucionImagen::vistaDesdeSufijo($vistaSufijo)),
             ));
             $this->reset('imagen', 'nombreAutor', 'apellidoAutor', 'sufijoPersonalizado');
+            $this->cancelarEdicion();
             $this->vista = 'L';
-            $this->mensaje = "Imagen «{$salida->nombreArchivo}» subida y marcada con «{$salida->autor}».";
+            $this->mensaje = "Imagen «{$salida->nombreArchivo}» subida con sus atribuciones, sin añadir texto a la fotografía.";
         } catch (\Throwable $e) {
             $this->error = $e->getMessage();
         }
+    }
+
+    private function validarAtribuciones(): void
+    {
+        $reglas = [];
+        foreach (['photographer', 'license', 'licenseHolder', 'licenseInstitution', 'contact'] as $campo) {
+            $reglas[$campo] = ['nullable', 'string', 'max:255', 'not_regex:/[\x00-\x1F\x7F]/u'];
+        }
+        $reglas['viewLabel'] = ['nullable', 'string', 'max:80', 'not_regex:/[\x00-\x1F\x7F]/u'];
+        $this->validate($reglas);
+    }
+
+    private function atribucion(string $vista = ''): AtribucionImagen
+    {
+        return new AtribucionImagen(trim($this->photographer), trim($this->license), trim($this->licenseHolder),
+            trim($this->licenseInstitution), trim($this->contact), trim($this->viewLabel) ?: $vista);
+    }
+
+    public function editarAtribuciones(string $id): void
+    {
+        $foto = $this->fotoEditable($id);
+        $this->imagenEditada = $id;
+        $this->photographer = $foto->photographer ?? $foto->autor_nombre_completo;
+        $this->license = $foto->license ?? '';
+        $this->licenseHolder = $foto->license_holder ?? '';
+        $this->licenseInstitution = $foto->license_institution ?? '';
+        $this->contact = $foto->contact ?? '';
+        $this->viewLabel = $foto->view ?? AtribucionImagen::vistaDesdeNombre($foto->nombre_original);
+        $this->resetValidation();
+        $this->reset('mensaje', 'error');
+    }
+
+    public function guardarAtribuciones(): void
+    {
+        abort_if($this->imagenEditada === null, 422);
+        $foto = $this->fotoEditable($this->imagenEditada);
+        $this->validarAtribuciones();
+        // No reescribe autor_nombre/apellido históricos, archivo, huella ni portada.
+        $foto->update($this->atribucion()->toArray());
+        $this->cancelarEdicion();
+        $this->mensaje = 'Atribuciones actualizadas.';
+    }
+
+    public function cancelarEdicion(): void
+    {
+        $this->reset('imagenEditada', 'photographer', 'license', 'licenseHolder', 'licenseInstitution', 'contact', 'viewLabel');
+        $this->resetValidation();
+    }
+
+    private function fotoEditable(string $id): ImagenTaxonomicaEloquentModel
+    {
+        abort_unless(\Illuminate\Support\Str::isUuid($id), 404);
+        $foto = ImagenTaxonomicaEloquentModel::query()->findOrFail($id);
+        abort_unless($this->baseDivulgados()->where('te.occurrence_id', $foto->occurrence_id)->exists(), 404);
+        return $foto;
     }
 
     private function resolverVistaSufijo(): ?string

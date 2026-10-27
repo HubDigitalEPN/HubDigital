@@ -9,6 +9,7 @@
             <button type="button" x-ref="cerrar" autofocus x-on:click="cerrar()" aria-label="Cerrar fotografía" title="Cerrar fotografía (Esc)"><flux:icon name="x-mark" class="size-5" /></button>
         </div>
     </header>
+    <p class="collection-photo-view" x-show="vista" x-text="vista"></p>
     <img :src="url" :alt="alt" decoding="async" />
-
+    <x-catalogopublico::atribuciones-imagen :dinamico="true" />
 </dialog>

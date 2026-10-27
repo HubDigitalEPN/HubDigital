@@ -16,7 +16,10 @@ it('el visor mantiene los controles accesibles y reserva la descarga a cuentas h
             ->and($dom->query('//dialog//h2[@id="'.$dialogo->getAttribute('aria-labelledby').'"]')->length)->toBe(1)
             ->and($dom->query('//dialog//button[@type="button" and @aria-label="Cerrar fotografía" and @autofocus]')->length)->toBe(1)
             ->and($dom->query('//dialog//a[@aria-label="Descargar fotografía"]')->length)->toBe($autorizado ? 1 : 0)
-            ->and($dom->query('//dialog/img')->length)->toBe(1);
+            ->and($dom->query('//dialog/img')->length)->toBe(1)
+            ->and($dom->query('//dialog/img/following-sibling::section[contains(@class,"photo-attributions")]')->length)->toBe(1)
+            ->and($dom->query('//dialog/p[contains(@class,"collection-photo-view") and @x-text="vista"]')->length)->toBe(1)
+            ->and($dom->query('//dialog//dt')->length)->toBe(5);
     } finally {
         libxml_clear_errors();
         libxml_use_internal_errors($erroresAnteriores);

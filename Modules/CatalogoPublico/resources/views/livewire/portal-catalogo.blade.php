@@ -149,7 +149,7 @@
         <section class="portal-records-paged mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" aria-label="Registros del catálogo">
             <header class="mb-4"><h1 class="font-display text-2xl font-bold text-blue-navy">{{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}</h1>
                 <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</p></header>
-            <x-grid-frame label="Registros del catálogo" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
+            <x-grid-frame label="Registros del catálogo" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :page-sizes="[15, 25, 50, 100, 500, 1000]" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
                 <x-slot:search>
                     <form class="hub-ig-search" x-data="{campo: 'filtroCatalogo', texto: ''}" x-on:submit.prevent="$wire.aplicarBusquedaTexto(campo, texto)">
                         <select x-model="campo" aria-label="Columna de búsqueda"><option value="filtroCatalogo">N.º catálogo</option><option value="filtroTaxon">Taxón</option></select>
@@ -214,12 +214,12 @@
                         $numEspecimenes = $hijo['total'] ?? $conteos[$clave] ?? 0;
                     @endphp
                     <article class="rounded-lg border border-border bg-surface p-4 shadow-sm transition-all hover:border-science-blue/40 hover:shadow-md">
-                        <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
+                        <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" :datos="$datosPortadas[$hijo['nivel'].':'.$hijo['taxon']] ?? []" />
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="truncate font-serif text-lg italic text-text-primary transition-colors hover:text-science-blue">{{ $hijo['taxon'] }}</button>
-                                    <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
+                                    <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" :datos-foto="$datosPortadas[$hijo['nivel'].':'.$hijo['taxon']] ?? []" />
                                 </div>
                                 <div class="mt-0.5 text-xs text-text-secondary">{{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}</div>
                             </div>
@@ -317,7 +317,7 @@
                                 <article
                                     class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
                                 >
-                                    <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
+                                    <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" :datos="$datosPortadas[$hijo['nivel'].':'.$hijo['taxon']] ?? []" />
 
                                     {{-- Cuerpo --}}
                                     <div class="p-3.5">
@@ -330,7 +330,7 @@
                                                     {{ $etiquetas[$hijo['nivel']] ?? $hijo['nivel'] }}
                                                 </div>
                                             </div>
-                                            <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" />
+                                            <x-catalogopublico::ayuda-taxon :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :registros="$numEspecimenes" :stats="$stats" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" :datos-foto="$datosPortadas[$hijo['nivel'].':'.$hijo['taxon']] ?? []" />
                                         </div>
 
                                         @if(!empty($stats) || $numEspecimenes > 0)
@@ -418,7 +418,7 @@
                                 <article
                                     class="collection-taxon-card group w-full text-left rounded-lg border border-border bg-surface shadow-sm px-4 py-3.5 hover:border-science-blue/40 hover:shadow transition-all flex flex-wrap items-center gap-4"
                                 >
-                                    <x-catalogopublico::fotografia-tarjeta :nombre="$especie['especie']" nivel="species" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadaEspecie" :compacto="true" />
+                                    <x-catalogopublico::fotografia-tarjeta :nombre="$especie['especie']" nivel="species" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadaEspecie" :datos="$datosPortadas['species:'.$especie['especie']] ?? []" :compacto="true" />
 
                                     <div class="min-w-0 flex-1">
                                         <button type="button" wire:click="navegar('species', '{{ $especie['especie'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
@@ -435,7 +435,7 @@
                                                 {{ number_format($numEspecimenes, 0, ',', '.') }} {{ $numEspecimenes === 1 ? 'registro' : 'registros' }}
                                             </span>
                                         @endif
-                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadaEspecie" />
+                                        <x-catalogopublico::ayuda-taxon :nombre="$especie['especie']" nivel="species" :registros="$numEspecimenes" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :foto-publica="$portadaEspecie" :datos-foto="$datosPortadas['species:'.$especie['especie']] ?? []" />
                                     </div>
                                 </article>
                             @endforeach
@@ -519,7 +519,7 @@
                         @else
                             <button
                                 type="button"
-                                @click="$dispatch('lightbox-open', { url: @js($portadaEspecie['url']), alt: @js($taxonActual), nombreArchivo: @js($portadaEspecie['nombreArchivo']), invocador: $event.currentTarget })"
+                                @click="$dispatch('lightbox-open', { url: @js($portadaEspecie['url']), alt: @js($taxonActual), nombreArchivo: @js($portadaEspecie['nombreArchivo']), atribuciones: @js($portadaEspecie['atribuciones'] ?? []), vista: @js($portadaEspecie['vista'] ?? ''), invocador: $event.currentTarget })"
                                 class="group/portada block max-w-xs overflow-hidden rounded-lg border border-bio-green ring-2 ring-bio-green/30 bg-surface shadow-sm cursor-zoom-in text-left"
                                 title="Ver imagen completa"
                             >
@@ -532,6 +532,7 @@
                                     </span>
                                 </div>
                             </button>
+                            <x-catalogopublico::atribuciones-imagen :datos="$portadaEspecie['atribuciones'] ?? []" />
                         @endif
                     </section>
 
@@ -791,7 +792,7 @@
                                                         @foreach($imagenesEspecimen as $indice => $img)
                                                             <button
                                                                 type="button"
-                                                                @click="$dispatch('lightbox-open', { url: @js($img['url']), alt: @js($especimen->occurrence_id), nombreArchivo: @js($img['nombre']), invocador: $event.currentTarget })"
+                                                                @click="$dispatch('lightbox-open', { url: @js($img['url']), alt: @js($especimen->occurrence_id), nombreArchivo: @js($img['nombre']), atribuciones: @js($img['atribuciones'] ?? []), invocador: $event.currentTarget })"
                                                                 class="group/thumb-galeria overflow-hidden rounded-lg border border-border bg-bg-main cursor-zoom-in"
                                                                 title="Ver imagen completa"
                                                             >
@@ -822,7 +823,6 @@
         {{-- ══════════════════════════════════
              LIGHTBOX — visor de imagen completa
              ══════════════════════════════════ --}}
-        @include('catalogopublico::components.visor-imagen')
     @endif
 
     @else
@@ -870,7 +870,7 @@
                     <article
                         class="collection-taxon-card group text-left rounded-lg border border-border bg-surface shadow-sm hover:border-science-blue/40 hover:shadow-md transition-all"
                     >
-                        <x-catalogopublico::fotografia-tarjeta :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :jerarquia="$nodo['jerarquia'] ?? array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$nodo['nivel'].':'.$nodo['taxon']] ?? null" />
+                        <x-catalogopublico::fotografia-tarjeta :nombre="$nodo['taxon']" :nivel="$nodo['nivel']" :jerarquia="$nodo['jerarquia'] ?? array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$nodo['nivel'].':'.$nodo['taxon']] ?? null" :datos="$datosPortadas[$nodo['nivel'].':'.$nodo['taxon']] ?? []" />
 
                         {{-- Cuerpo --}}
                         <div class="p-3.5">
@@ -939,6 +939,7 @@
         Cargando…
     </div>
 
+    @include('catalogopublico::components.visor-imagen')
     <dialog class="collection-taxon-dialog" x-ref="ayudaTaxon" wire:ignore.self aria-labelledby="titulo-ayuda-taxon"
         x-on:keydown.escape.stop.prevent="cerrarTaxon()" x-on:cancel.stop.prevent="cerrarTaxon()"
         x-on:close="restaurarTaxon()" x-on:click="if ($event.target === $el) cerrarTaxon()">

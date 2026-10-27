@@ -1,5 +1,6 @@
 /* Se descarga en la cabecera, antes de montar mapas y visualizadores. */
 @import './portal-estadisticas.css';
+@import './photo-attributions.css';
 @import './portal-taxonomy-dialogs.css';
 @import './portal-taxonomy-explorer.css';
 @import './portal-taxonomy-three.css';

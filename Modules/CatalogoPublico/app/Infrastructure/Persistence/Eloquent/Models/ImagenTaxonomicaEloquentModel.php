@@ -27,6 +27,7 @@ final class ImagenTaxonomicaEloquentModel extends Model
         'autor_apellido',
         'autor_nombre_completo',
         'marca_agua_aplicada',
+        'photographer', 'license', 'license_holder', 'license_institution', 'contact', 'view',
     ];
 
     protected $casts = [

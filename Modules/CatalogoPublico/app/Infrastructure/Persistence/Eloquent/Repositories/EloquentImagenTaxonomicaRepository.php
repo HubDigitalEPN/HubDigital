@@ -11,6 +11,7 @@ use Modules\CatalogoPublico\Domain\Entities\ImagenTaxonomica;
 use Modules\CatalogoPublico\Domain\Repositories\ImagenTaxonomicaRepositoryInterface;
 use Modules\CatalogoPublico\Domain\ValueObjects\ArchivoImagen;
 use Modules\CatalogoPublico\Domain\ValueObjects\AutorImagen;
+use Modules\CatalogoPublico\Domain\ValueObjects\AtribucionImagen;
 use Modules\CatalogoPublico\Domain\ValueObjects\ImagenTaxonomicaId;
 use Modules\CatalogoPublico\Domain\ValueObjects\RangoTaxonomico;
 use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Models\ImagenTaxonomicaEloquentModel;
@@ -36,6 +37,7 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
                 'autor_apellido' => $imagen->autor()->apellido,
                 'autor_nombre_completo' => $imagen->nombreAutor(),
                 'marca_agua_aplicada' => $imagen->marcaAguaAplicada(),
+                ...$imagen->atribucion()->toArray(),
             ]
         );
     }
@@ -90,9 +92,17 @@ final class EloquentImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             id: ImagenTaxonomicaId::fromString($model->id),
             occurrenceID: $model->occurrence_id,
             archivo: ArchivoImagen::crear($model->nombre_original, $model->ruta, $model->disco, $model->sha256),
-            autor: AutorImagen::crear($model->autor_nombre, $model->autor_apellido),
+            autor: trim($model->autor_nombre) !== '' && trim($model->autor_apellido) !== ''
+                ? AutorImagen::crear($model->autor_nombre, $model->autor_apellido)
+                : AutorImagen::desdeNombreCompleto($model->autor_nombre_completo),
             marcaAguaAplicada: (bool) $model->marca_agua_aplicada,
             subidaEn: new DateTimeImmutable((string) $model->created_at),
+            atribucion: new AtribucionImagen(
+                photographer: $model->photographer ?? $model->autor_nombre_completo,
+                license: $model->license ?? '', licenseHolder: $model->license_holder ?? '',
+                licenseInstitution: $model->license_institution ?? '', contact: $model->contact ?? '',
+                view: $model->view ?? AtribucionImagen::vistaDesdeNombre($model->nombre_original),
+            ),
         );
     }
 }

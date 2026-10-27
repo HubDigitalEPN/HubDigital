@@ -53,6 +53,16 @@
                         Selecciona una especie para gestionar sus imágenes.
                     </div>
                 @else
+                    @if($imagenEditada)
+                        <section class="mb-6 rounded-lg border border-science-blue bg-surface p-4 sm:p-5" aria-label="Editar atribuciones">
+                            <h2 class="mb-3 text-sm font-semibold">Editar atribuciones de la fotografía</h2>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2"><x-catalogopublico::campos-atribucion :editar="true" /></div>
+                            <div class="mt-4 flex flex-wrap justify-end gap-2">
+                                <flux:button wire:click="cancelarEdicion" variant="subtle">Cancelar</flux:button>
+                                <flux:button wire:click="guardarAtribuciones" wire:loading.attr="disabled" variant="primary">Guardar atribuciones</flux:button>
+                            </div>
+                        </section>
+                    @else
                     {{-- Formulario de subida --}}
                     <section class="mb-6 rounded-lg border border-border bg-surface shadow-sm p-4 sm:p-5">
                         <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-text-primary">
@@ -100,8 +110,7 @@
                             @else
                                 <div class="hidden sm:block"></div>
                             @endif
-                            <flux:input wire:model="nombreAutor" label="Nombre del autor" placeholder="María" />
-                            <flux:input wire:model="apellidoAutor" label="Apellido del autor" placeholder="Gómez" />
+                            <x-catalogopublico::campos-atribucion />
                         </div>
 
                         <div class="mt-4 flex justify-end">
@@ -121,6 +130,7 @@
                             </flux:button>
                         </div>
                     </section>
+                    @endif
 
                     {{-- Galerías de género y especie --}}
                     <x-catalogopublico::galeria-portada

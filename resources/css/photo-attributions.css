@@ -1,0 +1,7 @@
+.photo-attributions { padding:.75rem 0; color:var(--color-text-primary,#18354d); font-size:.8rem; text-align:left; }
+.photo-attributions h3 { margin:0 0 .5rem; font:700 .9rem system-ui,sans-serif; }
+.photo-attributions dl { display:grid; gap:.3rem; margin:0; }
+.photo-attributions dl > div { display:grid; grid-template-columns:minmax(7rem,9rem) minmax(0,1fr); gap:.75rem; }
+.photo-attributions dt { font-weight:600; }
+.photo-attributions dd { margin:0; overflow-wrap:anywhere; }
+@media(max-width:480px) { .photo-attributions dl > div { grid-template-columns:7rem minmax(0,1fr); gap:.4rem; } }

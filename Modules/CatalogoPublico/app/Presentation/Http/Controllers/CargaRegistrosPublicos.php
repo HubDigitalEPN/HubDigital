@@ -31,13 +31,14 @@ trait CargaRegistrosPublicos
             ->whereIn('occurrence_id', $occurrenceIDs)
             ->where('disco', 'r2')
             ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = divulgacion.imagenes_taxonomicas.occurrence_id) = 1')
-            ->selectRaw('occurrence_id, ruta, disco, nombre_original, ROW_NUMBER() OVER (PARTITION BY occurrence_id ORDER BY created_at, id) AS posicion');
+            ->selectRaw('occurrence_id, ruta, disco, nombre_original, autor_nombre_completo, photographer, license, license_holder, license_institution, contact, view, ROW_NUMBER() OVER (PARTITION BY occurrence_id ORDER BY created_at, id) AS posicion');
         return DB::query()->fromSub($consulta, 'fotos_publicas')->where('posicion', '<=', 12)->orderBy('occurrence_id')->orderBy('posicion')
-            ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original'])
+            ->get(['occurrence_id', 'ruta', 'disco', 'nombre_original', 'autor_nombre_completo', 'photographer', 'license', 'license_holder', 'license_institution', 'contact', 'view'])
             ->groupBy('occurrence_id')
             ->map(fn ($grupo): array => $grupo->map(fn ($r): array => [
                 'url' => StorageImagenesAdapter::urlPublica($r->ruta),
                 'nombre' => $r->nombre_original,
+                'atribuciones' => \Modules\CatalogoPublico\Application\Services\AtribucionesImagenPublica::desdeFila($r),
             ])->values()->all())
             ->all();
     }

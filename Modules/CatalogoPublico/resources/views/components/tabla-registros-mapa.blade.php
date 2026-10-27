@@ -65,7 +65,7 @@
                             @if($fotos !== [])
                                 <div class="atlas-record-table-photos">
                                     @foreach($fotos as $foto)
-                                        <a href="{{ $foto['url'] }}" x-on:click.stop target="_blank" rel="noopener noreferrer" title="{{ $foto['nombre'] }}" aria-label="Abrir fotografía publicada del espécimen {{ $registro->occurrence_id }} en otra pestaña"><img src="{{ $foto['url'] }}" alt="Fotografía publicada del espécimen {{ $registro->occurrence_id }}" loading="lazy" decoding="async" width="96" height="72"></a>
+                                        <a href="{{ $foto['url'] }}" x-on:click.prevent.stop="$dispatch('lightbox-open', {url: @js($foto['url']), alt: @js($registro->occurrence_id), nombreArchivo: @js($foto['nombre']), atribuciones: @js($foto['atribuciones'] ?? []), invocador: $event.currentTarget})" title="{{ $foto['nombre'] }}" aria-label="Abrir fotografía publicada del espécimen {{ $registro->occurrence_id }}"><img src="{{ $foto['url'] }}" alt="Fotografía publicada del espécimen {{ $registro->occurrence_id }}" loading="lazy" decoding="async" width="96" height="72"></a>
                                     @endforeach
                                 </div>
                             @else

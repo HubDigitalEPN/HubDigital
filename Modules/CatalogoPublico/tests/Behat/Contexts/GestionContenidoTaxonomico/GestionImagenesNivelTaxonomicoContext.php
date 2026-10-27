@@ -152,13 +152,16 @@ final class GestionImagenesNivelTaxonomicoContext extends BaseContext
         );
     }
 
-    #[Then('se debe generar una marca de agua con el texto "María Gómez" sobre la imagen')]
-    public function seDebeGenerarMarcaDeAgua(): void
+    #[Then('se debe conservar la imagen original y publicar la autoría fuera de sus píxeles')]
+    public function seDebeConservarOriginal(): void
     {
-        Assert::assertTrue(
-            $this->marcaAgua->seAplicoTexto('María Gómez'),
-            'No se generó la marca de agua con el texto del autor'
-        );
+        Assert::assertSame([], $this->marcaAgua->textosAplicados());
+        $imagen = $this->repoImagenes->buscarPorNombreArchivo('cephalotes_dorsal.jpg');
+        Assert::assertNotNull($imagen);
+        Assert::assertFalse($imagen->marcaAguaAplicada());
+        Assert::assertSame(hash('sha256', 'bytes-de-cephalotes_dorsal.jpg'), $imagen->archivo()->sha256);
+        $galeria = $this->galeriaHandler->handle(new ConsultarGaleriaTaxonInput('species', 'Atta cephalotes'));
+        Assert::assertSame('María Gómez', $galeria->imagenes[0]['atribuciones']['photographer']);
     }
 
     #[Then('la imagen debe registrar como autor a "María Gómez"')]

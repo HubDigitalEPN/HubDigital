@@ -53,6 +53,9 @@ final class ConsultarGaleriaTaxonHandler
             'nombreArchivo' => $imagen->archivo()->nombreOriginal,
             'url' => $this->almacenamiento->url($imagen->archivo()),
             'esPortada' => $defecto !== null && $imagen->id()->equals($defecto->imagenId()),
+            'atribuciones' => $imagen->atribucion()->toArray(),
+            'vista' => $imagen->atribucion()->view,
+            'marcaHistorica' => $imagen->marcaAguaAplicada(),
         ], $ordenadas);
 
         return ConsultarGaleriaTaxonOutput::crear(array_values($dto));

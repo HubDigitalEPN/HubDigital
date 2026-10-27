@@ -23,6 +23,12 @@ export async function requestAuthentication(action, body, fetchRequest = fetch) 
         })[response.status] || 'No se pudo completar la solicitud. Intenta nuevamente.';
         return { ok: false, errors, message };
     }
+    // Un formulario anterior puede enviarse cuando la sesión ya está activa:
+    // el middleware de invitados redirige entonces a una página HTML.
+    // authenticationDestination sigue validando el origen antes de navegar.
+    if (response.redirected && !data.redirect && response.url) {
+        return { ok: true, data: { ...data, redirect: response.url } };
+    }
     return { ok: true, data };
 }
 

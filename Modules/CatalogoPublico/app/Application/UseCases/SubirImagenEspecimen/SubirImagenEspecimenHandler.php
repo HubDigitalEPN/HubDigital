@@ -32,8 +32,10 @@ final class SubirImagenEspecimenHandler
 
     public function handle(SubirImagenEspecimenInput $input): SubirImagenEspecimenOutput
     {
-        // R1: el autor (nombre + apellido) se valida antes de almacenar nada.
-        $autor = AutorImagen::crear($input->nombreAutor, $input->apellidoAutor);
+        // Los clientes históricos conservan su contrato; el editor usa Photographer completo.
+        $autor = $input->atribucion === null
+            ? AutorImagen::crear($input->nombreAutor, $input->apellidoAutor)
+            : AutorImagen::desdeNombreCompleto($input->atribucion->photographer);
 
         $jerarquia = $this->jerarquias->obtener($input->occurrenceID);
 
@@ -43,18 +45,17 @@ final class SubirImagenEspecimenHandler
             );
         }
 
-        // R2: se aplica la marca de agua con el nombre del autor antes de persistir.
-        $contenidoConMarca = $this->marcaAgua->aplicar($input->contenido, $autor->nombreCompleto());
+        // La fotografía se guarda intacta; sus atribuciones se publican aparte.
         $nombreDeseado = $this->componerNombreArchivo(
             $input->occurrenceID,
             $input->vistaSufijo,
             $input->nombreArchivo,
         );
-        $archivo = $this->almacenamiento->guardar($contenidoConMarca, $nombreDeseado);
+        $archivo = $this->almacenamiento->guardar($input->contenido, $nombreDeseado);
 
         try {
             $id = $this->repoImagenes->nextIdentity();
-            $imagen = ImagenTaxonomica::subir($id, $input->occurrenceID, $archivo, $autor);
+            $imagen = ImagenTaxonomica::subir($id, $input->occurrenceID, $archivo, $autor, $input->atribucion);
 
             // R4/R5: la portada bubbleea solo a especie y género sin defecto previo.
             $clavesConDefecto = $this->repoDefectos->clavesConDefecto([

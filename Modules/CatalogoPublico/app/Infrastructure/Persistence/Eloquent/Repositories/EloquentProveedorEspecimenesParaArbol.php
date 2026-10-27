@@ -95,7 +95,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
 
     public function paginaPublica(FiltrosBusqueda $filtros, int $pagina, string $nivel = '', string $taxon = '', int $tamano = self::TAMANO_PAGINA, int $paginas = 1, string $orden = '', string $direccion = 'asc'): array
     {
-        $tamano = max(1, min(100, $tamano));
+        $tamano = max(1, min(1000, $tamano));
         $query = $this->consultaPublica($filtros, $nivel, $taxon);
         $total = (clone $query)->count('te.id');
         $ultima = max(1, (int) ceil($total / $tamano));

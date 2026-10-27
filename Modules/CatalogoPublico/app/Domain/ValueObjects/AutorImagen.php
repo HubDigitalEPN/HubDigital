@@ -26,6 +26,12 @@ final readonly class AutorImagen
 
     public function nombreCompleto(): string
     {
-        return $this->nombre.' '.$this->apellido;
+        return trim($this->nombre.' '.$this->apellido);
+    }
+
+    /** Conserva nombres completos, monónimos y autoría todavía no informada. */
+    public static function desdeNombreCompleto(string $nombre): self
+    {
+        return new self(trim($nombre), '');
     }
 }

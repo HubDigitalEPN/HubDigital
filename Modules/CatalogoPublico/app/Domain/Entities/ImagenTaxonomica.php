@@ -9,6 +9,7 @@ use Modules\CatalogoPublico\Domain\Events\DomainEvent;
 use Modules\CatalogoPublico\Domain\Events\ImagenSubida;
 use Modules\CatalogoPublico\Domain\ValueObjects\ArchivoImagen;
 use Modules\CatalogoPublico\Domain\ValueObjects\AutorImagen;
+use Modules\CatalogoPublico\Domain\ValueObjects\AtribucionImagen;
 use Modules\CatalogoPublico\Domain\ValueObjects\ImagenTaxonomicaId;
 
 final class ImagenTaxonomica
@@ -23,6 +24,7 @@ final class ImagenTaxonomica
         private readonly AutorImagen $autor,
         private readonly bool $marcaAguaAplicada,
         private readonly DateTimeImmutable $subidaEn,
+        private readonly ?AtribucionImagen $atribucion = null,
     ) {}
 
     public static function subir(
@@ -30,6 +32,7 @@ final class ImagenTaxonomica
         string $occurrenceID,
         ArchivoImagen $archivo,
         AutorImagen $autor,
+        ?AtribucionImagen $atribucion = null,
     ): self {
         if (trim($occurrenceID) === '') {
             throw new \InvalidArgumentException('El occurrenceID del espécimen no puede ser vacío');
@@ -40,8 +43,9 @@ final class ImagenTaxonomica
             occurrenceID: $occurrenceID,
             archivo: $archivo,
             autor: $autor,
-            marcaAguaAplicada: true,
+            marcaAguaAplicada: false,
             subidaEn: new DateTimeImmutable,
+            atribucion: $atribucion,
         );
 
         $imagen->events[] = new ImagenSubida(
@@ -60,6 +64,7 @@ final class ImagenTaxonomica
         AutorImagen $autor,
         bool $marcaAguaAplicada,
         DateTimeImmutable $subidaEn,
+        ?AtribucionImagen $atribucion = null,
     ): self {
         return new self(
             id: $id,
@@ -68,6 +73,7 @@ final class ImagenTaxonomica
             autor: $autor,
             marcaAguaAplicada: $marcaAguaAplicada,
             subidaEn: $subidaEn,
+            atribucion: $atribucion,
         );
     }
 
@@ -103,6 +109,15 @@ final class ImagenTaxonomica
     public function nombreAutor(): string
     {
         return $this->autor->nombreCompleto();
+    }
+
+    public function atribucion(): AtribucionImagen
+    {
+        return $this->atribucion ?? new AtribucionImagen(
+            photographer: $this->nombreAutor(),
+            license: $this->marcaAguaAplicada ? 'CC BY 4.0' : '',
+            view: AtribucionImagen::vistaDesdeNombre($this->archivo->nombreOriginal),
+        );
     }
 
     public function marcaAguaAplicada(): bool

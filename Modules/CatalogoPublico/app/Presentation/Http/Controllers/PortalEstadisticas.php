@@ -378,7 +378,7 @@ final class PortalEstadisticas
                 ->where('ed.scientific_name_visible', true)
                 ->whereRaw('(SELECT COUNT(*) FROM taxonomia.especimenes identidad WHERE identidad.occurrence_id = te.occurrence_id) = 1')
                 ->orderByDesc('foto.created_at')->orderBy('foto.id')->limit(4)
-                ->get(['foto.ruta', 'foto.nombre_original', 'foto.autor_nombre_completo', 'foto_taxon.nombre_cientifico as taxon',
+                ->get(['foto.ruta', 'foto.nombre_original', 'foto.autor_nombre_completo', 'foto.photographer', 'foto.license', 'foto.license_holder', 'foto.license_institution', 'foto.contact', 'foto.view', 'foto_taxon.nombre_cientifico as taxon',
                     'te.taxon_id', 'te.country', 'ed.country_visible', 'ed.family_visible', 'ed.genus_visible', 'te.occurrence_id', 'ed.occurrence_id_visible'])
                 ->map(function (object $fila) use ($taxones): array {
                     $linaje = $this->linajePublicoParaMosaico($fila->taxon_id, $taxones, (bool) $fila->family_visible, (bool) $fila->genus_visible);
@@ -387,6 +387,7 @@ final class PortalEstadisticas
                         'nombre' => $fila->nombre_original, 'taxon' => $fila->taxon,
                         'family' => $linaje['family'] ?? null, 'genus' => $linaje['genus'] ?? null, 'species' => $linaje['species'] ?? null,
                         'autor' => $creditoEcuador ? $fila->autor_nombre_completo : null, 'credito_ecuador' => $creditoEcuador,
+                        'atribuciones' => \Modules\CatalogoPublico\Application\Services\AtribucionesImagenPublica::desdeFila($fila),
                         'occurrence_id' => $fila->occurrence_id_visible ? $fila->occurrence_id : null];
                 })->all());
 

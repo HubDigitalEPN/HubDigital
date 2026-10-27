@@ -23,7 +23,7 @@
             Sin imágenes para este nivel todavía.
         </div>
     @else
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
             @foreach($imagenes as $img)
                 <div @class([
                     'group relative overflow-hidden rounded-lg border bg-surface shadow-sm',
@@ -31,7 +31,7 @@
                     'border-border' => ! $img['esPortada'],
                 ])>
                     <div class="aspect-square bg-bg-main">
-                        <img src="{{ $img['url'] }}" alt="{{ $img['nombreArchivo'] }}" class="h-full w-full object-cover" />
+                        <img src="{{ $img['url'] }}" alt="{{ $img['nombreArchivo'] }}" class="h-full w-full object-contain" />
                     </div>
 
                     @if($img['esPortada'])
@@ -42,9 +42,13 @@
                     @endif
 
                     <div class="p-2">
+                        @if($img['vista'] ?? '')<p class="text-xs font-semibold">{{ $img['vista'] }}</p>@endif
                         <p class="truncate text-xs text-text-secondary" title="{{ $img['nombreArchivo'] }}">
                             {{ $img['nombreArchivo'] }}
                         </p>
+                        <x-catalogopublico::atribuciones-imagen :datos="$img['atribuciones'] ?? []" />
+                        @if($img['marcaHistorica'] ?? false)<p class="mt-2 text-xs text-text-secondary">Esta fotografía conserva una marca histórica incorporada al archivo. Para retirarla se necesita el original sin marca.</p>@endif
+                        <flux:button wire:click="editarAtribuciones('{{ $img['imagenId'] }}')" variant="subtle" class="mt-2 w-full">Editar atribuciones</flux:button>
                         @unless($img['esPortada'])
                             <flux:button
                                 wire:click="usarComoPortada('{{ $nivel }}', '{{ $img['imagenId'] }}')"

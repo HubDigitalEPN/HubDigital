@@ -35,3 +35,28 @@ test('el POST interno conserva sesión y devuelve errores de campo sin exponer r
     assert.equal(success.ok, true);
     assert.equal(success.data.csrf, 'renovado');
 });
+
+test('un formulario anterior retoma la página del middleware sin aceptar destinos externos ni ocultar errores', async () => {
+    const origin = 'https://labinvepn.org';
+    const htmlResponse = (url, status = 200) => ({
+        ok: status === 200, status, redirected: true, url,
+        json: async () => { throw new SyntaxError('La respuesta final es HTML.'); },
+    });
+    const result = await requestAuthentication('/login', {}, async () => htmlResponse(origin + '/dashboard'));
+    assert.equal(result.ok, true);
+    assert.equal(authenticationDestination(result.data, {}, origin), origin + '/dashboard');
+
+    const external = await requestAuthentication('/login', {}, async () => htmlResponse('https://externo.example/dashboard'));
+    assert.throws(() => authenticationDestination(external.data, {}, origin));
+
+    const expired = await requestAuthentication('/login', {}, async () => htmlResponse(origin + '/login', 419));
+    assert.equal(expired.ok, false);
+    assert.equal(expired.message, 'La sesión venció. Vuelve a abrir este formulario.');
+
+    const json = await requestAuthentication('/login', {}, async () => ({
+        ok: true, redirected: true, url: origin + '/dashboard',
+        json: async () => ({ redirect: '/portal/catalogo?vista=mapa', csrf: 'renovado' }),
+    }));
+    assert.equal(authenticationDestination(json.data, {}, origin), origin + '/portal/catalogo?vista=mapa');
+    assert.equal(json.data.csrf, 'renovado');
+});

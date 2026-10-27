@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
+@import './photo-attributions.css';
 
 @source '../views';
 @source '../../Modules/*/resources/views/**/*.blade.php';

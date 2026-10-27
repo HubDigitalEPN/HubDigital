@@ -1,5 +1,6 @@
 # language: es
 
+@listo
 Característica: Gestion imagenes nivel taxonomico
     Como curador de la colección entomológica
     Quiero subir imágenes vinculadas a un espécimen, registrando quién las subió,
@@ -15,7 +16,7 @@ Característica: Gestion imagenes nivel taxonomico
         Cuando el curador sube la imagen "cephalotes_dorsal.jpg" al espécimen "EPN-0012"
         Y proporciona el nombre "María" y el apellido "Gómez"
         Entonces la imagen debe quedar vinculada al espécimen "EPN-0012"
-        Y se debe generar una marca de agua con el texto "María Gómez" sobre la imagen
+        Y se debe conservar la imagen original y publicar la autoría fuera de sus píxeles
         Y la imagen debe registrar como autor a "María Gómez"
 
     Escenario: Rechazar la subida si falta el nombre o el apellido del autor

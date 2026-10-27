@@ -103,6 +103,7 @@ final class InMemoryImagenTaxonomicaRepository implements ImagenTaxonomicaReposi
             autor: $imagen->autor(),
             marcaAguaAplicada: $imagen->marcaAguaAplicada(),
             subidaEn: $imagen->subidaEn(),
+            atribucion: $imagen->atribucion(),
         );
     }
 }

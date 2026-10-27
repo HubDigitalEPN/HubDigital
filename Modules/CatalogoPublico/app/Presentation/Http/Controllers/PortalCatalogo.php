@@ -684,7 +684,7 @@ final class PortalCatalogo extends Component
     public function ajustarRegistrosPorPagina(int $cantidad, bool $ubicacion = false): void
     {
 
-        $cantidad = max(1, min(100, $cantidad));
+        $cantidad = max(1, min($ubicacion ? 100 : 1000, $cantidad));
         if ($ubicacion) {
             if ($this->registrosPorPaginaCelda === $cantidad) return;
             $inicio = ($this->paginaCelda - 1) * $this->registrosPorPaginaCelda;
@@ -1494,7 +1494,8 @@ final class PortalCatalogo extends Component
             'provinciasDisponibles' => $this->provinciasDisponibles,
             'filosDisponibles' => $this->filosDisponibles,
             'ruta' => $ruta,
-            'portadas' => $this->cargarPortadas(array_merge($hijos, $especiesActuales, $taxonesExplorados)),
+            'portadas' => array_column($portadasConDatos = $this->cargarPortadas(array_merge($hijos, $especiesActuales, $taxonesExplorados)), 'url', 'clave'),
+            'datosPortadas' => array_column($portadasConDatos, null, 'clave'),
             'galeriaEspecie' => $galeriaEspecie,
             'imagenesPorEspecimen' => $imagenesPorEspecimen,
             'hijos' => $hijos,
@@ -1537,7 +1538,7 @@ final class PortalCatalogo extends Component
     /**
      * Portadas (imagen por defecto) de género y especie, indexadas por "nivel:valor".
      *
-     * @return array<string, string>
+     * @return list<array{clave: string, url: string, nombre: string, atribuciones: array<string, string>}>
      */
     private function cargarPortadas(array $tarjetas): array
     {
@@ -1560,11 +1561,14 @@ final class PortalCatalogo extends Component
             ->where(function ($q) use ($claves): void {
                 foreach ($claves as [$nivel, $taxon]) $q->orWhere(fn ($par) => $par->where('d.nivel', $nivel)->where('d.valor_taxon', $taxon));
             })
-            ->select('d.nivel', 'd.valor_taxon', 'i.ruta', 'i.disco')
+            ->select('d.nivel', 'd.valor_taxon', 'i.ruta', 'i.disco', 'i.nombre_original', 'i.autor_nombre_completo',
+                'i.photographer', 'i.license', 'i.license_holder', 'i.license_institution', 'i.contact', 'i.view')
             ->limit(12)
             ->get()
-            ->mapWithKeys(fn ($r): array => [
-                $r->nivel.':'.$r->valor_taxon => StorageImagenesAdapter::urlPublica($r->ruta),
+            ->map(fn ($r): array => [
+                'clave' => $r->nivel.':'.$r->valor_taxon, 'url' => StorageImagenesAdapter::urlPublica($r->ruta),
+                'nombre' => $r->nombre_original,
+                'atribuciones' => \Modules\CatalogoPublico\Application\Services\AtribucionesImagenPublica::desdeFila($r),
             ])
             ->all();
     }

@@ -1,4 +1,4 @@
-@props(['server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true])
+@props(['server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100]])
 <div class="hub-ig-actions" x-on:click.outside="closeMenu(false)">
     <button type="button" class="hub-ig-button" x-ref="actionsButton" aria-haspopup="menu" :aria-expanded="menuOpen.toString()"
         x-on:click="openMenu()" x-on:keydown.arrow-down.prevent="if (!menuOpen) openMenu()">Acciones <flux:icon name="chevron-down" /></button>
@@ -26,7 +26,7 @@
         @if($server || $client || $pageSizeAction)
             <div data-menu-view="rows" x-show="menuView === 'rows'" x-cloak>
                 <button type="button" role="menuitem" tabindex="-1" class="hub-ig-menu-back" x-on:click="changeMenu('main')"><flux:icon name="chevron-left" /> Filas por página</button>
-                @foreach([15, 25, 50, 100] as $amount)
+                @foreach($pageSizes as $amount)
                     @if($client)
                         <button type="button" role="menuitemradio" tabindex="-1" :aria-checked="(clientPerPage === {{ $amount }}).toString()" x-on:click="clientPerPage = {{ $amount }}; closeMenu()"><span class="hub-ig-menu-check"><flux:icon name="check" x-show="clientPerPage === {{ $amount }}" /></span>{{ $amount }} filas</button>
                     @else
