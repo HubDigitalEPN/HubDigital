@@ -1,5 +1,15 @@
 # Distribución de cobertura
 
+`deployment-config-output.test.mjs` ejecuta los bloques reales de comprobación
+de Nginx y PHP-FPM mediante Bash (Git Bash en Windows). Un productor externo
+imprime más de 1 MiB: la ruta correcta debe aprobar incluso al principio de la
+salida; una ruta ausente o un productor fallido deben bloquear. Esta regresión
+de EPIPE/SIGPIPE con `pipefail` se ejecuta solo dentro de `crear-paquete-oci`.
+También comprueba las tuberías antiguas mediante la compatibilidad del asistente
+PROD: misma coincidencia, salida completa y rechazo de errores del productor.
+El ayudante se limita a un subproceso; el bundle publicado permanece intacto.
+No sustituye la comprobación del Nginx instalado en la VM ni duplica Gherkin.
+
 El acceso, la solicitud de enlace y el restablecimiento envían el POST original
 de Fortify por JSON y conservan CSRF, CAPTCHA, límites, segundo factor y destino
 por perfil. El recorrido Neon del paquete verifica error de credenciales y

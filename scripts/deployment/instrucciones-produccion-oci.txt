@@ -9,6 +9,16 @@ Paquete: __PACKAGE_ID__
 Commit: __GIT_COMMIT__
 VM PROD: ubuntu@150.136.219.112
 
+CORRECCION DEL FALSO ERROR DE NGINX VISTO EN DEV
+----------------------------------------------
+Use el archivo __PROD_SCRIPT__ actualizado de esta carpeta, aunque haya subido
+antes otro con el mismo nombre. El asistente consume completa la salida de
+Nginx y PHP-FPM durante la preparacion y activacion: evita el falso fallo por
+SIGPIPE de grep -Fq con pipefail. Conserva el rechazo de rutas incorrectas y
+de comandos fallidos, y todas las comprobaciones originales.
+No modifica el bundle, sus manifiestos, sus huellas ni los binarios del sistema.
+El .tar.gz sigue siendo el publicado; solo se actualizan el .sh y esta guia.
+
 Si llego a crear el asistente de la version anterior de esta guia, borre solo
 ese archivo dentro de la VM PROD con:
 
@@ -96,8 +106,11 @@ IMPORTANTE
   comando, no borre respaldos ni cambie current manualmente.
 - Los registros y respaldos estan en:
   /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod
-- Si los dos primeros pasos ya terminaron correctamente, continue con el comando
-  mostrado; no vuelva a empezar ni fuerce sobrescrituras de una release.
+- Si los dos primeros pasos ya terminaron con una copia ANTERIOR del .sh y aun
+  NO ejecuto preparar, reenvie el .sh actualizado con --solo-script y, dentro
+  de PROD, actualice la copia operativa con este comando; despues siga el paso 3:
+  sudo install -o root -g root -m 0700 /tmp/__PROD_SCRIPT__ /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh
+  No repita staging ni fuerce sobrescrituras de una release.
 - Para reenviar solamente el nuevo .sh cuando el bundle ya esta en /tmp de PROD,
   puede subir solo ese archivo a Cloud Shell y ejecutar:
   bash ./__PROD_SCRIPT__ --solo-script

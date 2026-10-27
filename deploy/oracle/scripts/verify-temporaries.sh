@@ -68,13 +68,15 @@ rm -rf -- "${ttl_root}"
 
 cli_tmp="$(runuser -u www-data -- /usr/bin/php8.4 -r 'echo sys_get_temp_dir();')"
 [[ "${cli_tmp}" == "${root}/php-tmp" ]] || { echo "PHP CLI usa ${cli_tmp}, no ${root}/php-tmp." >&2; exit 65; }
-php-fpm8.4 -tt 2>&1 | grep -Fq 'php_admin_value[sys_temp_dir] = /run/hubdigital/php-tmp' || {
+# Consumir toda la salida evita SIGPIPE del productor con grep -q y pipefail.
+# Se conserva el rechazo tanto de una ruta ausente como de un daemon que falla.
+php-fpm8.4 -tt 2>&1 | grep -F 'php_admin_value[sys_temp_dir] = /run/hubdigital/php-tmp' >/dev/null || {
     echo 'PHP-FPM no tiene sys_temp_dir efectivo bajo /run.' >&2
     exit 65
 }
 systemctl is-active --quiet hubdigital-temp-cleanup.timer
 systemctl is-enabled --quiet hubdigital-temp-cleanup.timer
-nginx -T 2>&1 | grep -Fq 'client_body_temp_path /run/hubdigital/nginx-client' || {
+nginx -T 2>&1 | grep -F 'client_body_temp_path /run/hubdigital/nginx-client' >/dev/null || {
     echo 'Nginx no tiene buffer de cliente bajo /run.' >&2
     exit 65
 }

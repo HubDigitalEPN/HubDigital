@@ -61,6 +61,21 @@ stop_writers() {
         if systemctl cat "$unit" >/dev/null 2>&1; then systemctl stop "$unit"; fi
     done
 }
+release_command() (
+    # Compatibilidad con bundles publicados que usan grep -Fq en una tuberia.
+    # Consumir toda la salida evita SIGPIPE sin ocultar errores del productor.
+    # Solo afecta a este hijo y sus scripts Bash; no modifica la release ni grep.
+    grep() {
+        if [[ ${1-} == -Fq ]]; then
+            shift
+            command grep -F "$@" >/dev/null
+        else
+            command grep "$@"
+        fi
+    }
+    export -f grep
+    "$@"
+)
 ensure_backup() {
     [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == false ]]
     if [[ -e "$backup" ]]; then
@@ -161,7 +176,7 @@ preparar)
     pg_restore --list "$fresh_dump" > "$fresh_dump.contents.txt"
     sed -i 's/^HUBDIGITAL_VALIDATION_MODE=.*/HUBDIGITAL_VALIDATION_MODE=true/' "$env_file"
     [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true ]]
-    (umask 0022; env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org APPLY_MIGRATIONS=1 \
+    (umask 0022; release_command env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org APPLY_MIGRATIONS=1 \
         "$stage_dir/deploy/oracle/scripts/deploy-release.sh" \
         "/srv/hubdigital/staging/$candidate" "/srv/hubdigital/staging/$candidate.sha256") \
         2>&1 | tee "$backup/preparar.log"
@@ -203,7 +218,7 @@ activar)
     [[ -f "$backup/PREPARED_OK" && ! -e "$backup/PRODUCTION_OK" ]]
     [[ "$current" == "$(cat "$backup/previous-current")" ]]
     [[ "$(jq -er .git_commit "$release_dir/SOURCE-METADATA.json")" == "$commit" ]]
-    env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org \
+    release_command env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org \
         "$release_dir/deploy/oracle/scripts/activate-release.sh" "$release_id" \
         2>&1 | tee "$backup/activar.log"
     [[ "$(readlink -f /srv/hubdigital/current)" == "$release_dir" ]]
