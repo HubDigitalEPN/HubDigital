@@ -6,9 +6,13 @@ import './connectivity-status';
 import { portalSessionReady } from './portal-pwa';
 import './portal-theme';
 import { bootNotifications } from './hub-notifications';
+import { bootManualPasswords } from './manual-password';
+import { bootAuthForms } from './auth-forms';
 
 window.hubDigitalLov = crearLov;
 bootNotifications(Livewire);
+bootManualPasswords();
+bootAuthForms(Livewire);
 
 // El mapa, los gráficos y el explorador no participan en la portada ni en el
 // acceso. Cargarlos antes de Alpine sólo en las rutas que los necesitan.

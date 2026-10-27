@@ -5,8 +5,9 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('password.update') }}" data-async-auth data-success-url="{{ route('login') }}" class="flex flex-col gap-6">
             @csrf
+            <p data-auth-feedback role="status" aria-live="polite" class="text-sm text-text-secondary" hidden></p>
             <input type="hidden" name="token" value="{{ request()->route('token') }}">
 
             <flux:input

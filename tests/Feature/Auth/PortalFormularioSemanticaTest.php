@@ -46,7 +46,11 @@ it('cada control de visibilidad nombra su campo y conserva oculto el valor inici
         $entrada = $dom->query('//input[@id="'.$control.'" and @name="'.$campo.'"]');
         expect($entrada->length)->toBe(1)
             ->and($entrada->item(0)->getAttribute('type'))->toBe('password')
+            ->and($entrada->item(0)->getAttribute('autocomplete'))->toBe('off')
+            ->and($entrada->item(0)->hasAttribute('data-manual-password'))->toBeTrue()
+            ->and($entrada->item(0)->getAttribute('value'))->toBe('')
             ->and($boton->item(0)->getAttribute('aria-pressed'))->toBe('false');
+        expect($boton->item(0)->getAttribute('tabindex'))->toBe('-1');
     }
 })->with([
     ['login', ['password' => 'Mostrar contraseña'], []],

@@ -1,5 +1,37 @@
 # Distribución de cobertura
 
+El acceso, la solicitud de enlace y el restablecimiento envían el POST original
+de Fortify por JSON y conservan CSRF, CAPTCHA, límites, segundo factor y destino
+por perfil. El recorrido Neon del paquete verifica error de credenciales y
+acceso correcto con Enter en el mismo documento, sin recarga completa, controles móviles sin solaparse y el ojo fuera
+del recorrido Tab. Node cubre el POST, errores sin detalles técnicos y rechazo
+de destinos externos. Pest comprueba las respuestas JSON por perfil, privacidad
+de la recuperación y respuesta de restablecimiento sin redirección HTTP. El
+formulario POST sigue disponible cuando JavaScript no está activo.
+
+La contraseña se introduce manualmente: `manual-password.test.mjs` cubre teclado,
+IME, edición, confirmación con Enter sin borrar la clave, autollenado, pegado, cambios sin evento y reinicio del estado en
+memoria. La puerta de Neon del paquete rechaza un valor insertado por script y
+autentica con eventos reales de teclado. La semántica PHP exige campos vacíos y
+autocompletado desactivado. `Auth/AuthenticationTest` comprueba rechazo de cookies
+«Recordarme» anteriores y de la opción enviada por un formulario manipulado.
+La aplicación conserva las sesiones web normales; no controla el almacenamiento
+interno de gestores de contraseñas del equipo ni lo declara deshabilitado.
+
+`Auth/PasswordResetTest` complementa los contratos de identidad con el despacho
+del trabajo de recuperación a la cola de dev, su consumo por el canal real de
+notificaciones y la generación MIME HTML/texto en un transporte local sin red.
+Comprueba permiso explícito en validación, aislamiento del correo operativo,
+verificación de cuenta, dominio DEV/PROD, correo con alias, enlace válido,
+caducidad, reemplazo, confirmación distinta, uso único e inicio con la nueva
+contraseña. La entrega a una bandeja externa depende del SMTP de la VM y no se
+declara comprobada mediante este transporte. `Settings/SecurityTest` conserva
+el cambio autenticado, contraseña actual y revocación de accesos anteriores.
+`PortalAccesoPorPerfilTest` añade salida por POST con CSRF en escritorio y móvil
+para todos los perfiles; el cierre de sesión conserva su contrato en
+`Auth/AuthenticationTest`. Opera Neon complementa posición, foco, tamaño y uso
+de esos controles en localhost. No se duplican estos contratos en Gherkin.
+
 La plantilla corta de depositantes conserva el XLSX de referencia de 42 columnas,
 con su ejemplo, colores, descripciones y clave. `EsquemaMatrizDepositoTest`
 comprueba la descarga generada y la lectura real sin importar las instrucciones

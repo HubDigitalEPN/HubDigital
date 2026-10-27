@@ -11,7 +11,7 @@ return [
     // de Notification se bloquean desde AppServiceProvider.
     'validation_mode' => filter_var(env('HUBDIGITAL_VALIDATION_MODE', false), FILTER_VALIDATE_BOOL),
 
-    // Permite únicamente los correos de alta imprescindibles mientras la
+    // Permite únicamente verificación y recuperación de contraseña mientras la
     // instancia OCI continúa aislando el resto de notificaciones externas.
     'allow_auth_emails_during_validation' => filter_var(
         env('HUBDIGITAL_ALLOW_AUTH_EMAILS', false),

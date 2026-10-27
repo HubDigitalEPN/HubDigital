@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\SystemMailConfigurationService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Support\Facades\Date;
@@ -38,7 +39,10 @@ class AppServiceProvider extends ServiceProvider
     /** La base prevalece sobre .env tras la primera configuración administrativa. */
     protected function configureSystemMail(): void
     {
-        if (app()->environment('testing')) {
+        if (app()->environment('testing')
+            || (app()->environment('local') && config('mail.default') === 'log')) {
+            // El lanzador localhost pide log explícitamente. No sustituirlo
+            // por el SMTP de una base restaurada con destinatarios reales.
             return;
         }
 
@@ -110,24 +114,20 @@ class AppServiceProvider extends ServiceProvider
      * La restauracion se valida sobre datos coordinados que pueden conservar
      * destinatarios reales. MAIL_MAILER=log por si solo no cubre Web Push u
      * otros canales de Laravel Notification; en modo de validacion se permite
-     * solamente la campana interna de base de datos.
+     * la campana interna y, con permiso expreso, los correos de autenticación.
      */
     protected function preventExternalNotificationsDuringValidation(): void
     {
-        if (! config('hubdigital.validation_mode')) {
-            return;
-        }
-
         Event::listen(NotificationSending::class, static function (NotificationSending $event): ?bool {
-            if ($event->channel === 'database') {
+            if (! config('hubdigital.validation_mode') || $event->channel === 'database') {
                 return null;
             }
 
-            $esVerificacionAutorizada = config('hubdigital.allow_auth_emails_during_validation')
+            $esAutenticacionAutorizada = config('hubdigital.allow_auth_emails_during_validation')
                 && $event->channel === 'mail'
-                && $event->notification instanceof VerifyEmail;
+                && ($event->notification instanceof VerifyEmail || $event->notification instanceof ResetPassword);
 
-            return $esVerificacionAutorizada ? null : false;
+            return $esAutenticacionAutorizada ? null : false;
         });
     }
 }

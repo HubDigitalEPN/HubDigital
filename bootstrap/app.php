@@ -27,10 +27,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\LocalRequestTimings::class);
         $middleware->trimStrings(except: ['clave_certificado']);
         $middleware->web(append: [
+            \App\Http\Middleware\PreventRememberedAuthentication::class,
             NormalizeAuthenticationEmail::class,
             EnsureInitialPasswordChanged::class,
             \App\Http\Middleware\CachePublicPortal::class,
         ]);
+        $middleware->prependToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \App\Http\Middleware\PreventRememberedAuthentication::class,
+        );
 
         $middleware->alias([
             'role' => CheckRole::class,

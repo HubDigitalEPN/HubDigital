@@ -13,13 +13,11 @@ final class LoginPorPerfilResponse implements LoginResponse, TwoFactorLoginRespo
     {
         // Cada perfil entra a su área. El middleware conserva verificación y cambio inicial.
         $request->session()->forget('url.intended');
-        if ($request->wantsJson()) {
-            return response()->json(['two_factor' => false]);
-        }
-
         $curador = $request->user()?->esCurador();
-
-        return redirect()->route($curador ? 'portal.catalogo' : 'dashboard',
-            $curador ? ['vista' => 'mapa'] : []);
+        $destino = route($curador ? 'portal.catalogo' : 'dashboard', $curador ? ['vista' => 'mapa'] : []);
+        if ($request->wantsJson()) {
+            return response()->json(['two_factor' => false, 'redirect' => $destino, 'csrf' => csrf_token()]);
+        }
+        return redirect()->to($destino);
     }
 }

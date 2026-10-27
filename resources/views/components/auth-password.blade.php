@@ -8,11 +8,15 @@
         type="password"
         x-bind:type="visible ? 'text' : 'password'"
         :placeholder="$placeholder"
-        :autocomplete="$autocomplete"
+        autocomplete="off"
+        data-manual-password
+        data-lpignore="true"
+        data-1p-ignore="true"
         class:input="pe-12!"
         {{ $attributes }}
     />
     <button type="button"
+        tabindex="-1"
         x-on:click="visible = !visible"
         x-bind:aria-label="visible ? 'Ocultar {{ $description }}' : 'Mostrar {{ $description }}'"
         x-bind:aria-pressed="visible.toString()"

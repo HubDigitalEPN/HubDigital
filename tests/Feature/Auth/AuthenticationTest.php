@@ -126,3 +126,21 @@ test('users can logout', function () {
 
     $this->assertGuest();
 });
+
+test('login ignores a forged remember option and expires its persistent cookie', function () {
+    $user = User::factory()->create();
+    $this->get(route('login'))->assertOk()->assertDontSee('Recordarme en este dispositivo');
+    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password', 'remember' => '1'])
+        ->assertSessionHasNoErrors()
+        ->assertCookieExpired(\Illuminate\Support\Facades\Auth::guard('web')->getRecallerName());
+    $this->assertAuthenticatedAs($user);
+    expect(\Illuminate\Support\Facades\Auth::guard('web')->viaRemember())->toBeFalse();
+});
+
+test('an old remember cookie cannot restore a session without entering the password', function () {
+    $user = User::factory()->create(['remember_token' => 'recuerdo-antiguo-de-prueba']);
+    $recaller = \Illuminate\Support\Facades\Auth::guard('web')->getRecallerName();
+    $this->withCookie($recaller, $user->id.'|'.$user->remember_token.'|'.$user->password)
+        ->get(route('dashboard'))->assertRedirect(route('login'))->assertCookieExpired($recaller);
+    $this->assertGuest();
+});

@@ -16,6 +16,9 @@
         id="hub-login-form"
         method="POST"
         action="{{ route('login.store') }}"
+        autocomplete="off"
+        data-async-auth
+        data-two-factor-url="{{ Route::has('two-factor.login') ? route('two-factor.login') : '' }}"
         class="flex flex-col gap-4"
         novalidate
         x-data="{ turnstileVerified: {{ config('services.turnstile.enabled') ? 'false' : 'true' }} }"
@@ -24,6 +27,7 @@
         x-on:hub-turnstile-reset.window="turnstileVerified = false"
     >
         @csrf
+        <p data-auth-feedback role="status" aria-live="polite" class="text-sm text-text-secondary" hidden></p>
         @if (config('services.turnstile.enabled'))
             <input type="hidden" name="cf-turnstile-response" value="">
         @endif
@@ -53,16 +57,13 @@
             </div>
             <x-auth-password
                 name="password"
-                placeholder="••••••••"
-                autocomplete="current-password"
+                placeholder="Escribe tu contraseña"
+                required
             />
             <flux:error name="password" />
         </flux:field>
 
-        <div class="flex flex-col gap-1.5">
-            <flux:checkbox name="remember" value="1" :checked="old('remember')" label="Recordarme en este dispositivo" />
-
-        </div>
+        <p class="text-xs text-text-secondary">La contraseña debe escribirse manualmente en cada inicio de sesión.</p>
 
         <x-turnstile />
 

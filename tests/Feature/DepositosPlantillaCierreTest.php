@@ -28,7 +28,8 @@ test('solo el acta final firmada cierra el trámite y sustituye las acciones en 
         'items_verificacion' => [], 'observaciones' => [], 'verificado_en' => now(),
         'acta_recepcion' => ['nombre' => 'acta.pdf', 'ruta' => 'actas/cierre-original.pdf'],
     ]);
-    $bandeja = Livewire::actingAs($curador)->test(BandejaDepositos::class)->call('cambiarVista', 'resueltas');
+    $bandeja = Livewire::actingAs($curador)->test(BandejaDepositos::class)
+        ->set('busqueda', $solicitud->numero)->call('cambiarVista', 'resueltas');
     $bandeja->assertDontSee('Cerrado')->assertSee('Generar y firmar');
     $ruta = 'actas/qa/'.$solicitud->id.'/firmada.pdf';
     $contenido = '%PDF-fixture descarga del acta ya firmada';

@@ -30,11 +30,14 @@
             </nav>
 
             @if(\App\Support\AccesoCatalogo::completo())
-                <div class="flex min-w-0 items-center gap-3">
+                <div class="flex shrink-0 items-center gap-3">
                     <div class="hidden max-w-56 min-w-0 text-right text-xs sm:block">
                         <strong class="block truncate">Hola, {{ auth()->user()->name }}</strong>
                         <span class="block truncate">{{ auth()->user()->email }}</span>
-                        <span>{{ auth()->user()->esAdministrador() ? 'Administrador' : 'Curador' }}</span>
+                        <div class="flex items-center justify-end gap-2">
+                            <span>{{ auth()->user()->esAdministrador() ? 'Administrador' : 'Curador' }}</span>
+                            <x-portal-logout class="portal-logout-compact" />
+                        </div>
                     </div>
                     <a href="{{ route('dashboard') }}" class="portal-curator-access" aria-label="Ir al panel del curador">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></svg>
@@ -43,12 +46,13 @@
                     </a>
                 </div>
             @else
-            <div class="hidden shrink-0 lg:block">
+            <div class="hidden shrink-0 items-center gap-3 lg:flex">
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
                         <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
                         {{ $navegacion('cuenta') }}
                     </a>
+                    <x-portal-logout />
                 @else
                     <div class="flex items-center gap-2">
                         <a href="{{ route('login') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
@@ -103,6 +107,7 @@
                 <a href="{{ route('depositos.portal') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('depositos') }}</a>
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">{{ $navegacion('cuenta') }}</a>
+                    <x-portal-logout class="w-full" />
                 @else
                     <a href="{{ route('register') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">{{ $navegacion('crear_cuenta') }}</a>
                     <a href="{{ route('login') }}" wire:navigate class="flex min-h-11 items-center justify-center rounded-md border border-blue-navy/25 px-4 text-sm font-semibold !text-blue-navy">{{ $navegacion('tengo_cuenta') }}</a>

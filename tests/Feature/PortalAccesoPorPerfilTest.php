@@ -14,6 +14,15 @@ uses(Tests\Concerns\ColeccionPortalAislada::class);
 test('todas las personas consultan registros y sólo las cuentas habilitadas ven las descargas', function (?string $rol): void {
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
     $pagina = $this->get(route('portal.catalogo', ['vista' => 'mapa']))->assertOk();
+    $documento = new DOMDocument;
+    @$documento->loadHTML('<?xml encoding="UTF-8">'.$pagina->getContent());
+    $dom = new DOMXPath($documento);
+    $salidas = $dom->query('//header//form[@method="POST" and @action="'.route('logout').'"]');
+    expect($salidas->length)->toBe($rol === null ? 0 : 2);
+    foreach ($salidas as $salida) {
+        expect($dom->query('.//input[@name="_token"]', $salida)->length)->toBe(1)
+            ->and(trim($dom->query('.//button[@type="submit"]', $salida)->item(0)->textContent))->toBe('Cerrar sesión');
+    }
     $pagina->assertSee('x-on:click="verRegistros(menuNodo)"', false)->assertSee('Ver en el mapa');
     if (in_array($rol, ['ADMIN', 'CURADOR'], true)) $pagina->assertSee('Ir al panel del curador');
     else $pagina->assertDontSee('Ir al panel del curador');
@@ -61,6 +70,18 @@ test('login dirige al mapa sólo a curaduría y administración aunque existiera
             : route('dashboard', absolute: false));
     $this->assertAuthenticatedAs($usuario);
 })->with(array_map(fn (RolUsuario $rol): string => $rol->value, RolUsuario::cases()));
+
+test('el acceso JSON conserva el destino por perfil y renueva el token de sesión sin redirección HTTP', function (string $rol): void {
+    $usuario = User::factory()->create(['rol' => $rol]);
+    $this->withSession(['url.intended' => 'https://otro-sitio.example/'])
+        ->postJson(route('login.store'), ['email' => $usuario->email, 'password' => 'password'])
+        ->assertOk()->assertJsonPath('two_factor', false)
+        ->assertJsonPath('redirect', in_array($rol, ['ADMIN', 'CURADOR'], true)
+            ? route('portal.catalogo', ['vista' => 'mapa']) : route('dashboard'))
+        ->assertJsonPath('csrf', csrf_token())
+        ->assertHeaderMissing('Location');
+    $this->assertAuthenticatedAs($usuario);
+})->with(['ADMIN', 'CURADOR', 'DEPOSITANTE']);
 
 test('el chat adapta los enlaces de registros al permiso y conserva los filtros de la selección', function (?string $rol): void {
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
