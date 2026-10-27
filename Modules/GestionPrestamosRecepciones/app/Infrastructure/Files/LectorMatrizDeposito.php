@@ -58,7 +58,9 @@ final class LectorMatrizDeposito
                 if (! $esGuia && count($noVacios) > 1) {
                     $esGuia = true;
                     foreach ($noVacios as $col => $valor) {
-                        if (EsquemaMatriz::clave($valor) !== EsquemaMatriz::clave($cabeceras[$col]['descripcion'] ?? '')) { $esGuia = false; break; }
+                        $config = $cabeceras[$col] ?? [];
+                        $descripciones = [$config['descripcion'] ?? '', ...($definicion['descripciones_guia'][$config['campo'] ?? ''] ?? [])];
+                        if (! in_array(EsquemaMatriz::clave($valor), array_map(EsquemaMatriz::clave(...), $descripciones), true)) { $esGuia = false; break; }
                     }
                 }
                 if ($esGuia) continue;

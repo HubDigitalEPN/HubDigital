@@ -150,7 +150,7 @@ test('el dashboard usa meses civiles de Ecuador y el CSV coincide con el conjunt
     expect($agosto->created_at?->toISOString())->toBe('2099-09-01T04:30:00.000000Z');
 });
 
-test('el acta distingue depósito y donación e incorpora estado versión y observaciones', function (): void {
+test('el acta distingue depósito y donación y conserva versión y observaciones sin los textos retirados', function (): void {
     $base = [
         'numeroSolicitud' => 'MEPN-INV-DEP-QA-ACTA',
         'tipoTramite' => 'Depósito',
@@ -191,7 +191,8 @@ test('el acta distingue depósito y donación e incorpora estado versión y obse
         'recepcion' => (object) [...$base, 'tipoTramite' => 'Donación'],
     ])->render();
 
-    expect($htmlDeposito)->toContain('Modalidad:', 'Versión del original:', 'Verificado con Observaciones')
+    expect($htmlDeposito)->toContain('Modalidad:', 'Versión del original:', 'Firma electrónica del Curador responsable')
+        ->not->toContain('Estado de recepción:', 'Resultado de la constatación física:', 'La trazabilidad de esta actuación se conserva en HubDigital.')
         ->and($htmlDeposito)->toContain('depositado temporalmente')
         ->and($htmlDeposito)->toContain('Dos recipientes requieren seguimiento curatorial.')
         ->and($htmlDonacion)->toContain('calidad de donación', 'transferencia definitiva')

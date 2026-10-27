@@ -47,6 +47,7 @@ final class ConfiguracionTextosPortal extends Component
             foreach ($campos as $clave => $defecto) $reglas['textos.'.$grupo.'.'.$clave] = ['required', 'string', 'max:5000', 'not_regex:/^\s*$/u'];
         }
         $reglas['textos.contacto.email'][] = 'email';
+        $reglas['textos.depositos.entrega_contacto'][] = 'email';
         $this->validate($reglas, ['*.required' => 'Completa el texto o restaura el original.', '*.max' => 'El texto admite hasta 5000 caracteres.']);
 
         DB::transaction(function (): void {

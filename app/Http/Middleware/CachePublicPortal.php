@@ -13,7 +13,10 @@ final class CachePublicPortal
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
-        if ($request->user() && $request->routeIs('portal.*')) {
+        if ($request->user()) {
+            $response->headers->set('X-Portal-Session', 'authenticated');
+        }
+        if ($request->user() && $request->routeIs('home', 'portal.*')) {
             $response->headers->set('Cache-Control', 'private, no-store');
         }
         $initial = $request->routeIs('home') && $request->query() === [];

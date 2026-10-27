@@ -242,14 +242,20 @@
                         </div>
                         <flux:text class="text-text-secondary text-xs">Código QR disponible para el depositante.</flux:text>
 
+                        @if($procesoCerrado)
+                            <flux:badge color="green">Cerrado</flux:badge>
+                            <flux:button icon="arrow-down-tray" href="{{ route('prestamos.deposito.acta-recepcion', ['id' => $deposito->id, 'descargar' => 1]) }}">Acta firmada</flux:button>
+                        @else
                         <flux:button variant="primary" icon="document-check" class="w-full sm:w-auto" wire:navigate
                             href="{{ route('prestamos.curador.deposito.acta', $deposito->id) }}">
                             Seguimiento de recepción y acta final
                         </flux:button>
 
+                        @endif
+
                         {{-- Cierre del ciclo: solo un depósito es devolutivo; una donación
                              es una cesión definitiva al patrimonio. --}}
-                        @if(! $esDonacion)
+                        @if(! $esDonacion && ! $procesoCerrado)
                             <div class="pt-2 border-t border-border">
                                 <flux:button
                                     variant="ghost"

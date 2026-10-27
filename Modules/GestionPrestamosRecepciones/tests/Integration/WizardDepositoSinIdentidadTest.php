@@ -163,9 +163,9 @@ test('el paso de carga sustituye el formulario por Excel y conserva la matriz an
     [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
     $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
     $fila = array_replace($componente->get('registroNativo'), [
-        'phylum' => 'Arthropoda', 'class' => 'Insecta', 'order' => 'Hymenoptera',
+        'kingdom' => 'Animalia', 'phylum' => 'Arthropoda', 'class' => 'Insecta', 'order' => 'Hymenoptera',
         'family' => 'Formicidae', 'genus' => 'Atta', 'specificEpithet' => 'cephalotes',
-        'taxonRank' => 'species', 'locality' => 'Quito', 'minimumElevationInMeters' => 2800,
+        'taxonRank' => 'species', 'locality' => 'Quito', 'minimumElevationInMeters' => 2800, 'continent' => 'South America',
     ]);
     $subida = static function (array $filas): \Illuminate\Http\UploadedFile {
         $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -211,6 +211,29 @@ test('el depositante sube la plantilla v2 original en el penúltimo paso y solo 
     expect($componente->instance()->pasoVisible())->toBe(6);
     $filas = RegistroEspecimenEloquentModel::where('matriz_id', $componente->get('matrizId'))->get();
     expect($filas)->toHaveCount(1)->and($filas[0]->datos_dwc['scientificName'])->toBe('Lycomedes_hirtipes');
+    $componente->assertSee('Datos por corregir')->call('guardarPasoCinco')->assertSet('paso', 7);
+});
+
+test('el nuevo ejemplo del depositante pasa al envío y una fecha imposible queda bloqueada también al reanudar', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
+    $contenido = file_get_contents(base_path('Modules/GestionPrestamosRecepciones/resources/plantillas/matriz-depositantes-v3.xlsx'));
+    $componente->set('archivoMatriz', \Illuminate\Http\UploadedFile::fake()->createWithContent('corta.xlsx', $contenido))
+        ->assertSet('errorMatriz', '')->assertSet('totalRegistros', 1)->assertDontSee('Datos por corregir')
+        ->call('guardarPasoCinco')->assertSet('paso', 8)->call('retroceder')->assertSet('paso', 7);
+    $libro = \PhpOffice\PhpSpreadsheet\IOFactory::load(base_path('Modules/GestionPrestamosRecepciones/resources/plantillas/matriz-depositantes-v3.xlsx'));
+    $ruta = tempnam(sys_get_temp_dir(), 'fecha-imposible-');
+    try {
+        $libro->getSheet(0)->setCellValue('AA2', '1990/02/29');
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
+        $componente->set('archivoMatriz', \Illuminate\Http\UploadedFile::fake()->createWithContent('fecha.xlsx', file_get_contents($ruta)))
+            ->assertSee('Datos por corregir')->call('guardarPasoCinco')->assertSet('paso', 7)
+            ->call('volverAPasoCompletado', 7)->assertSet('paso', 7);
+        Livewire::actingAs($usuario)->test(RegistroSolicitudDeposito::class, ['id' => $modelo->id])
+            ->call('guardarPasoCinco')->assertSet('paso', 7);
+    } finally {
+        $libro->disconnectWorksheets(); unlink($ruta);
+    }
 });
 
 test('un detalle inválido conserva la matriz anterior y puede corregirse sin otro botón', function (): void {

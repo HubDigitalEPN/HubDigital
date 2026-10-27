@@ -310,6 +310,7 @@ final class RevisarDeposito extends Component
      */
     public function registrarDevolucion(RegistrarDevolucionDepositoHandler $handler): void
     {
+        $this->asegurarProcesoAbierto();
         $this->showDevolucionModal = false;
 
         try {
@@ -338,6 +339,7 @@ final class RevisarDeposito extends Component
      */
     public function editarCelda(string $registroId, string $campo, string $valorActual = ''): void
     {
+        $this->asegurarProcesoAbierto();
         $this->celdaEnEdicion = $registroId.'|'.$campo;
         $this->valorCelda = $valorActual;
         $this->resetValidation('valorCelda');
@@ -356,6 +358,7 @@ final class RevisarDeposito extends Component
      */
     public function guardarCelda(ValidacionManualCuraduriaHandler $handler): void
     {
+        $this->asegurarProcesoAbierto();
         if ($this->celdaEnEdicion === '') {
             return;
         }
@@ -451,6 +454,7 @@ final class RevisarDeposito extends Component
 
     public function eliminarDocumento(int $indice, AlmacenamientoDepositos $almacenamiento): void
     {
+        $this->asegurarProcesoAbierto();
         abort_unless(auth()->user()?->esAdministrador(), 403);
         set_time_limit(120);
 
@@ -545,6 +549,7 @@ final class RevisarDeposito extends Component
         }
 
         $vista = [
+            'procesoCerrado' => $this->procesoCerrado(),
             'deposito' => $deposito,
             'alertas' => $alertas,
             'hayAlertasPendientes' => $hayAlertasPendientes,
@@ -568,6 +573,18 @@ final class RevisarDeposito extends Component
      *
      * @return array<string, mixed>
      */
+    private function procesoCerrado(): bool
+    {
+        return \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel::query()
+            ->where('solicitud_deposito_id', $this->id)->whereNotNull('firmada_en')
+            ->whereNotNull('acta_firmada_ruta')->where('acta_firmada_ruta', '<>', '')->exists();
+    }
+
+    private function asegurarProcesoAbierto(): void
+    {
+        abort_if($this->procesoCerrado(), 409, 'El proceso está cerrado. Puedes consultar los detalles y descargar el acta firmada.');
+    }
+
     private function datosMatrizFiltrada(?object $matriz, CatalogoCuraduriaPort $catalogo): array
     {
         $registros = $matriz !== null ? array_values($matriz->registros()) : [];

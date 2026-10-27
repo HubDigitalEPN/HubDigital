@@ -1,13 +1,53 @@
 # Distribución de cobertura
 
+La plantilla corta de depositantes conserva el XLSX de referencia de 42 columnas,
+con su ejemplo, colores, descripciones y clave. `EsquemaMatrizDepositoTest`
+comprueba la descarga generada y la lectura real sin importar las instrucciones
+como especímenes. Se conservan la lectura de la plantilla anterior, los alias y
+los requisitos modificados por curaduría; la plantilla del catálogo no cambia.
+`WizardDepositoSinIdentidadTest` cubre el ejemplo válido, una fecha imposible,
+el bloqueo del avance, el salto entre pasos y la reanudación. El contrato de
+envío persistido con errores se comprueba en `EnviarSolicitudDepositoInvariantesTest`.
+Los nombres de personas admiten barra o punto y coma y conservan nombres completos.
+
+`DepositosPlantillaCierreTest` distingue aprobación documental de cierre con acta
+final firmada, comprueba las acciones de escritorio y móvil, la descarga adjunta,
+la autorización del documento y el rechazo de una devolución desde el trámite
+cerrado. También verifica la edición curatorial de ambos bloques del portal y
+el responsable designado para las nuevas actas: Vladimir Carvajal o el reemplazo
+configurado, conservando al operador auditado y la identidad del firmante.
+`DepositosCincoPuntosTest` conserva modalidades, observaciones, versión y marcadores
+de firma del PDF, y exige retirar los textos indicados en las notas del acta.
+Estos casos se ejecutan únicamente con `crear-paquete-oci`; no se duplican en Gherkin.
+La descarga de Word para etiquetas queda sin implementar por indicación expresa;
+no condiciona esta entrega. El acta conserva su plantilla PDF actual.
+
 Los párrafos de privacidad, términos, licencia, citación y créditos se administran
 en Textos del portal. `PortalTextosAdministracionTest` cubre publicación,
 restauración, autoría y escape de HTML para los cinco enlaces; `PlatformFooterTest`
 conserva sus datos de release y enlaces públicos, sin el subtítulo duplicado de
 citación. `portal-pwa-cache.test.mjs` cubre los archivos CSS/JS versionados de la
-portada y la exclusión de conversaciones. El HTML conserva Network First para
-respetar la sesión actual. `PortalPwaPublicoTest` comprueba que Inicio entrega el
-token vigente sin repetir la petición de arranque que conserva la colección.
+portada y la exclusión de conversaciones. Inicio usa una copia exclusivamente
+anónima durante un máximo de siete días, la entrega sin esperar la red y la renueva
+en segundo plano sin cookies. La primera visita prepara también ese documento
+y sus recursos al terminar de cargar, aunque la PWA se haya instalado después
+de la navegación. Los contratos comprueban reapertura tras un día con la red
+bloqueada, renovación de fondo, precarga acotada, recarga explícita e invalidación
+por login/logout/registro/2FA/rol y respuestas autenticadas, incluida una renovación
+anónima en vuelo y reinicio del service worker con su almacenamiento persistente.
+La colección conserva Network First para respetar los permisos.
+`PortalPwaPublicoTest` comprueba que Inicio de red entrega el token vigente sin
+repetir el arranque de la colección y que `/portal/pwa/sesion` renueva el token
+antes de Livewire únicamente al abrir una copia PWA, sin caché ni datos de cuenta.
+`portal-pwa-session.test.mjs` cubre el orden del arranque: sin petición adicional
+para HTML de red, espera del token en la copia PWA, recarga para una cuenta
+autenticada y reintento accesible sin habilitar el token anterior ante desconexión.
+Incluye actualizar una PWA ya instalada: la precarga se repite para el controlador
+nuevo aunque el anterior haya recibido e ignorado el mensaje, sin duplicarla.
+Las suites permanecen pendientes de `crear-paquete-oci` y no se ejecutan sueltas.
+La configuración Nginx de HTTP y HTTPS comprime los archivos públicos CSS/JS/SVG
+y mantiene revalidables los dos scripts de la PWA; la activación oficial instala
+esas plantillas y valida Nginx antes de recargar. No se cambian las respuestas R2.
 El recorrido canónico mantiene los casos exclusivos de
 tooltip y morph, comprueba la ausencia de alternancia en el menú del mapa y el
 conteo con la unidad registros. No se duplican estos casos en Gherkin. La revisión

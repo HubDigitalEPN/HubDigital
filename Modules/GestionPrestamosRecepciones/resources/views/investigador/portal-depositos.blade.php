@@ -15,6 +15,9 @@
                 <div class="min-w-0 max-w-4xl">
                     <h1 id="titulo-depositos" class="portal-hero-title portal-depositos-title font-display font-bold leading-[1.08] tracking-[-0.025em] text-blue-navy">{{ $depositosTexto('titulo') }}</h1>
                     <div class="mt-5 h-1 w-14 rounded-full bg-bio-green" aria-hidden="true"></div>
+                    @if(auth()->user()?->esCurador())
+                        <a href="{{ route('admin.textos-portal', ['grupo' => 'depositos']) }}" class="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-science-blue underline">Editar textos y requisitos de depósitos</a>
+                    @endif
 
                     <div class="portal-responsive-actions portal-depositos-actions mt-8">
                         @auth

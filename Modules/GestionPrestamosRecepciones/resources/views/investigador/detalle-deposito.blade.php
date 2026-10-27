@@ -89,6 +89,7 @@
                                     <flux:icon name="printer" class="size-4 text-white!" />
                                     Imprimir QR
                                 </a>
+                                <p class="max-w-xs text-xs text-text-secondary">Imprima únicamente si usted NO puede presentar el código QR en su celular.</p>
 
                                 @if($deposito->tipo_tramite === 'Donación' && $actaTransferenciaDisponible)
                                     <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"
@@ -162,40 +163,9 @@
                                     <flux:icon name="archive-box" variant="outline" class="size-4 text-text-secondary shrink-0" />
                                     <flux:heading size="sm" class="font-display">Cajas entomológicas</flux:heading>
                                 </div>
-                                <p class="text-sm text-text-secondary leading-relaxed">
-                                    Por cada <span class="font-medium text-text-primary">cinco lotes en alcohol</span> a depositar de una localidad o
-                                    proyecto, se receptará <span class="font-medium text-text-primary">una caja entomológica</span>. El número de cajas
-                                    aumenta proporcionalmente al número de lotes:
-                                </p>
-
-                                <x-grid-frame label="Referencia de cajas">
-<table class="w-full text-sm border border-border rounded-lg overflow-hidden">
-                                        <thead class="bg-bg-main">
-                                            <tr>
-                                                <th class="text-left font-medium text-text-secondary px-4 py-2">Lotes en alcohol</th>
-                                                <th class="text-left font-medium text-text-secondary px-4 py-2">Cajas requeridas</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">5 lotes</td><td class="px-4 py-2 text-text-primary">1 caja</td></tr>
-                                            <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">10 lotes</td><td class="px-4 py-2 text-text-primary">2 cajas</td></tr>
-                                            <tr class="border-t border-border"><td class="px-4 py-2 text-text-primary">15 lotes</td><td class="px-4 py-2 text-text-primary">3 cajas</td></tr>
-                                        </tbody>
-                                    </table>
-</x-grid-frame>
-
-                                <p class="text-sm text-text-secondary leading-relaxed">
-                                    Las cajas alojan especímenes extraídos de los tubos con alcohol, que el staff del Laboratorio montará en alfileres
-                                    después de la entrega. Pueden ser de cualquier madera (se recomienda <span class="font-medium text-text-primary">balsa</span>),
-                                    deben tener <span class="font-medium text-text-primary">tapa de vidrio</span> y medir
-                                    <span class="font-medium text-text-primary">52 × 39 × 6.5 cm</span>.
-                                </p>
-                                <p class="text-sm text-text-secondary leading-relaxed">
-                                    Dudas sobre las cajas o dónde adquirirlas:
-                                    <a href="mailto:adrian.troya@epn.edu.ec" class="text-science-blue hover:underline">adrian.troya@epn.edu.ec</a>
-                                    o
-                                    <a href="mailto:vladimir.carvajal@epn.edu.ec" class="text-science-blue hover:underline">vladimir.carvajal@epn.edu.ec</a>.
-                                </p>
+                                <p class="whitespace-pre-line text-sm text-text-secondary leading-relaxed">{{ \App\Support\PortalCopy::text('depositos.entrega_cajas') }}</p>
+                                <p class="whitespace-pre-line text-sm text-text-secondary leading-relaxed">{{ \App\Support\PortalCopy::text('depositos.entrega_cajas_detalle') }}</p>
+                                <p class="text-xs text-text-secondary">Dudas sobre las cajas o dónde adquirirlas: <a href="{{ 'mailto:'.\App\Support\PortalCopy::text('depositos.entrega_contacto') }}" class="font-semibold text-science-blue underline">{{ \App\Support\PortalCopy::text('depositos.entrega_contacto') }}</a>.</p>
                             </div>
 
                             <flux:separator />

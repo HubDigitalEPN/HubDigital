@@ -134,10 +134,16 @@ try {
     }, 'arranque del navegador');
     conexion = await cdp(objetivos.webSocketDebuggerUrl);
     let totalPeticiones = 0;
+    const detallesPeticiones = new Map();
     conexion.on('Runtime.exceptionThrown', ({exceptionDetails}) => excepciones.push(exceptionDetails.exception?.description || exceptionDetails.text));
     conexion.on('Runtime.consoleAPICalled', ({type, args}) => { if (type === 'error') excepciones.push(args.map(arg => arg.value ?? arg.description ?? '').join(' ')); });
     conexion.on('Network.requestWillBeSent', ({requestId, request}) => {
-        if (request.method === 'POST' && request.url.startsWith(origen) && request.url.includes('livewire')) { peticiones.add(requestId); totalPeticiones++; }
+        if (request.method === 'POST' && request.url.startsWith(origen) && request.url.includes('livewire')) {
+            peticiones.add(requestId); totalPeticiones++;
+            let llamadas = [];
+            try { llamadas = JSON.parse(request.postData || '{}').components?.flatMap(c => (c.calls || []).map(llamada => llamada.method)) || []; } catch { /* No registrar el cuerpo del expediente. */ }
+            detallesPeticiones.set(requestId, {ruta: new URL(request.url).pathname, llamadas});
+        }
     });
     const respuestasFallidas = new Map();
     conexion.on('Network.responseReceived', ({requestId, response}) => {
@@ -154,8 +160,14 @@ try {
             console.error('Error de validación Livewire:', respuestasFallidas.get(requestId), JSON.stringify({message:datos.message, errors:datos.errors}));
         } catch { console.error('Respuesta Livewire fallida:', respuestasFallidas.get(requestId)); }
     });
-    conexion.on('Network.loadingFinished', ({requestId}) => peticiones.delete(requestId));
-    conexion.on('Network.loadingFailed', ({requestId, errorText}) => { if (peticiones.delete(requestId)) erroresLivewire.push(errorText); });
+    conexion.on('Network.loadingFinished', ({requestId}) => { peticiones.delete(requestId); detallesPeticiones.delete(requestId); });
+    conexion.on('Network.loadingFailed', ({requestId, errorText, canceled, blockedReason, corsErrorStatus}) => {
+        if (peticiones.delete(requestId)) {
+            erroresLivewire.push(errorText);
+            console.error('Petición Livewire interrumpida:', JSON.stringify({...detallesPeticiones.get(requestId), errorText, canceled, blockedReason, corsErrorStatus}));
+        }
+        detallesPeticiones.delete(requestId);
+    });
     await conexion.send('Page.enable'); await conexion.send('Runtime.enable'); await conexion.send('Network.enable');
     await conexion.send('Emulation.setDeviceMetricsOverride', {width: 1440, height: 900, deviceScaleFactor: 1, mobile: false});
     const evaluar = async expression => {

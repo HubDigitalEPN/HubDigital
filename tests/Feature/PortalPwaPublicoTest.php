@@ -39,6 +39,24 @@ test('la portada entrega el token vigente sin repetir una petición de arranque 
         ->toContain('chat-bot-trigger')->not->toContain(route('portal.pwa-arranque'));
 });
 
+test('la copia PWA renueva el token sin cachear sesión ni revelar datos de la cuenta', function (): void {
+    $respuesta = $this->getJson('/portal/pwa/sesion')->assertOk()
+        ->assertHeaderMissing('X-Portal-Public-Cache')
+        ->assertExactJson(['csrf' => csrf_token(), 'authenticated' => false]);
+    expect($respuesta->headers->get('Cache-Control'))->toContain('no-store')->toContain('private');
+    $usuario = User::factory()->curador()->create();
+    $this->actingAs($usuario)->getJson('/portal/pwa/sesion')->assertOk()
+        ->assertHeader('X-Portal-Session', 'authenticated')
+        ->assertExactJson(['csrf' => csrf_token(), 'authenticated' => true]);
+    $this->withHeader('Sec-Fetch-Site', 'cross-site')->getJson('/portal/pwa/sesion')->assertForbidden();
+});
+
+test('Inicio autenticado invalida el respaldo público y nunca permite almacenar el documento', function (): void {
+    $respuesta = $this->actingAs(User::factory()->curador()->create())->get('/')->assertOk()
+        ->assertHeader('X-Portal-Session', 'authenticated')->assertHeaderMissing('X-Portal-Public-Cache');
+    expect($respuesta->headers->get('Cache-Control'))->toContain('private')->toContain('no-store');
+});
+
 test('los portales declaran su tema claro incluso para una cuenta autenticada', function (): void {
     foreach (['/', '/portal/catalogo?vista=mapa'] as $url) {
         $this->get($url)->assertOk()->assertSee('data-portal-theme="light"', false)

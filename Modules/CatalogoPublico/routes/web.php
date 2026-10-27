@@ -51,6 +51,13 @@ Route::prefix('portal')
                 'Content-Type' => 'application/javascript', 'Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff',
             ]);
         })->name('pwa-arranque');
+        // Solo el documento servido desde Cache Storage necesita renovar su
+        // token. Esta respuesta nunca se almacena ni contiene datos de cuenta.
+        Route::get('/pwa/sesion', function (\Illuminate\Http\Request $request) {
+            abort_if($request->header('Sec-Fetch-Site') === 'cross-site', 403);
+            return response()->json(['csrf' => csrf_token(), 'authenticated' => $request->user() !== null])
+                ->header('Cache-Control', 'no-store, private');
+        })->name('pwa-sesion');
         Route::get('/sugerencias', \Modules\CatalogoPublico\Presentation\Http\Controllers\SugerenciasBusquedaPublica::class)
             ->middleware('throttle:120,1')->name('sugerencias');
         Route::view('/diccionario-exportacion', 'catalogopublico::diccionario-exportacion')->name('diccionario-exportacion');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Documentos;
 
+use App\Support\PortalCopy;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Modules\GestionPrestamosRecepciones\Application\Ports\GeneradorActaRecepcionPort;
@@ -20,7 +21,11 @@ final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcio
     {
         $depositante = $this->usuarios->obtenerDatosDepositante($recepcion->investigadorId);
         $curador = $recepcion->actaGeneradaPor !== null ? $this->usuarios->obtenerNombre($recepcion->actaGeneradaPor) : null;
-        $receptor = $recepcion->recibidoPor !== null ? $this->usuarios->obtenerNombre($recepcion->recibidoPor) : null;
+        $nombreFirma = $curador;
+        if ($curador !== null && preg_match('/^Adri[aá]n(?:\s+Esteban)?\s+Troya\b/iu', trim($curador))) $nombreFirma = 'Dr. Adrian Troya';
+        // El responsable institucional puede diferir de quien registra la operación.
+        // recibido_por conserva al operador para la auditoría del expediente.
+        $receptor = PortalCopy::text('depositos.recepcion_responsable');
         $fechaBase = CarbonImmutable::instance($recepcion->actaGeneradaEn ?? $recepcion->verificadoEn ?? now())
             ->setTimezone(FechaEcuador::ZONA);
         $meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -36,6 +41,7 @@ final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcio
             'depositante' => $depositante,
             'investigador' => $depositante?->nombre ?? $recepcion->investigadorId,
             'curador' => $curador,
+            'nombreFirma' => $nombreFirma,
             'receptor' => $receptor,
             'fecha' => $fecha,
             'versionActa' => $versionActa,

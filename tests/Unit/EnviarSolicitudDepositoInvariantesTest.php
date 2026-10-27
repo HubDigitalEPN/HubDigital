@@ -100,6 +100,22 @@ test('el envío firmado también exige una matriz asociada', function (): void {
         ->and($notificaciones->solicitudesPorRevisar)->toBe(0);
 });
 
+test('un registro resuelto con errores de formato bloquea el envío persistido aunque se omita la interfaz', function (): void {
+    [$handler, $solicitudes, $matrices, $notificaciones] = prepararEnvioDepositoConFirma();
+    $solicitud = crearSolicitudBorrador($solicitudes);
+    $matriz = MatrizEspecies::crear($matrices->nextIdentity(), (string) $solicitud->id(), ['scientificName' => true], $solicitud->tipoTramite());
+    $registro = $matriz->agregarRegistroEspecimen('Danaus plexippus', normalizaciones: [
+        ['campo' => 'eventDate', 'original' => '1990/02/29', 'normalizado' => null, 'invalido' => true],
+    ]);
+    $matriz->validarRegistroCatalogado($registro);
+    $matrices->guardar($matriz);
+    expect($matriz->estaCompletaParaEnvio())->toBeFalse()
+        ->and($matriz->estado()->value)->not->toBe('Validada Técnicamente');
+    expect(fn () => $handler(new EnviarSolicitudDepositoInput((string) $solicitud->id())))
+        ->toThrow(MatrizEspeciesRequeridaException::class);
+    expect($notificaciones->solicitudesPorRevisar)->toBe(0);
+});
+
 test('ninguna matriz vacía o con registros pendientes puede enviarse', function (): void {
     foreach (['sin_registros', 'registro_pendiente'] as $caso) {
         [$handler, $solicitudes, $matrices, $notificaciones] = prepararEnvioDepositoConFirma();

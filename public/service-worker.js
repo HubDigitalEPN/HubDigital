@@ -1,6 +1,6 @@
 const OFFLINE_CACHE = 'hubdigital-public-offline-v1';
 const OFFLINE_URL = '/offline.html';
-importScripts('/pwa-cache.js?v=9');
+importScripts('/pwa-cache.js?v=10');
 
 function readPushPayload(data) {
     if (!data) return {};
@@ -71,6 +71,12 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('fetch', (event) => {
     if (new URL(event.request.url).origin !== self.location.origin) return;
-    if (portalPwa.policy(event.request) === 'network' && event.request.mode !== 'navigate') return;
+    // También observar las respuestas de sesión de peticiones Livewire/fetch.
     event.respondWith(portalPwa.serve(event));
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'portal-cache-home' && event.source?.url) {
+        event.waitUntil(portalPwa.warmHome(event).catch(() => {}));
+    }
 });

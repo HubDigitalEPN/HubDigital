@@ -4,6 +4,7 @@ let initialized = false;
 function refreshConnectivityStatus() {
     const status = document.getElementById(STATUS_ID);
     if (!status) return;
+    if (status.dataset.sessionUnavailable === 'true') return;
 
     const offline = navigator.onLine === false;
     status.hidden = !offline;

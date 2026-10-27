@@ -194,6 +194,16 @@ final class NormalizadorCamposDwC
         $cambios = [];
         $erroresCampos = [];
 
+        foreach (['eventDate', 'datecollectedEnd'] as $campoFecha) {
+            $fecha = trim((string) ($registro[$campoFecha] ?? ''));
+            if ($fecha === '') continue;
+            if (! preg_match('/^(\d{4})[-\/](\d{2})[-\/](\d{2})$/', $fecha, $partes)
+                || ! checkdate((int) $partes[2], (int) $partes[3], (int) $partes[1])) {
+                $cambios[] = ['campo' => $campoFecha, 'original' => $fecha, 'normalizado' => null,
+                    'invalido' => true, 'mensaje' => 'Fecha inválida. Usa una fecha existente en formato AAAA/MM/DD.'];
+            }
+        }
+
         foreach (['year', 'month', 'day'] as $campo) {
             $val = $registro[$campo] ?? null;
             if ($val === null || $val === '') {
@@ -316,10 +326,11 @@ final class NormalizadorCamposDwC
         }
 
         $original = $registro[$campo];
-        $partes = array_map('trim', explode(';', (string) $original));
+        $partes = array_map('trim', preg_split('/[;|]/u', (string) $original));
 
-        // Apellido (posiblemente compuesto) + coma/espacio opcional + inicial sola con punto opcional
-        $patron = '/^[\p{L}\-\' ]+[,]?\s+\p{L}\.?$/u';
+        // DwC admite iniciales o nombres completos. Conservar el nombre del perfil
+        // y los apellidos compuestos sin confundir la barra entre personas con un error.
+        $patron = '/^[\p{L}\p{M}\-\' .]+[,]?\s+[\p{L}\p{M}][\p{L}\p{M}\-\' .]*$/u';
 
         foreach ($partes as $parte) {
             if ($parte === '') {
@@ -332,7 +343,7 @@ final class NormalizadorCamposDwC
                     'original' => $original,
                     'normalizado' => null,
                     'invalido' => true,
-                    'mensaje' => 'Formato incorrecto — Ej: García, J (separar con ;)',
+                    'mensaje' => 'Formato incorrecto — Ej: García, J. (separar personas con | o ;)',
                 ]]];
             }
         }

@@ -19,7 +19,7 @@
                 <div class="mt-3 max-h-96 space-y-2 overflow-y-auto">
                     @foreach($estadosRegistros as $idRegistro => $registro)
                         <div class="rounded border border-border p-3 text-sm" wire:key="matriz-estado-{{ $idRegistro }}">
-                            <p><em>{{ $registro['especieCorregida'] ?: $registro['especieIngresada'] }}</em> · {{ $registro['estado'] }}</p>
+                            <p><em>{{ $registro['especieCorregida'] ?: $registro['especieIngresada'] }}</em> · {{ ($registro['advertencias'] ?? []) !== [] ? 'Datos por corregir' : $registro['estado'] }}</p>
                             @foreach($registro['advertencias'] ?? [] as $advertencia)<p class="text-error">{{ $advertencia['campo'] ?? '' }}: {{ $advertencia['mensaje'] ?? $advertencia['original'] ?? 'Revisa este valor en el Excel.' }}</p>@endforeach
                             @if(in_array($registro['estado'], ['Pendiente', 'No Verificado'], true))
                                 @foreach($registro['especiesSugeridas'] ?? [] as $sugerencia)<flux:button size="sm" wire:click="aceptarSugerencia(@js($idRegistro), @js($sugerencia))">Usar {{ $sugerencia }}</flux:button>@endforeach

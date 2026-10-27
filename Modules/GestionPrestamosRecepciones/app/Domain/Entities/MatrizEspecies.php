@@ -215,6 +215,7 @@ final class MatrizEspecies
         );
 
         $this->registros[(string) $registroId] = $registro;
+        $this->recalcularEstadoMatriz();
 
         return (string) $registroId;
     }
@@ -433,6 +434,9 @@ final class MatrizEspecies
         }
 
         foreach ($this->registros as $registro) {
+            if (array_filter($registro->normalizaciones(), static fn (array $cambio): bool => ! empty($cambio['invalido'])) !== []) {
+                return false;
+            }
             $resuelto = $registro->estado()->equals(EstadoRegistroEspecimen::ValidadoTecnicamente)
                 || $registro->estado()->equals(EstadoRegistroEspecimen::ValidacionManualPorCuraduria);
 
@@ -564,8 +568,9 @@ final class MatrizEspecies
         $todosValidados = true;
 
         foreach ($this->registros as $registro) {
-            if (! $registro->estado()->equals(EstadoRegistroEspecimen::ValidadoTecnicamente)
-                && ! $registro->estado()->equals(EstadoRegistroEspecimen::ValidacionManualPorCuraduria)) {
+            if (array_filter($registro->normalizaciones(), static fn (array $cambio): bool => ! empty($cambio['invalido'])) !== []
+                || (! $registro->estado()->equals(EstadoRegistroEspecimen::ValidadoTecnicamente)
+                && ! $registro->estado()->equals(EstadoRegistroEspecimen::ValidacionManualPorCuraduria))) {
                 $todosValidados = false;
                 break;
             }

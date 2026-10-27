@@ -861,6 +861,10 @@ final class RegistroSolicitudDeposito extends Component
     {
         $destino = self::PASOS_VISIBLES[$numeroVisible] ?? null;
         if ($destino === null || $this->solicitudId === null || $this->paso >= 9) return;
+        if ($destino === 8 && ($this->errorMatriz !== '' || array_filter($this->estadosRegistros, static fn (array $r): bool => ($r['advertencias'] ?? []) !== []) !== [])) {
+            $this->mostrarToast('Corrige los errores de la matriz antes de continuar al envío.', 'error');
+            return;
+        }
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->firstOrFail();
         if (! in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true)) return;
@@ -2392,31 +2396,9 @@ final class RegistroSolicitudDeposito extends Component
     {
         abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->exists(), 403);
-        $columnas = app(\Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort::class)->leer()['columnas'];
-
-        return response()->streamDownload(static function () use ($columnas): void {
-            $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        return response()->streamDownload(static function (): void {
+            $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
             try {
-                $hoja = $libro->getActiveSheet();
-                $hoja->setTitle('Darwin Core');
-                foreach ($columnas as $i => $columna) {
-                    $hoja->setCellValueExplicit([$i + 1, 1], $columna['cabecera'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-                    if ($columna['requisito'] === 'obligatorio') {
-                        $hoja->getStyle([$i + 1, 1])->getFill()->setFillType('solid')->getStartColor()->setARGB('FFFFC000');
-                    }
-                }
-                $hoja->freezePane('A2');
-                $hoja->getStyle('1:1')->getFont()->setBold(true);
-                $guia = $libro->createSheet();
-                $guia->setTitle('Guía de campos');
-                $guia->fromArray([['Cabecera', 'Campo', 'Requisito', 'Descripción', 'Excepción']]);
-                foreach ($columnas as $i => $columna) {
-                    $valores = [$columna['cabecera'], $columna['campo'], $columna['requisito'], $columna['descripcion'],
-                        ($columna['excepcion_campo'] ?? '') !== '' ? 'No exigir si '.$columna['excepcion_campo'].' = '.$columna['excepcion_valor'] : ''];
-                    foreach ($valores as $j => $valor) $guia->setCellValueExplicit([$j + 1, $i + 2], $valor, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-                }
-                $guia->freezePane('A2');
-                $libro->setActiveSheetIndex(0);
                 (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
             } finally {
                 $libro->disconnectWorksheets();
@@ -3163,22 +3145,12 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        // Las coordenadas (latitud/longitud) deben ser válidas para poder avanzar.
-        $coordenadasInvalidas = 0;
-        foreach ($this->estadosRegistros as $r) {
-            foreach ($r['advertencias'] ?? [] as $adv) {
-                if (in_array($adv['campo'] ?? '', ['decimalLatitude', 'decimalLongitude'], true)) {
-                    $coordenadasInvalidas++;
-                }
-            }
-        }
-
-        if ($coordenadasInvalidas > 0) {
-            $this->mostrarToast(
-                $coordenadasInvalidas.' coordenada(s) inválida(s). Corrige decimalLatitude y decimalLongitude en el Excel y vuelve a subirlo.',
-                'error',
-            );
-
+        $erroresFormato = array_sum(array_map(
+            static fn (array $registro): int => count($registro['advertencias'] ?? []),
+            $this->estadosRegistros,
+        ));
+        if ($erroresFormato > 0) {
+            $this->mostrarToast('Corrige los errores de formato indicados en la matriz y vuelve a subir el Excel antes de continuar.', 'error');
             return;
         }
 

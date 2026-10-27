@@ -3,7 +3,7 @@ import './hubdigital-firmador';
 import { crearLov } from './hubdigital-lov';
 import './pwa-notifications';
 import './connectivity-status';
-import './portal-pwa';
+import { portalSessionReady } from './portal-pwa';
 import './portal-theme';
 import { bootNotifications } from './hub-notifications';
 
@@ -25,4 +25,5 @@ document.addEventListener('livewire:navigate', event => {
 });
 
 // Los componentes propios y Flux ya están registrados cuando Alpine recorre el DOM.
+await portalSessionReady;
 Livewire.start();

@@ -152,7 +152,11 @@
                                     {{ $nombres[$solicitud->investigador_id] ?? $solicitud->nombre_investigador_documento ?? $solicitud->investigador_id }}
                                 </td>
                                 <td class="px-4 py-3">
-                                    <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estado" />
+                                    @if($recepcionesFirmadas->has($solicitud->id))
+                            <flux:badge size="sm" color="green">Cerrado</flux:badge>
+                        @else
+                            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estado" />
+                        @endif
                                     @if($actaPendiente)
                                         <flux:badge size="sm" color="amber" icon="bell-alert" class="mt-1">Acta pendiente</flux:badge>
                                     @endif
@@ -179,7 +183,9 @@
                                                 Priorizar
                                             </flux:button>
                                         @endif
-                                        @if($actaPendiente)
+                                        @if($recepcionesFirmadas->has($solicitud->id))
+                                            @include('gestionprestamosrecepciones::curador.acciones-deposito-cerrado')
+                                        @elseif($actaPendiente)
                                             <flux:button size="sm" variant="primary" icon="pencil-square"
                                                 wire:navigate href="{{ route('prestamos.curador.deposito.acta', $solicitud->id) }}">
                                                 Generar y firmar
@@ -218,7 +224,11 @@
                                 {{ $solicitud->tipo_tramite }}
                             </flux:badge>
                         </div>
-                        <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estado" />
+                        @if($recepcionesFirmadas->has($solicitud->id))
+                            <flux:badge size="sm" color="green">Cerrado</flux:badge>
+                        @else
+                            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estado" />
+                        @endif
                     </div>
 
                     <dl class="space-y-2 text-sm">
@@ -249,7 +259,9 @@
                                 Priorizar
                             </flux:button>
                         @endif
-                        @if($actaPendiente)
+                        @if($recepcionesFirmadas->has($solicitud->id))
+                            @include('gestionprestamosrecepciones::curador.acciones-deposito-cerrado')
+                        @elseif($actaPendiente)
                             <flux:button variant="primary" icon="pencil-square" class="w-full"
                                 wire:navigate href="{{ route('prestamos.curador.deposito.acta', $solicitud->id) }}">
                                 Generar y firmar acta

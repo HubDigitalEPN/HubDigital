@@ -31,8 +31,8 @@ final class EloquentEsquemaMatrizAdapter implements EsquemaMatrizPort
                     throw new \DomainException('Ya existe una columna con ese campo.');
                 }
             }
-            if ($indice === false) $columnas[] = $columna;
-            else $columnas[$indice] = $columna;
+            if ($indice === false) $columnas[] = $columna + ['plantilla_depositante' => true];
+            else $columnas[$indice] = $columna + ['plantilla_depositante' => $columnas[$indice]['plantilla_depositante'] ?? true];
             EsquemaMatriz::mapa($columnas);
             $excepcion = $columna['excepcion_campo'] ?? '';
             if ($excepcion !== '' && (! in_array($excepcion, array_column($columnas, 'campo'), true) || trim($columna['excepcion_valor'] ?? '') === '')) {

@@ -12,7 +12,7 @@
         $colorBorde = $esExito ? 'border-success/30' : ($esAviso ? 'border-warning/30' : 'border-error/30');
 
         $titulo = match($estadoFinal) {
-            'Pendiente de Revisión por Curaduría' => 'Solicitud enviada · pendiente de revisión por curaduría',
+            'Pendiente de Revisión por Curaduría' => 'Solicitud enviada · pendiente de revisión',
             'Aprobada Documentalmente'            => 'Solicitud aprobada documentalmente',
             'Registrada'                          => 'Solicitud registrada exitosamente',
             'Pausada para Asesoría'   => 'Solicitud pausada — en espera de asesoría',
@@ -22,7 +22,7 @@
         };
 
         $subtitulo = match($estadoFinal) {
-            'Pendiente de Revisión por Curaduría' => 'Tu solicitud ha sido remitida al equipo curatorial. Recibirás notificación cuando inicie la revisión.',
+            'Pendiente de Revisión por Curaduría' => 'Tu solicitud ha sido remitida. Recibirás notificación cuando inicie la revisión.',
             'Aprobada Documentalmente'            => 'La curaduría aprobó el expediente. Consulta el detalle para continuar con la entrega física.',
             'Registrada'                          => 'El registro fue aceptado y archivado en la colección.',
             'Pausada para Asesoría'   => 'El funcionario responsable se pondrá en contacto contigo para guiar el caso documental.',
@@ -111,12 +111,12 @@
                         @if($estadoFinal === 'Pendiente de Revisión por Curaduría')
                             <p class="text-xs text-text-secondary">{{ $fechaActualizacionExpediente }}</p>
                         @endif
-                        <p class="text-sm font-medium text-text-primary">Solicitud enviada al equipo curatorial</p>
+                        <p class="text-sm font-medium text-text-primary">Solicitud enviada</p>
                     </li>
                     <li class="pl-5">
                         <div class="absolute -left-1.5 mt-1 size-3 rounded-full bg-border border-2 border-border"></div>
                         <p class="text-xs text-text-secondary">Pendiente</p>
-                        <p class="text-sm text-text-secondary">Revisión por curaduría</p>
+                        <p class="text-sm text-text-secondary">Revisión</p>
                     </li>
                 </ol>
             </div>

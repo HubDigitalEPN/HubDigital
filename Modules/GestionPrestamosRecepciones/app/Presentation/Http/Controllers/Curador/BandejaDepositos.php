@@ -174,10 +174,14 @@ final class BandejaDepositos extends Component
         // Solo se exponen al Blade las recepciones que aún requieren actuación del
         // curador; esto permite destacar el mismo acceso directo también en el historial.
         $recepciones = $recepcionesPendientes;
+        $recepcionesFirmadas = RecepcionLoteEloquentModel::query()
+            ->whereIn('solicitud_deposito_id', $solicitudes->pluck('id'))
+            ->whereNotNull('firmada_en')->whereNotNull('acta_firmada_ruta')->where('acta_firmada_ruta', '<>', '')
+            ->get()->keyBy('solicitud_deposito_id');
 
         return view('gestionprestamosrecepciones::curador.bandeja-depositos', compact(
             'solicitudes', 'nombres', 'hayFiltros', 'esResueltas', 'esActas',
-            'totalPendientes', 'totalActasPendientes', 'recepciones',
+            'totalPendientes', 'totalActasPendientes', 'recepciones', 'recepcionesFirmadas',
         ));
     }
 }

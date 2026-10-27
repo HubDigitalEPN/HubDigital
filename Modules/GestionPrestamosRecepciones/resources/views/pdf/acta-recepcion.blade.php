@@ -99,9 +99,6 @@
             <td>Modalidad: <strong>{{ $recepcion->tipoTramite }}</strong></td>
             <td class="der">Versión del original: <strong>{{ $versionActa }}</strong></td>
         </tr>
-        <tr>
-            <td colspan="2">Estado de recepción: <strong>{{ $recepcion->estadoRecepcion ?? '—' }}</strong></td>
-        </tr>
     </table>
 
     {{-- Destinatario --}}
@@ -166,11 +163,9 @@
     <p>
         La recepción física fue constatada por <strong>{{ $receptor ?? 'Recepción EPN' }}</strong>
         @if($recepcion->verificadoEn) el {{ $recepcion->verificadoEn->format('d/m/Y H:i') }}@endif.
-        La trazabilidad de esta actuación se conserva en HubDigital.
     </p>
 
     <div class="section">
-        <p><strong>Resultado de la constatación física:</strong> {{ $recepcion->estadoRecepcion ?? '—' }}</p>
         @if($recepcion->observaciones !== [])
             <p><strong>Observaciones registradas:</strong></p>
             <ul class="detalle">
@@ -186,12 +181,12 @@
     <p>Atentamente,</p>
 
     <div class="firma">
-        <div class="titulo-firma">Firma electrónica del curador responsable</div>
+        <div class="titulo-firma">Firma electrónica del Curador responsable</div>
         <div class="marcadores">
             <a class="marcador-bloque" href="{{ $perfilFirma['bloque'] }}">HUBDIGITAL BLOQUE NOMINAL {{ $perfilFirma['rol'] }}</a>
             <a class="marcador-zona" href="{{ $perfilFirma['zona'] }}">HUBDIGITAL ZONA FIRMA {{ $perfilFirma['rol'] }}</a>
         </div>
-        <p class="nombre-curador">{{ $curador ?? 'Curador responsable' }}</p>
+        <p class="nombre-curador">{{ $nombreFirma ?? $curador ?? 'Curador responsable' }}</p>
         <div class="detalle-curador">
             <p>Curador · Laboratorio de Invertebrados</p>
             <p>Museo de Historia Natural “Gustavo Orcés V.” · Departamento de Biología</p>

@@ -1,9 +1,15 @@
 <meta charset="utf-8" />
 <script id="textos-sistema-datos" type="application/json">{!! json_encode(\App\Support\TextosSistema::diccionario(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
-<script src="{{ asset('js/textos-sistema.js') }}" defer></script>
-<script src="{{ asset('js/mapa-pantalla-completa.js') }}" defer></script>
+<script src="{{ asset('js/textos-sistema.js') }}?v={{ filemtime(public_path('js/textos-sistema.js')) }}" defer></script>
+<script src="{{ asset('js/mapa-pantalla-completa.js') }}?v={{ filemtime(public_path('js/mapa-pantalla-completa.js')) }}" defer></script>
 <style>.hub-map-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:9999!important;background:white}.leaflet-container:fullscreen{width:100vw!important;height:100dvh!important}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+        window.hubPortalWarmHome = @json(request()->routeIs('home') && request()->query() === [] && !auth()->check());
+        window.hubPortalPwaRegistration = navigator.serviceWorker.register('/service-worker.js', {scope: '/', updateViaCache: 'none'}).catch(() => null);
+    }
+</script>
 <meta name="catalogo-descargas" content="{{ \App\Support\DescargasCatalogo::permitidas() ? 'true' : 'false' }}" />
 <meta name="csrf-token" content="{{ csrf_token() }}" />
 @if($portalClaro ?? false)

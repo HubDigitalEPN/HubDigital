@@ -102,6 +102,10 @@ return [
         'recepcion' => 'La recepción física no implica aceptación automática ni transferencia de propiedad.',
         'instrucciones' => 'No envíes ni traslades especímenes hasta recibir instrucciones del equipo curatorial.',
         'privacidad' => 'Tus documentos y datos sensibles solo serán visibles para ti y el personal autorizado.',
+        'entrega_cajas' => 'Por cada cinco lotes en alcohol a depositar de una localidad o proyecto, se receptará una caja entomológica. Por ejemplo: 5 lotes requieren 1 caja; 10 lotes, 2 cajas; 15 lotes, 3 cajas.',
+        'entrega_cajas_detalle' => 'Las cajas alojan especímenes extraídos de los tubos con alcohol, que el staff del Laboratorio montará en alfileres después de la entrega. Pueden ser de cualquier madera (se recomienda balsa), deben tener tapa de vidrio y medir 52 × 39 × 6.5 cm.',
+        'entrega_contacto' => 'vladimir.carvajal@epn.edu.ec',
+        'recepcion_responsable' => 'Vladimir Carvajal',
     ],
     'catalogo' => [
         'filtros' => 'Filtros de investigación',

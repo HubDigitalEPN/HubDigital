@@ -33,7 +33,7 @@ final class DescargarActaRecepcion
             && $almacenamiento->existe($recepcion->actaFirmadaRuta)) {
             return response($almacenamiento->obtener($recepcion->actaFirmadaRuta), 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Content-Disposition' => (request()->boolean('descargar') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
                 'Cache-Control' => 'private, no-store',
                 'X-Content-Type-Options' => 'nosniff',
             ]);
