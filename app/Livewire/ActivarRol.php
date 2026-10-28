@@ -34,11 +34,6 @@ class ActivarRol extends Component
             abort(404);
         }
 
-        // Ninguna cuenta interna puede asumir roles públicos de autoservicio.
-        if ($user->esUsuarioInterno()) {
-            abort(403);
-        }
-
         $this->rol = $destino->value;
 
         // Si ya lo posee, solo conmuta el rol activo.
@@ -48,6 +43,9 @@ class ActivarRol extends Component
 
             return;
         }
+
+        // Un perfil interno solo cambia a membresías ya asignadas por administración.
+        if ($user->esUsuarioInterno()) abort(403);
 
         // El rol de solicitante no requiere datos adicionales: se activa directo.
         if ($destino === RolUsuario::PRESTAMISTA) {

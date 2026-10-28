@@ -52,6 +52,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return Attribute::get(fn () => trim($this->first_name.' '.$this->last_name));
     }
 
+    public function nombreSaludo(): string
+    {
+        $nombre = preg_split('/\s+/u', trim($this->first_name), 2)[0] ?? '';
+
+        return Str::ucfirst(Str::lower($nombre));
+    }
+
     /**
      * Una cuenta tiene una sola identidad de correo, sin diferencias por
      * mayúsculas o espacios accidentales. La segunda columna está protegida
@@ -162,8 +169,8 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Añade un rol a la cuenta (membresía). Idempotente. Preserva la invariante
-     * de que CURADOR es exclusivo de los roles auto-servicio.
+     * Añade una membresía idempotente. La autorización para asignar perfiles
+     * internos corresponde a administración; el registro público no los ofrece.
      */
     public function asignarRol(RolUsuario $rol): void
     {
@@ -171,22 +178,7 @@ class User extends Authenticatable implements MustVerifyEmail
             return;
         }
 
-        $asignados = $this->rolesAsignados();
-
-        $esRolInterno = in_array($rol, RolUsuario::rolesInternos(), true);
-        $tieneRolInterno = $asignados->contains(
-            fn (RolUsuario $asignado): bool => in_array($asignado, RolUsuario::rolesInternos(), true)
-        );
-
-        if ($esRolInterno && $asignados->isNotEmpty()) {
-            throw new \DomainException('Los roles internos de la EPN no pueden combinarse con otros roles.');
-        }
-
-        if ($tieneRolInterno) {
-            throw new \DomainException('Una cuenta interna de la EPN no puede asumir otros roles.');
-        }
-
-        $this->roles()->create(['rol' => $rol->value]);
+        $this->roles()->firstOrCreate(['rol' => $rol->value]);
         $this->load('roles');
     }
 
@@ -194,8 +186,8 @@ class User extends Authenticatable implements MustVerifyEmail
      * Reemplaza las membresías por una selección explícita de administración.
      *
      * El rol primario siempre queda dentro de las membresías y conserva la
-     * compatibilidad de la columna histórica `rol`. Las restricciones entre
-     * perfiles internos y de autoservicio se validan antes de escribir.
+     * compatibilidad de la columna histórica `rol`. Permite perfiles internos
+     * y de autoservicio en la misma cuenta, asignados por administración.
      *
      * @param  list<RolUsuario>  $roles
      */
@@ -210,27 +202,20 @@ class User extends Authenticatable implements MustVerifyEmail
             throw new \DomainException('Selecciona al menos un rol y define un rol operativo principal.');
         }
 
-        $internos = $roles->filter(
-            static fn (RolUsuario $rol): bool => in_array($rol, RolUsuario::rolesInternos(), true),
-        );
-
-        if ($internos->count() > 1 || ($internos->isNotEmpty() && $roles->count() > 1)) {
-            throw new \DomainException('Un perfil interno de la EPN no puede combinarse con otros roles.');
-        }
-
-        $this->roles()->delete();
-        $this->fill(['rol' => $rolPrimario])->save();
-
-        foreach ($roles as $rol) {
-            $this->roles()->create(['rol' => $rol->value]);
-        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($roles, $rolPrimario): void {
+            $this->roles()->whereNotIn('rol', $roles->map(fn (RolUsuario $rol): string => $rol->value))->delete();
+            $this->fill(['rol' => $rolPrimario])->save();
+            foreach ($roles as $rol) {
+                $this->roles()->firstOrCreate(['rol' => $rol->value]);
+            }
+        });
 
         $this->load('roles');
     }
 
     public function esCurador(): bool
     {
-        return $this->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN);
+        return $this->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN);
     }
 
     public function esReceptor(): bool

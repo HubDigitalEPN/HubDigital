@@ -58,13 +58,25 @@ final class ExportacionCatalogoExcel
 
     public function descargar(array $ids, string $perfil, bool $publico = false): StreamedResponse
     {
-        DescargasCatalogo::autorizar();
         abort_unless(in_array($perfil, ['catalogo', 'ipt'], true), 422);
+        if ($publico) DescargasCatalogo::autorizar($perfil === 'catalogo' ? 'catalogo.completo' : 'catalogo.ipt');
+        else BotonesSistema::autorizar('inventario.exportar');
         if (!$publico) abort_unless(auth()->user()?->esCurador() || auth()->user()?->esAdministrador(), 403);
         $def = app(ConfiguracionPlantillaCatalogo::class)->leer();
         $ipt = app(ConfiguracionIpt::class)->leer();
         $campos = $perfil === 'ipt' ? array_column($ipt['columnas'], 'origen') : array_column($def['columnas'], 'campo');
         $cabeceras = $perfil === 'ipt' ? array_column($ipt['columnas'], 'campo') : array_column($def['columnas'], 'cabecera');
+        $externo = $publico && ! DescargasCatalogo::equipoActivo();
+        if ($externo) {
+            // No publicar siquiera encabezados de notas internas ni de columnas personalizadas.
+            $indices = array_keys(array_filter($campos, static fn (string $campo): bool =>
+                (isset(self::VISIBILIDAD[$campo]) && ! in_array($campo, ['typeNotes', 'specimenNotes', 'georeferenceRemarks'], true))
+                || in_array($campo, self::METADATOS, true)));
+            $campos = array_values(array_intersect_key($campos, array_flip($indices)));
+            $cabeceras = array_values(array_intersect_key($cabeceras, array_flip($indices)));
+            if ($perfil === 'ipt') $ipt['columnas'] = array_values(array_intersect_key($ipt['columnas'], array_flip($indices)));
+            $ids = PublicacionExportacionCatalogo::aplicar(DB::table('taxonomia.especimenes as e')->whereIn('e.id', $ids), 'e')->pluck('e.id')->all();
+        }
         if ($perfil === 'catalogo') foreach (['catalogNumber', 'verbatimEventDate', 'georeferenceRemarks'] as $campo) if (!in_array($campo, $campos, true)) { $campos[] = $campo; $cabeceras[] = in_array($campo, $cabeceras, true) ? $campo.' (referencia)' : $campo; }
         $revision = [];
         $filas = $this->filas(array_values(array_unique($ids)), $campos, $publico, $perfil === 'ipt', $cabeceras, $revision);

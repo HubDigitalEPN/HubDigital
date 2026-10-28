@@ -65,7 +65,7 @@ test('login dirige al mapa sólo a curaduría y administración aunque existiera
     $usuario = User::factory()->create(['rol' => $rol]);
     $this->withSession(['url.intended' => route('portal.catalogo', ['vista' => 'mapa'])])
         ->post(route('login.store'), ['email' => $usuario->email, 'password' => 'password'])
-        ->assertRedirect(in_array($rol, ['ADMIN', 'CURADOR'], true)
+        ->assertRedirect(in_array($rol, ['ADMIN', 'CURADOR', 'AYUDANTE_CURADOR'], true)
             ? route('portal.catalogo', ['vista' => 'mapa'], absolute: false)
             : route('dashboard', absolute: false));
     $this->assertAuthenticatedAs($usuario);

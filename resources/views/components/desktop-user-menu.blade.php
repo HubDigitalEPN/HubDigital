@@ -9,7 +9,7 @@
     $iconoRol = match ($rolActivoMenu) {
         RolUsuario::DEPOSITANTE => 'archive-box',
         RolUsuario::PRESTAMISTA => 'document-text',
-        RolUsuario::CURADOR => 'shield-check',
+        RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => 'shield-check',
         RolUsuario::RECEPTOR => 'clipboard-document-check',
         RolUsuario::ADMIN => 'users',
     };

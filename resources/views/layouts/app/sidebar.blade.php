@@ -86,7 +86,7 @@
                                 Lotes por recibir
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::ADMIN], true))
+                    @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN], true))
                         <flux:sidebar.group
                             heading="Gestión de préstamos" icon="document-text"
                             class="grid"
@@ -343,6 +343,7 @@
                         </flux:sidebar.group>
                         @if($rolActivo === RolUsuario::ADMIN)
                             <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*')" class="grid">
+                                <flux:sidebar.item icon="key" :href="route('admin.botones')" :current="request()->routeIs('admin.botones')" wire:navigate>Botones y permisos</flux:sidebar.item>
                                 <flux:sidebar.item icon="language" :href="route('admin.textos-sistema')" :current="request()->routeIs('admin.textos-sistema')" wire:navigate>Textos de todas las pantallas</flux:sidebar.item>
                                 <flux:sidebar.item icon="table-cells" :href="route('admin.formato-ipt')" :current="request()->routeIs('admin.formato-ipt')" wire:navigate>Formato IPT (GBIF)</flux:sidebar.item>
                                 <flux:sidebar.item
@@ -450,7 +451,7 @@
                                     [$badgeMovil, $iconoMovil] = match ($rolMovil) {
                                         RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
-                                        RolUsuario::CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
+                                        RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
                                         RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
                                         RolUsuario::ADMIN => ['bg-bio-green/10 text-bio-green', 'users'],
                                     };

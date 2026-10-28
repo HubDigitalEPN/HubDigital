@@ -16,7 +16,7 @@
         <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><flux:icon name="tag" class="size-6" /><span><strong>Ingresos</strong></span></a>
         <a href="{{ route('divulgacion.imagenes') }}" wire:navigate><flux:icon name="photo" class="size-6" /><span><strong>Imágenes</strong></span></a>
         <a href="{{ route('divulgacion.analisis-diversidad') }}"><flux:icon name="chart-bar" class="size-6" /><span><strong>Análisis de diversidad</strong></span></a>
-        <button type="button" wire:click="descargarReporteDepositos"><flux:icon name="arrow-down-tray" class="size-6" /><span><strong>Reportes</strong></span></button>
+        @if(\App\Support\BotonesSistema::visible('depositos.reporte'))<button type="button" @disabled(!\App\Support\BotonesSistema::permitido('depositos.reporte')) wire:click="descargarReporteDepositos"><flux:icon name="arrow-down-tray" class="size-6" /><span><strong>Reportes</strong></span></button>@endif
     </nav>
 
     <div class="hub-curator-grid">
@@ -101,7 +101,7 @@
     <details class="hub-curator-details">
         <summary>Estadísticas y seguimiento detallado <flux:icon name="chevron-down" class="size-4" /></summary>
         <div class="hub-curator-details__body">
-            <div class="flex flex-wrap items-center justify-between gap-3"><h2>Depósitos y recepción</h2><div class="flex items-center gap-2"><flux:select wire:model.live="periodoAnalisis" aria-label="Período del análisis" class="w-40"><flux:select.option value="6">Últimos 6 meses</flux:select.option><flux:select.option value="12">Últimos 12 meses</flux:select.option><flux:select.option value="24">Últimos 24 meses</flux:select.option></flux:select><flux:button wire:click="descargarReporteDepositos" variant="ghost" icon="arrow-down-tray">Descargar reporte</flux:button></div></div>
+            <div class="flex flex-wrap items-center justify-between gap-3"><h2>Depósitos y recepción</h2><div class="flex items-center gap-2"><flux:select wire:model.live="periodoAnalisis" aria-label="Período del análisis" class="w-40"><flux:select.option value="6">Últimos 6 meses</flux:select.option><flux:select.option value="12">Últimos 12 meses</flux:select.option><flux:select.option value="24">Últimos 24 meses</flux:select.option></flux:select>@if(\App\Support\BotonesSistema::visible('depositos.reporte'))<flux:button :disabled="!\App\Support\BotonesSistema::permitido('depositos.reporte')" wire:click="descargarReporteDepositos" variant="ghost" icon="arrow-down-tray">Descargar reporte</flux:button>@endif</div></div>
             <div class="grid gap-3 lg:grid-cols-2"><x-bar-chart titulo="Tendencia de solicitudes" :subtitulo="'Depósitos y donaciones enviados durante '.$periodoAnaliticoEtiqueta" :filas="$graficoDepositosPorMes" /><x-bar-chart titulo="Estado de los depósitos" :subtitulo="'Distribución documental durante '.$periodoAnaliticoEtiqueta" :filas="$graficoEstadosDepositos" /><x-bar-chart titulo="Familias mejor representadas" :subtitulo="'Las 8 con más registros, de '.number_format($colFamilias, 0, ',', '.').' familias'" :filas="$graficoFamilias" /><x-bar-chart titulo="Nivel de determinación" subtitulo="Rango taxonómico de cada espécimen" :filas="$graficoDeterminacion" /></div>
         </div>
     </details>

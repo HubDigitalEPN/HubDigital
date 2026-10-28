@@ -19,6 +19,7 @@
 
     <section class="hub-panel p-5" aria-labelledby="titulo-descargas">
         <h2 id="titulo-descargas" class="hub-section-title">Descargas del catálogo</h2>
+        <a href="{{ route('admin.botones') }}" wire:navigate class="mt-2 inline-block text-sm text-science-blue hover:underline">Administrar botones y permisos por perfil</a>
 
         <form wire:submit="guardarDescargas" class="mt-4 flex flex-wrap items-center gap-4">
             <label class="flex items-center gap-2"><input type="checkbox" wire:model="descargasAutoservicio">Permitir descargas a usuarios de autoservicio</label>

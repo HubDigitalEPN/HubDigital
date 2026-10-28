@@ -12,7 +12,11 @@ final class DescargarCatalogo
 {
     public function __invoke(Request $request, string $exportacion): StreamedResponse
     {
-        \App\Support\DescargasCatalogo::autorizar();
+        \App\Support\DescargasCatalogo::autorizar(match ($exportacion) {
+            'datos' => 'catalogo.completo', 'ipt' => 'catalogo.ipt',
+            'resultados' => 'catalogo.resultados', 'especies' => 'catalogo.especies',
+            default => 'catalogo.analisis',
+        });
         $catalogo = app(PortalCatalogo::class);
         app()->call([$catalogo, 'boot']);
         $catalogo->prepararDescargaHttp($request->query());

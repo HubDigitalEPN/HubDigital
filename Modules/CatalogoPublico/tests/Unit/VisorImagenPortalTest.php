@@ -1,9 +1,10 @@
 <?php
 
-uses(Tests\InfrastructureTestCase::class);
+// RBAC requiere una cuenta verificada y membresías persistidas.
+uses(Tests\DatabaseFeatureTestCase::class);
 
 it('el visor mantiene los controles accesibles y reserva la descarga a cuentas habilitadas', function (bool $autorizado) {
-    if ($autorizado) $this->actingAs(\App\Models\User::factory()->curador()->make());
+    if ($autorizado) $this->actingAs(\App\Models\User::factory()->curador()->create());
     $html = view('catalogopublico::components.visor-imagen')->render();
     $erroresAnteriores = libxml_use_internal_errors(true);
     try {

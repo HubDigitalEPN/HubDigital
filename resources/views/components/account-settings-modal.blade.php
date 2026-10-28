@@ -18,12 +18,12 @@
                     <flux:icon name="user" class="size-5" />
                     <span><strong>Perfil</strong></span>
                 </button>
-                @unless(auth()->user()->esUsuarioInterno())
+                @if(!auth()->user()->esUsuarioInterno() || auth()->user()->rolesAsignados()->count() > 1)
                     <button type="button" x-on:click="section = 'roles'" x-bind:aria-current="section === 'roles' ? 'page' : null" class="hub-settings-rail__item">
                         <flux:icon name="arrows-right-left" class="size-5" />
                         <span><strong>Roles</strong></span>
                     </button>
-                @endunless
+                @endif
                 <button type="button" x-on:click="section = 'security'" x-bind:aria-current="section === 'security' ? 'page' : null" class="hub-settings-rail__item">
                     <flux:icon name="lock-closed" class="size-5" />
                     <span><strong>Seguridad</strong></span>
@@ -43,13 +43,13 @@
                     <livewire:pages::settings.profile :modal-mode="true" :key="'account-settings-profile-'.auth()->id()" />
                 </section>
 
-                @unless(auth()->user()->esUsuarioInterno())
+                @if(!auth()->user()->esUsuarioInterno() || auth()->user()->rolesAsignados()->count() > 1)
                     <section x-show="section === 'roles'" x-cloak aria-labelledby="settings-roles-title">
                         <h3 id="settings-roles-title" class="font-display text-xl font-semibold text-blue-navy">Cambiar de rol</h3>
 
                         <livewire:selector-rol-activo />
                     </section>
-                @endunless
+                @endif
 
                 <section x-show="section === 'security'" x-cloak aria-labelledby="settings-security-title">
                     <div class="mb-5">

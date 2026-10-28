@@ -1138,8 +1138,6 @@ final class PortalCatalogo extends Component
     /** Reutiliza la selección y sus validadores sin renderizar el catálogo. */
     public function prepararDescargaHttp(array $parametros): void
     {
-        \App\Support\DescargasCatalogo::autorizar();
-
         $reglas = ['fxprov' => ['prohibited']];
         $defectos = get_class_vars(self::class);
         foreach (self::PROPIEDADES_URL as $alias => $propiedad) {
@@ -1163,7 +1161,8 @@ final class PortalCatalogo extends Component
 
     public function descargarDatos(string $perfil = 'catalogo'): StreamedResponse
     {
-        \App\Support\DescargasCatalogo::autorizar();
+        abort_unless(in_array($perfil, ['catalogo', 'ipt'], true), 422);
+        \App\Support\DescargasCatalogo::autorizar($perfil === 'catalogo' ? 'catalogo.completo' : 'catalogo.ipt');
 
         $ids = app(EloquentProveedorEspecimenesParaArbol::class)->consultaPublica($this->filtrosActuales(), $this->nivel, $this->taxon)
             ->orderBy('te.fila_origen_excel')->orderBy('te.id')->pluck('te.id')->all();
@@ -1178,7 +1177,8 @@ final class PortalCatalogo extends Component
 
         $nivel = $this->nivel;
         $taxon = $this->taxon;
-        return response()->streamDownload(static function () use ($repositorio, $filtros, $nivel, $taxon): void {
+        $soloPublicables = ! \App\Support\DescargasCatalogo::equipoActivo();
+        return response()->streamDownload(static function () use ($repositorio, $filtros, $nivel, $taxon, $soloPublicables): void {
             $salida = fopen('php://output', 'wb');
             fwrite($salida, "\xEF\xBB\xBF");
             fputcsv($salida, PerfilExportacionPublica::ENCABEZADOS_CSV, ';', '"', '');
@@ -1187,7 +1187,7 @@ final class PortalCatalogo extends Component
 
                 return preg_match('/^[=+\-@\t\r]/u', $texto) ? "'".$texto : $texto;
             };
-            foreach ($repositorio->cursorParaCsv($filtros, $nivel, $taxon) as $fila) {
+            foreach ($repositorio->cursorParaCsv($filtros, $nivel, $taxon, $soloPublicables) as $fila) {
                 $localidad = (bool) $fila->locality_name_visible;
                 $coordenadas = (bool) $fila->decimal_latitude_visible && (bool) $fila->decimal_longitude_visible;
                 $localidadInec = LocalidadInecPublica::desde($fila->localidad_inec, $fila->referencia_inec);
@@ -1223,7 +1223,7 @@ final class PortalCatalogo extends Component
 
     public function descargarAnalisis(string $tipo): StreamedResponse
     {
-        \App\Support\DescargasCatalogo::autorizar();
+        \App\Support\DescargasCatalogo::autorizar('catalogo.analisis');
 
         if (! in_array($tipo, ['mapa', 'filos', 'riqueza', 'decadas', 'calidad', 'raras', 'estacionalidad', 'altitud', 'metodos'], true)) {
             abort(404);
@@ -1276,7 +1276,7 @@ final class PortalCatalogo extends Component
 
     public function descargarListaEspecies(): StreamedResponse
     {
-        \App\Support\DescargasCatalogo::autorizar();
+        \App\Support\DescargasCatalogo::autorizar('catalogo.especies');
 
         return app(PortalEstadisticas::class)->descargarListaConFiltros(
             $this->filtrosAnalisis($this->filtrosActuales()),

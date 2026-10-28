@@ -8,10 +8,10 @@
     </button>
     <div id="menu-{{ $tipo }}" class="atlas-menu" x-ref="menu" x-cloak x-show="abierto" role="menu" aria-label="Opciones de {{ $indice['titulo'] }}"
         x-on:keydown.arrow-down.prevent="mover($event)" x-on:keydown.arrow-up.prevent="mover($event)" x-on:keydown.home.prevent="mover($event)" x-on:keydown.end.prevent="mover($event)" x-on:focusout="if (!$el.contains($event.relatedTarget)) abierto = false">
-        @if(\App\Support\DescargasCatalogo::permitidas())
-        <button type="button" role="menuitem" data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga($tipo))); cerrar()">{{ \App\Support\PortalCopy::text($tipo === 'especies' ? 'catalogo.lista_csv' : 'catalogo.descargar_csv') }}</button>
-        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="geojson()">{{ \App\Support\PortalCopy::text('catalogo.geojson') }}</button>@endif
-        @if($tipo === 'mapa')<button type="button" role="menuitem" x-on:click="pdf()">{{ \App\Support\PortalCopy::text('catalogo.pdf') }}</button>@endif
+        @if(\App\Support\DescargasCatalogo::visibles($tipo === 'especies' ? 'catalogo.especies' : 'catalogo.analisis'))
+        <button type="button" role="menuitem" @disabled(!\App\Support\DescargasCatalogo::permitidas(boton: $tipo === 'especies' ? 'catalogo.especies' : 'catalogo.analisis')) data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga($tipo))); cerrar()">{{ \App\Support\PortalCopy::text($tipo === 'especies' ? 'catalogo.lista_csv' : 'catalogo.descargar_csv') }}</button>
+        @if($tipo === 'mapa')<button type="button" role="menuitem" @disabled(!\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.analisis')) x-on:click="geojson()">{{ \App\Support\PortalCopy::text('catalogo.geojson') }}</button>@endif
+        @if($tipo === 'mapa')<button type="button" role="menuitem" @disabled(!\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.analisis')) x-on:click="pdf()">{{ \App\Support\PortalCopy::text('catalogo.pdf') }}</button>@endif
         @endif
         @if(!in_array($tipo, ['filos', 'mapa'], true))<button type="button" role="menuitem" x-on:click="alternarGrafico()">{{ \App\Support\PortalCopy::text('catalogo.alternar_grafico') }}</button>@endif
         <button type="button" role="menuitem" x-on:click="indice()">{{ \App\Support\PortalCopy::text('catalogo.explicar_metrica') }}</button>

@@ -58,6 +58,6 @@ final class UserIdentityService
     {
         $usuario = User::find($uuid);
 
-        return $usuario?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN) ?? false;
+        return $usuario?->esCurador() ?? false;
     }
 }

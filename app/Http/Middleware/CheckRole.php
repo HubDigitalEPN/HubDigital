@@ -23,6 +23,9 @@ final class CheckRole
             static fn (string $role): RolUsuario => RolUsuario::from(strtoupper($role)),
             $roles,
         );
+        if (in_array(RolUsuario::CURADOR, $esperados, true)) {
+            $esperados[] = RolUsuario::AYUDANTE_CURADOR;
+        }
 
         // Administración es un rol interno asignado fuera del registro público
         // y puede operar todas las áreas. El resto se autoriza por membresía

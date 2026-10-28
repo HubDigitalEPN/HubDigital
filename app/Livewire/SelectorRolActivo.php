@@ -16,6 +16,8 @@ class SelectorRolActivo extends Component
     public function cambiar(string $rol): void
     {
         $user = Auth::user();
+        abort_unless($user && $user->hasVerifiedEmail() && ! $user->must_change_password, 403);
+        $user->load('roles');
         $destino = RolUsuario::tryFrom($rol);
 
         if ($destino === null || ! $user->tieneRol($destino)) {
@@ -30,6 +32,8 @@ class SelectorRolActivo extends Component
     public function render(): View
     {
         $user = Auth::user();
+        abort_unless($user && $user->hasVerifiedEmail() && ! $user->must_change_password, 403);
+        $user->load('roles');
         $roles = $user->rolesAsignados();
 
         // Si la cuenta tiene un solo rol auto-servicio (y no es curador),

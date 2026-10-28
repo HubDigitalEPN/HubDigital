@@ -46,7 +46,8 @@ class Dashboard extends Component
 
     public function descargarReporteDepositos(): StreamedResponse
     {
-        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
+        \App\Support\BotonesSistema::autorizar('depositos.reporte');
+        abort_unless(auth()->user()?->esCurador(), 403);
 
         $inicio = $this->inicioAnalisis();
 
@@ -101,8 +102,12 @@ class Dashboard extends Component
         $inicio = microtime(true);
         $user = Auth::user();
 
+        if (in_array($user->rolActivo(), [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN], true)) {
+            \App\Support\BotonesSistema::autorizar('panel.curador');
+        }
+
         $vista = match ($user->rolActivo()) {
-            RolUsuario::CURADOR, RolUsuario::ADMIN => view('livewire.dashboard.curador-panel', [
+            RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN => view('livewire.dashboard.curador-panel', [
                 ...$this->resumenCuraduria(),
                 'graficoFamilias' => $this->graficoFamilias(),
                 'graficoDeterminacion' => $this->graficoDeterminacion(),

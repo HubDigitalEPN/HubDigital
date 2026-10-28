@@ -94,6 +94,7 @@ final class EspecimenIndex extends Component
 
     public function exportarExcel(string $perfil = 'catalogo'): \Symfony\Component\HttpFoundation\StreamedResponse
     {
+        \App\Support\BotonesSistema::autorizar('inventario.exportar');
         abort_unless(auth()->user()?->esCurador(), 403);
         $this->validate(self::REGLAS_FILTROS);
         $ids = \App\Support\SeleccionExportacionCatalogo::ids($this->construirInput(1));

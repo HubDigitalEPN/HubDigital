@@ -187,6 +187,7 @@ test('public registration rejects every internal role', function (RolUsuario $ro
     $this->assertGuest();
 })->with([
     RolUsuario::CURADOR,
+    RolUsuario::AYUDANTE_CURADOR,
     RolUsuario::RECEPTOR,
     RolUsuario::ADMIN,
 ]);

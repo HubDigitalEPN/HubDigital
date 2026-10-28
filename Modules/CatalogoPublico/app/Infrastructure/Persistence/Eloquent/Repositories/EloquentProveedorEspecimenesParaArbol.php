@@ -216,7 +216,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
     }
 
     /** Filas filtradas y en orden estable para una descarga CSV de memoria acotada. */
-    public function cursorParaCsv(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = ''): LazyCollection
+    public function cursorParaCsv(FiltrosBusqueda $filtros, string $nivel = '', string $taxon = '', bool $soloPublicables = false): LazyCollection
     {
         $query = $this->consultaPublica($filtros, $nivel, $taxon)
             ->leftJoin('taxonomia.taxones as tx', 'tx.id', '=', 'te.taxon_id')
@@ -226,6 +226,8 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             ->leftJoin('recepciones.localidades_ecuador_catalogo as inec', function (\Illuminate\Database\Query\JoinClause $join): void {
                 $join->on('inec.codigo', '=', 'loc.codigo_inec')->where('inec.fuente', 'LIKE', 'INEC %');
             });
+
+        if ($soloPublicables) \App\Support\PublicacionExportacionCatalogo::aplicar($query);
 
         return $query->select([
             'te.occurrence_id', 'te.codigo_catalogo', 'te.fecha_colecta',

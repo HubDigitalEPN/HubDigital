@@ -8,6 +8,8 @@ use Modules\CatalogoPublico\Infrastructure\Adapters\PhpSpreadsheetGeneradorXlsxA
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+uses(Tests\InfrastructureTestCase::class);
+
 test('el perfil inicial conserva exactamente las 69 cabeceras y el orden del ejemplo EPN', function (): void {
     $referencia = json_decode(file_get_contents(__DIR__.'/../Fixtures/ipt-epn-cabeceras.json'), true, 512, JSON_THROW_ON_ERROR);
     expect(PerfilIptGbif::COLUMNAS)->toHaveCount(69)->toBe($referencia)

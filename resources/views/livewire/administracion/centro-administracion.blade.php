@@ -74,6 +74,10 @@
         <div><h2 id="titulo-textos-portal" class="hub-section-title">Textos de todas las pantallas</h2></div>
         <a href="{{ route('admin.textos-sistema') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar textos</a>
     </section>
+    <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-botones">
+        <div><h2 id="titulo-botones" class="hub-section-title">Botones y permisos por perfil</h2><p class="mt-2 text-sm text-text-secondary">Administra quién puede ver y usar los controles principales.</p></div>
+        <a href="{{ route('admin.botones') }}" wire:navigate class="inline-flex min-h-11 items-center rounded-lg border border-blue-navy/25 px-4 py-2 text-sm font-semibold text-blue-navy">Administrar botones</a>
+    </section>
     <section class="hub-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="titulo-configuracion-sistema">
         <div>
             <h2 id="titulo-configuracion-sistema" class="font-display text-xl font-semibold text-blue-navy">Configuración del sistema</h2>

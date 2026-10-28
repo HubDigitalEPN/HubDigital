@@ -43,6 +43,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/administracion/usuarios', GestionUsuarios::class)
         ->middleware('role:admin')
         ->name('admin.usuarios');
+    Route::get('/administracion/botones', \App\Livewire\Administracion\GestionBotones::class)
+        ->middleware('role:admin')->name('admin.botones');
     Route::get('/administracion/configuracion', ConfiguracionSistema::class)
         ->middleware('role:admin')
         ->name('admin.configuracion');

@@ -86,20 +86,23 @@ configuración de cada entorno antes de utilizarla con bases o servicios reales.
 y el despliegue se inician manualmente; un push o un pull request no lanza suites
 ni instala una versión en los servidores.
 
-Las pruebas automáticas del proyecto se conservan. El comando manual
-`crear-paquete-oci` centraliza las auditorías Composer/npm, las compilaciones
-Java/Vite, Pest con PostgreSQL, Behat, Node, Python, las comprobaciones PDF y los
-recorridos de navegador. La preparación de las suites requiere los insumos
-locales autorizados, incluidos los certificados de prueba en `.local/secrets`.
+Las pruebas automáticas se conservan en el [reparto agente/paquete](docs/validacion-agente-y-paquete.md).
+El agente ejecuta al finalizar cada cambio 8 de 20 familias (40 %): dependencias,
+compilaciones, Node y la integración completa Pest/PostgreSQL/PDF/navegador.
+`crear-paquete-oci` comprueba su evidencia vigente y ejecuta las otras 12 (60 %),
+incluidas auditorías, Python, Java criptográfico, Gherkin e integridad OCI.
+Se requieren los insumos locales autorizados, incluidos `.local/secrets`.
 
 Para validar exclusivamente en localhost, desde la raíz del repositorio:
 
 ```powershell
+.\scripts\deployment\validar-cambios-agente.ps1
 .\scripts\deployment\crear-paquete-oci-core.ps1 -SoloValidacionLocal -DescripcionCambio "Validación local"
 ```
 
-Esta opción ejecuta las mismas suites y compilaciones y termina antes del commit,
-la publicación y el empaquetado. No requiere un token GitHub.
+El primer paso corresponde al agente y no necesita autorización adicional.
+El segundo verifica su evidencia y ejecuta el 60 % restante; lo inicia el usuario
+por defecto. No publican ni empaquetan y no requieren token GitHub.
 
 Cada cambio se desarrolla en una rama nueva basada en `main`. Para validar,
 publicar en el repositorio oficial y generar el paquete OCI:

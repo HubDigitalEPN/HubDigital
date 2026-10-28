@@ -30,7 +30,9 @@ final class CreadorUsuario
             ]);
         }
 
-        if (in_array($rol, RolUsuario::rolesInternos(), true) && ! $this->esCorreoInstitucional($email)) {
+        if (in_array($rol, RolUsuario::rolesInternos(), true)
+            && ! ($creadoPorAdministrador && $rol === RolUsuario::ADMIN)
+            && ! $this->esCorreoInstitucional($email)) {
             throw ValidationException::withMessages([
                 'email' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);

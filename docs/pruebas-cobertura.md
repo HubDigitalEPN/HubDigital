@@ -124,17 +124,19 @@ en Windows antes de medir el límite de tres segundos. En Windows usa un puerto
 efímero en loopback y autenticación mutua, sin reemplazar el motor de localhost
 ni incorporar el certificado sintético a la confianza del servicio existente.
 
-crear-paquete-oci centraliza Pest con PostgreSQL, Behat, Java, Python, Node,
-compilaciones y la integridad de las fuentes del paquete. No se ejecutan esas
-suites por separado durante una tarea ordinaria.
+Desde el 28 de octubre de 2026 el [reparto agente/paquete](validacion-agente-y-paquete.md)
+conserva toda la cobertura: el agente ejecuta su 40 % al terminar cada solicitud;
+`crear-paquete-oci` acredita esa evidencia y ejecuta el 60 % restante. No se
+ejecutan suites sueltas ni se duplican entre las entradas.
 
-El inicio del flujo es manual. GitHub Actions está deshabilitado en el
+La publicación sigue siendo manual. GitHub Actions está deshabilitado en el
 repositorio oficial y no se conservan workflows que ejecuten suites al publicar
 commits o abrir pull requests. Las pruebas automáticas permanecen en el proyecto
-y se ejecutan mediante crear-paquete-oci, incluida su opción SoloValidacionLocal.
+y se ejecutan por su entrada responsable; el agente inicia automáticamente su
+bloque local y el usuario inicia el paquete o su opción SoloValidacionLocal.
 
 Las auditorías de dependencias también se ejecutan dentro de crear-paquete-oci:
-Composer revisa composer.lock antes de instalar PHP y npm revisa los cuatro
+Composer revisa composer.lock y npm revisa los cuatro
 proyectos frontend. Una vulnerabilidad comunicada por estos registros bloquea
 la publicación. Dependabot complementa estas comprobaciones en GitHub; necesita
 el grafo de dependencias habilitado y no reemplaza las suites de regresión.
@@ -254,3 +256,17 @@ La revisión manual complementaria en Opera Neon se reserva para presentación, 
 `hub-appearance.test.mjs` cubre el inicio en claro sin preferencia válida aunque el sistema esté oscuro, la persistencia de claro/oscuro tras recargar con el sistema opuesto, el paso por el portal público sin perder la preferencia y la opción Sistema únicamente cuando se selecciona expresamente. El portal conserva su paleta propia. `hub-turnstile.test.mjs` comprueba que el widget recibe el tema efectivo de la aplicación; conserva los casos de token, caducidad, error, reintento y navegación. Estas pruebas se ejecutan exclusivamente dentro de `crear-paquete-oci`; no se agregan escenarios Gherkin duplicados.
 
 La separación visual y las áreas pulsables de recuperación/visibilidad, el foco y la adaptación móvil se revisan complementariamente en localhost con Opera Neon al 75 %. La semántica del campo, el POST de Fortify y el flujo de recuperación conservan su cobertura Pest existente.
+
+## Cambios del 28/10/2026: validación distribuida y botones RBAC
+
+`tests/Frontend/evidencia-agente.test.mjs` comprueba integridad, caducidad y rechazo
+ante cambios de fuentes o runtime; se ejecuta con todos los contratos Node del
+bloque del agente. La matriz y sus reglas se describen en
+`docs/validacion-agente-y-paquete.md`.
+
+Pest cubre asignación y cambio entre perfiles internos/externos, rechazo de roles
+no asignados, ayudantes sin administración, revocación inmediata, permisos de ver
+sin usar, edición concurrente y límites de divulgación en `Auth/BotonesRbacTest.php`
+y `ExportacionExternaRbacTest.php`. Incluye hoja grande y limpieza de temporales al
+fallar. No se agrega Gherkin duplicado: los contratos HTTP, Livewire y persistencia
+quedan en Pest; Gherkin conserva sus flujos completos existentes.

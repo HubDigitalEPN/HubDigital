@@ -1,6 +1,10 @@
-<#
+﻿<#
 .SYNOPSIS
 Valida, publica en Git y crea un paquete de despliegue OCI para HubDigital.
+
+El agente ejecuta previamente validar-cambios-agente.ps1 (8 de 20 familias).
+Este comando comprueba esa evidencia y ejecuta las 12 familias restantes,
+sin repetir las suites ni recompilar los mismos artefactos ya comprobados.
 
 Publica exclusivamente en main de HubDigitalEPN/HubDigital. Antes de publicar
 exige todas las pruebas y compilaciones. Las opciones de omision se conservan
@@ -13,8 +17,8 @@ crear-paquete-oci -DescripcionCambio "actualiza solicitudes de deposito"
 
 .EXAMPLE
 crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
-# Ejecuta las mismas suites y compilaciones; termina antes de registrar,
-# publicar o empaquetar. No requiere credenciales GitHub ni conecta a OCI.
+# Exige evidencia del 40 % del agente y ejecuta el 60 % restante; termina
+# antes de registrar, publicar o empaquetar. Sin credenciales ni OCI.
 #>
 [CmdletBinding()]
 param(
@@ -22,6 +26,7 @@ param(
     [string]$Destino,
     [string]$DescripcionCambio,
     [switch]$SoloValidacionLocal,
+    [switch]$ValidacionAgente,
     [switch]$OmitirCompilacion,
     [switch]$OmitirPruebasPHP,
     [Alias('OmitirPruebasPostgreSQL', 'SoloFrontend')]
@@ -44,6 +49,7 @@ function Invoke-Comando {
     )
 
     Write-Host "`n==> $Descripcion" -ForegroundColor Cyan
+    $relojComando = [Diagnostics.Stopwatch]::StartNew()
     if ($DirectorioTrabajo) { Push-Location $DirectorioTrabajo }
     try {
         # .gitattributes ya fija LF. En Windows, Git avisa por cada archivo CRLF
@@ -59,6 +65,7 @@ function Invoke-Comando {
     }
     finally {
         if ($DirectorioTrabajo) { Pop-Location }
+        Write-Host ('Tiempo: {0:N1} s | {1}' -f $relojComando.Elapsed.TotalSeconds, $Descripcion) -ForegroundColor DarkGray
     }
 }
 
@@ -288,11 +295,12 @@ printf 'cd /tmp\nsha256sum -c %q\nbash %q\n' "${checksum_name}" "$(basename -- "
 function Invoke-TarConProgreso {
     param(
         [Parameter(Mandatory)] [string[]]$Argumentos,
-        [Parameter(Mandatory)] [string]$ArchivoSalida
+        [Parameter(Mandatory)] [string]$ArchivoSalida,
+        [string]$Descripcion = 'Comprimiendo bundle fuente filtrado'
     )
 
-    Write-Host "`n==> Creando bundle fuente filtrado" -ForegroundColor Cyan
-    Write-Host 'La compresion puede tardar varios minutos. Se mostrara actividad cada 5 segundos.'
+    Write-Host "`n==> $Descripcion" -ForegroundColor Cyan
+    Write-Host 'Se mostrara actividad cada 5 segundos.'
     $argumentosNativos = $Argumentos | ForEach-Object {
         if ($_ -match '[\s"]') { '"' + $_.Replace('"', '\"') + '"' } else { $_ }
     }
@@ -354,6 +362,17 @@ if (-not (Test-Path -LiteralPath (Join-Path $Proyecto 'artisan') -PathType Leaf)
 }
 foreach ($programa in @('git.exe', 'tar.exe')) {
     if (-not (Get-Command $programa -ErrorAction SilentlyContinue)) { throw "No se encontro $programa en PATH." }
+}
+
+if ($ValidacionAgente) {
+    $SoloValidacionLocal = $true
+    if ([string]::IsNullOrWhiteSpace($DescripcionCambio)) { $DescripcionCambio = 'Validacion automatica de cambios por el agente' }
+    $evidenciaAnterior = Join-Path $Proyecto '.local\validation\evidencia-agente.json'
+    if (Test-Path -LiteralPath $evidenciaAnterior -PathType Leaf) { Remove-Item -LiteralPath $evidenciaAnterior -Force }
+    Write-Host 'VALIDACION AGENTE: 8 de 20 familias (40 %), exclusivamente en localhost.' -ForegroundColor Cyan
+} else {
+    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'verificar', $Proyecto) -Descripcion 'Comprobando evidencia vigente del 40 % del agente'
+    Write-Host 'VALIDACION PAQUETE: 12 de 20 familias (60 %); el 40 % acreditado no se repite.' -ForegroundColor Cyan
 }
 
 while ([string]::IsNullOrWhiteSpace($DescripcionCambio)) {
@@ -456,10 +475,12 @@ $textoCredencialesPruebas = $null
 $headAntesValidacion = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
 $huellasAntesValidacion = @(Get-HuellasCodigo)
 
-Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', $upstream, '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
+if (-not $ValidacionAgente) {
+    Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', $upstream, '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
+}
 
 $archivosJson = @($archivosCambiados | Where-Object { $_ -match '\.json$' })
-if ($archivosJson) {
+if ($archivosJson -and -not $ValidacionAgente) {
     if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) {
         throw 'No se encontro node.exe en PATH para validar los archivos JSON.'
     }
@@ -490,25 +511,33 @@ if (-not $composer) {
 }
 if (-not $composer) { throw 'No se encontro Composer. Ejecute composer --version para revisar su instalacion.' }
 $composerPrograma = if ($composer.PSObject.Properties['Source'] -and $composer.Source) { $composer.Source } else { $composer.FullName }
-Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock' -DirectorioTrabajo $Proyecto
-Invoke-Comando -Programa $composerPrograma -Argumentos @('audit', '--locked', '--format=plain', '--no-interaction') -Descripcion 'Comprobando vulnerabilidades de dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
-Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
+if ($ValidacionAgente) {
+    Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
+} else {
+    Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock' -DirectorioTrabajo $Proyecto
+    Invoke-Comando -Programa $composerPrograma -Argumentos @('audit', '--locked', '--format=plain', '--no-interaction') -Descripcion 'Comprobando vulnerabilidades de dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
+}
 
 # Las pruebas de carga PDF usan el inspector Java: debe estar compilado antes de la suite PHP.
-$maven = Get-Command 'mvn.cmd' -ErrorAction SilentlyContinue
-if (-not $maven) { throw 'No se encontro Maven para compilar el validador criptografico Java.' }
-Invoke-Comando -Programa $maven.Source -Argumentos @('-q', '-f', 'tools/pdf-signature/pom.xml', '-DskipTests', 'package') -Descripcion 'Compilando firmador y validador criptografico Java' -DirectorioTrabajo $Proyecto
-Write-Host 'OK Maven: firmador y validador Java compilados.' -ForegroundColor Green
 $destinoJar = Join-Path $Proyecto 'resources/bin/hubdigital-pdf-signature.jar'
-New-Item -ItemType Directory -Path (Split-Path -Parent $destinoJar) -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $Proyecto 'tools/pdf-signature/target/pdf-signature-1.0.0.jar') -Destination $destinoJar -Force
+if ($ValidacionAgente) {
+    $maven = Get-Command 'mvn.cmd' -ErrorAction SilentlyContinue
+    if (-not $maven) { throw 'No se encontro Maven para compilar el validador criptografico Java.' }
+    Invoke-Comando -Programa $maven.Source -Argumentos @('-q', '-f', 'tools/pdf-signature/pom.xml', '-DskipTests', 'package') -Descripcion 'Compilando firmador y validador criptografico Java' -DirectorioTrabajo $Proyecto
+    Write-Host 'OK Maven: firmador y validador Java compilados.' -ForegroundColor Green
+    New-Item -ItemType Directory -Path (Split-Path -Parent $destinoJar) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $Proyecto 'tools/pdf-signature/target/pdf-signature-1.0.0.jar') -Destination $destinoJar -Force
+}
 if (!(Test-Path -LiteralPath (Join-Path $Proyecto 'tests/Python/test_portal_ete.py') -PathType Leaf)) {
     throw 'Falta el contrato obligatorio del renderizador ETE; no se admite una suite Python vacía.'
 }
-Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
-Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
-Invoke-Comando -Programa 'java.exe' -Argumentos @('-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2', '-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
-Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
+if ($ValidacionAgente) {
+    Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
+} else {
+    Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
+    Invoke-Comando -Programa 'java.exe' -Argumentos @('-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2', '-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
+    Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
+}
 
 # El navegador valida exactamente el build nuevo mientras PostgreSQL permanece activo.
 if (-not $OmitirCompilacion) {
@@ -523,32 +552,40 @@ if (-not $OmitirCompilacion) {
         if (-not (Test-Path -LiteralPath (Join-Path $proyectoFrontend 'package-lock.json') -PathType Leaf)) {
             throw "Falta package-lock.json en $nombreFrontend. No se pueden validar dependencias reproducibles."
         }
-        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci', '--include=dev', '--include=optional', '--no-audit') -Descripcion "Instalando dependencias frontend exactas: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
-        # npm ci puede terminar correctamente aunque anuncie vulnerabilidades.
-        # audit exige una respuesta satisfactoria del registro, incluye las
-        # herramientas de desarrollo afectadas y bloquea antes de publicar.
-        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('audit', '--audit-level=low', '--include=dev', '--include=optional') -Descripcion "Comprobando vulnerabilidades de dependencias: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
-        Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        if ($ValidacionAgente) {
+            Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci', '--include=dev', '--include=optional', '--no-audit') -Descripcion "Instalando dependencias frontend exactas: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+            Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        } else {
+            # npm ci puede terminar correctamente aunque anuncie vulnerabilidades.
+            # audit exige una respuesta satisfactoria del registro, incluye las
+            # herramientas de desarrollo afectadas y bloquea antes de publicar.
+            Invoke-Comando -Programa 'npm.cmd' -Argumentos @('audit', '--audit-level=low', '--include=dev', '--include=optional') -Descripcion "Comprobando vulnerabilidades de dependencias: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+        }
     }
 
     # Contratos JavaScript sin navegador: precisión WGS84, tamaños por cantidad
     # nombres de fotografías e historial atómico. Árbol y caché están en Pest.
-    $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
-    foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs', 'portal-photo-model.test.mjs', 'portal-dashboard-actions.test.mjs', 'portal-chart-model.test.mjs', 'portal-tree-model.test.mjs')) {
-        if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
-            throw "Falta el contrato JavaScript del portal: $contratoPortal"
-        }
+    if ($ValidacionAgente) {
+        Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'preparar', $Proyecto) -Descripcion 'Identificando fuentes, vendor y builds antes de ejecutar las suites del agente'
+        $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
+        foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs', 'portal-photo-model.test.mjs', 'portal-dashboard-actions.test.mjs', 'portal-chart-model.test.mjs', 'portal-tree-model.test.mjs')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
+                throw "Falta el contrato JavaScript del portal: $contratoPortal"
+            }
     }
     $pruebasFrontend = @(Get-ChildItem -LiteralPath $directorioPruebasFrontend -Filter '*.test.mjs' -File |
         Sort-Object Name | ForEach-Object { $_.FullName })
     if ($pruebasFrontend.Count -eq 0) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
     Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript del mapa, fotografias e historial del portal con Node' -DirectorioTrabajo $Proyecto
+    }
 }
 
-$suitePostgresCompletada = $false
+# En paquete estos controles estan acreditados por la evidencia verificada.
+# En agente solo se marcan despues de ejecutar las suites completas.
+$suitePostgresCompletada = -not $ValidacionAgente
 $suiteGherkinCompletada = $false
-$suiteNavegadorCompletada = $false
-$solucionPdfComprobada = $false
+$suiteNavegadorCompletada = -not $ValidacionAgente
+$solucionPdfComprobada = -not $ValidacionAgente
 $php = Get-Command 'php' -ErrorAction SilentlyContinue
 if (-not $php) {
     $phpAlternativo = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe'
@@ -561,7 +598,7 @@ $archivosPhp = @($archivosCambiados | Where-Object { $_ -match '\.php$' -and $_ 
 $archivosShell = @($archivosCambiados | Where-Object { $_ -match '\.sh(?:\.template)?$' })
 $bashGit = Join-Path (Split-Path -Parent (Split-Path -Parent (Get-Command git.exe).Source)) 'bin\bash.exe'
 if (-not (Test-Path -LiteralPath $bashGit -PathType Leaf)) { throw 'Falta Bash de Git para comprobar los scripts de despliegue y las guias generadas.' }
-if ($archivosShell) {
+if ($archivosShell -and -not $ValidacionAgente) {
     foreach ($archivoShell in $archivosShell) {
         $rutaShell = Join-Path $Proyecto $archivoShell
         if (Test-Path -LiteralPath $rutaShell -PathType Leaf) {
@@ -571,22 +608,37 @@ if ($archivosShell) {
 }
 # Validar la misma generacion que se usara al empaquetar, antes del commit/push.
 # Son archivos temporales sin credenciales: Bash solo analiza, nunca los ejecuta.
-$archivosProduccionPrueba = Get-ArchivosProduccionOci -Identificador 'validacion-oci' -ArchivoFuente 'validacion-oci.tar.gz' -CommitFuente ('0' * 40) -ShaFuente ('0' * 64) -NombreScript 'validacion-oci-produccion-vm.sh'
-$scriptsGeneradosPrueba = [ordered]@{
-    DEV = (Get-ScriptTransferenciaDev -ArchivoFuente 'validacion-oci.tar.gz' -ArchivoChecksum 'validacion-oci.tar.gz.sha256' -ArchivoEntorno 'validacion-oci.env')
-    PROD = $archivosProduccionPrueba.Script
-}
-foreach ($entornoPrueba in $scriptsGeneradosPrueba.Keys) {
-    $scriptPrueba = Join-Path ([IO.Path]::GetTempPath()) ("hubdigital-guia-{0}-{1}.sh" -f [Guid]::NewGuid().ToString('N'), $entornoPrueba)
-    try {
-        [IO.File]::WriteAllText($scriptPrueba, $scriptsGeneradosPrueba[$entornoPrueba], [Text.UTF8Encoding]::new($false))
-        Invoke-Comando -Programa $bashGit -Argumentos @('-n', $scriptPrueba.Replace('\', '/')) -Descripcion "Validando el script generado y marcadores de la guia $entornoPrueba" -DirectorioTrabajo $Proyecto
+if (-not $ValidacionAgente) {
+    $archivosProduccionPrueba = Get-ArchivosProduccionOci -Identificador 'validacion-oci' -ArchivoFuente 'validacion-oci.tar.gz' -CommitFuente ('0' * 40) -ShaFuente ('0' * 64) -NombreScript 'validacion-oci-produccion-vm.sh'
+    $scriptsGeneradosPrueba = [ordered]@{
+        DEV = (Get-ScriptTransferenciaDev -ArchivoFuente 'validacion-oci.tar.gz' -ArchivoChecksum 'validacion-oci.tar.gz.sha256' -ArchivoEntorno 'validacion-oci.env')
+        PROD = $archivosProduccionPrueba.Script
     }
-    finally {
-        if (Test-Path -LiteralPath $scriptPrueba -PathType Leaf) { Remove-Item -LiteralPath $scriptPrueba -Force }
+    foreach ($entornoPrueba in $scriptsGeneradosPrueba.Keys) {
+        $scriptPrueba = Join-Path ([IO.Path]::GetTempPath()) ("hubdigital-guia-{0}-{1}.sh" -f [Guid]::NewGuid().ToString('N'), $entornoPrueba)
+        try {
+            [IO.File]::WriteAllText($scriptPrueba, $scriptsGeneradosPrueba[$entornoPrueba], [Text.UTF8Encoding]::new($false))
+            Invoke-Comando -Programa $bashGit -Argumentos @('-n', $scriptPrueba.Replace('\', '/')) -Descripcion "Validando el script generado y marcadores de la guia $entornoPrueba" -DirectorioTrabajo $Proyecto
+        }
+        finally {
+            if (Test-Path -LiteralPath $scriptPrueba -PathType Leaf) { Remove-Item -LiteralPath $scriptPrueba -Force }
+        }
     }
 }
-if ($php) {
+if (-not $phpPrograma) { throw 'No se encontro PHP: la validacion completa exige PHP/PostgreSQL.' }
+if ($ValidacionAgente) {
+    Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel' -DirectorioTrabajo $Proyecto
+    # El mismo contrato PostgreSQL, PDF local, Neon y Pest completo, sin filtros nuevos.
+    $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
+    if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
+    Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
+        '-Proyecto', $Proyecto, '-Php', $phpPrograma, '-ValidarPdfLocal'
+    ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
+    $suitePostgresCompletada = $true
+    $suiteNavegadorCompletada = $true
+    $solucionPdfComprobada = $true
+} else {
     Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-migration-classes.php') -Descripcion 'Comprobando clases de migraciones sin ejecutar cambios en la base' -DirectorioTrabajo $Proyecto
     if ($archivosPhp) {
         Write-Host "`n==> Validando sintaxis PHP" -ForegroundColor Cyan
@@ -598,41 +650,29 @@ if ($php) {
             }
         }
     }
-    if (-not $OmitirPruebasPHP) {
-        Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel' -DirectorioTrabajo $Proyecto
+    $ejecutableBehat = Join-Path $Proyecto 'vendor/bin/behat'
+    if (-not (Test-Path -LiteralPath $ejecutableBehat -PathType Leaf)) { throw 'Falta Behat: no se publica ni empaqueta sin Gherkin.' }
+    Invoke-Comando -Programa $phpPrograma -Argumentos @(
+        $ejecutableBehat, '--profile=default', '--no-interaction', '--tags=@listo', '--strict'
+    ) -Descripcion 'Validando escenarios de negocio Gherkin con Behat' -DirectorioTrabajo $Proyecto
+    $suiteGherkinCompletada = $true
+    Write-Host 'OK Gherkin: escenarios activos completados con Behat.' -ForegroundColor Green
+}
 
-        $ejecutableBehat = Join-Path $Proyecto 'vendor/bin/behat'
-        if (-not (Test-Path -LiteralPath $ejecutableBehat -PathType Leaf)) {
-            throw 'Falta Behat: no se puede publicar en main ni crear el paquete sin validar Gherkin.'
-        }
-        # Los mismos escenarios activos que GitHub. --strict rechaza fallos,
-        # pasos pendientes o sin definir antes del commit y del archivo OCI.
-        Invoke-Comando -Programa $phpPrograma -Argumentos @(
-            $ejecutableBehat, '--profile=default', '--no-interaction', '--tags=@listo', '--strict'
-        ) -Descripcion 'Validando escenarios de negocio Gherkin con Behat' -DirectorioTrabajo $Proyecto
-        $suiteGherkinCompletada = $true
-        Write-Host 'OK Gherkin: escenarios activos completados con Behat.' -ForegroundColor Green
-
-        if ($SinPostgres) {
-            Write-Host "`n==> Suite PostgreSQL omitida mediante -SinPostgres" -ForegroundColor Yellow
-        } else {
-            # El contrato PDF consulta fuentes de revocacion en PostgreSQL.
-            # Se comprueba con la primera base aislada lista, antes de la suite,
-            # conservando el mismo limite local de tres segundos.
-            $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
-            if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
-            Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
-                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
-                '-Proyecto', $Proyecto, '-Php', $phpPrograma, '-ValidarPdfLocal'
-            ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
-            $suitePostgresCompletada = $true
-            $suiteNavegadorCompletada = $true
-            $solucionPdfComprobada = $true
-        }
-
+if ($ValidacionAgente) {
+    if (-not $suitePostgresCompletada -or -not $suiteNavegadorCompletada -or -not $solucionPdfComprobada) {
+        throw 'No se completaron las suites obligatorias del agente. No se emite evidencia.'
     }
-} else {
-    throw 'No se encontro PHP: main solo se publica despues de validar PHP/PostgreSQL.'
+    $headTrasAgente = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+    $huellasTrasAgente = @(Get-HuellasCodigo)
+    if ($headAntesValidacion -ne $headTrasAgente -or
+        [string]::Join("`n", $huellasAntesValidacion) -ne [string]::Join("`n", $huellasTrasAgente)) {
+        throw 'El codigo cambio durante la validacion del agente. No se emite evidencia; vuelve a validar los cambios finales.'
+    }
+    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'crear', $Proyecto) -Descripcion 'Sellando evidencia del 40 %: codigo, vendor y builds probados'
+    Write-Host 'VALIDACION AGENTE COMPLETA (40 %). Sin commit, push ni archivos OCI.' -ForegroundColor Green
+    Write-Host 'El paquete ejecutara el 60 % restante y verificara esta evidencia sin repetir las suites aprobadas.'
+    exit 0
 }
 
 $requeridos = @(
@@ -760,6 +800,8 @@ if ($headAntesValidacion -ne $headDespuesValidacion -or
     [string]::Join("`n", $huellasAntesValidacion) -ne [string]::Join("`n", $huellasDespuesValidacion)) {
     throw 'El codigo cambio durante las pruebas o compilaciones. main no se publica: vuelve a validar la version actual.'
 }
+
+Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'verificar', $Proyecto) -Descripcion 'Confirmando que codigo, vendor y builds conservan la evidencia del agente'
 
 if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $suiteNavegadorCompletada -or -not $solucionPdfComprobada) {
     throw 'No se completaron las validaciones PHP/PostgreSQL, Gherkin, navegador/tooltip/Livewire y PDF obligatorias. main no se publica y no se crea el paquete.'
@@ -893,7 +935,7 @@ try {
     [string[]]$argumentosCopia = @($argumentosTar)
     $argumentosCopia[0] = '-cf'
     $argumentosCopia[1] = $archivoRuntime
-    Invoke-TarConProgreso -Argumentos $argumentosCopia -ArchivoSalida $archivoRuntime
+    Invoke-TarConProgreso -Argumentos $argumentosCopia -ArchivoSalida $archivoRuntime -Descripcion 'Copiando runtime filtrado a un archivo temporal sin compresion'
     Invoke-Comando -Programa 'tar.exe' -Argumentos @('-xf', $archivoRuntime, '-C', $directorioRuntime) -Descripcion 'Preparando copia aislada para produccion'
     Invoke-Comando -Programa $composerPrograma -Argumentos @(
         'install', '--no-dev', '--no-scripts', '--no-interaction', '--prefer-dist', '--no-progress'

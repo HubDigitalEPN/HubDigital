@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Schema;
 
 final class DescargasCatalogo
 {
+    public static function equipoActivo(?User $usuario = null): bool
+    {
+        $usuario ??= auth()->user();
+        return $usuario !== null && in_array($usuario->rolActivo(), [\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::AYUDANTE_CURADOR, \App\Enums\RolUsuario::ADMIN], true);
+    }
+
     public static function publicasHabilitadas(): bool
     {
         try {
@@ -21,15 +27,23 @@ final class DescargasCatalogo
         }
     }
 
-    public static function permitidas(?User $usuario = null): bool
+    public static function permitidas(?User $usuario = null, string $boton = 'catalogo.resultados'): bool
     {
         $usuario ??= auth()->user();
         if (!$usuario || !$usuario->hasVerifiedEmail() || $usuario->must_change_password) return false;
-        return $usuario->esCurador() || self::publicasHabilitadas();
+        return BotonesSistema::permitido($boton, $usuario)
+            && (self::equipoActivo($usuario) || self::publicasHabilitadas());
     }
 
-    public static function autorizar(): void
+    public static function autorizar(string $boton = 'catalogo.resultados'): void
     {
-        abort_unless(self::permitidas(), 403, 'Las descargas requieren una cuenta verificada y la autorización de administración.');
+        abort_unless(self::permitidas(boton: $boton), 403, 'Las descargas requieren una cuenta verificada y la autorización de administración para el perfil activo.');
+    }
+
+    public static function visibles(string $boton): bool
+    {
+        $usuario = auth()->user();
+        return BotonesSistema::visible($boton, $usuario) && $usuario
+            && (self::equipoActivo($usuario) || self::publicasHabilitadas());
     }
 }

@@ -197,17 +197,12 @@ final class GestionUsuarios extends Component
         $internos = $rolesSeleccionados->filter(
             fn (RolUsuario $asignado): bool => in_array($asignado, RolUsuario::rolesInternos(), true),
         );
-        if ($internos->count() > 1 || ($internos->isNotEmpty() && $rolesSeleccionados->count() > 1)) {
-            throw ValidationException::withMessages([
-                'edicionRoles' => 'Un perfil interno de la EPN no puede combinarse con otros roles.',
-            ]);
-        }
-
         if ($rolesSeleccionados->isEmpty()) {
             return;
         }
 
-        if ($internos->isNotEmpty() && ! $this->esCorreoInstitucional($datos['email'])) {
+        if ($internos->contains(fn (RolUsuario $asignado): bool => $asignado !== RolUsuario::ADMIN)
+            && ! $this->esCorreoInstitucional($datos['email'])) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);

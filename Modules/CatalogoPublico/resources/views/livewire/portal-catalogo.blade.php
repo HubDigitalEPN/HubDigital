@@ -3,7 +3,7 @@
         $catalogoTexto = static fn (string $clave): string => \App\Support\PortalCopy::text('catalogo.'.$clave);
         $etiquetaConteo = static fn (string $nivel, int $cantidad, string $plural): string => $cantidad === 1 ? (['kingdom' => 'reino', 'phylum' => 'filo', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'género', 'species' => 'especie'][$nivel] ?? $plural) : $plural;
     @endphp
-    @if(\App\Support\DescargasCatalogo::permitidas())
+    @if(\App\Support\DescargasCatalogo::visibles('catalogo.completo') || \App\Support\DescargasCatalogo::visibles('catalogo.ipt'))
         <div class="flex flex-wrap items-center justify-end gap-3 border-b border-border bg-surface px-4 py-2">
             <x-catalogo-excel-menu :catalogo-url="$this->urlDescarga('datos')" :ipt-url="$this->urlDescarga('ipt')" />
         </div>
@@ -486,7 +486,7 @@
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Especie</span>
                         </h1>
-                        @if(\App\Support\DescargasCatalogo::permitidas())<div class="collection-species-download flex flex-wrap items-center gap-3">
+                        @if(\App\Support\DescargasCatalogo::visibles('catalogo.completo') || \App\Support\DescargasCatalogo::visibles('catalogo.ipt'))<div class="collection-species-download flex flex-wrap items-center gap-3">
                             <span class="text-xs text-text-secondary tabular-nums">
                                 {{ number_format($totalEspecimenes, 0, ',', '.') }} {{ $totalEspecimenes === 1 ? 'registro' : 'registros' }}
                             </span>

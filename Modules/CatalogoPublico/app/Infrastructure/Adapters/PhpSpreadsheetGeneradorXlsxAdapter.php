@@ -32,8 +32,14 @@ final class PhpSpreadsheetGeneradorXlsxAdapter implements GeneradorXlsxPort
     private function escribir(array $encabezados, iterable $filas, bool $ipt, array $columnas = [], array &$revision = []): string
     {
         // Escribir la hoja a disco evita retener objetos de cada celda en la VM.
-        $hojaPath = tempnam(sys_get_temp_dir(), 'portal-hoja-');
-        $xlsxPath = tempnam(sys_get_temp_dir(), 'portal-xlsx-');
+        // PHP usa /run/hubdigital/php-tmp en OCI (tmpfs pequeño). Una hoja
+        // completa puede superar ese límite aunque el disco tenga espacio.
+        $directorio = storage_path('app/private/exportaciones');
+        if (! is_dir($directorio) && ! mkdir($directorio, 0700, true) && ! is_dir($directorio)) {
+            throw new RuntimeException('No se pudo preparar el directorio privado de exportación.');
+        }
+        $hojaPath = tempnam($directorio, 'portal-hoja-');
+        $xlsxPath = tempnam($directorio, 'portal-xlsx-');
         if ($hojaPath === false || $xlsxPath === false) {
             if ($hojaPath !== false) unlink($hojaPath);
             if ($xlsxPath !== false) unlink($xlsxPath);

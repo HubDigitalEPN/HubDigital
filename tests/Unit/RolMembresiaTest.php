@@ -51,14 +51,12 @@ test('administracion es un rol interno reconocido por los helpers', function () 
     expect(RolUsuario::rolesInternos())->toContain(RolUsuario::ADMIN);
 });
 
-test('asignarRol impide combinar CURADOR con roles auto-servicio', function () {
-    $user = usuarioConRoles(RolUsuario::PRESTAMISTA);
+test('la membresía de curador puede coexistir con perfiles de autoservicio', function () {
+    $user = usuarioConRoles(RolUsuario::PRESTAMISTA, RolUsuario::CURADOR);
+    expect($user->esCurador())->toBeTrue()->and($user->esPrestamista())->toBeTrue()->and($user->esAdministrador())->toBeFalse();
+});
 
-    $user->asignarRol(RolUsuario::CURADOR);
-})->throws(DomainException::class);
-
-test('asignarRol impide que una cuenta curador asuma otros roles', function () {
-    $user = usuarioConRoles(RolUsuario::CURADOR);
-
-    $user->asignarRol(RolUsuario::DEPOSITANTE);
-})->throws(DomainException::class);
+test('el ayudante tiene membresía curatorial sin recibir administración', function () {
+    $user = usuarioConRoles(RolUsuario::AYUDANTE_CURADOR);
+    expect($user->esCurador())->toBeTrue()->and($user->esUsuarioInterno())->toBeTrue()->and($user->esAdministrador())->toBeFalse();
+});

@@ -32,18 +32,21 @@
             @if(\App\Support\AccesoCatalogo::completo())
                 <div class="flex shrink-0 items-center gap-3">
                     <div class="hidden max-w-56 min-w-0 text-right text-xs sm:block">
-                        <strong class="block truncate">Hola, {{ auth()->user()->name }}</strong>
-                        <span class="block truncate">{{ auth()->user()->email }}</span>
+                        <strong class="block truncate">Hola, {{ auth()->user()->nombreSaludo() }}</strong>
                         <div class="flex items-center justify-end gap-2">
-                            <span>{{ auth()->user()->esAdministrador() ? 'Administrador' : 'Curador' }}</span>
+                            @if(auth()->user()->rolesAsignados()->count() > 1)
+                                <details class="relative" x-data x-on:keydown.escape.stop="$el.open = false" x-on:click.outside="$el.open = false"><summary class="cursor-pointer">Cambiar perfil</summary><div class="absolute right-0 z-50 w-64 rounded-lg border border-border bg-surface p-3 text-left shadow-lg"><livewire:selector-rol-activo /></div></details>
+                            @endif
                             <x-portal-logout class="portal-logout-compact" />
                         </div>
                     </div>
-                    <a href="{{ route('dashboard') }}" class="portal-curator-access" aria-label="Ir al panel del curador">
+                    @if(\App\Support\BotonesSistema::visible('panel.curador'))
+                    <a @if(\App\Support\BotonesSistema::permitido('panel.curador')) href="{{ route('dashboard') }}" @else aria-disabled="true" tabindex="-1" @endif class="portal-curator-access" aria-label="Ir al panel del curador">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></svg>
                     <span class="portal-curator-full-label">Panel del curador</span>
                     <span class="portal-curator-short-label" aria-hidden="true">Panel</span>
                     </a>
+                    @endif
                 </div>
             @else
             <div class="hidden shrink-0 items-center gap-3 lg:flex">
@@ -106,6 +109,12 @@
                 <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('coleccion') }}</a>
                 <a href="{{ route('depositos.portal') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('depositos') }}</a>
                 @auth
+                    @if(auth()->user()->hasVerifiedEmail() && !auth()->user()->must_change_password && auth()->user()->rolesAsignados()->count() > 1)
+                        <details class="my-2 rounded-md border border-blue-navy/20 p-3" x-data x-on:keydown.escape.stop="$el.open = false">
+                            <summary class="min-h-11 cursor-pointer py-3 text-sm font-semibold text-blue-navy">Cambiar perfil</summary>
+                            <div class="pt-2"><livewire:selector-rol-activo /></div>
+                        </details>
+                    @endif
                     <a href="{{ route('dashboard') }}" wire:navigate class="mt-2 flex min-h-11 items-center justify-center rounded-md bg-blue-navy px-4 text-sm font-semibold !text-white">{{ $navegacion('cuenta') }}</a>
                     <x-portal-logout class="w-full" />
                 @else
