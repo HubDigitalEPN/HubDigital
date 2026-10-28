@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const source = readFileSync(new URL('../../public/js/hub-turnstile.js', import.meta.url), 'utf8');
-function fixture({registration = false, api = true} = {}) {
+function fixture({registration = false, api = true, dark = false} = {}) {
     const events = [], listeners = new Map(), timers = new Map(), renders = [], removed = [];
     let next = 0;
     const field = {value: ''}, status = {textContent: ''};
@@ -21,7 +21,8 @@ function fixture({registration = false, api = true} = {}) {
         render(target, options) {assert.equal(target, element); renders.push(options); return 'widget-' + renders.length;},
         remove(id) {removed.push(id);},
     };
-    const document = {querySelectorAll: () => [element], querySelector: () => null,
+    const document = {documentElement: {classList: {contains: name => name === 'dark' && dark}},
+        querySelectorAll: () => [element], querySelector: () => null,
         createElement: () => ({}), head: {append() {}}, addEventListener(name, callback) {listeners.set(name, callback);}};
     runInNewContext(source, {window, document,
         CustomEvent: class {constructor(type) {this.type = type;}},
@@ -45,6 +46,14 @@ test('el widget se crea una sola vez y transmite el token al POST correcto', () 
         assert.equal(f.events.at(-1), registration ? 'hub-register-turnstile-passed' : 'hub-turnstile-passed');
         f.tick(10000);
         assert.equal(f.field.value, 'verified-token');
+    }
+});
+
+test('la verificación usa el tema de la aplicación sin recurrir al del sistema operativo', () => {
+    for (const dark of [false, true]) {
+        const f = fixture({dark});
+        f.window.hubTurnstileReady();
+        assert.equal(f.renders[0].theme, dark ? 'dark' : 'light');
     }
 });
 

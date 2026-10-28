@@ -41,7 +41,7 @@
         try {
             entry.id = window.turnstile.render(element, {
                 sitekey: element.dataset.sitekey, action: element.dataset.action,
-                theme: element.dataset.theme || 'auto', size: 'flexible', 'response-field': false,
+                theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light', size: 'flexible', 'response-field': false,
                 callback: token => finish(token, 'Verificación completada.', false),
                 'expired-callback': () => finish('', 'La verificación venció. Vuelve a verificar.', true),
                 'error-callback': () => { finish('', 'No se pudo completar la verificación. Revisa tu conexión y reintenta.', true); return true; },

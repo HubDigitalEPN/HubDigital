@@ -4,6 +4,8 @@
 <script src="{{ asset('js/mapa-pantalla-completa.js') }}?v={{ filemtime(public_path('js/mapa-pantalla-completa.js')) }}" defer></script>
 <style>.hub-map-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:9999!important;background:white}.leaflet-container:fullscreen{width:100vw!important;height:100dvh!important}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>:root { color-scheme: light; } :root.dark { color-scheme: dark; }</style>
+<script src="{{ asset('js/hub-appearance.js') }}?v={{ filemtime(public_path('js/hub-appearance.js')) }}" data-navigate-once></script>
 <script>
     if ('serviceWorker' in navigator && window.isSecureContext) {
         window.hubPortalWarmHome = @json(request()->routeIs('home') && request()->query() === [] && !auth()->check());
@@ -46,9 +48,6 @@
 @livewireScriptConfig
 <script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}" defer></script>
 @vite(['resources/css/app.css', 'resources/css/portal.css', 'resources/js/app.js'])
-@unless($portalClaro ?? false)
-    @fluxAppearance
-@endunless
 
 <link rel="stylesheet" href="{{ asset('css/formularios-apex.css') }}?v={{ filemtime(public_path('css/formularios-apex.css')) }}" />
 <script src="{{ asset('js/formularios-apex.js') }}?v={{ filemtime(public_path('js/formularios-apex.js')) }}" defer></script>

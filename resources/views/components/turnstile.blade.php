@@ -3,7 +3,7 @@
         @if(filled(config('services.turnstile.site_key')))
             <div class="cf-turnstile min-h-[4.0625rem]" data-hub-turnstile
                 data-sitekey="{{ config('services.turnstile.site_key') }}" data-action="turnstile-spin-v2"
-                data-theme="auto" data-size="flexible" data-response-field="false" wire:ignore></div>
+                data-size="flexible" data-response-field="false" wire:ignore></div>
             <p data-turnstile-status class="hub-turnstile-status" role="status">Conectando con la verificación de seguridad…</p>
             <button type="button" data-turnstile-retry class="hub-turnstile-retry" hidden>Reintentar verificación</button>
         @else

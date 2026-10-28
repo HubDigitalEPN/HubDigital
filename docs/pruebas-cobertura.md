@@ -248,3 +248,9 @@ El escenario Behat ya existente de imágenes por nivel conserva vínculo, propag
 La revisión manual complementaria en Opera Neon se reserva para presentación, foco, menús y adaptación móvil. Las suites anteriores quedan pendientes de la siguiente ejecución autorizada de `crear-paquete-oci`; no se ejecutan aisladamente. Las fotos históricas cuyo archivo ya contiene una marca requieren el original sin marca para retirarla: no se recortan escalas ni se sintetizan píxeles.
 
 `auth-forms.test.mjs` agrega el formulario anterior de login enviado después de que otra petición ya autenticó la sesión: si Fetch recibió HTML por una redirección exitosa, usa únicamente su destino final del mismo origen. Conserva errores 419, rechazo de destinos externos y respuestas JSON por perfil/CSRF. Este contrato nuevo también queda pendiente del paquete autorizado.
+
+## Tema elegido y recuperación de contraseña (28 de octubre de 2026)
+
+`hub-appearance.test.mjs` cubre el inicio en claro sin preferencia válida aunque el sistema esté oscuro, la persistencia de claro/oscuro tras recargar con el sistema opuesto, el paso por el portal público sin perder la preferencia y la opción Sistema únicamente cuando se selecciona expresamente. El portal conserva su paleta propia. `hub-turnstile.test.mjs` comprueba que el widget recibe el tema efectivo de la aplicación; conserva los casos de token, caducidad, error, reintento y navegación. Estas pruebas se ejecutan exclusivamente dentro de `crear-paquete-oci`; no se agregan escenarios Gherkin duplicados.
+
+La separación visual y las áreas pulsables de recuperación/visibilidad, el foco y la adaptación móvil se revisan complementariamente en localhost con Opera Neon al 75 %. La semántica del campo, el POST de Fortify y el flujo de recuperación conservan su cobertura Pest existente.

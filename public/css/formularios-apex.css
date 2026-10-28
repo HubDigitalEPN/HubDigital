@@ -161,6 +161,8 @@ html body .hub-lov-dialog .hub-lov-search[data-hub-apex-control] { min-block-siz
 html body [data-hub-apex-label-row] { position: absolute; z-index: 2; inset: .25rem .5rem auto; gap: .5rem; }
 html body [data-hub-apex-label-row] [data-hub-apex-label] { position: static; max-inline-size: 50%; }
 html body [data-hub-apex-label-row] a { font-size: .6875rem; line-height: 1.25rem; }
+/* El enlace de recuperación deja libre toda el área del botón de visibilidad. */
+html body #hub-login-form [data-hub-apex-label-row] { inset-inline-end: 3.5rem; }
 
 /* Disposición y colores de la solicitud. */
 .hub-request-letter { padding-block-start: .5rem; }
