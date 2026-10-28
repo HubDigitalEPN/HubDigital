@@ -1,26 +1,33 @@
 {
-  "version": 1,
+  "version": 3,
   "unidad": "familias de control; no porcentaje de tiempo ni de casos individuales",
+  "impacto": {
+    "version": 1,
+    "base_max_dias": 7,
+    "max_archivos_selectivos": 20,
+    "max_areas_selectivas": 2,
+    "modulos": {"portal": "CatalogoPublico", "inventario": "InventarioGestionColeccion", "depositos": "GestionPrestamosRecepciones"}
+  },
   "controles": [
     {"id": "php-dependencias", "responsable": "agente", "descripcion": "Instalacion PHP exacta desde composer.lock"},
     {"id": "java-compilacion", "responsable": "agente", "descripcion": "Compilacion Maven y copia del JAR"},
     {"id": "frontend-dependencias", "responsable": "agente", "descripcion": "npm ci en raiz y modulos"},
     {"id": "frontend-compilacion", "responsable": "agente", "descripcion": "Builds Vite de raiz y modulos"},
-    {"id": "ete-runtime", "responsable": "agente", "descripcion": "Preparacion del runtime ETE aislado"},
-    {"id": "javascript-contratos", "responsable": "agente", "descripcion": "Suite completa Node de tests/Frontend"},
-    {"id": "laravel-arranque", "responsable": "agente", "descripcion": "Arranque de Laravel"},
-    {"id": "postgres-integracion", "responsable": "agente", "descripcion": "Pest completo con PostgreSQL aislado, PDF local y recorrido Neon/Livewire"},
+    {"id": "ete-runtime", "responsable": "paquete", "descripcion": "Preparacion del runtime ETE aislado"},
+    {"id": "javascript-contratos", "responsable": "agente", "descripcion": "Contratos Node de tests/Frontend: integral o relacionados con evidencia del resto"},
+    {"id": "laravel-arranque", "responsable": "paquete", "descripcion": "Arranque de Laravel"},
+    {"id": "postgres-integracion", "responsable": "paquete", "descripcion": "Pest con PostgreSQL aislado, PDF y Neon/Livewire: integral o relacionados con evidencia del resto"},
     {"id": "diff", "responsable": "paquete", "descripcion": "Diff sin conflictos ni errores de formato"},
     {"id": "json", "responsable": "paquete", "descripcion": "Sintaxis de JSON modificados"},
     {"id": "composer-contrato", "responsable": "paquete", "descripcion": "Validez de composer.json y composer.lock"},
     {"id": "composer-seguridad", "responsable": "paquete", "descripcion": "Auditoria PHP actualizada"},
     {"id": "ete-contratos", "responsable": "paquete", "descripcion": "Suite Python de renderizado e identidades ETE"},
-    {"id": "java-criptografia", "responsable": "paquete", "descripcion": "Selftest Java criptografico y seguridad PDF"},
+    {"id": "java-criptografia", "responsable": "agente", "descripcion": "Selftest Java criptografico, lectura QR y seguridad PDF"},
     {"id": "npm-seguridad", "responsable": "paquete", "descripcion": "Auditoria npm actualizada en raiz y modulos"},
     {"id": "bash", "responsable": "paquete", "descripcion": "Sintaxis Bash y asistentes DEV/PROD generados"},
     {"id": "php-sintaxis", "responsable": "paquete", "descripcion": "Sintaxis PHP modificados"},
     {"id": "migraciones", "responsable": "paquete", "descripcion": "Integridad de clases de migracion"},
-    {"id": "gherkin", "responsable": "paquete", "descripcion": "Todos los escenarios @listo con Behat strict"},
+    {"id": "gherkin", "responsable": "paquete", "descripcion": "Cobertura @listo con Behat strict: integral o relacionada con evidencia del resto"},
     {"id": "identidad-artefacto", "responsable": "paquete", "descripcion": "Runtime requerido, evidencia vigente, identidad de fuentes/builds, publicacion y archivos OCI"}
   ]
 }

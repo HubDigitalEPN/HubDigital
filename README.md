@@ -87,11 +87,12 @@ y el despliegue se inician manualmente; un push o un pull request no lanza suite
 ni instala una versión en los servidores.
 
 Las pruebas automáticas se conservan en el [reparto agente/paquete](docs/validacion-agente-y-paquete.md).
-El agente ejecuta al finalizar cada cambio 8 de 20 familias (40 %): dependencias,
-compilaciones, Node y la integración completa Pest/PostgreSQL/PDF/navegador.
-`crear-paquete-oci` comprueba su evidencia vigente y ejecuta las otras 12 (60 %),
-incluidas auditorías, Python, Java criptográfico, Gherkin e integridad OCI.
-Se requieren los insumos locales autorizados, incluidos `.local/secrets`.
+El agente ejecuta al finalizar cada cambio 6 de 20 familias (30 %): dependencias,
+compilaciones, autoprueba criptográfica Java con QR y contratos Node.
+`crear-paquete-oci` comprueba su evidencia vigente y ejecuta las otras 14 (70 %),
+incluidos arranque Laravel, Pest/PostgreSQL/PDF/navegador, auditorías, preparación
+ETE, Python, Gherkin e integridad OCI. Para el paquete se requieren los
+insumos locales autorizados, incluidos `.local/secrets`. Ambas entradas seleccionan por impacto acumulado desde una base integral aprobada, incluyendo consumidores indirectos; sin base compatible, ante cambios críticos, amplios o inciertos, ejecutan integral. Las auditorías actuales y la integridad OCI se comprueban siempre. El plan y el informe distinguen ejecución y evidencia reutilizada en `.local/validation`. `-Integral` permite forzar todas las suites, empezando por la entrada del agente. PHP muestra casos activos y avance cada diez segundos, con registro completo.
 
 Para validar exclusivamente en localhost, desde la raíz del repositorio:
 
@@ -101,7 +102,7 @@ Para validar exclusivamente en localhost, desde la raíz del repositorio:
 ```
 
 El primer paso corresponde al agente y no necesita autorización adicional.
-El segundo verifica su evidencia y ejecuta el 60 % restante; lo inicia el usuario
+El segundo verifica su evidencia y ejecuta el 70 % restante; lo inicia el usuario
 por defecto. No publican ni empaquetan y no requieren token GitHub.
 
 Cada cambio se desarrolla en una rama nueva basada en `main`. Para validar,

@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "original_runner_sha256": "423fb7ae7ebbd79e18d3843a9eef6b5ecd969813aecab3fda1dcd0f2e9aa7bbe",
+  "helpers": [
+    [
+      474,
+      480
+    ],
+    [
+      481,
+      494
+    ],
+    [
+      505,
+      511
+    ],
+    [
+      614,
+      621
+    ]
+  ],
+  "cases": {
+    "apertura-sesion": {
+      "ranges": [
+        [
+          189,
+          268
+        ]
+      ],
+      "body_sha256": "17b1f7278e61b2899d0de71031598af9dff071c6b79b123416487fd8f3be3d69",
+      "assertions": 21
+    },
+    "filtros-graficos": {
+      "ranges": [
+        [
+          269,
+          305
+        ],
+        [
+          830,
+          843
+        ]
+      ],
+      "body_sha256": "87baf29a4586abc78a86942c023a2440a13c06fc292155c0e7b1b57b7aa2dde5",
+      "assertions": 14
+    },
+    "tooltip-livewire": {
+      "ranges": [
+        [
+          306,
+          337
+        ]
+      ],
+      "body_sha256": "0a849b2bb9e79ada3fa9af2531e60825c852a9eeaa5106aeb4c6d4e9fa218f38",
+      "assertions": 3
+    },
+    "arbol-diversidad": {
+      "ranges": [
+        [
+          338,
+          610
+        ],
+        [
+          702,
+          788
+        ]
+      ],
+      "body_sha256": "68d8a9314a589cca4a76544e8334af75a5ca31d68235d94397ef30cb04566aad",
+      "assertions": 123
+    },
+    "modales-mapa": {
+      "ranges": [
+        [
+          611,
+          701
+        ],
+        [
+          790,
+          829
+        ],
+        [
+          974,
+          1008
+        ]
+      ],
+      "body_sha256": "be147eeb6ea4df6e833b4189dd9ec727d85881f8e58f5f687185ec37b96b9a4b",
+      "assertions": 32
+    },
+    "tabla-paginacion": {
+      "ranges": [
+        [
+          863,
+          905
+        ]
+      ],
+      "body_sha256": "d16f57b99364de04ad5d75e75cea20d64587bf7bd88b8036bf793f2fe936f3b7",
+      "assertions": 11
+    },
+    "fotografias": {
+      "ranges": [
+        [
+          906,
+          929
+        ]
+      ],
+      "body_sha256": "8191eaee024f45679db0ef8d6cd4ac42e7788171bc61bc86c659fd6bd5d857b3",
+      "assertions": 2
+    },
+    "administracion-importacion": {
+      "ranges": [
+        [
+          932,
+          973
+        ]
+      ],
+      "body_sha256": "297806575d8b8085fc73eaad212b71c995da0c33d3d9def372d9ceda09eefa21",
+      "assertions": 8
+    },
+    "pdf-siete-figuras": {
+      "ranges": [
+        [
+          844,
+          861
+        ],
+        [
+          1010,
+          1018
+        ]
+      ],
+      "body_sha256": "4a9ca082817b8d26b24f3bb8c198d9c73dd98a470d3fab838b01ec10a1819c9b",
+      "assertions": 8
+    }
+  }
+}

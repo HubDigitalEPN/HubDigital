@@ -8,9 +8,15 @@ import net from 'node:net';
 import {get} from 'node:http';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import browserEvidence from '../../scripts/deployment/base-navegador.cjs';
 
 const proyecto = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const php = process.argv[2];
+const planPath = process.argv[3];
+const planBrowser = planPath ? JSON.parse(readFileSync(planPath, 'utf8')).navegador : null;
+const seleccionados = planBrowser?.ejecutar || browserEvidence.ids;
+assert.ok(seleccionados.length > 0 && seleccionados.every(id => browserEvidence.ids.includes(id)), 'Selección de casos del navegador inválida.');
+const estadoCasos = planBrowser ? browserEvidence.prepareRun(proyecto, planBrowser) : null;
 assert.ok(php, 'Falta el ejecutable PHP del paquete.');
 assert.equal(process.env.APP_ENV, 'testing', 'El navegador solo se ejecuta en testing.');
 assert.equal(typeof WebSocket, 'function', 'Se necesita Node con WebSocket nativo (Node 22 o posterior).');
@@ -186,6 +192,72 @@ try {
         sinErrores();
     };
     const url = `${origen}/portal/catalogo?vista=mapa&ft=${encodeURIComponent(datos.taxonBusqueda)}`;
+    const abrirCatalogo = async () => {
+        await conexion.send('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
+        await conexion.send('Network.emulateNetworkConditions', {offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});
+        await conexion.send('Page.navigate', {url});
+        await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && window.Livewire"); await reposo();
+    };
+    const iniciarSesion = async () => {
+        await conexion.send('Network.clearBrowserCookies');
+        await conexion.send('Page.navigate', {url:origen+'/login'});
+        await visible("document.querySelector('#hub-login-form') && window.Alpine");
+        await evaluar(`document.querySelector('#hub-login-form [name=email]').value=${JSON.stringify(datos.email)};document.querySelector('#hub-login-form [name=password]').focus()`);
+        for (const caracter of datos.password) await conexion.send('Input.dispatchKeyEvent', {type:'char',text:caracter});
+        await evaluar("document.querySelector('#hub-login-form').requestSubmit()");
+        await visible("location.pathname==='/portal/catalogo' && document.querySelector('.portal-curator-access') && window.Livewire");
+        await abrirCatalogo();
+    };
+    const abrirArbol = async () => {
+        await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+        await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')?.checkVisibility()"); await reposo();
+    };
+    const mostrarEsferas = async () => {
+        if (await evaluar("Boolean(document.querySelector('.portal-diversity-scene'))")) await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
+        await visible("document.querySelector('.portal-three-scene')?.dataset.indexados>0"); await reposo();
+    };
+    const prepararUbicaciones = async () => {
+        await evaluar("Alpine.$data(document.querySelector('.atlas-dashboard')).ubicacionesIndividuales = true; Alpine.$data(document.querySelector('.atlas-dashboard')).programarPintado()");
+        await visible("document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]').length === 3");
+    };
+    async function buscarEnArbol(texto) {
+        // La apertura del modal y el dibujo ETE terminan después del morph de
+        // Livewire. Esperar el estado real evita interactuar durante la carga.
+        await visible("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.abierto && d.listo && !d.buscando && !d.visorCargando && !d.aplicando;})()");
+        await evaluar("(() => {const b=document.querySelector('#busqueda-explorador-taxonomico');b.focus();b.value=" + JSON.stringify(texto) + ";b.dispatchEvent(new Event('input',{bubbles:true}));})()");
+        await visible("document.querySelector('#sugerencias-explorador [role=option]')"); await reposo();
+    }
+    async function asegurarETEEstable() {
+        const muestras = await evaluar(`new Promise(resolve => {
+            const fin = performance.now() + 600, muestras = [];
+            function medir() {
+                const host = document.querySelector('.portal-ete-host'), stage = host.querySelector('.portal-branch-tree');
+                const h = host.getBoundingClientRect(), s = stage.getBoundingClientRect();
+                muestras.push([h.width,h.height,s.left,s.top,s.width,s.height,host.scrollLeft,host.scrollTop]);
+                if (performance.now() < fin) requestAnimationFrame(medir); else resolve(muestras);
+            }
+            requestAnimationFrame(medir);
+        })`);
+        assert.ok(muestras.length >= 3);
+        assert.ok(muestras.every(muestra => muestra.every((valor, i) => Math.abs(valor - muestras[0][i]) <= .5)), 'El árbol y sus barras permanecen estables tras terminar el dibujo.');
+    }
+    async function navegarInicial(nombre) {
+        await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.irARama(d.nodos.find(n=>n.nombre===" + JSON.stringify(nombre) + "));})()");
+        await visible(nombre === 'FiloBrowser' + token
+            ? "document.querySelector('.portal-three-scene')?.dataset.raiz===document.querySelector('.portal-taxonomy-tree-pane')?.dataset.raiz"
+            : "document.querySelector('.portal-three-scene')?.dataset.nombre===" + JSON.stringify(nombre));
+        await visible("document.querySelector('.portal-ete-host').getAttribute('aria-busy')==='false'");
+    }
+    async function menuTaxon(selector = '.portal-three-canvas') {
+        await evaluar("document.querySelector(" + JSON.stringify(selector) + ").scrollIntoView({block:'center',inline:'nearest'})");
+        const posicion = await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),r=n.getBoundingClientRect(),d=n.closest('.portal-diversity-scene')?.dataset;return d?{x:r.left+Number(d.raizX)*r.width/n.clientWidth,y:r.top+Number(d.raizY)*r.height/n.clientHeight}:{x:r.left+r.width/2,y:r.top+r.height/2};})()");
+        assert.ok(await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),p=document.elementFromPoint(" + posicion.x + "," + posicion.y + ");return n===p || n.contains(p);})()"), 'El menú se abre mediante un clic real sobre el nodo visible.');
+        await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'right',clickCount:1,...posicion});
+        await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'right',clickCount:1,...posicion});
+        await visible("document.querySelector('.taxonomy-explorer-context-menu')?.checkVisibility()");
+    }
+    async function caso_apertura_sesion() {
+    // CASO apertura-sesion INICIO
     // El GET entrega el catálogo completo para que la PWA conserve contenido,
     // sin repetir una petición Livewire para resolver un placeholder.
     const primera = await esperar(async () => { try { const r = await obtenerLocal(url); respuestaInicial = {estado: r.status, tipo: r.tipo, bytes: Buffer.byteLength(r.texto), mapa: /atlas-dashboard/.test(r.texto), filtros: /research-phylum-tree/.test(r.texto), errorMapa: /mapa-error-titulo/.test(r.texto), titulo: /<title>([^<]{0,120})<\/title>/i.exec(r.texto)?.[1], erroresPhp: [...r.texto.matchAll(/<b>(Fatal error|Parse error|Warning|Notice)<\/b>:\s*(?:Uncaught\s+)?([A-Za-z_\\]+)/g)].map(m => ({tipo:m[1],clase:m[2]}))}; return r.ok && r.texto; } catch { return false; } }, 'primera respuesta del portal');
@@ -266,6 +338,11 @@ try {
     await conexion.send('Page.navigate',{url});
     await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && window.Livewire");await reposo();
     assert.ok(await evaluar(`Boolean(document.querySelector('.portal-curator-access') && document.querySelector('button[data-catalogo-descarga]'))`),'La sesión autorizada habilita exportaciones HTTP y el acceso al panel.');
+    // CASO apertura-sesion FIN
+    }
+    async function caso_filtros_graficos() {
+    await prepararUbicaciones();
+    // CASO filtros-graficos INICIO
     // La provincia se selecciona directamente en el dashboard, sin buscador.
     assert.equal(await evaluar("document.querySelectorAll('.research-locality-dialog').length + [...document.querySelectorAll('.research-sidebar button')].filter(b => b.getAttribute('x-on:click') === 'abrirProvincias()').length"), 0);
     assert.equal(await evaluar("document.querySelectorAll('#buscar-provincia-panel,.atlas-chart-data-toggle').length"), 0);
@@ -303,6 +380,28 @@ try {
     await visible("document.querySelector('.atlas-collection-count')?.textContent.trim()==='(18 registros)'"); await reposo();
     await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
     assert.equal(await evaluar("[...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].some(b => b.textContent.includes('Alternar agrupaciones'))"), false);
+    // PREPARACION ADICIONAL INICIO
+    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
+    // PREPARACION ADICIONAL FIN
+    // Los tres gráficos nuevos aplican sus filtros al mapa mediante clicks reales en sus puntos.
+    async function pulsarGrafico(id, indice = 0) {
+        const punto = await evaluar(`(() => {const c=document.querySelector('#${id}').closest('section').querySelector('canvas'); c.scrollIntoView({block:'center'}); const chart=window.HubDigitalChart.getChart(c); const p=chart.getDatasetMeta(0).data[${indice}].getCenterPoint(); const r=c.getBoundingClientRect(); return {x:r.left+p.x,y:r.top+p.y};})()`);
+        await conexion.send('Input.dispatchMouseEvent', {type: 'mousePressed', button: 'left', clickCount: 1, ...punto});
+        await conexion.send('Input.dispatchMouseEvent', {type: 'mouseReleased', button: 'left', clickCount: 1, ...punto});
+        await reposo();
+    }
+    for (const [id, alias] of [['titulo-decadas', 'ffd'], ['titulo-estacionalidad', 'fmes'], ['titulo-altitud', 'fed']]) {
+        await pulsarGrafico(id);
+        await visible(`new URL(location.href).searchParams.has('${alias}')`);
+        assert.ok(await evaluar("document.querySelector('.atlas-map [aria-label^=\"Ubicación original\"]')"));
+        await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes(" + JSON.stringify(alias === 'ffd' ? 'periodo' : alias === 'fmes' ? 'filtroMes' : 'elevacion') + ")).click()");
+        await reposo();
+    }
+    // CASO filtros-graficos FIN
+    }
+    async function caso_tooltip_livewire() {
+    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
+    // CASO tooltip-livewire INICIO
     // Preparar ubicaciones originales mantiene la regresión exclusiva de tooltip
     // y morph; la alternancia ya no se ofrece en el menú público.
     await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
@@ -335,6 +434,10 @@ try {
     await mostrarTooltip();
     await conexion.send('Network.emulateNetworkConditions', {offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1});
 
+    // CASO tooltip-livewire FIN
+    }
+    async function caso_arbol_diversidad() {
+    // CASO arbol-diversidad INICIO
     // Explorador izquierdo único: una raíz compartida con el grafo y su ficha.
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
     await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')?.checkVisibility()"); await reposo();
@@ -471,27 +574,6 @@ try {
     assert.equal(await evaluar("document.querySelector('.portal-three-scene')"),null);
     await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
     await visible("document.querySelector('.portal-three-scene')?.dataset.raiz==="+JSON.stringify(raizDiversidad));
-    async function buscarEnArbol(texto) {
-        // La apertura del modal y el dibujo ETE terminan después del morph de
-        // Livewire. Esperar el estado real evita interactuar durante la carga.
-        await visible("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.abierto && d.listo && !d.buscando && !d.visorCargando && !d.aplicando;})()");
-        await evaluar("(() => {const b=document.querySelector('#busqueda-explorador-taxonomico');b.focus();b.value=" + JSON.stringify(texto) + ";b.dispatchEvent(new Event('input',{bubbles:true}));})()");
-        await visible("document.querySelector('#sugerencias-explorador [role=option]')"); await reposo();
-    }
-    async function asegurarETEEstable() {
-        const muestras = await evaluar(`new Promise(resolve => {
-            const fin = performance.now() + 600, muestras = [];
-            function medir() {
-                const host = document.querySelector('.portal-ete-host'), stage = host.querySelector('.portal-branch-tree');
-                const h = host.getBoundingClientRect(), s = stage.getBoundingClientRect();
-                muestras.push([h.width,h.height,s.left,s.top,s.width,s.height,host.scrollLeft,host.scrollTop]);
-                if (performance.now() < fin) requestAnimationFrame(medir); else resolve(muestras);
-            }
-            requestAnimationFrame(medir);
-        })`);
-        assert.ok(muestras.length >= 3);
-        assert.ok(muestras.every(muestra => muestra.every((valor, i) => Math.abs(valor - muestras[0][i]) <= .5)), 'El árbol y sus barras permanecen estables tras terminar el dibujo.');
-    }
     const raizETE = ".portal-branch-row[aria-label^=" + JSON.stringify('Browsersuborder' + token + '0,') + "]";
     await buscarEnArbol('FiloBrowser' + token);
     assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(18 registros\)$/);
@@ -502,13 +584,6 @@ try {
     assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0, 'Buscar localiza un taxón sin convertirlo en filtro del catálogo.');
     assert.equal(await evaluar("document.querySelector('.taxonomy-search-token span:first-child').textContent"), 'FiloBrowser' + token, 'El ámbito permanece dentro del buscador, con su equis.');
     assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Buscar en el árbol conserva el total del conjunto filtrado del portal.');
-    async function navegarInicial(nombre) {
-        await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.irARama(d.nodos.find(n=>n.nombre===" + JSON.stringify(nombre) + "));})()");
-        await visible(nombre === 'FiloBrowser' + token
-            ? "document.querySelector('.portal-three-scene')?.dataset.raiz===document.querySelector('.portal-taxonomy-tree-pane')?.dataset.raiz"
-            : "document.querySelector('.portal-three-scene')?.dataset.nombre===" + JSON.stringify(nombre));
-        await visible("document.querySelector('.portal-ete-host').getAttribute('aria-busy')==='false'");
-    }
     await navegarInicial('Browserclass' + token + '0');
     await evaluar("document.querySelector('.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'PageDown',bubbles:true}))");
     await visible("document.querySelector('.portal-three-instructions').textContent.includes(" + JSON.stringify('Browserorder' + token + '0') + ")");
@@ -608,97 +683,11 @@ try {
     await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Home',code:'Home',windowsVirtualKeyCode:36}); await reposo();
     await conexion.send('Emulation.setDeviceMetricsOverride',{width:390,height:700,deviceScaleFactor:1,mobile:false}); await reposo();
     assert.ok(await evaluar("(() => {const r=document.querySelector('#explorador-taxonomico').getBoundingClientRect();return r.left>=7 && r.top>=7 && r.right<=innerWidth-7 && r.bottom<=innerHeight-7;})()"), 'Un modal movido permanece completo tras reducir la pantalla.');
-    await navegarInicial(datos.taxonBusqueda + ' alfa');
-    const seleccionadoETE = '.portal-three-canvas';
-    await evaluar("document.querySelector(" + JSON.stringify(seleccionadoETE) + ").scrollIntoView({block:'center',inline:'center'})");
-    async function menuTaxon(selector = seleccionadoETE) {
-        await evaluar("document.querySelector(" + JSON.stringify(selector) + ").scrollIntoView({block:'center',inline:'nearest'})");
-        const posicion = await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),r=n.getBoundingClientRect(),d=n.closest('.portal-diversity-scene')?.dataset;return d?{x:r.left+Number(d.raizX)*r.width/n.clientWidth,y:r.top+Number(d.raizY)*r.height/n.clientHeight}:{x:r.left+r.width/2,y:r.top+r.height/2};})()");
-        assert.ok(await evaluar("(() => {const n=document.querySelector(" + JSON.stringify(selector) + "),p=document.elementFromPoint(" + posicion.x + "," + posicion.y + ");return n===p || n.contains(p);})()"), 'El menú se abre mediante un clic real sobre el nodo visible.');
-        await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'right',clickCount:1,...posicion});
-        await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'right',clickCount:1,...posicion});
-        await visible("document.querySelector('.taxonomy-explorer-context-menu')?.checkVisibility()");
-    }
-    await menuTaxon();
-    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver registros').click()");
-    await visible("document.querySelector('#registros-taxon-explorador[open] .portal-record-row')"); await reposo();
-    assert.equal(await evaluar("document.querySelector('#explorador-taxonomico').open"), true);
-    assert.deepEqual((await evaluar("[...document.querySelectorAll('#registros-taxon-explorador .portal-record-row th[scope=row]')].map(n=>n.textContent.trim())")).sort(), datos.codigos.slice(0,17).sort());
-    await evaluar("document.querySelector('#registros-taxon-explorador .portal-record-row').click()");
-    await visible("document.querySelector('#registros-taxon-explorador .atlas-record-card')");
-    await evaluar("document.querySelector('.taxonomy-records-back').click()");
-    await visible("document.querySelector('#registros-taxon-explorador .portal-record-row')");
-    await evaluar("document.querySelector('#registros-taxon-explorador .taxonomy-explorer-close').click()");
-    await visible("!document.querySelector('#registros-taxon-explorador').open && document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('portal-three-canvas')");
-    const filaSeleccionadaETE = '.portal-taxonomy-tree-pane .portal-branch-row[aria-selected=true]';
-    await menuTaxon(filaSeleccionadaETE);
-    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver registros').click()");
-    await visible("document.querySelector('#registros-taxon-explorador[open] .portal-record-row')");
-    await evaluar("document.querySelector('#registros-taxon-explorador .taxonomy-explorer-close').click()");
-    await visible("!document.querySelector('#registros-taxon-explorador').open && document.activeElement.matches(" + JSON.stringify(filaSeleccionadaETE) + ")");
-    await menuTaxon();
-    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver en el mapa').click()");
-    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('atlas-map')"); await reposo();
-    assert.equal(await evaluar("new URL(location.href).searchParams.get('fti')"), datos.especies[0]);
-    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17 registros\)$/);
-    await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroTaxonId')).click()"); await reposo();
-    await evaluar("(() => {const b=document.querySelector('input[placeholder=\"Nombre científico en cualquier rango\"]');b.focus();b.value=" + JSON.stringify(datos.taxonBusqueda) + ";b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()"); await reposo();
-    await visible("document.querySelector('.atlas-collection-count').textContent.trim()==='(18 registros)'");
-    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
-    assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
-    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Reabrir el explorador conserva el mismo conjunto filtrado que el mapa.');
-    await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
-    const antesDeAjustar = totalPeticiones;
-    await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");
-    await visible("Alpine.$data(document.querySelector('#explorador-taxonomico')).ajustado && document.querySelector('.portal-three-scene').dataset.zoom==='1.000'");
-    assert.ok(await evaluar("(() => {const l=document.querySelector('.portal-ete-host');return l.scrollHeight<=l.clientHeight+1 && l.scrollWidth<=l.clientWidth+1;})()"));
-    assert.equal(totalPeticiones, antesDeAjustar);
-    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.filtrosArbol.length===0 && d.nodos.some(n=>n.nombre==='FiloBrowser" + token + "');})()"), 'Cerrar y reabrir conserva las ramas del conjunto filtrado sin añadir filtros internos del árbol.');
-    const antesDeEscape = totalPeticiones;
-    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-    await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
-    assert.equal(totalPeticiones, antesDeEscape);
-    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
-    const fondoExplorador = await evaluar("(() => {const r=document.querySelector('#explorador-taxonomico').getBoundingClientRect();return {x:r.left-8,y:r.top+20};})()");
-    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...fondoExplorador});
-    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...fondoExplorador});
-    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
-    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
-    assert.ok(await evaluar(`(() => {
-        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button')],rects=botones.map(b=>b.getBoundingClientRect()),visualizacion=barra.querySelector('.portal-taxonomy-visualization');
-        return botones.length===5 && botones.at(-2).classList.contains('portal-three-maximize') && botones.at(-1).classList.contains('portal-taxonomy-visualization') && !barra.querySelector('.portal-three-fit')
-            && rects.every(r=>r.width===40 && r.height===40 && Math.abs(r.top-rects[0].top)<1)
-            && visualizacion.getBoundingClientRect().height===40 && visualizacion.textContent.trim()==='' && visualizacion.getAttribute('aria-label').includes('Visualización') && visualizacion.hasAttribute('aria-pressed')
-            && !document.querySelector('.taxonomy-explorer-header .portal-three-maximize');
-    })()`), 'Pantalla completa y cambio de visualización usan sólo iconos; los cinco controles tienen medidas y alineación iguales.');
-    assert.ok(await evaluar("new Set([...document.querySelector('.portal-three-legend').children].map(n=>Math.round(n.getBoundingClientRect().top))).size===1"), 'La leyenda utiliza una sola fila para reservar altura al grafo.');
-    const antesDePantallaYCerrar = totalPeticiones;
-    await navegarInicial('FiloBrowser' + token);
-    const raizAntesDePantalla = await evaluar("document.querySelector('.portal-three-scene').dataset.raiz");
-    const controlPantalla = await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
-    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...controlPantalla});
-    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...controlPantalla});
-    await visible("document.fullscreenElement===document.querySelector('.portal-three-scene')");
-    assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.raiz"), raizAntesDePantalla);
-    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-    await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-    await visible("!document.fullscreenElement && document.querySelector('#explorador-taxonomico').open");
-    await visible("document.querySelector('.portal-ete-host').checkVisibility() && document.querySelector('.portal-taxonomy-tree-pane') && !document.querySelector('.taxonomy-navigator-sidebar')");
-    await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
-    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
-    assert.equal(totalPeticiones, antesDePantallaYCerrar);
-    await conexion.send('Emulation.setDeviceMetricsOverride',{width:390,height:700,deviceScaleFactor:1,mobile:true});
-    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane').checkVisibility()"); await reposo();
-    assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect(),cerrar=d.querySelector('.taxonomy-explorer-close').getBoundingClientRect(),pantalla=d.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && cerrar.bottom<=r.bottom && pantalla.left>=r.left && pantalla.right<=r.right && d.querySelector('.taxonomy-navigator-main').clientHeight>=150;})()"));
+    // PREPARACION ADICIONAL INICIO
     await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
     await visible("!document.querySelector('#explorador-taxonomico').open");
-    await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
-
+    await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    // PREPARACION ADICIONAL FIN
     // Ramas masivas: jerarquía completa a la izquierda con DOM acotado; sin mutar la base.
     await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()"); await reposo();
     await visible("(() => {const dialogo=document.querySelector('#explorador-taxonomico'),d=Alpine.$data(dialogo);return dialogo.open && d.listo && !d.buscando && !d.visorCargando && d.cargandoRamas.length===0 && d.nodos.length>0 && document.querySelector('.portal-three-scene')?.checkVisibility();})()");
@@ -786,6 +775,97 @@ try {
     }
     await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));Object.assign(d,window.respaldoVisorMasivo);d.distribuir();delete window.respaldoVisorMasivo;delete window.nodoMasivoOriginal;delete window.hijoMasivoOriginal;})()"); await reposo();
     await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
+    // CASO arbol-diversidad FIN
+    }
+    async function caso_modales_mapa() {
+    await prepararUbicaciones();
+    await abrirArbol(); await mostrarEsferas();
+    const catalogoExplorador = await evaluar("({total: Alpine.$data(document.querySelector('#explorador-taxonomico')).total})");
+    await buscarEnArbol(datos.taxonBusqueda + ' alfa');
+    await evaluar("document.querySelector('#sugerencias-explorador button').click()"); await reposo();
+    // CASO modales-mapa INICIO
+    await navegarInicial(datos.taxonBusqueda + ' alfa');
+    const seleccionadoETE = '.portal-three-canvas';
+    await evaluar("document.querySelector(" + JSON.stringify(seleccionadoETE) + ").scrollIntoView({block:'center',inline:'center'})");
+    await menuTaxon();
+    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver registros').click()");
+    await visible("document.querySelector('#registros-taxon-explorador[open] .portal-record-row')"); await reposo();
+    assert.equal(await evaluar("document.querySelector('#explorador-taxonomico').open"), true);
+    assert.deepEqual((await evaluar("[...document.querySelectorAll('#registros-taxon-explorador .portal-record-row th[scope=row]')].map(n=>n.textContent.trim())")).sort(), datos.codigos.slice(0,17).sort());
+    await evaluar("document.querySelector('#registros-taxon-explorador .portal-record-row').click()");
+    await visible("document.querySelector('#registros-taxon-explorador .atlas-record-card')");
+    await evaluar("document.querySelector('.taxonomy-records-back').click()");
+    await visible("document.querySelector('#registros-taxon-explorador .portal-record-row')");
+    await evaluar("document.querySelector('#registros-taxon-explorador .taxonomy-explorer-close').click()");
+    await visible("!document.querySelector('#registros-taxon-explorador').open && document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('portal-three-canvas')");
+    const filaSeleccionadaETE = '.portal-taxonomy-tree-pane .portal-branch-row[aria-selected=true]';
+    await menuTaxon(filaSeleccionadaETE);
+    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver registros').click()");
+    await visible("document.querySelector('#registros-taxon-explorador[open] .portal-record-row')");
+    await evaluar("document.querySelector('#registros-taxon-explorador .taxonomy-explorer-close').click()");
+    await visible("!document.querySelector('#registros-taxon-explorador').open && document.activeElement.matches(" + JSON.stringify(filaSeleccionadaETE) + ")");
+    await menuTaxon();
+    await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].find(b=>b.textContent==='Ver en el mapa').click()");
+    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.classList.contains('atlas-map')"); await reposo();
+    assert.equal(await evaluar("new URL(location.href).searchParams.get('fti')"), datos.especies[0]);
+    assert.match(await evaluar("document.querySelector('.atlas-collection-count').textContent"), /^\(17 registros\)$/);
+    await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes('filtroTaxonId')).click()"); await reposo();
+    await evaluar("(() => {const b=document.querySelector('input[placeholder=\"Nombre científico en cualquier rango\"]');b.focus();b.value=" + JSON.stringify(datos.taxonBusqueda) + ";b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()"); await reposo();
+    await visible("document.querySelector('.atlas-collection-count').textContent.trim()==='(18 registros)'");
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
+    assert.equal(await evaluar("document.querySelectorAll('.taxonomy-explorer-pill').length"), 0);
+    assert.equal(await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).total"), catalogoExplorador.total, 'Reabrir el explorador conserva el mismo conjunto filtrado que el mapa.');
+    await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
+    const antesDeAjustar = totalPeticiones;
+    await evaluar("document.querySelector('.portal-diversity-canvas,.portal-three-canvas').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))");
+    await visible("Alpine.$data(document.querySelector('#explorador-taxonomico')).ajustado && document.querySelector('.portal-three-scene').dataset.zoom==='1.000'");
+    assert.ok(await evaluar("(() => {const l=document.querySelector('.portal-ete-host');return l.scrollHeight<=l.clientHeight+1 && l.scrollWidth<=l.clientWidth+1;})()"));
+    assert.equal(totalPeticiones, antesDeAjustar);
+    assert.ok(await evaluar("(() => {const d=Alpine.$data(document.querySelector('#explorador-taxonomico'));return d.filtrosArbol.length===0 && d.nodos.some(n=>n.nombre==='FiloBrowser" + token + "');})()"), 'Cerrar y reabrir conserva las ramas del conjunto filtrado sin añadir filtros internos del árbol.');
+    const antesDeEscape = totalPeticiones;
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
+    assert.equal(totalPeticiones, antesDeEscape);
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
+    const fondoExplorador = await evaluar("(() => {const r=document.querySelector('#explorador-taxonomico').getBoundingClientRect();return {x:r.left-8,y:r.top+20};})()");
+    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...fondoExplorador});
+    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...fondoExplorador});
+    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane')"); await reposo();
+    assert.ok(await evaluar(`(() => {
+        const barra=document.querySelector('.taxonomy-navigator-zoom'),botones=[...barra.querySelectorAll('button')],rects=botones.map(b=>b.getBoundingClientRect()),visualizacion=barra.querySelector('.portal-taxonomy-visualization');
+        return botones.length===5 && botones.at(-2).classList.contains('portal-three-maximize') && botones.at(-1).classList.contains('portal-taxonomy-visualization') && !barra.querySelector('.portal-three-fit')
+            && rects.every(r=>r.width===40 && r.height===40 && Math.abs(r.top-rects[0].top)<1)
+            && visualizacion.getBoundingClientRect().height===40 && visualizacion.textContent.trim()==='' && visualizacion.getAttribute('aria-label').includes('Visualización') && visualizacion.hasAttribute('aria-pressed')
+            && !document.querySelector('.taxonomy-explorer-header .portal-three-maximize');
+    })()`), 'Pantalla completa y cambio de visualización usan sólo iconos; los cinco controles tienen medidas y alineación iguales.');
+    assert.ok(await evaluar("new Set([...document.querySelector('.portal-three-legend').children].map(n=>Math.round(n.getBoundingClientRect().top))).size===1"), 'La leyenda utiliza una sola fila para reservar altura al grafo.');
+    const antesDePantallaYCerrar = totalPeticiones;
+    await navegarInicial('FiloBrowser' + token);
+    const raizAntesDePantalla = await evaluar("document.querySelector('.portal-three-scene').dataset.raiz");
+    const controlPantalla = await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
+    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...controlPantalla});
+    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...controlPantalla});
+    await visible("document.fullscreenElement===document.querySelector('.portal-three-scene')");
+    assert.equal(await evaluar("document.querySelector('.portal-three-scene').dataset.raiz"), raizAntesDePantalla);
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await visible("!document.fullscreenElement && document.querySelector('#explorador-taxonomico').open");
+    await visible("document.querySelector('.portal-ete-host').checkVisibility() && document.querySelector('.portal-taxonomy-tree-pane') && !document.querySelector('.taxonomy-navigator-sidebar')");
+    await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
+    await visible("!document.querySelector('#explorador-taxonomico').open && document.activeElement.getAttribute('aria-label')==='Árbol taxonómico'");
+    assert.equal(totalPeticiones, antesDePantallaYCerrar);
+    await conexion.send('Emulation.setDeviceMetricsOverride',{width:390,height:700,deviceScaleFactor:1,mobile:true});
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('#explorador-taxonomico[open] .portal-taxonomy-tree-pane').checkVisibility()"); await reposo();
+    assert.ok(await evaluar("(() => {const d=document.querySelector('#explorador-taxonomico'),r=d.getBoundingClientRect(),cerrar=d.querySelector('.taxonomy-explorer-close').getBoundingClientRect(),pantalla=d.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return Math.abs(r.width-innerWidth*.9)<=2 && Math.abs(r.height-innerHeight*.9)<=2 && cerrar.bottom<=r.bottom && pantalla.left>=r.left && pantalla.right<=r.right && d.querySelector('.taxonomy-navigator-main').clientHeight>=150;})()"));
+    await evaluar("document.querySelector('#explorador-taxonomico .taxonomy-explorer-close').click()");
+    await visible("!document.querySelector('#explorador-taxonomico').open");
+    await conexion.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false}); await reposo();
 
     // El modal abre los registros del punto directamente y permite recorrer todas sus páginas.
     async function recorrerRegistrosUbicacion() {
@@ -827,39 +907,45 @@ try {
     assert.ok(await evaluar("(() => {const region=document.querySelector('.atlas-cell-dialog .atlas-record-table-scroll'); return region.clientHeight > 0 && region.clientWidth > 0;})()"), 'La tabla debe disponer de espacio para desplazarse dentro del modal.');
     await evaluar("document.querySelector('.atlas-cell-header button[aria-label=\"Cerrar registros\"]').click()");
 
-    // Los tres gráficos nuevos aplican sus filtros al mapa mediante clicks reales en sus puntos.
-    async function pulsarGrafico(id, indice = 0) {
-        const punto = await evaluar(`(() => {const c=document.querySelector('#${id}').closest('section').querySelector('canvas'); c.scrollIntoView({block:'center'}); const chart=window.HubDigitalChart.getChart(c); const p=chart.getDatasetMeta(0).data[${indice}].getCenterPoint(); const r=c.getBoundingClientRect(); return {x:r.left+p.x,y:r.top+p.y};})()`);
-        await conexion.send('Input.dispatchMouseEvent', {type: 'mousePressed', button: 'left', clickCount: 1, ...punto});
-        await conexion.send('Input.dispatchMouseEvent', {type: 'mouseReleased', button: 'left', clickCount: 1, ...punto});
-        await reposo();
+    await conexion.send('Network.clearBrowserCookies');
+    await conexion.send('Page.navigate',{url});
+    await visible("document.querySelector('a[href$=\"/login\"]') && document.querySelector('.atlas-map .leaflet-pane')");await reposo();
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.portal-diversity-scene')?.dataset.frames>0");await reposo();
+    await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
+    await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");await reposo();
+    await menuTaxon('.portal-diversity-canvas');
+    assert.ok(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement===document.querySelector('.portal-diversity-scene.is-expanded')"),'El menú del árbol pertenece a la escena expandida.');
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa','Ver registros']);
+    assert.ok(await evaluar("(() => {const m=document.querySelector('.taxonomy-explorer-context-menu'),r=m.querySelector('button').getBoundingClientRect();return m.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"),'El visitante puede pulsar el menú, que no queda tapado por el canvas.');
+    const taxonMapaPublico=await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).menuNodo.nombre");
+    await evaluar("document.querySelector('.taxonomy-explorer-context-menu button').click()");
+    await visible("!document.querySelector('#explorador-taxonomico').open && document.querySelector('.atlas-map .leaflet-pane')");await reposo();
+    assert.ok((await evaluar("document.querySelector('.collection-active-filters').textContent")).includes(taxonMapaPublico),'El mapa público conserva el taxón elegido con clic derecho.');
+    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
+    await visible("document.querySelector('.portal-diversity-scene')?.checkVisibility()");await reposo();
+    await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
+    await visible("(() => {const s=document.querySelector('.portal-three-scene');return s&&Number(s.dataset.indexados)>0&&s.dataset.indexados===s.dataset.nodos;})()");await reposo();
+    // Esta sesión recién abierta aún no ha descubierto las ramas del fixture.
+    // Cargar la especie con el mismo buscador público que utiliza el visitante.
+    await buscarEnArbol(datos.taxonBusqueda+' alfa');
+    await evaluar("[...document.querySelectorAll('#sugerencias-explorador button')].find(b=>b.querySelector('strong')?.textContent==="+JSON.stringify(datos.taxonBusqueda+' alfa')+").click()");
+    await visible("document.querySelector('.portal-three-scene')?.dataset.nombre==="+JSON.stringify(datos.taxonBusqueda+' alfa'));await reposo();
+    const pantallaPublica=await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
+    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...pantallaPublica});
+    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...pantallaPublica});
+    await visible("document.fullscreenElement===document.querySelector('.portal-three-scene')");
+    await menuTaxon('.portal-three-canvas');
+    assert.ok(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement===document.fullscreenElement"),'El menú de esferas está dentro del top layer nativo.');
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa','Ver registros']);
+    assert.ok(await evaluar("(() => {const m=document.querySelector('.taxonomy-explorer-context-menu'),r=m.querySelector('button').getBoundingClientRect();return m.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"));
+    await evaluar("document.querySelector('.taxonomy-explorer-context-menu button').click()");
+    await visible("!document.querySelector('#explorador-taxonomico').open && !document.fullscreenElement && document.querySelector('.atlas-map .leaflet-pane')");await reposo();
+    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement.id"),'explorador-taxonomico','Al cerrar, el mismo menú vuelve al diálogo.');
+    // CASO modales-mapa FIN
     }
-    for (const [id, alias] of [['titulo-decadas', 'ffd'], ['titulo-estacionalidad', 'fmes'], ['titulo-altitud', 'fed']]) {
-        await pulsarGrafico(id);
-        await visible(`new URL(location.href).searchParams.has('${alias}')`);
-        assert.ok(await evaluar("document.querySelector('.atlas-map [aria-label^=\"Ubicación original\"]')"));
-        await evaluar("[...document.querySelectorAll('.collection-active-filters button')].find(b=>b.getAttribute('wire:click')?.includes(" + JSON.stringify(alias === 'ffd' ? 'periodo' : alias === 'fmes' ? 'filtroMes' : 'elevacion') + ")).click()");
-        await reposo();
-    }
-    // Las leyendas no ocupan la vista normal; Indicador muestra la explicación y PDF agrega sus figuras.
-    assert.equal(await evaluar("document.querySelectorAll('.atlas-dashboard .atlas-figure-caption').length"), 0);
-    assert.equal(await evaluar("[...document.querySelectorAll('#menu-filos button')].filter(b=>b.getAttribute('x-on:click') === 'alternarGrafico()').length"), 0);
-    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Explicar Métrica…').click()");
-    await visible("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation')");
-    assert.equal(await evaluar("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation').textContent.trim().split(/\\s+/).length"), 80);
-    await evaluar("document.querySelector('.atlas-index-dialog[open]').close()");
-    // Solo los paneles pasan al documento imprimible; el navegador genera un PDF real.
-    await evaluar(`window.__pdfPreparado=false; window.__observadorPdf=new MutationObserver(cambios=>{for(const cambio of cambios) for(const nodo of cambio.addedNodes) if(nodo.matches?.('.atlas-pdf-frame')) nodo.contentWindow.print=()=>{window.__pdfPreparado=true;};}); window.__observadorPdf.observe(document.body,{childList:true}); document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Exportar a PDF').click();`);
-    await visible('window.__pdfPreparado');
-    assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('main > .atlas-panel').length"), 7);
-    assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('button, .research-sidebar, .atlas-panel-tools, .atlas-map-actions').length"), 0);
-    assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('.atlas-figure-caption').length"), 7);
-    const imprimible = await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.documentElement.outerHTML");
-    // Guardamos evidencias en el directorio temporal, sin reemplazar la página de la aplicación.
-    writeFileSync(path.join(temporal, 'paneles.html'), imprimible);
-    await conexion.send('Page.captureScreenshot').then(r => writeFileSync(path.join(temporal, 'portal.png'), Buffer.from(r.data, 'base64')));
-    await evaluar("window.__observadorPdf.disconnect(); document.querySelector('.atlas-pdf-frame').remove()");
-
+    async function caso_tabla_paginacion() {
+    // CASO tabla-paginacion INICIO
     // La grilla paginada conserva sus filas y controles accesibles al cambiar de ventana.
     await evaluar(`(() => {const b=document.querySelector('input[placeholder="Nombre científico en cualquier rango"]');b.focus();b.value=${JSON.stringify(datos.taxonScroll)};b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de registros\"]').click()");
@@ -903,6 +989,10 @@ try {
     assert.ok(segundaPagina.every(id=>!posicionScroll.ids.includes(id)), 'La siguiente pagina reemplaza las filas sin repetir ejemplares.');
     await evaluar("document.querySelector('.portal-records-paged [aria-label=\"Página anterior\"]').click()");await reposo();
     assert.deepEqual(await evaluar("[...document.querySelectorAll('.portal-records-paged[aria-label] .portal-record-row')].map(f=>f.getAttribute('wire:key'))"),posicionScroll.ids);
+    // CASO tabla-paginacion FIN
+    }
+    async function caso_fotografias() {
+    // CASO fotografias INICIO
     await evaluar(`(() => {const b=document.querySelector('input[placeholder="Nombre científico en cualquier rango"]');b.focus();b.value=${JSON.stringify(datos.taxonBusqueda)};b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de tarjetas\"]').click()");
     await visible("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]')"); await reposo();
@@ -927,8 +1017,10 @@ try {
     await visible("document.querySelector('.collection-taxon-help[aria-label=\"Resumen de Nematomorpha\"]')"); await reposo();
     await evaluar("document.querySelector('button[aria-label=\"Vista de mapa y análisis\"]').click()");
     await visible("document.querySelector('.atlas-dashboard .leaflet-pane')"); await reposo();
-    // Visitante sin sesión: mapa público desde ambos motores, también dentro
-    // de la expansión CSS y del top layer nativo. Los registros siguen ausentes.
+    // CASO fotografias FIN
+    }
+    async function caso_administracion_importacion() {
+    // CASO administracion-importacion INICIO
     await conexion.send('Page.navigate',{url:origen+'/prestamos/curador/matriz-columnas'});
     await visible("document.querySelector('[data-matriz-config] .hub-ig tbody tr')");await reposo();
     assert.equal(await evaluar("document.querySelectorAll('[data-matriz-config] .hub-ig tbody tr').length"),106);
@@ -971,42 +1063,28 @@ try {
         await evaluar("document.querySelector('button[aria-label=\"Cerrar detalle de importación\"]').click()");
         await visible("!document.querySelector('dialog[open]')");await reposo();
     }
-    await conexion.send('Network.clearBrowserCookies');
-    await conexion.send('Page.navigate',{url});
-    await visible("document.querySelector('a[href$=\"/login\"]') && document.querySelector('.atlas-map .leaflet-pane')");await reposo();
-    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('.portal-diversity-scene')?.dataset.frames>0");await reposo();
-    await evaluar("document.querySelector('[aria-label=\"Acercar árbol\"]').click()");
-    await visible("document.querySelector('.portal-diversity-scene').dataset.animando==='false'");await reposo();
-    await menuTaxon('.portal-diversity-canvas');
-    assert.ok(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement===document.querySelector('.portal-diversity-scene.is-expanded')"),'El menú del árbol pertenece a la escena expandida.');
-    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa','Ver registros']);
-    assert.ok(await evaluar("(() => {const m=document.querySelector('.taxonomy-explorer-context-menu'),r=m.querySelector('button').getBoundingClientRect();return m.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"),'El visitante puede pulsar el menú, que no queda tapado por el canvas.');
-    const taxonMapaPublico=await evaluar("Alpine.$data(document.querySelector('#explorador-taxonomico')).menuNodo.nombre");
-    await evaluar("document.querySelector('.taxonomy-explorer-context-menu button').click()");
-    await visible("!document.querySelector('#explorador-taxonomico').open && document.querySelector('.atlas-map .leaflet-pane')");await reposo();
-    assert.ok((await evaluar("document.querySelector('.collection-active-filters').textContent")).includes(taxonMapaPublico),'El mapa público conserva el taxón elegido con clic derecho.');
-    await evaluar("document.querySelector('button[aria-label=\"Árbol taxonómico\"]').click()");
-    await visible("document.querySelector('.portal-diversity-scene')?.checkVisibility()");await reposo();
-    await evaluar("document.querySelector('.portal-taxonomy-visualization').click()");
-    await visible("(() => {const s=document.querySelector('.portal-three-scene');return s&&Number(s.dataset.indexados)>0&&s.dataset.indexados===s.dataset.nodos;})()");await reposo();
-    // Esta sesión recién abierta aún no ha descubierto las ramas del fixture.
-    // Cargar la especie con el mismo buscador público que utiliza el visitante.
-    await buscarEnArbol(datos.taxonBusqueda+' alfa');
-    await evaluar("[...document.querySelectorAll('#sugerencias-explorador button')].find(b=>b.querySelector('strong')?.textContent==="+JSON.stringify(datos.taxonBusqueda+' alfa')+").click()");
-    await visible("document.querySelector('.portal-three-scene')?.dataset.nombre==="+JSON.stringify(datos.taxonBusqueda+' alfa'));await reposo();
-    const pantallaPublica=await evaluar("(() => {const r=document.querySelector('[aria-label=\"Ver visualizador en pantalla completa\"]').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()");
-    await conexion.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...pantallaPublica});
-    await conexion.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...pantallaPublica});
-    await visible("document.fullscreenElement===document.querySelector('.portal-three-scene')");
-    await menuTaxon('.portal-three-canvas');
-    assert.ok(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement===document.fullscreenElement"),'El menú de esferas está dentro del top layer nativo.');
-    assert.deepEqual(await evaluar("[...document.querySelectorAll('.taxonomy-explorer-context-menu button')].map(b=>b.textContent.trim())"),['Ver en el mapa','Ver registros']);
-    assert.ok(await evaluar("(() => {const m=document.querySelector('.taxonomy-explorer-context-menu'),r=m.querySelector('button').getBoundingClientRect();return m.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})()"));
-    await evaluar("document.querySelector('.taxonomy-explorer-context-menu button').click()");
-    await visible("!document.querySelector('#explorador-taxonomico').open && !document.fullscreenElement && document.querySelector('.atlas-map .leaflet-pane')");await reposo();
-    assert.equal(await evaluar("document.querySelector('.taxonomy-explorer-context-menu').parentElement.id"),'explorador-taxonomico','Al cerrar, el mismo menú vuelve al diálogo.');
-
+    // CASO administracion-importacion FIN
+    }
+    async function caso_pdf_siete_figuras() {
+    // CASO pdf-siete-figuras INICIO
+    // Las leyendas no ocupan la vista normal; Indicador muestra la explicación y PDF agrega sus figuras.
+    assert.equal(await evaluar("document.querySelectorAll('.atlas-dashboard .atlas-figure-caption').length"), 0);
+    assert.equal(await evaluar("[...document.querySelectorAll('#menu-filos button')].filter(b=>b.getAttribute('x-on:click') === 'alternarGrafico()').length"), 0);
+    await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Explicar Métrica…').click()");
+    await visible("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation')");
+    assert.equal(await evaluar("document.querySelector('.atlas-index-dialog[open] .atlas-indicator-explanation').textContent.trim().split(/\\s+/).length"), 80);
+    await evaluar("document.querySelector('.atlas-index-dialog[open]').close()");
+    // Solo los paneles pasan al documento imprimible; el navegador genera un PDF real.
+    await evaluar(`window.__pdfPreparado=false; window.__observadorPdf=new MutationObserver(cambios=>{for(const cambio of cambios) for(const nodo of cambio.addedNodes) if(nodo.matches?.('.atlas-pdf-frame')) nodo.contentWindow.print=()=>{window.__pdfPreparado=true;};}); window.__observadorPdf.observe(document.body,{childList:true}); document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click(); [...document.querySelectorAll('.atlas-map-actions [role=menuitem]')].find(b=>b.textContent.trim()==='Exportar a PDF').click();`);
+    await visible('window.__pdfPreparado');
+    assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('main > .atlas-panel').length"), 7);
+    assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('button, .research-sidebar, .atlas-panel-tools, .atlas-map-actions').length"), 0);
+    assert.equal(await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.querySelectorAll('.atlas-figure-caption').length"), 7);
+    const imprimible = await evaluar("document.querySelector('.atlas-pdf-frame').contentDocument.documentElement.outerHTML");
+    // Guardamos evidencias en el directorio temporal, sin reemplazar la página de la aplicación.
+    writeFileSync(path.join(temporal, 'paneles.html'), imprimible);
+    await conexion.send('Page.captureScreenshot').then(r => writeFileSync(path.join(temporal, 'portal.png'), Buffer.from(r.data, 'base64')));
+    await evaluar("window.__observadorPdf.disconnect(); document.querySelector('.atlas-pdf-frame').remove()");
     // Verificación del PDF de siete figuras con el motor Chromium.
     const marco = (await conexion.send('Page.getFrameTree')).frameTree.frame.id;
     await conexion.send('Page.setDocumentContent', {frameId: marco, html: imprimible});
@@ -1016,7 +1094,32 @@ try {
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
     assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 7, 'El PDF debe contener las siete figuras completas.');
     sinErrores();
-    console.log('OK navegador: tooltip durante morph Livewire, filtros bloqueados, LOV, cierre sin request, tres gráficos que filtran el mapa, filas adaptables, fotografía renovada al cambiar de taxón y PDF de siete figuras.');
+    // CASO pdf-siete-figuras FIN
+    }
+    const casos = {
+        'apertura-sesion': caso_apertura_sesion,
+        'filtros-graficos': caso_filtros_graficos,
+        'tooltip-livewire': caso_tooltip_livewire,
+        'arbol-diversidad': caso_arbol_diversidad,
+        'modales-mapa': caso_modales_mapa,
+        'tabla-paginacion': caso_tabla_paginacion,
+        'fotografias': caso_fotografias,
+        'administracion-importacion': caso_administracion_importacion,
+        'pdf-siete-figuras': caso_pdf_siete_figuras,
+    };
+    for (const [indice, id] of seleccionados.entries()) {
+        console.log(`NAVEGADOR ${indice + 1}/${seleccionados.length}: ${id} — ${planBrowser?.motivos?.[id] || 'recorrido completo solicitado'}`);
+        // Cada caso comienza desde la misma fixture; ningún caso ejecuta aserciones de otro para preparar estado.
+        if (id === 'apertura-sesion') await conexion.send('Network.clearBrowserCookies');
+        else await iniciarSesion();
+        await casos[id](); sinErrores();
+        if (estadoCasos) {
+            browserEvidence.assertCaseUnchanged(proyecto, planBrowser, id);
+            browserEvidence.approveCase(estadoCasos, id);
+        }
+        console.log(`OK navegador caso: ${id}`);
+    }
+    console.log(`OK navegador: ${seleccionados.length} casos seleccionados aprobados; ${planBrowser?.reutilizar.length || 0} reutilizados con evidencia propia.`);
 } catch (error) {
     console.error('Diagnóstico del navegador:', JSON.stringify({excepciones, erroresLivewire, peticionesPendientes: peticiones.size}));
     console.error('Diagnóstico de respuesta inicial:', JSON.stringify(respuestaInicial ?? null));

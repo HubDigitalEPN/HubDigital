@@ -2,12 +2,12 @@
 .SYNOPSIS
 Valida, publica en Git y crea un paquete de despliegue OCI para HubDigital.
 
-El agente ejecuta previamente validar-cambios-agente.ps1 (8 de 20 familias).
-Este comando comprueba esa evidencia y ejecuta las 12 familias restantes,
+El agente ejecuta previamente validar-cambios-agente.ps1 (6 de 20 familias).
+Este comando comprueba esa evidencia y ejecuta las 14 familias restantes,
 sin repetir las suites ni recompilar los mismos artefactos ya comprobados.
 
 Publica exclusivamente en main de HubDigitalEPN/HubDigital. Antes de publicar
-exige todas las pruebas y compilaciones. Las opciones de omision se conservan
+exige cobertura completa mediante ejecucion o evidencia integral vigente. Las opciones de omision se conservan
 para mostrar un error claro: ya no pueden producir un paquete para main.
 Solicita un token de HubDigital de forma oculta, o usa HUBDIGITAL_GITHUB_TOKEN
 si ya existe en el entorno. No consulta el gestor global de credenciales de Git.
@@ -17,7 +17,7 @@ crear-paquete-oci -DescripcionCambio "actualiza solicitudes de deposito"
 
 .EXAMPLE
 crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
-# Exige evidencia del 40 % del agente y ejecuta el 60 % restante; termina
+# Exige evidencia del 30 % del agente y ejecuta el 70 % restante; termina
 # antes de registrar, publicar o empaquetar. Sin credenciales ni OCI.
 #>
 [CmdletBinding()]
@@ -27,6 +27,7 @@ param(
     [string]$DescripcionCambio,
     [switch]$SoloValidacionLocal,
     [switch]$ValidacionAgente,
+    [switch]$Integral,
     [switch]$OmitirCompilacion,
     [switch]$OmitirPruebasPHP,
     [Alias('OmitirPruebasPostgreSQL', 'SoloFrontend')]
@@ -369,10 +370,10 @@ if ($ValidacionAgente) {
     if ([string]::IsNullOrWhiteSpace($DescripcionCambio)) { $DescripcionCambio = 'Validacion automatica de cambios por el agente' }
     $evidenciaAnterior = Join-Path $Proyecto '.local\validation\evidencia-agente.json'
     if (Test-Path -LiteralPath $evidenciaAnterior -PathType Leaf) { Remove-Item -LiteralPath $evidenciaAnterior -Force }
-    Write-Host 'VALIDACION AGENTE: 8 de 20 familias (40 %), exclusivamente en localhost.' -ForegroundColor Cyan
+    Write-Host 'VALIDACION AGENTE: 6 de 20 familias (30 %), exclusivamente en localhost.' -ForegroundColor Cyan
 } else {
-    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'verificar', $Proyecto) -Descripcion 'Comprobando evidencia vigente del 40 % del agente'
-    Write-Host 'VALIDACION PAQUETE: 12 de 20 familias (60 %); el 40 % acreditado no se repite.' -ForegroundColor Cyan
+    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'verificar', $Proyecto) -Descripcion 'Comprobando evidencia vigente del 30 % del agente'
+    Write-Host 'VALIDACION PAQUETE: 14 de 20 familias (70 %); el 30 % acreditado no se repite.' -ForegroundColor Cyan
 }
 
 while ([string]::IsNullOrWhiteSpace($DescripcionCambio)) {
@@ -457,7 +458,8 @@ if ($rutasProhibidas) {
 }
 
 # El flujo Pest de deposito firma y verifica con el certificado real autorizado.
-# Confirmar los insumos antes de instalar dependencias, sin imprimir la clave ni el P12.
+# Confirmar los insumos del paquete sin imprimir la clave ni el P12.
+if (-not $ValidacionAgente) {
 $directorioCertificadoPruebas = Join-Path $Proyecto '.local\secrets'
 $certificadoPruebas = Join-Path $directorioCertificadoPruebas 'HERNAN AUGUSTO TROYA PROANO 1707514251-241025084137.p12'
 $credencialesPruebas = Join-Path $directorioCertificadoPruebas 'credencialesp12 .txt'
@@ -471,9 +473,16 @@ if ((Get-Item -LiteralPath $certificadoPruebas).Length -eq 0 -or
     throw 'El P12 real o la linea de clave de sus credenciales locales esta vacia o ilegible.'
 }
 $textoCredencialesPruebas = $null
+}
 
 $headAntesValidacion = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
 $huellasAntesValidacion = @(Get-HuellasCodigo)
+
+$planImpactoRuta = Join-Path $Proyecto '.local\validation\plan-impacto.json'
+$argumentosImpacto = @((Join-Path $directorioScript 'impacto-validacion.cjs'), $(if ($ValidacionAgente) { 'generar' } else { 'verificar' }), $Proyecto)
+if ($Integral) { $argumentosImpacto += 'integral' }
+Invoke-Comando -Programa 'node.exe' -Argumentos $argumentosImpacto -Descripcion 'Determinando impacto acumulado y cobertura que se ejecuta o reutiliza'
+$planImpacto = [IO.File]::ReadAllText($planImpactoRuta, [Text.Encoding]::UTF8) | ConvertFrom-Json
 
 if (-not $ValidacionAgente) {
     Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', $upstream, '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
@@ -512,7 +521,9 @@ if (-not $composer) {
 if (-not $composer) { throw 'No se encontro Composer. Ejecute composer --version para revisar su instalacion.' }
 $composerPrograma = if ($composer.PSObject.Properties['Source'] -and $composer.Source) { $composer.Source } else { $composer.FullName }
 if ($ValidacionAgente) {
-    Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
+    if ($planImpacto.agente.composer) {
+        Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
+    } else { Write-Host 'REUTILIZADO: vendor tiene evidencia compatible de su sector.' }
 } else {
     Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock' -DirectorioTrabajo $Proyecto
     Invoke-Comando -Programa $composerPrograma -Argumentos @('audit', '--locked', '--format=plain', '--no-interaction') -Descripcion 'Comprobando vulnerabilidades de dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
@@ -520,7 +531,7 @@ if ($ValidacionAgente) {
 
 # Las pruebas de carga PDF usan el inspector Java: debe estar compilado antes de la suite PHP.
 $destinoJar = Join-Path $Proyecto 'resources/bin/hubdigital-pdf-signature.jar'
-if ($ValidacionAgente) {
+if ($ValidacionAgente -and $planImpacto.agente.java_build) {
     $maven = Get-Command 'mvn.cmd' -ErrorAction SilentlyContinue
     if (-not $maven) { throw 'No se encontro Maven para compilar el validador criptografico Java.' }
     Invoke-Comando -Programa $maven.Source -Argumentos @('-q', '-f', 'tools/pdf-signature/pom.xml', '-DskipTests', 'package') -Descripcion 'Compilando firmador y validador criptografico Java' -DirectorioTrabajo $Proyecto
@@ -531,15 +542,23 @@ if ($ValidacionAgente) {
 if (!(Test-Path -LiteralPath (Join-Path $Proyecto 'tests/Python/test_portal_ete.py') -PathType Leaf)) {
     throw 'Falta el contrato obligatorio del renderizador ETE; no se admite una suite Python vacía.'
 }
-if ($ValidacionAgente) {
-    Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
-} else {
-    Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
-    Invoke-Comando -Programa 'java.exe' -Argumentos @('-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2', '-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, firma alterada y PDF sin firma con Java' -DirectorioTrabajo $Proyecto
-    Write-Host 'OK Java: firma valida, alteracion, ausencia de firma y seguridad PDF comprobadas.' -ForegroundColor Green
+if (-not $ValidacionAgente) {
+    $basesPaquete = Join-Path $directorioScript 'bases-sectores-paquete.cjs'
+    $argumentosSectorEte = @($basesPaquete, 'seleccionar-ete', $Proyecto)
+    if ($Integral) { $argumentosSectorEte += 'integral' }
+    $decisionEte = ((& node.exe @argumentosSectorEte) -join '').Trim()
+    if ($LASTEXITCODE -ne 0 -or $decisionEte -notin @('EJECUTAR', 'REUTILIZAR')) { throw 'No se pudo determinar la evidencia propia de ETE.' }
+    if ($decisionEte -eq 'EJECUTAR') {
+        Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
+        Invoke-Comando -Programa 'node.exe' -Argumentos @($basesPaquete, 'preparar-ete', $Proyecto) -Descripcion 'Identificando entradas y runtime ETE antes de su prueba'
+        Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
+        Invoke-Comando -Programa 'node.exe' -Argumentos @($basesPaquete, 'acreditar-ete', $Proyecto) -Descripcion 'Conservando la aprobacion propia de ETE'
+    } else { Write-Host 'REUTILIZADO: ETE/Python conserva fuentes, dependencias, interprete y fecha real aprobados.' }
 }
 
 # El navegador valida exactamente el build nuevo mientras PostgreSQL permanece activo.
+$suiteJavaScriptCompletada = $false
+$suiteJavaCriptograficaCompletada = $false
 if (-not $OmitirCompilacion) {
     if (-not (Get-Command 'npm.cmd' -ErrorAction SilentlyContinue)) { throw 'No se encontro npm.cmd en PATH.' }
     # Cada modulo conserva su build independiente y su propio lock. Revisar solo
@@ -553,7 +572,14 @@ if (-not $OmitirCompilacion) {
             throw "Falta package-lock.json en $nombreFrontend. No se pueden validar dependencias reproducibles."
         }
         if ($ValidacionAgente) {
+            $rutaFrontendRelativa = if ($proyectoFrontend -eq $Proyecto) { '.' } else { 'Modules/' + $nombreFrontend }
+            if ($rutaFrontendRelativa -notin @($planImpacto.agente.frontend)) {
+                Write-Host "REUTILIZADO: build $nombreFrontend e insumos sin impacto, comprobados contra su base de sector."
+                continue
+            }
+            if (-not $planImpacto.agente.PSObject.Properties['frontend_deps'] -or $rutaFrontendRelativa -in @($planImpacto.agente.frontend_deps)) {
             Invoke-Comando -Programa 'npm.cmd' -Argumentos @('ci', '--include=dev', '--include=optional', '--no-audit') -Descripcion "Instalando dependencias frontend exactas: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
+            } else { Write-Host "REUTILIZADO: dependencias frontend $nombreFrontend con evidencia propia compatible." }
             Invoke-Comando -Programa 'npm.cmd' -Argumentos @('run', 'build') -Descripcion "Compilando y validando JavaScript y CSS con Vite: $nombreFrontend" -DirectorioTrabajo $proyectoFrontend
         } else {
             # npm ci puede terminar correctamente aunque anuncie vulnerabilidades.
@@ -567,25 +593,31 @@ if (-not $OmitirCompilacion) {
     # nombres de fotografías e historial atómico. Árbol y caché están en Pest.
     if ($ValidacionAgente) {
         Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'preparar', $Proyecto) -Descripcion 'Identificando fuentes, vendor y builds antes de ejecutar las suites del agente'
+        if ($planImpacto.agente.java_test) {
+            Invoke-Comando -Programa 'java.exe' -Argumentos @('-Djava.awt.headless=true', '-Xms24m', '-Xmx160m', '-XX:+UseSerialGC', '-XX:ActiveProcessorCount=2', '-jar', $destinoJar, 'selftest') -Descripcion 'Probando firma valida, alterada, ausente, QR y seguridad PDF con Java' -DirectorioTrabajo $Proyecto
+        } else { Write-Host 'REUTILIZADO: autoprueba Java; codigo, comando y JAR coinciden con su base aprobada.' }
+        $suiteJavaCriptograficaCompletada = $true
+        Write-Host 'OK cobertura Java: ejecucion requerida y evidencia vigente del JAR sin cambios.' -ForegroundColor Green
         $directorioPruebasFrontend = Join-Path $Proyecto 'tests\Frontend'
         foreach ($contratoPortal in @('portal-map-model.test.mjs', 'portal-image-model.test.mjs', 'portal-selection-history.test.mjs', 'portal-photo-model.test.mjs', 'portal-dashboard-actions.test.mjs', 'portal-chart-model.test.mjs', 'portal-tree-model.test.mjs')) {
             if (-not (Test-Path -LiteralPath (Join-Path $directorioPruebasFrontend $contratoPortal) -PathType Leaf)) {
                 throw "Falta el contrato JavaScript del portal: $contratoPortal"
             }
     }
-    $pruebasFrontend = @(Get-ChildItem -LiteralPath $directorioPruebasFrontend -Filter '*.test.mjs' -File |
-        Sort-Object Name | ForEach-Object { $_.FullName })
-    if ($pruebasFrontend.Count -eq 0) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
-    Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript del mapa, fotografias e historial del portal con Node' -DirectorioTrabajo $Proyecto
+    $pruebasFrontend = @($planImpacto.agente.node_tests | ForEach-Object { Join-Path $Proyecto $_ })
+    if ($pruebasFrontend.Count -eq 0 -and $planImpacto.integral -and -not $planImpacto.agente.PSObject.Properties['node_reutilizado']) { throw 'Faltan los contratos JavaScript del mapa cartografico.' }
+    if ($pruebasFrontend.Count -gt 0) {
+        Invoke-Comando -Programa 'node.exe' -Argumentos (@('--test') + $pruebasFrontend) -Descripcion 'Validando contratos JavaScript seleccionados por impacto con Node' -DirectorioTrabajo $Proyecto
+    } else { Write-Host 'REUTILIZADO: contratos Node sin impacto, respaldados por la base integral.' }
+    $suiteJavaScriptCompletada = $true
     }
 }
 
-# En paquete estos controles estan acreditados por la evidencia verificada.
-# En agente solo se marcan despues de ejecutar las suites completas.
-$suitePostgresCompletada = -not $ValidacionAgente
+# El paquete ejecuta los controles afectados; el resto exige una base integral vigente.
+$suitePostgresCompletada = $false
 $suiteGherkinCompletada = $false
-$suiteNavegadorCompletada = -not $ValidacionAgente
-$solucionPdfComprobada = -not $ValidacionAgente
+$suiteNavegadorCompletada = $false
+$solucionPdfComprobada = $false
 $php = Get-Command 'php' -ErrorAction SilentlyContinue
 if (-not $php) {
     $phpAlternativo = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe'
@@ -597,7 +629,7 @@ $phpPrograma = if ($php -and $php.PSObject.Properties['Source'] -and $php.Source
 $archivosPhp = @($archivosCambiados | Where-Object { $_ -match '\.php$' -and $_ -notmatch '\.blade\.php$' })
 $archivosShell = @($archivosCambiados | Where-Object { $_ -match '\.sh(?:\.template)?$' })
 $bashGit = Join-Path (Split-Path -Parent (Split-Path -Parent (Get-Command git.exe).Source)) 'bin\bash.exe'
-if (-not (Test-Path -LiteralPath $bashGit -PathType Leaf)) { throw 'Falta Bash de Git para comprobar los scripts de despliegue y las guias generadas.' }
+if (-not $ValidacionAgente -and -not (Test-Path -LiteralPath $bashGit -PathType Leaf)) { throw 'Falta Bash de Git para comprobar los scripts de despliegue y las guias generadas.' }
 if ($archivosShell -and -not $ValidacionAgente) {
     foreach ($archivoShell in $archivosShell) {
         $rutaShell = Join-Path $Proyecto $archivoShell
@@ -626,19 +658,21 @@ if (-not $ValidacionAgente) {
     }
 }
 if (-not $phpPrograma) { throw 'No se encontro PHP: la validacion completa exige PHP/PostgreSQL.' }
-if ($ValidacionAgente) {
+if (-not $ValidacionAgente) {
     Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel' -DirectorioTrabajo $Proyecto
-    # El mismo contrato PostgreSQL, PDF local, Neon y Pest completo, sin filtros nuevos.
+    # El plan incluye contratos directos e indirectos o exige la suite completa.
     $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
     if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
+    if ($planImpacto.paquete.postgres) {
     Invoke-Comando -Programa 'powershell.exe' -Argumentos @(
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $validadorPostgres,
-        '-Proyecto', $Proyecto, '-Php', $phpPrograma, '-ValidarPdfLocal'
+        '-Proyecto', $Proyecto, '-Php', $phpPrograma, '-ValidarPdfLocal', '-PlanImpacto', $planImpactoRuta
     ) -Descripcion 'Validando con PostgreSQL temporal y apagado automatico'
+    } else { Write-Host 'REUTILIZADO: PHP/PostgreSQL, PDF y navegador sin impacto; no se preparan bases temporales.' }
     $suitePostgresCompletada = $true
     $suiteNavegadorCompletada = $true
     $solucionPdfComprobada = $true
-} else {
+    Write-Host 'PHP, navegador y PDF finalizados. Siguen migraciones, sintaxis PHP y escenarios Gherkin.' -ForegroundColor Cyan
     Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-migration-classes.php') -Descripcion 'Comprobando clases de migraciones sin ejecutar cambios en la base' -DirectorioTrabajo $Proyecto
     if ($archivosPhp) {
         Write-Host "`n==> Validando sintaxis PHP" -ForegroundColor Cyan
@@ -652,15 +686,19 @@ if ($ValidacionAgente) {
     }
     $ejecutableBehat = Join-Path $Proyecto 'vendor/bin/behat'
     if (-not (Test-Path -LiteralPath $ejecutableBehat -PathType Leaf)) { throw 'Falta Behat: no se publica ni empaqueta sin Gherkin.' }
-    Invoke-Comando -Programa $phpPrograma -Argumentos @(
+    if ($planImpacto.paquete.gherkin) {
+    $argumentosBehat = @(
         $ejecutableBehat, '--profile=default', '--no-interaction', '--tags=@listo', '--strict'
-    ) -Descripcion 'Validando escenarios de negocio Gherkin con Behat' -DirectorioTrabajo $Proyecto
+    )
+    if (-not $planImpacto.integral) { $argumentosBehat += @($planImpacto.paquete.gherkin_paths) }
+    Invoke-Comando -Programa $phpPrograma -Argumentos $argumentosBehat -Descripcion 'Validando escenarios de negocio Gherkin relacionados con Behat' -DirectorioTrabajo $Proyecto
+    } else { Write-Host 'REUTILIZADO: escenarios Gherkin sin impacto, conservados en la base integral.' }
     $suiteGherkinCompletada = $true
-    Write-Host 'OK Gherkin: escenarios activos completados con Behat.' -ForegroundColor Green
+    Write-Host 'OK cobertura Gherkin: ejecucion relacionada y evidencia vigente del resto.' -ForegroundColor Green
 }
 
 if ($ValidacionAgente) {
-    if (-not $suitePostgresCompletada -or -not $suiteNavegadorCompletada -or -not $solucionPdfComprobada) {
+    if (-not $suiteJavaScriptCompletada -or -not $suiteJavaCriptograficaCompletada) {
         throw 'No se completaron las suites obligatorias del agente. No se emite evidencia.'
     }
     $headTrasAgente = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
@@ -669,9 +707,9 @@ if ($ValidacionAgente) {
         [string]::Join("`n", $huellasAntesValidacion) -ne [string]::Join("`n", $huellasTrasAgente)) {
         throw 'El codigo cambio durante la validacion del agente. No se emite evidencia; vuelve a validar los cambios finales.'
     }
-    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'crear', $Proyecto) -Descripcion 'Sellando evidencia del 40 %: codigo, vendor y builds probados'
-    Write-Host 'VALIDACION AGENTE COMPLETA (40 %). Sin commit, push ni archivos OCI.' -ForegroundColor Green
-    Write-Host 'El paquete ejecutara el 60 % restante y verificara esta evidencia sin repetir las suites aprobadas.'
+    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'crear', $Proyecto) -Descripcion 'Sellando evidencia del 30 %: codigo, vendor y builds probados'
+    Write-Host 'VALIDACION AGENTE COMPLETA (30 %). Sin commit, push ni archivos OCI.' -ForegroundColor Green
+    Write-Host 'El paquete ejecutara el 70 % restante y verificara esta evidencia sin repetir las suites aprobadas.'
     exit 0
 }
 
@@ -808,7 +846,8 @@ if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $sui
 }
 
 if ($SoloValidacionLocal) {
-    Write-Host 'VALIDACION LOCAL COMPLETA: Java, ETE, frontend, Gherkin, PostgreSQL, navegador y PDF aprobados.' -ForegroundColor Green
+    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'impacto-validacion.cjs'), 'acreditar', $Proyecto) -Descripcion 'Registrando pruebas ejecutadas, reutilizadas y base integral cuando corresponda'
+    Write-Host 'VALIDACION LOCAL COMPLETA: cobertura ejecutada y reutilizada registrada; auditorias actualizadas aprobadas.' -ForegroundColor Green
     Write-Host 'Los cambios permanecen en la rama de trabajo. Sin commit, push ni paquete OCI.'
     exit 0
 }
@@ -1386,6 +1425,7 @@ finally {
     }
 }
 
+Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'impacto-validacion.cjs'), 'acreditar', $Proyecto) -Descripcion 'Registrando cobertura y base integral despues de completar el paquete'
 Write-Host "`nProceso completo." -ForegroundColor Green
 Write-Host "Commit:    $commit"
 Write-Host "Mensaje:   $mensajeCommit"
@@ -1403,16 +1443,15 @@ Write-Host "Produccion: siga el apartado PROD de la guia; usa el bundle fuente y
 Write-Host "SHA-256:   $hash"
 Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
-Write-Host 'Java PDF:  OK, compilacion Maven y autoprueba criptografica.'
-Write-Host 'Gherkin:   OK, escenarios de negocio activos completados con Behat en modo estricto.'
-Write-Host 'Portal:    OK, navegador real; tooltip durante Livewire, filtros, LOV, graficos, filas adaptables, fotografia y PDF de siete paneles.'
+Write-Host 'Cobertura: ejecucion integral o por impacto, con reutilizacion desde bases integrales o de sector aprobadas y compatibles.'
+Write-Host "Detalle: $planImpactoRuta y .local/validation/ultima-validacion.json"
 if ($suitePostgresCompletada) {
-    Write-Host 'Depositos: OK, suite PHP/PostgreSQL completada.'
+    Write-Host 'Depositos: OK, cobertura PHP/PostgreSQL comprobada mediante ejecucion y evidencia vigente.'
 } else {
     Write-Host 'Depositos: suite PHP/PostgreSQL omitida.' -ForegroundColor Yellow
 }
 if ($solucionPdfComprobada) {
-    Write-Host 'Solucion PDF: OK, numero magico, estructura, contenido activo y firmas valida/alterada/ausente por PHP y Java.'
+    Write-Host 'Solucion PDF: cobertura de estructura, contenido activo y firmas por ejecucion o evidencia integral vigente; detalle en el plan.'
 } else {
     Write-Host 'Solucion PDF: comprobacion integrada local omitida; se exigira al activar la release en OCI.' -ForegroundColor Yellow
 }

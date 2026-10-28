@@ -1038,7 +1038,14 @@ public final class PdfSignatureCli {
         int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
         var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
             new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
-        try { return new com.google.zxing.MultiFormatReader().decode(bitmap).getText(); }
+        // En una página completa el sello ocupa mucho menos de un cuarto del alto.
+        // El barrido rápido de ZXing puede saltarse sus localizadores a 220 dpi;
+        // TRY_HARDER recorre filas más cercanas sin alterar ni recortar la imagen.
+        try {
+            return new com.google.zxing.MultiFormatReader().decode(bitmap, java.util.Map.of(
+                com.google.zxing.DecodeHintType.POSSIBLE_FORMATS, List.of(com.google.zxing.BarcodeFormat.QR_CODE),
+                com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE)).getText();
+        }
         catch (com.google.zxing.NotFoundException error) {
             throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi.", error);
         }
@@ -1099,9 +1106,21 @@ public final class PdfSignatureCli {
         }
         try (PDDocument base = Loader.loadPDF(original.toFile()); PDDocument result = Loader.loadPDF(signed.toFile())) {
             if (!ContenidoOficialPdf.coincide(base, result)) throw new IllegalStateException("La firma oficial no coincide con su zona y contenido.");
-            String qr = leerQrPrueba(result, 220);
+            boolean qrAusenteRechazado = false;
+            try { leerQrPrueba(base, 220); }
+            catch (IllegalStateException expected) {
+                if (!(expected.getCause() instanceof com.google.zxing.NotFoundException)) throw expected;
+                qrAusenteRechazado = true;
+            }
+            if (!qrAusenteRechazado) throw new IllegalStateException("Se detectó un QR inexistente en el original sin sello.");
             String digest = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(original)));
-            if (!qr.contains(digest) || !qr.contains("Certificado SHA-256:")) throw new IllegalStateException("El QR no identifica el original y certificado.");
+            String huellaCertificado = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(cert.getEncoded()));
+            String datosEsperados = "Original SHA-256: " + digest + "\nCertificado SHA-256: " + huellaCertificado;
+            for (int dpi : List.of(144, 220)) {
+                if (!datosEsperados.equals(leerQrPrueba(result, dpi))) {
+                    throw new IllegalStateException("El QR no identifica exactamente el original y certificado a " + dpi + " dpi.");
+                }
+            }
             // La firma sin su apariencia visible debe fallar el contrato oficial.
             var widget = result.getDocumentCatalog().getAcroForm().getFields().get(0).getWidgets().get(0);
             widget.getCOSObject().removeItem(COSName.AP);
@@ -1118,8 +1137,10 @@ public final class PdfSignatureCli {
             throw new IllegalStateException("El QR de verificación cambió el contenido oficial o su firma.");
         }
         try (PDDocument conQr = Loader.loadPDF(signedQrUrl.toFile())) {
-            if (!verificationUrl.equals(leerQrPrueba(conQr, 144))) {
-                throw new IllegalStateException("El QR no abre exactamente el enlace HTTPS de verificación.");
+            for (int dpi : List.of(144, 220)) {
+                if (!verificationUrl.equals(leerQrPrueba(conQr, dpi))) {
+                    throw new IllegalStateException("El QR no abre exactamente el enlace HTTPS de verificación a " + dpi + " dpi.");
+                }
             }
         }
         for (String muestra : List.of("qr-variacion-1", "qr-variacion-2")) {
@@ -1135,7 +1156,11 @@ public final class PdfSignatureCli {
                 throw new IllegalStateException("Una variante del QR cambia el documento o su firma.");
             }
             try (PDDocument conQr = Loader.loadPDF(signedQrUrl.toFile())) {
-                if (!urlVariada.equals(leerQrPrueba(conQr, 144))) throw new IllegalStateException("No se lee exactamente una variante del enlace de verificación.");
+                for (int dpi : List.of(144, 220)) {
+                    if (!urlVariada.equals(leerQrPrueba(conQr, dpi))) {
+                        throw new IllegalStateException("No se lee exactamente una variante del enlace de verificación a " + dpi + " dpi.");
+                    }
+                }
             }
         }
         Path rejected = temp.resolve("no-debe-existir.pdf");

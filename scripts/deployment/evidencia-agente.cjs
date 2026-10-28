@@ -3,6 +3,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const {createHash, randomUUID} = require('node:crypto');
 const {spawnSync} = require('node:child_process');
+const sectors = require('./bases-sectores-agente.cjs');
 
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const runtimeRoots = ['vendor', 'resources/bin/hubdigital-pdf-signature.jar',
@@ -11,9 +12,9 @@ const runtimeRoots = ['vendor', 'resources/bin/hubdigital-pdf-signature.jar',
 const digest = value => createHash('sha256').update(value).digest('hex');
 const plan = JSON.parse(fs.readFileSync(path.join(__dirname, 'plan-validacion.json'), 'utf8'));
 const stages = plan.controles.filter(c => c.responsable === 'agente').map(c => c.id).sort();
-if (plan.version !== 1 || plan.controles.length !== 20 || stages.length !== 8 ||
+if (plan.version !== 3 || plan.controles.length !== 20 || stages.length !== 6 ||
     new Set(plan.controles.map(c => c.id)).size !== 20 ||
-    plan.controles.filter(c => c.responsable === 'paquete').length !== 12) throw new Error('Plan de validacion incompatible con el reparto 40/60.');
+    plan.controles.filter(c => c.responsable === 'paquete').length !== 14) throw new Error('Plan de validacion incompatible con el reparto 30/70.');
 const fail = message => { throw new Error(`${message} Ejecute scripts/deployment/validar-cambios-agente.ps1 sobre los cambios actuales.`); };
 
 async function hashRuntime(root, roots = runtimeRoots) {
@@ -56,7 +57,16 @@ async function hashRuntime(root, roots = runtimeRoots) {
         }
     }
     await Promise.all(Array.from({length: 4}, consume));
-    return {sha256: digest(hashes.join('\n')), files: files.length, roots};
+    const per_root = {};
+    for (const relative of roots) {
+        const prefix = relative.split(path.sep).join('/');
+        const entries = hashes.filter((_, index) => {
+            const name = files[index].split(path.sep).join('/');
+            return name === prefix || name.startsWith(prefix + '/');
+        });
+        per_root[prefix] = digest(entries.join('\n'));
+    }
+    return {sha256: digest(hashes.join('\n')), files: files.length, roots, per_root};
 }
 
 function createEvidence(snapshot, now = Date.now()) {
@@ -69,9 +79,15 @@ function validateEvidence(evidence, current, now = Date.now()) {
     const age = now - Date.parse(evidence.completed_at);
     if (age < -60000 || age > MAX_AGE_MS) fail('La evidencia del agente vencio o tiene una fecha futura.');
     if (evidence.plan_sha256 !== digest(JSON.stringify(plan)) ||
-        JSON.stringify(evidence.stages) !== JSON.stringify(stages)) fail('La evidencia no acredita todos los controles del 40 %.');
-    for (const key of ['root', 'head', 'source_sha256']) {
-        if (evidence[key] !== current[key]) fail(`La evidencia no corresponde al codigo actual (${key}).`);
+        JSON.stringify(evidence.stages) !== JSON.stringify(stages)) fail('La evidencia no acredita todos los controles del 30 %.');
+    for (const key of ['root', 'head', 'source_sha256', 'impact_sha256', 'sector_environment', 'sector_inputs']) {
+        if (JSON.stringify(evidence[key]) !== JSON.stringify(current[key])) {
+            if (key === 'sector_environment' && evidence.sector_environment_details && current.sector_environment_details) {
+                const changed = ['node', 'php', 'java', 'config_sha256'].filter(part => JSON.stringify(evidence.sector_environment_details[part]) !== JSON.stringify(current.sector_environment_details[part]));
+                fail(`Cambio el entorno efectivo de validacion (${changed.join(', ') || 'identidad de herramientas'}).`);
+            }
+            fail(`La evidencia no corresponde al codigo actual (${key}).`);
+        }
     }
     if (JSON.stringify(evidence.runtime) !== JSON.stringify(current.runtime)) fail('Los builds o dependencias PHP cambiaron despues de las pruebas.');
     return evidence;
@@ -80,7 +96,7 @@ function validateEvidence(evidence, current, now = Date.now()) {
 function validatePrepared(prepared, current, now = Date.now()) {
     const age = now - Date.parse(prepared?.started_at);
     if (!Number.isFinite(age) || age < -60000 || age > MAX_AGE_MS || prepared.phase !== 'pendiente') fail('Falta la identificacion previa de las entradas de las pruebas.');
-    for (const key of ['root', 'head', 'source_sha256', 'runtime']) {
+    for (const key of ['root', 'head', 'source_sha256', 'runtime', 'impact_sha256', 'sector_inputs', 'sector_environment']) {
         if (JSON.stringify(prepared[key]) !== JSON.stringify(current[key])) fail(`Las entradas cambiaron mientras se ejecutaban las pruebas (${key}).`);
     }
 }
@@ -94,13 +110,28 @@ function atomicWrite(filename, data) {
     } finally { fs.rmSync(temporary, {force: true}); }
 }
 
-async function snapshot(root) {
+async function snapshot(root, {prepare = false} = {}) {
+    const impactPath = path.join(root, '.local', 'validation', 'plan-impacto.json');
+    if (!fs.existsSync(impactPath)) fail('Falta el plan de impacto del agente.');
+    let impact = JSON.parse(fs.readFileSync(impactPath, 'utf8'));
     const code = spawnSync(process.execPath, [path.join(__dirname, 'huellas-codigo.cjs'), root],
         {encoding: 'utf8', windowsHide: true, maxBuffer: 32 * 1024 * 1024});
     if (code.status !== 0) fail('No se pudo identificar el codigo actual.');
     const git = spawnSync('git.exe', ['-C', root, 'rev-parse', 'HEAD'], {encoding: 'utf8', windowsHide: true});
     if (git.status !== 0) fail('No se pudo identificar HEAD.');
-    return {root, head: git.stdout.trim(), source_sha256: digest(code.stdout), runtime: await hashRuntime(root)};
+    const source_sha256 = digest(code.stdout);
+    if (impact.version !== 1 || impact.root !== root || impact.source_sha256 !== source_sha256) fail('El plan de impacto no corresponde al codigo actual.');
+    const runtime = await hashRuntime(root), environmentIdentity = sectors.identity(root), sector_environment = environmentIdentity.fingerprint;
+    const sources = Object.fromEntries(code.stdout.trimEnd().split('\n').map(line => { const i = line.indexOf('  '); return [line.slice(i + 2), line.slice(0, i)]; }));
+    if (prepare) {
+        impact = require('./impacto-validacion.cjs').refreshRuntimePlan({root, head: git.stdout.trim(), files: sources,
+            runtime, environment: sector_environment, plan: impact});
+        atomicWrite(impactPath, impact);
+    }
+    const sector_inputs = sectors.inputs({sources, runtime, environment: sector_environment,
+        core: fs.readFileSync(path.join(root, 'scripts/deployment/crear-paquete-oci-core.ps1'), 'utf8')});
+    return {root, head: git.stdout.trim(), source_sha256, impact_sha256: digest(JSON.stringify(impact)), runtime, sector_inputs, sector_environment,
+        sector_environment_details: environmentIdentity.components};
 }
 
 async function main() {
@@ -109,20 +140,22 @@ async function main() {
     const root = fs.realpathSync(project);
     const receipt = path.join(root, '.local', 'validation', 'evidencia-agente.json');
     const pending = path.join(root, '.local', 'validation', 'evidencia-agente-pendiente.json');
-    if (action === 'verificar' && !fs.existsSync(receipt)) fail('Falta la validacion obligatoria del agente (40 %).');
-    const current = await snapshot(root);
+    if (action === 'verificar' && !fs.existsSync(receipt)) fail('Falta la validacion obligatoria del agente (30 %).');
+    const current = await snapshot(root, {prepare: action === 'preparar'});
     if (action === 'preparar') {
         atomicWrite(pending, {phase: 'pendiente', started_at: new Date().toISOString(), ...current});
         console.log(`ENTRADAS_AGENTE_IDENTIFICADAS=${current.runtime.files} archivos runtime; todavia no acreditan pruebas aprobadas.`);
     } else if (action === 'crear') {
         if (!fs.existsSync(pending)) fail('No se identificaron las entradas antes de las pruebas.');
         validatePrepared(JSON.parse(fs.readFileSync(pending, 'utf8')), current);
-        atomicWrite(receipt, createEvidence(current));
+        const approved = createEvidence(current);
+        sectors.record(root, approved, JSON.parse(fs.readFileSync(path.join(root, '.local/validation/plan-impacto.json'), 'utf8')).agente);
+        atomicWrite(receipt, approved);
         fs.rmSync(pending);
         console.log(`EVIDENCIA_AGENTE_CREADA=${receipt}`);
     } else {
         validateEvidence(JSON.parse(fs.readFileSync(receipt, 'utf8')), current);
-        console.log('EVIDENCIA_AGENTE_OK=40 %; codigo, vendor y builds coinciden con las pruebas aprobadas.');
+        console.log('EVIDENCIA_AGENTE_OK=30 %; codigo, vendor y builds coinciden con las pruebas aprobadas.');
     }
 }
 

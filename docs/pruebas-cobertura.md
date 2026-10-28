@@ -125,9 +125,13 @@ efímero en loopback y autenticación mutua, sin reemplazar el motor de localhos
 ni incorporar el certificado sintético a la confianza del servicio existente.
 
 Desde el 28 de octubre de 2026 el [reparto agente/paquete](validacion-agente-y-paquete.md)
-conserva toda la cobertura: el agente ejecuta su 40 % al terminar cada solicitud;
-`crear-paquete-oci` acredita esa evidencia y ejecuta el 60 % restante. No se
+conserva toda la cobertura: el agente ejecuta su 30 % al terminar cada solicitud;
+`crear-paquete-oci` acredita esa evidencia y ejecuta el 70 % restante. No se
 ejecutan suites sueltas ni se duplican entre las entradas.
+El agente prepara dependencias, Java y cuatro builds Vite, y ejecuta la autoprueba
+Java completa y todos los contratos Node. El paquete prepara ETE y ejecuta arranque
+Laravel e integración completa Pest/PostgreSQL/PDF/Neon, además de sus auditorías,
+Python, Gherkin e integridad.
 
 La publicación sigue siendo manual. GitHub Actions está deshabilitado en el
 repositorio oficial y no se conservan workflows que ejecuten suites al publicar
@@ -143,6 +147,15 @@ el grafo de dependencias habilitado y no reemplaza las suites de regresión.
 La actualización de Bouncy Castle del motor Java conserva el selftest
 criptográfico y la validación integrada PHP/Java del paquete. No se agregan
 escenarios Pest o Gherkin que dupliquen estas auditorías.
+
+La autoprueba Java lee el QR del sello en la página PDF completa a 144 y 220 dpi,
+tanto para las dos huellas completas como para el enlace HTTPS y sus variantes.
+Exige igualdad exacta del texto decodificado. Usa la búsqueda exhaustiva de QR de
+ZXing (`TRY_HARDER`), cuyo [detector](https://github.com/zxing/zxing/blob/zxing-3.5.4/core/src/main/java/com/google/zxing/qrcode/detector/FinderPatternFinder.java)
+reduce el salto entre filas al buscar un sello pequeño dentro de una página.
+No recorta la imagen, cambia el sello ni omite comprobaciones criptográficas.
+También rechaza el original sin QR. La ejecución pertenece al 30 % del agente
+y a la aceptación íntegra de cada release en las VM autorizadas.
 
 Pest cubre persistencia, permisos, aislamiento entre usuarios, integridad de
 documentos, navegación del depósito, cantidades positivas, localidad opcional
@@ -253,16 +266,42 @@ La revisión manual complementaria en Opera Neon se reserva para presentación, 
 
 ## Tema elegido y recuperación de contraseña (28 de octubre de 2026)
 
-`hub-appearance.test.mjs` cubre el inicio en claro sin preferencia válida aunque el sistema esté oscuro, la persistencia de claro/oscuro tras recargar con el sistema opuesto, el paso por el portal público sin perder la preferencia y la opción Sistema únicamente cuando se selecciona expresamente. El portal conserva su paleta propia. `hub-turnstile.test.mjs` comprueba que el widget recibe el tema efectivo de la aplicación; conserva los casos de token, caducidad, error, reintento y navegación. Estas pruebas se ejecutan exclusivamente dentro de `crear-paquete-oci`; no se agregan escenarios Gherkin duplicados.
+`hub-appearance.test.mjs` cubre el inicio en claro sin preferencia válida aunque el sistema esté oscuro, la persistencia de claro/oscuro tras recargar con el sistema opuesto, el paso por el portal público sin perder la preferencia y la opción Sistema únicamente cuando se selecciona expresamente. El portal conserva su paleta propia. `hub-turnstile.test.mjs` comprueba que el widget recibe el tema efectivo de la aplicación; conserva los casos de token, caducidad, error, reintento y navegación. Estas pruebas se ejecutan con todos los contratos Node dentro del bloque del agente; no se agregan escenarios Gherkin duplicados.
 
 La separación visual y las áreas pulsables de recuperación/visibilidad, el foco y la adaptación móvil se revisan complementariamente en localhost con Opera Neon al 75 %. La semántica del campo, el POST de Fortify y el flujo de recuperación conservan su cobertura Pest existente.
 
 ## Cambios del 28/10/2026: validación distribuida y botones RBAC
 
-`tests/Frontend/evidencia-agente.test.mjs` comprueba integridad, caducidad y rechazo
-ante cambios de fuentes o runtime; se ejecuta con todos los contratos Node del
+`tests/Frontend/evidencia-agente.test.mjs` comprueba integridad, caducidad, rechazo
+de recibos del reparto anterior 40/60 y cambios de fuentes o runtime; se ejecuta con todos los contratos Node del
 bloque del agente. La matriz y sus reglas se describen en
 `docs/validacion-agente-y-paquete.md`.
+
+La selección por impacto se contrasta con `tests/Frontend/impacto-validacion.test.mjs`:
+base ausente, vencida o incompatible; cambios críticos/desconocidos; cierre
+transitivo de consumidores; puentes PHP App e imports agrupados; imports JavaScript
+indirectos y builds consumidores; cambios acumulados y eliminaciones; artefactos
+alterados y auditorías/integridad permanentes. Los conjuntos ejecutado/reutilizado
+deben conservar la cobertura. Estos contratos pertenecen al bloque Node del agente.
+
+`tests/Frontend/progreso-pruebas-php.test.mjs` usa procesos emisores sintéticos,
+sin ejecutar Pest otra vez: protocolo escapado y fragmentado, workers simultáneos,
+casos omitidos, lectura activa de archivos mientras el runner retiene stdout,
+fallos con salida cero, salida no cero, cero casos, truncamiento y cancelación.
+La integración real Pest/PostgreSQL del observador corresponde al 70 % manual;
+los contratos sintéticos no la acreditan. El informe del plan distingue siempre
+ejecución, reutilización y controles pendientes.
+
+`tests/Frontend/bases-sectores-agente.test.mjs` distingue las bases propias de
+Java, Composer y los frontends de la base integral del paquete. Comprueba que
+cambiar el selector exige Node, que cambiar el código/comando/JAR o el entorno
+invalida el sector correspondiente, y que un sector ausente o vencido no se
+acredita. Se ejecuta dentro de la entrada completa del agente.
+
+La regresion de entrega de evidencia contrasta Codex y consola con distintos
+PATH/directorios, tanto con identidades simuladas como en procesos Windows reales.
+Cambiar carpetas del lanzador no invalida aprobaciones; cambiar las herramientas
+efectivas o la configuracion local si las invalida.
 
 Pest cubre asignación y cambio entre perfiles internos/externos, rechazo de roles
 no asignados, ayudantes sin administración, revocación inmediata, permisos de ver
@@ -270,3 +309,11 @@ sin usar, edición concurrente y límites de divulgación en `Auth/BotonesRbacTe
 y `ExportacionExternaRbacTest.php`. Incluye hoja grande y limpieza de temporales al
 fallar. No se agrega Gherkin duplicado: los contratos HTTP, Livewire y persistencia
 quedan en Pest; Gherkin conserva sus flujos completos existentes.
+
+## Navegador por casos con evidencia independiente
+
+`.local/validation/base-navegador.json` conserva aprobaciones propias de nueve recorridos: apertura/sesion/cabecera/pie, filtros/busqueda/graficos, tooltip/Livewire, arbol/diversidad, modales/mapa/registros, tabla/paginacion, fotografias, administracion/importacion y PDF de siete figuras. El selector registra casos ejecutados, reutilizados y motivos en el plan; no repetir UI intacta aunque Pest no haya completado su base integral. Cada caso prepara su estado sin ejecutar las aserciones de otros casos.
+
+Las entradas propias, fixture, vendor y entorno deben coincidir y la evidencia dura siete dias; reutilizar conserva la fecha real. La migracion del OK completo confirmado exige runner original, cuerpos completos y todas sus aserciones conservadas, fixture y fuentes compatibles. Su procedencia declara expresamente que el runner nuevo no se ejecuto. No acredita Pest ni crea una base integral del 70 %. Un caso cancelado o fallido no queda aprobado; los que si terminaron conservan su evidencia individual.
+
+Cambios de empaquetado o selector por si solos no disparan UI. Se siguen consumidores directos e indirectos. Los metodos de tooltip del dashboard y los metodos conocidos del controlador se comparan por fragmento; un componente compartido sin fragmento seguro amplia los casos y explica el motivo. Autenticacion, permisos y dependencias compartidas alcanzan todos los consumidores. `-Integral` fuerza los nueve recorridos. Las auditorias actuales y la integridad OCI siguen obligatorias.

@@ -1,8 +1,9 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$Proyecto,
     [Parameter(Mandatory)] [string]$Php,
-    [switch]$ValidarPdfLocal
+    [switch]$ValidarPdfLocal,
+    [string]$PlanImpacto
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,6 +21,8 @@ $prefijoPruebas = 'hd_pkg_' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $raizProyecto = (Resolve-Path -LiteralPath $Proyecto).Path
 $raizPruebas = Join-Path $raizProyecto ('.local\validation\' + $prefijoPruebas)
 $procesosPruebas = 2
+$seleccion = $null
+if ($PlanImpacto) { $seleccion = [IO.File]::ReadAllText($PlanImpacto, [Text.Encoding]::UTF8) | ConvertFrom-Json }
 try {
     $memoriaLibre = (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).FreePhysicalMemory * 1KB
     if ([Environment]::ProcessorCount -ge 8 -and $memoriaLibre -ge 4GB) { $procesosPruebas = 4 }
@@ -131,6 +134,8 @@ try {
         & (Join-Path $pgBin 'pg_dump.exe') -h 127.0.0.1 -p 5432 -U postgres -d $basePruebas -Fc -f $copia
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la copia consistente de PostgreSQL.' }
         for ($tokenPruebas = 1; $tokenPruebas -le $procesosPruebas; $tokenPruebas++) {
+            $relojBase = [Diagnostics.Stopwatch]::StartNew()
+            Write-Host "Base aislada $tokenPruebas/$procesosPruebas`: creando copia, migraciones y estadisticas..." -ForegroundColor Cyan
             $baseAislada = $prefijoPruebas + '_' + $tokenPruebas
             & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $baseAislada
             if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear una base temporal nueva de pruebas.' }
@@ -148,11 +153,12 @@ try {
             foreach ($carpeta in @('app\private','framework\cache\data','framework\sessions','framework\views','logs','document-processing')) {
                 New-Item -ItemType Directory -Path (Join-Path $raizPruebas ("worker-$tokenPruebas\" + $carpeta)) -Force | Out-Null
             }
+            Write-Host ("Base aislada {0}/{1} lista en {2:N1} s." -f $tokenPruebas, $procesosPruebas, $relojBase.Elapsed.TotalSeconds) -ForegroundColor Green
         }
         Remove-Item -LiteralPath $copia -Force
         $env:DB_DATABASE = $env:TEST_DB_DATABASE = $basesAisladas[0]
 
-        if ($ValidarPdfLocal) {
+        if ($ValidarPdfLocal -and (-not $seleccion -or $seleccion.paquete.pdf)) {
             # El adaptador PDF consulta esta base aislada. No depende de que el
             # usuario haya iniciado PostgreSQL antes de crear-paquete-oci.
             $appEnvAnterior = $env:APP_ENV
@@ -160,15 +166,19 @@ try {
             try {
                 $env:APP_ENV = 'local'
                 $env:APP_URL = 'http://localhost:8000'
+                & node.exe scripts/deployment/bases-sectores-paquete.cjs preparar-pdf $Proyecto
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudieron identificar los insumos del contrato PDF.' }
                 Write-Host 'Comprobando admision PDF y firma PHP/Java en localhost con PostgreSQL aislado...' -ForegroundColor Cyan
                 & $Php deploy/oracle/scripts/verify-deposit-pdf.php --medir-tiempo-local
                 if ($LASTEXITCODE -ne 0) { throw 'Fallo la comprobacion integral PDF/PHP/Java en localhost.' }
+                & node.exe scripts/deployment/bases-sectores-paquete.cjs acreditar-pdf $Proyecto
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudo conservar la aprobacion PDF.' }
             }
             finally {
                 $env:APP_ENV = $appEnvAnterior
                 $env:APP_URL = $appUrlAnterior
             }
-        }
+        } elseif ($ValidarPdfLocal) { Write-Host 'REUTILIZADO: PDF PHP/Java conserva fuentes, vendor, JAR, entorno y aprobacion compatibles.' -ForegroundColor Green }
 
         # Node necesita el ejecutable nativo: php en PATH puede ser un shim .cmd.
         # Se resuelve dentro del comando central, sin invocar un shell desde Node.
@@ -182,19 +192,34 @@ try {
             }
         }
         if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) { throw 'Falta Node para verificar tooltip y Livewire en el navegador real.' }
-        Write-Host 'Probando tooltip durante actualizaciones Livewire y recorridos del portal en Opera Neon real...' -ForegroundColor Cyan
-        & node.exe tests/Browser/portal-livewire.mjs $phpNativo
+        if (-not $seleccion -or $seleccion.paquete.navegador) {
+        $casosNavegador = if ($seleccion) { @($seleccion.paquete.navegador_casos) -join ', ' } else { 'todos (sin plan selectivo)' }
+        Write-Host "Probando en Opera Neon solo estos recorridos: $casosNavegador" -ForegroundColor Cyan
+        $argumentosNavegador = @('tests/Browser/portal-livewire.mjs', $phpNativo)
+        if ($PlanImpacto) { $argumentosNavegador += $PlanImpacto }
+        & node.exe @argumentosNavegador
         if ($LASTEXITCODE -ne 0) { throw 'Fallo la validacion real de tooltip/Livewire o del portal. No se publica main ni se crea el paquete OCI.' }
+        } else {
+            Write-Host 'REUTILIZADO: los nueve recorridos Neon conservan evidencia propia compatible; no se abre el navegador.' -ForegroundColor Green
+        }
 
         $env:HUBDIGITAL_TEST_DATABASE_PREFIX = $prefijoPruebas
         $env:HUBDIGITAL_TEST_RUNTIME_DIR = $raizPruebas
-        Write-Host "Ejecutando la suite PHP completa en $procesosPruebas procesos con bases y almacenamiento independientes..." -ForegroundColor Cyan
-        & $Php artisan test --parallel --processes=$procesosPruebas --without-databases --exclude-group=bootstrap-inicial
-        $codigoPruebas = $LASTEXITCODE
+        $alcancePhp = if (-not $seleccion -or $seleccion.integral) { 'suite PHP completa' } else { "$(@($seleccion.paquete.pruebas_php).Count) archivos PHP relacionados" }
+        Write-Host "Ejecutando $alcancePhp en $procesosPruebas procesos con bases y almacenamiento independientes..." -ForegroundColor Cyan
+        $observadorPhp = Join-Path $Proyecto 'scripts\deployment\progreso-pruebas-php.cjs'
+        if (-not (Test-Path -LiteralPath $observadorPhp -PathType Leaf)) { throw 'Falta el observador de progreso PHP.' }
+        if (-not $seleccion -or $seleccion.integral -or @($seleccion.paquete.pruebas_php).Count -gt 0) {
+            $argumentosObservador = @($observadorPhp, $phpNativo, $Proyecto, $procesosPruebas)
+            if ($PlanImpacto) { $argumentosObservador += $PlanImpacto }
+            & node.exe @argumentosObservador
+            $codigoPruebas = $LASTEXITCODE
+        } else { Write-Host 'REUTILIZADO: Pest sin impacto; esta ejecucion comprueba solo los contratos integrados seleccionados.'; $codigoPruebas = 0 }
     }
     finally { Pop-Location }
 }
 finally {
+    Write-Host 'Retirando las bases y el almacenamiento temporal de esta ejecucion...' -ForegroundColor Cyan
     $falloLimpieza = $false
     # También recoge bases derivadas que una versión del runner pueda crear.
     # La identidad aleatoria pertenece exclusivamente a esta ejecución.
