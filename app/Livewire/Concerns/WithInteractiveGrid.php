@@ -15,6 +15,17 @@ trait WithInteractiveGrid
 
     public int $gridPerPage = 15;
 
+    public array $gridColumnFilters = [];
+
+    public function filtrarColumnaGrilla(string $columna, string $valor, string $operador = 'contains'): void
+    {
+        abort_unless(array_key_exists($columna, $this->gridColumns()) && mb_strlen($valor) <= 240
+            && in_array($operador, ['contains', 'equals', 'starts', 'notContains', 'empty'], true), 422);
+        if ($valor === '' && $operador !== 'empty') unset($this->gridColumnFilters[$columna]);
+        else $this->gridColumnFilters[$columna] = ['value' => $valor, 'operator' => $operador];
+        $this->resetPage();
+    }
+
     /** @return array<string, string> */
     abstract protected function gridColumns(): array;
 
@@ -47,7 +58,7 @@ trait WithInteractiveGrid
 
     public function restablecerGrilla(): void
     {
-        $this->reset('gridSort', 'gridDirection', 'gridPerPage');
+        $this->reset('gridSort', 'gridDirection', 'gridPerPage', 'gridColumnFilters');
         foreach (['busqueda', 'filtroRol', 'provinciaFiltro'] as $filtro) {
             if (property_exists($this, $filtro)) {
                 $this->reset($filtro);
@@ -63,6 +74,19 @@ trait WithInteractiveGrid
 
     protected function ordenarConsultaGrilla(EloquentBuilder|QueryBuilder $consulta, string $predeterminada): EloquentBuilder|QueryBuilder
     {
+        foreach ($this->gridColumnFilters as $campo => $filtro) {
+            $columnaFiltro = $this->gridColumns()[$campo] ?? null;
+            $operador = is_array($filtro) ? ($filtro['operator'] ?? '') : '';
+            $valor = is_array($filtro) ? ($filtro['value'] ?? null) : null;
+            abort_unless($columnaFiltro && is_string($valor) && mb_strlen($valor) <= 240 && in_array($operador, ['contains', 'equals', 'starts', 'notContains', 'empty'], true), 422);
+            $sql = 'LOWER(CAST('.$consulta->getGrammar()->wrap($columnaFiltro).' AS TEXT))';
+            if ($operador === 'empty') $consulta->where(fn ($q) => $q->whereNull($columnaFiltro)->orWhereRaw($sql." = ''"));
+            elseif ($operador === 'equals') $consulta->whereRaw($sql.' = ?', [mb_strtolower($valor)]);
+            else {
+                $patron = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($valor));
+                $consulta->whereRaw($sql.($operador === 'notContains' ? ' NOT LIKE ?' : ' LIKE ?'), [$operador === 'starts' ? $patron.'%' : '%'.$patron.'%']);
+            }
+        }
         $columna = $this->gridColumns()[$this->gridSort] ?? $predeterminada;
 
         return $consulta->orderBy($columna, $this->gridDirection === 'desc' ? 'desc' : 'asc');

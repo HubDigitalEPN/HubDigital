@@ -68,6 +68,8 @@
         </div>
 
         <div class="p-2">
+            <x-pwa-install-button />
+            <x-pwa-notification-button />
             <flux:modal.trigger name="account-settings">
                 <flux:menu.item as="button" type="button" icon="cog-6-tooth" class="w-full cursor-pointer">
                     Configuración

@@ -15,7 +15,7 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 if [[ ! -f /srv/hubdigital/current/artisan ]]; then
     # Cloud Shell transfiere solo codigo y este asistente, nunca un entorno DEV.
-    key_path="${SSH_KEY_PATH:-${HOME}/equiframe-dw-a1-2026-09-30.key}"
+    key_path="${SSH_KEY_PATH:-${HOME}/equiframe/LP.key}"
     [[ -f "$key_path" ]] || fail "Falta la clave privada de PROD: $key_path"
     chmod 600 "$key_path"
     case "$action" in
@@ -24,12 +24,14 @@ if [[ ! -f /srv/hubdigital/current/artisan ]]; then
             [[ "$(sha256sum "$base_dir/$archive_name" | awk '{print $1}')" == "$source_sha" ]] || fail 'SHA-256 del bundle distinto del esperado.'
             scp -i "$key_path" -o IdentitiesOnly=yes \
                 "$base_dir/$archive_name" "$self_path" ubuntu@150.136.219.112:/tmp/
+            rm -f -- "$base_dir/$archive_name"
             ;;
         --solo-script)
             scp -i "$key_path" -o IdentitiesOnly=yes "$self_path" ubuntu@150.136.219.112:/tmp/
             ;;
         *) fail 'En Cloud Shell use el script sin argumentos o con --solo-script.' ;;
     esac
+    rm -f -- "$self_path"
     printf '\nTransferencia a PROD completada. Conectese con:\n'
     printf 'ssh -i %q -o IdentitiesOnly=yes ubuntu@150.136.219.112\n' "$key_path"
     printf '\nDentro de PROD ejecute:\ncd /tmp\nbash ./%s\n' "$script_name"
@@ -147,6 +149,13 @@ staging)
     install -m 0600 "$base_dir/$archive_name" "$backup/source.tar.gz"
     install -m 0700 "$self_path" "$backup/operar-produccion.sh"
     stage_production
+    # Conservar la copia transferida hasta finalizar TODA la activacion PROD.
+    if [[ "$(dirname -- "$base_dir")" == /home/ubuntu/TEMP-BORRAR ]]; then
+        transfer_record="/var/lib/hubdigital/migration/transferencia-${release_id}.txt"
+        mkdir -p -- /var/lib/hubdigital/migration
+        printf '%s\n' PROD "$base_dir" "$archive_name" "$(basename -- "$self_path")" > "$transfer_record"
+        chmod 0600 "$transfer_record"
+    fi
     printf '\nCandidato PROD preparado correctamente: %s\n' "$release_id"
     printf '\nCOPIE Y PEGUE EN ESTA VM (CON MIGRACIONES):\n'
     printf 'sudo bash %q preparar\n' "$backup/operar-produccion.sh"
@@ -176,15 +185,17 @@ preparar)
     pg_restore --list "$fresh_dump" > "$fresh_dump.contents.txt"
     sed -i 's/^HUBDIGITAL_VALIDATION_MODE=.*/HUBDIGITAL_VALIDATION_MODE=true/' "$env_file"
     [[ "$(read_env HUBDIGITAL_VALIDATION_MODE)" == true ]]
-    (umask 0022; release_command env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org APPLY_MIGRATIONS=1 \
+    (umask 0022; release_command env HUBDIGITAL_DEPLOY_HOSTNAME=labinvepn.org APPLY_MIGRATIONS=1 HUBDIGITAL_DEFER_ACTIVATION=1 \
         "$stage_dir/deploy/oracle/scripts/deploy-release.sh" \
         "/srv/hubdigital/staging/$candidate" "/srv/hubdigital/staging/$candidate.sha256") \
         2>&1 | tee "$backup/preparar.log"
+    # BEGIN PROD AUTOMATIC ACTIVATION
     [[ "$(jq -er .estado "$state_file")" == validado_en_mantenimiento ]]
     touch "$backup/PREPARED_OK"
     printf '\nRelease PROD preparada en mantenimiento: %s\n' "$release_id"
-    printf '\nCOPIE Y PEGUE EN ESTA VM PARA ACTIVAR PRODUCCION:\n'
-    printf 'sudo bash %q activar\n' "$backup/operar-produccion.sh"
+    printf 'Preparacion aprobada. Continuando con la activacion completa de PROD...\n'
+    exec bash "$backup/operar-produccion.sh" activar
+    # END PROD AUTOMATIC ACTIVATION
     ;;
 reanudar)
     # Solo recupera el fallo anterior a Artisan causado por permisos privados.
@@ -263,6 +274,9 @@ activar)
         > "/var/lib/hubdigital/migration/production-activation-$release_id.json"
     chmod 0600 "/var/lib/hubdigital/migration/production-activation-$release_id.json"
     touch "$backup/PRODUCTION_OK"
+    if ! "$release_dir/deploy/oracle/scripts/cleanup-transfer-temporaries.sh" "$release_id"; then
+        printf 'ADVERTENCIA: PROD esta activo; queda pendiente limpiar TEMP-BORRAR.\n' >&2
+    fi
     printf '\nPRODUCCION_COMPLETA_OK=%s\nCOMMIT_PUBLICO=%s\nRESPALDO=%s\n' "$release_id" "$commit" "$backup"
     ;;
 esac

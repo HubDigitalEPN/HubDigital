@@ -13,8 +13,9 @@ use Illuminate\Notifications\Notification;
  * El mensaje ya viene armado por NotificarCuradorEventoPrestamoListener, que es quien
  * conoce cada evento.
  */
-final class AvisoPrestamoCuradorNotification extends Notification
+final class AvisoPrestamoCuradorNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $tipo,
         public readonly string $mensaje,
@@ -27,7 +28,7 @@ final class AvisoPrestamoCuradorNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return $this->canalesCampana($notifiable);
     }
 
     /**

@@ -48,3 +48,16 @@ test('restablecer la grilla conserva los datos y limpia bÃºsqueda rol orden y pÃ
         ->assertViewHas('usuarios', fn ($filas) => $filas->total() === $total);
     expect(User::count())->toBe($total);
 });
+
+test('la cabecera filtra toda la consulta con valores enlazados y restablece el paginado', function (): void {
+    $admin = User::factory()->administrador()->create();
+    foreach (range(1, 18) as $n) User::factory()->depositante()->create(['first_name' => sprintf('ColumnaQA %02d', $n)]);
+    Livewire::actingAs($admin)->test(GestionUsuarios::class)->set('busqueda', 'ColumnaQA')
+        ->call('gotoPage', 2)->call('filtrarColumnaGrilla', 'persona', 'ColumnaQA 18', 'equals')
+        ->assertViewHas('usuarios', fn ($filas) => $filas->total() === 1 && $filas->currentPage() === 1 && $filas->first()->first_name === 'ColumnaQA 18')
+        ->call('filtrarColumnaGrilla', 'persona', '%', 'contains')
+        ->assertViewHas('usuarios', fn ($filas) => $filas->total() === 0)
+        ->call('restablecerGrilla')->assertSet('gridColumnFilters', []);
+    Livewire::actingAs($admin)->test(GestionUsuarios::class)->call('filtrarColumnaGrilla', 'password', 'x', 'contains')->assertStatus(422);
+    Livewire::actingAs($admin)->test(GestionUsuarios::class)->call('filtrarColumnaGrilla', 'persona', 'x', 'SQL')->assertStatus(422);
+});

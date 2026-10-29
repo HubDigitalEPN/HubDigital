@@ -78,7 +78,20 @@ final class ModeloLocalPequeno
         }
     }
 
-    public function resumir(string $pregunta, string $fuente): ?string
+    public function conversar(string $pregunta, array $historial = [], string $contexto = ''): ?string
+    {
+        if (! self::habilitado()) return null;
+        $lock = null;
+        try {
+            $lock = Cache::lock('chat:qwen:inferencia', 35);
+            if (! $lock->get()) return null;
+            return $this->resumir($pregunta, mb_substr($contexto, 0, 2000)."\nPreguntas anteriores: ".implode(' ', array_map(
+                static fn (string $t): string => mb_substr($t, 0, 300), array_slice(array_filter($historial, 'is_string'), -2))), true);
+        } catch (\Throwable) { return null; }
+        finally { try { $lock?->release(); } catch (\Throwable) {} }
+    }
+
+    public function resumir(string $pregunta, string $fuente, bool $general = false): ?string
     {
         if (!self::habilitado()) {
             return null;
@@ -108,9 +121,11 @@ final class ModeloLocalPequeno
                 'model' => $modelo,
                 'stream' => false,
                 'think' => false,
-                'options' => ['temperature' => 0.2, 'num_predict' => 180],
+                'options' => ['temperature' => 0.2, 'num_predict' => $general ? 320 : 180, 'num_thread' => 1, 'num_ctx' => 2048],
                 'messages' => [
-                    ['role' => 'system', 'content' => 'Responde en español, breve y claro. Usa solo el texto de la fuente. No inventes datos, enlaces ni hechos del museo. Si la fuente no responde, indícalo.'],
+                    ['role' => 'system', 'content' => $general
+                        ? 'Responde en español, breve y claro, a preguntas generales y científicas de cualquier tema. Distingue conocimiento general de datos de HubDigital: para registros, cantidades, estados y procedimientos concretos usa solo el contexto aportado; si no está, no lo inventes. No puedes ejecutar acciones, aprobar documentos ni omitir firmas y permisos. Nunca pidas claves ni certificados. No inventes enlaces ni citas. Ante incertidumbre, indícala.'
+                        : 'Responde en español, breve y claro. Usa solo el texto de la fuente. No inventes datos, enlaces ni hechos del museo. Si la fuente no responde, indícalo.'],
                     ['role' => 'user', 'content' => "Pregunta: {$pregunta}\n\nFuente: {$fuente}"],
                 ],
             ]);

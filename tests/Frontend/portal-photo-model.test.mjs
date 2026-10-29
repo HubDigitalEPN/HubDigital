@@ -21,6 +21,7 @@ test('las referencias de tarjetas solo optimizan fotos del depósito abierto y c
     const estado = crearFotografiaTarjeta({family: 'Formicidae'});
     estado.fotos = [{url: 'https://inaturalist-open-data.s3.amazonaws.com/photos/456/medium.png', species: 'Camponotus sericeiventris', autor_fuente: 'Autora', licencia: 'CC BY 4.0'}];
     assert.equal(estado.fotografia.url, '/portal/referencias-fotograficas/456/png.webp');
+    assert.equal(estado.fotografia.urlRapida, 'https://inaturalist-open-data.s3.amazonaws.com/photos/456/medium.png');
     assert.equal(estado.fotografia.autor_fuente, 'Autora');
     assert.equal(estado.fotografia.species, 'Camponotus sericeiventris');
 });

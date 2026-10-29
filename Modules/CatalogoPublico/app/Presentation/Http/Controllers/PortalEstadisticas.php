@@ -201,6 +201,8 @@ final class PortalEstadisticas
         $datos['filtroTaxonId'] = $filtros['taxon_id'] ?? '';
         $datos['filtroTaxonIds'] = $filtros['taxon_ids'] ?? [];
         $datos['filtroLocalidadTexto'] = $filtros['localidad_texto'] ?? '';
+        $datos['filtroUniversal'] = $filtros['universal'] ?? '';
+        $datos['filtroRegistroId'] = $filtros['registro_id'] ?? '';
         foreach (['codigo' => 'filtroCatalogo', 'preparaciones' => 'filtroPreparaciones', 'taxon' => 'filtroTaxon', 'pais' => 'filtroPais', 'provincia' => 'filtroProvincia', 'provincias' => 'filtroProvincias', 'filos' => 'filtroFilos', 'geografias' => 'filtroGeografias', 'filo' => 'filtroFiloId', 'mes' => 'filtroMes', 'identificacion' => 'filtroIdentificacion', 'ubicacion' => 'filtroSoloUbicacion', 'colector' => 'filtroColector', 'metodos' => 'filtroMetodos', 'lat_min' => 'filtroLatMin', 'lat_max' => 'filtroLatMax', 'lon_min' => 'filtroLonMin', 'lon_max' => 'filtroLonMax', 'elev_desde' => 'filtroElevDesde', 'elev_hasta' => 'filtroElevHasta', 'biomas' => 'filtroBiomas', 'habitat' => 'filtroHabitat', 'tipo' => 'filtroTipo', 'disposicion' => 'filtroDisposicion', 'casta' => 'filtroCasta', 'estadio' => 'filtroEstadio'] as $clave => $propiedad) {
             if (isset($filtros[$clave])) $datos[$propiedad] = $filtros[$clave];
         }
@@ -218,6 +220,7 @@ final class PortalEstadisticas
     {
         return [
             'provincia' => ['nullable', 'string', 'max:120'],
+            'universal' => ['nullable', 'string', 'max:120'], 'registro_id' => ['nullable', 'uuid'],
             'desde' => ['nullable', 'integer', 'between:1800,2100'],
             'hasta' => ['nullable', 'integer', 'between:1800,2100'],
             'filo' => ['nullable', 'uuid'],

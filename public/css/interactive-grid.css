@@ -127,3 +127,23 @@ html body .hub-ig th[aria-sort=none]:hover svg { opacity: 1; }
 .hub-ig-page-controls { margin-left: auto; }
 .hub-ig-pagination { border-top: 0; }
 .hub-ig-pagination .hub-ig-footer { border-top: 0; }
+/* Reordenación visual: no mover nodos controlados por Livewire ni sus inputs. */
+html body .hub-ig table.hub-ig-movable { display: block; width: max(100%, calc(var(--ig-visible-columns, 4) * 10rem)); }
+.hub-ig-movable > thead { display: block; position: sticky; top: 0; z-index: 2; }
+.hub-ig-movable > tbody { display: flex; flex-direction: column; }
+html body .hub-ig .hub-ig-movable tr { display: grid; grid-template-columns: repeat(var(--ig-visible-columns, 4), minmax(0, 1fr)); width: 100%; }
+html body .hub-ig .hub-ig-movable :is(th, td) { grid-row: 1; min-width: 0; max-width: none; }
+.hub-ig-movable :is(td, th)[colspan] { grid-column: 1 / -1; }
+html body .hub-ig .hub-ig-movable th[scope=col], html body .hub-ig .hub-ig-movable thead th { cursor: pointer; white-space: normal; }
+.hub-ig-movable thead th:hover { background: #e8f0fa; color: #12365b; }
+.dark .hub-ig-movable thead th:hover { background: #28486a; color: #fff; }
+html body dialog.hub-ig-column-popup { position: fixed; margin: 0; width: min(25rem, calc(100dvw - 16px)); max-height: calc(100dvh - 16px); }
+.hub-ig-column-popup::backdrop { background: transparent; }
+.hub-ig-column-buttons { display: flex; gap: .35rem; flex-wrap: wrap; padding: .5rem; }
+.hub-ig-column-search { display: grid; gap: .65rem; }
+.hub-ig-column-search .hub-ig-column-buttons { padding: 0; }
+.hub-ig-scope { font-size: .75rem; color: var(--ig-text); }
+.hub-ig-value-list { max-height: 11rem; overflow: auto; border: 1px solid var(--ig-border); }
+.hub-ig-value-list button { display: block; width: 100%; padding: .45rem .65rem; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.hub-ig-value-list button:is(:hover, :focus-visible) { background: var(--ig-soft); outline: 2px solid #056ac8; outline-offset: -2px; }
+@media print { .hub-ig-toolbar, .hub-ig-footer { display: none; } html body .hub-ig table.hub-ig-movable { width: 100%; } }

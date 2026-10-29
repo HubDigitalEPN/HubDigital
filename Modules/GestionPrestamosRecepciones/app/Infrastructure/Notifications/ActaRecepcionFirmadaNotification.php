@@ -12,8 +12,9 @@ use Illuminate\Notifications\Notification;
  * curador, ya está disponible para descargar. Se envía por correo y por el portal
  * (campana).
  */
-final class ActaRecepcionFirmadaNotification extends Notification
+final class ActaRecepcionFirmadaNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -24,7 +25,7 @@ final class ActaRecepcionFirmadaNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

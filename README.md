@@ -123,14 +123,38 @@ Consulta el [acuerdo de trabajo](AGENTS.md) y la
 
 ## Despliegue manual en OCI
 
-Los paquetes se generan en `artifacts/oci/`. Cada ejecución entrega el archivo
-fuente, sus huellas, un kit de transferencia para Cloud Shell y las instrucciones
-correspondientes. `SOURCE-METADATA.json` identifica el commit de `main` y
+`crear-paquete-oci` acepta `-Destino W|LD|LP`; el valor predeterminado es `LD`:
+
+- `W`: conserva los archivos en `artifacts/oci/`, como antes.
+- `LD`: copia `AMBOS + DEV` directamente a la VM DEV por SSH.
+- `LP`: copia `AMBOS + PROD` directamente a la VM PROD por SSH.
+
+Las copias remotas quedan en `~/TEMP-BORRAR/<paquete>/`. Tras comprobar sus hashes
+se elimina la copia temporal de Windows; la guía queda en `artifacts/oci/`.
+Si falla la transferencia, sus archivos locales se conservan y se muestra cómo
+reintentar solo la copia. Los archivos remotos y su carpeta se eliminan al
+finalizar la activación correctamente; un fallo conserva los temporales.
+Si quedan otros paquetes pendientes, `TEMP-BORRAR` se conserva hasta terminarlos.
+La copia no ejecuta migraciones ni activa la release. `-SoloValidacionLocal`
+no copia ni accede a ninguna VM, cualquiera que sea el destino.
+
+Con `-Destino W`, cada ejecución entrega el archivo
+fuente, sus huellas, los asistentes DEV/PROD, el entorno privado de DEV y las
+instrucciones correspondientes. Para DEV se suben directamente fuente,
+checksum, asistente y entorno; no se crea otro archivo comprimido que los
+duplique. `SOURCE-METADATA.json` identifica el commit de `main` y
 `SOURCE-MANIFEST.sha256` permite verificar la integridad de sus fuentes.
+
+Los nombres identifican el destino: `*-AMBOS.tar.gz` se copia a DEV y PROD;
+`*-DEV.sha256`, `*-DEV-cloudshell-vm.sh` y `*-DEV-hubdigital.env` solo a DEV;
+`*-PROD-produccion-vm.sh` solo a PROD. El manual permanece en Windows.
 
 La instalación en DEV o producción es un paso manual posterior. Los
 [scripts de despliegue](deploy/oracle/scripts) preparan la release, comprueban su
 identidad y requisitos y aplican las migraciones antes de activarla. La
+orden de preparación activa automáticamente la misma release cuando todas sus
+comprobaciones terminan correctamente; ante un fallo se detiene sin activar.
+En PROD completa también el retorno al modo de producción. La
 configuración y los secretos de cada VM se administran fuera del código fuente.
 
 ## Documentación

@@ -54,3 +54,40 @@ test('ordenar es numérico y estable; cambiar filas por página y restaurar no p
     g.state.hidden=[1]; g.state.applyColumns();
     assert.equal(g.rows.every(row=>row.cells[1].hidden),true);
 });
+
+test('mover y ocultar columnas solo cambia su posición visual; conserva controles y DOM canónico', () => {
+    const g = grid();
+    g.rows.forEach(row => { row.cells.forEach(cell => cell.style = {}); });
+    const before = [...g.rows[0].cells];
+    g.state.moveColumn(1, -1);
+    assert.deepEqual([...g.state.columnOrder], [1, 0]);
+    assert.equal(g.rows[0].cells[0], before[0]); assert.equal(g.rows[0].cells[1], before[1]);
+    assert.equal(before[1].style.gridColumn, '1'); assert.equal(before[0].style.gridColumn, '2');
+    g.state.hidden = [0]; g.state.applyColumns();
+    assert.equal(before[0].hidden, true); assert.equal(before[1].style.gridColumn, '1');
+    g.state.moveColumn(1, -1); assert.deepEqual([...g.state.columnOrder], [1, 0]);
+    g.state.reset(); assert.deepEqual([...g.state.columnOrder], [0, 1]);
+    assert.equal(before[0].hidden, false);
+});
+
+test('el filtro de cabecera combina columnas y busca también filas fuera de la página visible', async () => {
+    const g = grid();
+    g.state.activeColumn = 1; await g.state.applyColumn('único', 'contains');
+    assert.equal(g.visible().length, 1); assert.equal(g.visible()[0].cells[0].innerText, 'Registro 41');
+    g.state.activeColumn = 0; await g.state.applyColumn('Registro 4', 'starts');
+    assert.equal(g.visible().length, 1);
+    await g.state.applyColumn('Registro 1', 'equals'); assert.equal(g.visible().length, 0);
+    await g.state.applyColumn('', 'contains'); assert.equal(g.visible().length, 1);
+    assert.equal(g.state.matchesColumn('—', {value:'', operator:'empty'}), true);
+    assert.equal(g.state.matchesColumn('1.2026', {value:'1.20', operator:'starts'}), true);
+});
+
+test('descargar respeta el orden visual de filas y columnas y neutraliza fórmulas CSV', async () => {
+    let content;
+    const g = grid({location:{pathname:'/administracion'}, Blob, URL:{createObjectURL(blob){content=blob;return 'blob:qa';},revokeObjectURL() {}},
+        document:{createElement:()=>({click() {}})},setTimeout:()=>0});
+    g.rows.forEach((row,index) => {row.style={order:42-index};row.cells.forEach(cell=>cell.dataset={});row.hidden=index>1;});
+    g.rows[0].cells[1].innerText='=SUM(A1:A2)';g.state.moveColumn(1,-1);g.state.downloadPage();
+    const csv=await content.text();
+    assert.match(csv, /"Taxón general","Registro 2"\r\n"'=SUM\(A1:A2\)","Registro 1"/);
+});

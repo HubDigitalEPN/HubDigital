@@ -12,8 +12,9 @@ use Illuminate\Notifications\Notification;
  * solicitud de depósito/donación. Incluye el motivo cuando fue un rechazo. Se envía
  * por correo y por el portal (campana).
  */
-final class DecisionDocumentalCuradorNotification extends Notification
+final class DecisionDocumentalCuradorNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -28,7 +29,7 @@ final class DecisionDocumentalCuradorNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

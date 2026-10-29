@@ -48,6 +48,15 @@ test('tarjetas y tabla paginan UUID sin duplicarlos ni perder el resto', functio
             ->assertViewHas('totalRegistrosVista', 25)->assertViewHas('ultimaPagina', $ultima)->assertViewHas($clave, fn ($filas) => count($filas) === min($tamano, 25));
         $vistos = [];
         foreach (range(1, $ultima) as $pagina) {
+            if ($vista === 'tarjetas') {
+                if ($pagina > 1) $componente->call('cargarMasTarjetas', $componente->get('claveTarjetasCargadas'), $pagina - 1);
+                $actuales = array_column($componente->viewData($clave), 'especimen_id');
+                expect(count($actuales))->toBe(min($pagina * $tamano, 25))
+                    ->and(count(array_unique($actuales)))->toBe(count($actuales))
+                    ->and(array_diff($vistos, $actuales))->toBe([]);
+                $vistos = $actuales;
+                continue;
+            }
             $componente->call('cambiarPagina', $pagina)->assertViewHas($clave, fn ($filas) => count($filas) === min($tamano, 25 - ($pagina - 1) * $tamano));
             $actuales = array_column($componente->viewData($clave), 'especimen_id');
             expect(array_intersect($vistos, $actuales))->toBe([]);
@@ -152,24 +161,27 @@ test('el rail pagina hermanos y sus conteos en el padre público sin ampliar los
         ->assertViewHas('conteos', fn ($conteos) => ! isset($conteos['species:'.$hermana]))
         ->assertViewHas('especimenes', fn ($filas) => array_diff(array_column($filas, 'especimen_id'), $idsPrincipal) === [])
         ->assertDontSee($genero.' reservada')->assertDontSee($f['prefijo'].'OtroGenero vecina');
-    $componente->call('cambiarPagina', 3)->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1);
+    $componente->call('cargarMasTarjetas', $componente->get('claveTarjetasCargadas'), 1)
+        ->call('cargarMasTarjetas', $componente->get('claveTarjetasCargadas'), 2)
+        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 13);
     $idPaginaPrincipal = $componente->viewData('especimenes')[0]->especimen_id;
     $primeraHermanos = array_column($componente->viewData('hermanos'), 'taxon');
     $componente->call('cambiarPaginaHermanos', 2)->assertViewHas('paginaHermanosActual', 2)
         ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 6)
-        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1 && $filas[0]->especimen_id === $idPaginaPrincipal);
+        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 13 && $filas[0]->especimen_id === $idPaginaPrincipal);
     $intermediaHermanos = array_column($componente->viewData('hermanos'), 'taxon');
     $componente->call('cambiarPaginaHermanos', 3)->assertViewHas('paginaHermanosActual', 3)
         ->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 2 && array_intersect($primeraHermanos, array_column($nodos, 'taxon')) === [])
-        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 1 && $filas[0]->especimen_id === $idPaginaPrincipal);
+        ->assertViewHas('paginaActual', 3)->assertViewHas('especimenes', fn ($filas) => count($filas) === 13 && $filas[0]->especimen_id === $idPaginaPrincipal);
     expect(array_intersect($primeraHermanos, $intermediaHermanos))->toBe([])
         ->and(count(array_unique([...$primeraHermanos, ...$intermediaHermanos, ...array_column($componente->viewData('hermanos'), 'taxon')])))->toBe(14);
     $componente->set('filtroColector', 'QA')->assertViewHas('paginaHermanosActual', 1)
         ->assertViewHas('hermanos', fn ($nodos) => $nodos[0]['taxon'] === $hermana && $nodos[0]['total'] === 1)
         ->assertViewHas('totalEspecimenes', 13);
     $componente->call('navegar', 'species', $hermana)->assertViewHas('paginaActual', 1)->assertViewHas('paginaHermanosActual', 1)
-        ->assertViewHas('totalEspecimenes', 2)
-        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 2 && array_column($filas, 'scientific_name') === [$hermana, $hermana])
+        ->assertSet('filtroColector', 'QA')->assertViewHas('totalEspecimenes', 2)
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 2 && array_column($filas, 'scientific_name') === [$hermana, $hermana]
+            && ! in_array('OTRO COLECTOR', array_column($filas, 'recorded_by'), true))
         ->assertViewHas('hermanos', fn ($nodos) => $nodos[0]['taxon'] === $principal && $nodos[0]['total'] === 13);
     $componente->call('navegar', 'genus', $genero)->assertViewHas('hermanos', fn ($nodos) => count($nodos) === 1
         && $nodos[0]['taxon'] === $f['prefijo'].'OtroGenero' && $nodos[0]['total'] === 1)

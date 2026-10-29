@@ -284,3 +284,8 @@ echo 'Aplicando politica automatica de retencion...'
 if ! "${release_dir}/deploy/oracle/scripts/cleanup-old-releases.sh" --apply; then
     echo 'ADVERTENCIA: la release esta activa, pero la limpieza automatica fallo. Ejecute el script manual en modo simulacion para diagnosticar.' >&2
 fi
+if [[ "${deployment_hostname}" == dev.labinvepn.org ]]; then
+    if ! "${release_dir}/deploy/oracle/scripts/cleanup-transfer-temporaries.sh" "${release_id}"; then
+        echo 'ADVERTENCIA: DEV esta activo; queda pendiente limpiar TEMP-BORRAR.' >&2
+    fi
+fi

@@ -9,35 +9,46 @@ Estos porcentajes no representan minutos ni cantidad de casos. El contrato es
 
 Ambas entradas consumen el mismo plan. No se compara solo el ultimo commit: se
 comparan todos los archivos nuevos, modificados y eliminados desde la ultima
-base integral aprobada. El mapa sigue consumidores transitivos entre modulos,
-referencias PHP, puentes App, pares de interfaces/adaptadores, vistas y sus
-renderizadores e imports relativos JavaScript. La seleccion sigue archivos y
-componentes; el resumen por modulos no transmite conexiones de otros componentes.
-El inventario PHP procede de los directorios configurados en `phpunit.xml`. Un limite
-del analisis estatico exige ampliar la validacion, nunca acreditar una omision.
+base aprobada local. El paquete selecciona exclusivamente pruebas propias de las
+fuentes cambiadas, incluidas referencias literales al archivo bajo prueba e imports
+directos. El grafo transitivo se conserva como diagnostico y no agrega consumidores
+ni otros dominios a las pruebas. El inventario PHP procede de `phpunit.xml`.
+Si falta cobertura mapeada, el proceso indica los archivos pendientes y se detiene;
+no cambia automaticamente a una suite integral ni acredita una omision.
 
 | Cambio | Validacion |
 | --- | --- |
-| Texto, estilo o componente acotado | Contratos propios y consumidores relacionados |
-| Funcion o modulo | Pruebas propias e integraciones directas e indirectas |
-| Autenticacion, permisos, dependencias, migraciones o infraestructura compartida | Integral |
-| Impacto incierto, archivo sin clasificar, ausencia de base aprobada o cambios amplios | Integral |
+| Texto, estilo o componente acotado | Contratos propios del cambio; build solo del proyecto modificado |
+| Funcion o modulo | Pruebas que cubren directamente la fuente cambiada |
+| Autenticacion, permisos, dependencias, migraciones o infraestructura compartida | Contratos propios; sin expansion integral automatica |
+| Cobertura sin mapear o ausencia de base aprobada compatible | Detener e indicar lo pendiente; nunca ejecutar todo por defecto |
+| Solicitud expresa con `-Integral` | Todas las suites |
 
-El selector es conservador: ante cambios funcionales incluye tambien los
-contratos PHP comunes sin propietario. Un ajuste Blade/CSS reconstruye los
-cuatro frontends. No garantiza ejecutar el minimo teorico de casos.
-La configuracion inicial fuerza integral con mas de veinte archivos acumulados,
-mas de dos areas afectadas, base mayor de siete dias, cambio de entorno o
-artefactos sin evidencia compatible. Los cambios de reglas invalidan la base.
-El runtime debe coincidir con la base o con la ultima validacion completa del
-plan, vinculada a esa misma base y linea Git. Las validaciones parciales no
-reinician la antiguedad ni la comparacion de cambios acumulados de la base.
+La cantidad de archivos, la antiguedad de la base, un cambio de selector o una
+diferencia de entorno no fuerzan una revision integral. Se conserva la comprobacion
+de identidad de fuentes y runtime del estado actual. ETE/Python, Laravel,
+migraciones, PDF, UI y guias generadas solo se prueban cuando el plan del cambio
+los selecciona. Python y Gherkin reciben los archivos seleccionados, sin expandirse
+a todo el dominio. En UI se seleccionan recursos o fragmentos reconocidos;
+un fragmento desconocido queda pendiente en lugar de abrir los nueve recorridos.
+
+Tras aprobar todos los controles seleccionados, se actualiza
+`.local/validation/base-integral.json` tambien en las ejecuciones incrementales.
+La nueva base incorpora las huellas del cambio aprobado y la cobertura heredada;
+conserva la fecha de la aprobacion integral original y la procedencia de la base
+anterior. La proxima ejecucion compara contra esta nueva base, de modo que no
+repite cambios ya aprobados. Un fallo o cancelacion de las pruebas no la actualiza.
+La acreditacion ocurre antes del commit/empaquetado: un fallo posterior de Git o
+de transferencia no invalida pruebas que ya terminaron correctamente.
+La base y los recibos son SOLO LOCALES: `.local` esta ignorado por Git y excluido
+del bundle OCI. No se publican ni se transfieren a DEV/PROD.
 
 **Las auditorias Composer y npm de los cuatro proyectos se ejecutan siempre,
 consultando los avisos actuales. La identidad y la integridad del paquete tambien
 se verifican siempre.** No se reutiliza una auditoria anterior porque el lock no
 haya cambiado. Se conservan los controles estructurales de diff, JSON, contrato
-Composer, arranque Laravel, sintaxis, migraciones y asistentes de despliegue.
+Composer y sintaxis de los archivos cambiados. Arranque Laravel, migraciones y
+asistentes generados se subordinan al plan del cambio.
 
 ## Entradas y responsabilidades
 
@@ -47,11 +58,15 @@ Al terminar todos los ajustes de cada solicitud, el agente ejecuta en localhost:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/deployment/validar-cambios-agente.ps1
 ```
 
-Las directrices autorizan permanentemente esta entrada y sus reintentos completos.
+Las directrices autorizan permanentemente las comprobaciones locales acotadas y sus reintentos pertinentes.
 No requiere token ni hace commit, push, paquete o despliegue. Selecciona el impacto,
 prepara lo necesario y emite evidencia solo tras completar todos sus controles.
-No se ejecutan suites sueltas antes ni despues. Si se trabaja sin agente, el
-usuario puede ejecutar esta misma entrada.
+Para comprobar el desarrollo se permiten casos locales filtrados cuando la entrada
+no permite acotar suficientemente. El agente revisa tambien los dependientes
+concretamente afectados; el paquete automatico mantiene la seleccion exclusiva
+del cambio. `validar-cambios-agente.ps1 -SoloSelectorPaquete` comprueba solo este
+selector, el alcance de UI y el avance de la base, sin ejecutar el sistema completo.
+Si se trabaja sin agente, el usuario puede ejecutar esta misma entrada.
 
 | Agente: 30 % | Paquete: 70 % |
 | --- | --- |
@@ -126,7 +141,7 @@ crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
 Ambas exigen evidencia vigente del agente. Gherkin conserva perfil `default`,
 etiqueta `@listo` y modo `--strict`: en selectivo ejecuta los archivos relacionados,
 con evidencia integral para los restantes. Cualquier fallo bloquea publicacion.
-La primera ejecucion sin base compatible es integral.
+Sin una base compatible se solicita restaurarla o autorizar `-Integral`; no se inicia integral automaticamente.
 
 Para forzar todas las suites, usar primero `validar-cambios-agente.ps1 -Integral`
 y despues `crear-paquete-oci -Integral` (opcionalmente `-SoloValidacionLocal`).
@@ -151,21 +166,59 @@ creado por el observador; conserva registro y estado observado. Cancelacion,
 salida no cero, fallo notificado, protocolo incompleto o cero casos bloquean
 la acreditacion. La limpieza de PostgreSQL informa su fase final.
 
-Se mantienen `artifacts/oci/<descripcion>-<fecha>` y los mismos seis archivos:
-bundle `.tar.gz`, `.sha256`, kit Cloud Shell, asistentes DEV/PROD e instrucciones.
+`-Destino W` mantiene `artifacts/oci/<descripcion>-<fecha>` con seis archivos:
+bundle `.tar.gz`, `.sha256`, asistentes DEV/PROD, entorno privado DEV e instrucciones.
+No se genera `cloudshell-upload.tar.gz`: DEV recibe directamente el bundle,
+su checksum, el asistente DEV y el entorno. El `.env` separado contiene secretos;
+no se versiona, no se comparte y no se usa en PROD. Los checksums del bundle,
+asistente y entorno se conservan; el asistente elimina las copias transferidas
+de Cloud Shell y `/tmp` al completar correctamente cada etapa.
+Los archivos a transferir llevan su destino en el nombre: `AMBOS` para el
+bundle compartido; `DEV` para checksum, asistente y entorno de desarrollo;
+`PROD` para el asistente de produccion. El checksum DEV verifica tambien
+su script y entorno; PROD comprueba el hash del bundle mediante su asistente,
+sin recibir archivos DEV. El manual se conserva localmente.
+`-Destino LD` es el valor predeterminado y copia directamente los cuatro archivos
+DEV/AMBOS a `ubuntu@129.153.23.57:~/TEMP-BORRAR/<paquete>/`; `-Destino LP` copia
+solo los dos PROD/AMBOS a `ubuntu@150.136.219.112` en la misma estructura.
+No se usa Cloud Shell. Se comprueba SSH antes de las pruebas/publicacion;
+cada transferencia tiene limite de tiempo, progreso y verificacion SHA-256
+de todos los archivos recibidos. La copia local de `.local/deployment/oci-transfer`
+se retira solo tras verificar la recepcion completa; la guia se conserva en
+`artifacts/oci`. Si falla, reintentar `destino-paquete.cjs copiar PROYECTO LD|LP CARPETA`
+no repite pruebas, publicacion ni empaquetado.
+La VM conserva TEMP-BORRAR hasta finalizar correctamente la activacion. DEV
+limpia al terminar `activate-release.sh`; PROD espera ademas su aceptacion final
+`PRODUCTION_OK`. Se eliminan los archivos enumerados y la carpeta del paquete;
+se elimina tambien TEMP-BORRAR cuando no hay otras transferencias pendientes.
+No se borran enlaces, archivos ajenos ni respaldos. Si falla el despliegue se
+conservan los temporales. La copia nunca prepara ni activa la release.
+`validar-cambios-agente.ps1 -SoloDestinoPaquete` comprueba solo los contratos
+nuevos de seleccion, transferencia, fallos y limpieza local con SSH simulado;
+no renueva evidencia general del 30 %, ni accede a las VM. El cambio no exige
+reinstalar dependencias, recompilar Java/Vite ni repetir las suites funcionales.
 La evidencia y el mapa son locales; no se agregan al paquete. Se conservan
 SOURCE-METADATA, SOURCE-MANIFEST, el commit publicado en `origin/main`, vendor de
-produccion aislado y construccion nativa Linux de la VM. Crear el paquete no
-autoriza subirlo ni activarlo. Esta politica sustituye referencias historicas
+produccion aislado y construccion nativa Linux de la VM. LD/LP incluyen solo la
+copia al destino seleccionado. La preparacion se inicia manualmente en la VM
+y encadena la activacion automaticamente solo tras aprobar todos sus controles.
+DEV conserva las puertas de identidad, migraciones, Java, PDF, asistente y HTTP.
+PROD difiere internamente la activacion generica hasta registrar PREPARED_OK,
+y luego ejecuta su accion activar completa (retorno a produccion, servicios,
+HTTP y limpieza final). Un fallo no activa ni provoca reintentos automaticos.
+`validar-cambios-agente.ps1 -SoloPreparacionActivacion` prueba localmente esa
+transicion con los bloques Bash reales y activadores sinteticos; no despliega,
+no ejecuta suites ajenas ni acredita el 30 % completo.
+Esta politica sustituye referencias historicas
 a ejecutar todas las suites en cada llamada al paquete.
 
 ## Navegador por casos con evidencia independiente
 
 `.local/validation/base-navegador.json` conserva aprobaciones propias de nueve recorridos: apertura/sesion/cabecera/pie, filtros/busqueda/graficos, tooltip/Livewire, arbol/diversidad, modales/mapa/registros, tabla/paginacion, fotografias, administracion/importacion y PDF de siete figuras. El selector registra casos ejecutados, reutilizados y motivos en el plan; no repetir UI intacta aunque Pest no haya completado su base integral. Cada caso prepara su estado sin ejecutar las aserciones de otros casos.
 
-Las entradas propias, fixture, vendor y entorno deben coincidir y la evidencia dura siete dias; reutilizar conserva la fecha real. La migracion del OK completo confirmado exige runner original, cuerpos completos y todas sus aserciones conservadas, fixture y fuentes compatibles. Su procedencia declara expresamente que el runner nuevo no se ejecuto. No acredita Pest ni crea una base integral del 70 %. Un caso cancelado o fallido no queda aprobado; los que si terminaron conservan su evidencia individual.
+El paquete limita la seleccion a los casos propios del cambio; la antiguedad de los recorridos intactos no los vuelve a ejecutar. Reutilizar conserva la fecha real y la aprobacion historica, sin declarar ejecutadas sus aserciones sobre el cambio nuevo. La migracion del OK completo confirmado exige runner original, cuerpos completos y todas sus aserciones conservadas, fixture y fuentes compatibles. Su procedencia declara expresamente que el runner nuevo no se ejecuto. No acredita Pest ni crea una base integral del 70 %. Un caso cancelado o fallido no queda aprobado; los que si terminaron conservan su evidencia individual.
 
-Cambios de empaquetado o selector por si solos no disparan UI. Se siguen consumidores directos e indirectos. Los metodos de tooltip del dashboard y los metodos conocidos del controlador se comparan por fragmento; un componente compartido sin fragmento seguro amplia los casos y explica el motivo. Autenticacion, permisos y dependencias compartidas alcanzan todos los consumidores. `-Integral` fuerza los nueve recorridos. Las auditorias actuales y la integridad OCI siguen obligatorias.
+Cambios de empaquetado o selector por si solos no disparan UI. El paquete no sigue consumidores transitivos para agregar recorridos. Los metodos de tooltip del dashboard y los metodos conocidos del controlador se comparan por fragmento; un componente sin fragmento o contrato propio delimitado queda pendiente y no activa los nueve casos. `-Integral` fuerza los nueve recorridos solo por solicitud expresa. Las auditorias actuales y la integridad OCI siguen obligatorias.
 
 
 Las bases propias ETE/Python y PDF PHP/Java se guardan en `.local/validation/base-sectores-paquete.json` al aprobar cada sector. No esperan al cierre de Pest. Se conservan las fechas originales y se invalidan antes de reintentar; no acreditan PHP ni Gherkin. ETE identifica tambien el interprete y todo su entorno virtual. El OK historico de PDF puede conservarse con fuentes, vendor, JAR, entorno y transcripcion compatibles: su certificado es sintetico y temporal. El avance cancelado conserva 11 casos Python aprobados como resultado historico; sin huella previa del runtime ETE, su base reutilizable se establece tras la siguiente prueba. El plan de navegador y PDF se actualiza con los artefactos ya construidos antes de sellar las pruebas del agente, sin repetir su calculo de huellas.

@@ -146,10 +146,11 @@
         @include('catalogopublico::components.detalle-celda-mapa')
         @endif
     @elseif($vista === 'registros')
-        <section class="portal-records-paged mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" aria-label="Registros del catálogo">
+        <section class="portal-records-paged portal-records-viewport mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" aria-label="Registros del catálogo"
+            x-data="portalRegistrosInfinitos" data-seleccion="{{ $this->claveRegistrosCargados }}" data-paginas="{{ $this->paginasRegistrosCargadas }}" data-hay-mas="{{ $hayMasRegistros ? 'true' : 'false' }}">
             <header class="mb-4"><h1 class="font-display text-2xl font-bold text-blue-navy">{{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}</h1>
                 <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</p></header>
-            <x-grid-frame label="Registros del catálogo" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :page-sizes="[15, 25, 50, 100, 500, 1000]" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
+            <x-grid-frame label="Registros del catálogo" page-size-label="Filas por carga" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :page-sizes="[15, 25, 50, 100, 500, 1000]" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
                 <x-slot:search>
                     <form class="hub-ig-search" x-data="{campo: 'filtroCatalogo', texto: ''}" x-on:submit.prevent="$wire.aplicarBusquedaTexto(campo, texto)">
                         <select x-model="campo" aria-label="Columna de búsqueda"><option value="filtroCatalogo">N.º catálogo</option><option value="filtroTaxon">Taxón</option></select>
@@ -164,7 +165,7 @@
                 <x-slot:reset><button type="button" class="hub-ig-button hub-ig-reset" wire:click="restablecerVistaRegistros" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button></x-slot:reset>
                 <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" :ordenable="true" />
                 <x-slot:pagination>
-                    <x-grid-pages :page="$paginaActual" :last="$ultimaPagina" :total="$totalRegistrosVista" :per-page="$this->registrosPorPagina" label="Registros del catálogo" />
+                    <div class="portal-record-scroll-status" role="status"><span>{{ number_format(count($registrosVista), 0, ',', '.') }} de {{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</span><span x-show="solicitando">Cargando más registros…</span><p x-show="errorCarga" x-text="errorCarga" x-cloak></p><button type="button" x-show="errorCarga" x-cloak x-on:click="cargarMas()">Reintentar carga</button></div>
                     <dialog class="hub-ig-dialog" x-ref="recordSort" aria-label="Ordenar registros" x-on:abrir-orden="columna = $wire.ordenRegistros || 'occurrence_id'; direccion = $wire.direccionRegistros; $el.showModal()" x-data="{columna: @js($this->ordenRegistros ?: 'occurrence_id'), direccion: @js($this->direccionRegistros)}">
                         <form x-on:submit.prevent="await $wire.ordenarRegistros(columna, direccion); $refs.recordSort.close()">
                             <div class="hub-ig-dialog-heading"><h2>Ordenar</h2><button type="button" class="hub-ig-icon-button" x-on:click="$refs.recordSort.close()" aria-label="Cerrar ordenación">×</button></div>
@@ -213,7 +214,7 @@
                         $stats = $descendientes[$clave] ?? [];
                         $numEspecimenes = $hijo['total'] ?? $conteos[$clave] ?? 0;
                     @endphp
-                    <article class="rounded-lg border border-border bg-surface p-4 shadow-sm transition-all hover:border-science-blue/40 hover:shadow-md">
+                    <article wire:key="tarjeta-raiz-{{ $hijo['id'] ?? $clave }}" class="rounded-lg border border-border bg-surface p-4 shadow-sm transition-all hover:border-science-blue/40 hover:shadow-md">
                         <x-catalogopublico::fotografia-tarjeta :nombre="$hijo['taxon']" :nivel="$hijo['nivel']" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadas[$hijo['nivel'].':'.$hijo['taxon']] ?? null" :datos="$datosPortadas[$hijo['nivel'].':'.$hijo['taxon']] ?? []" />
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
@@ -258,31 +259,6 @@
     @elseif(in_array($nivelActual, ['phylum', 'class', 'order', 'family']))
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex gap-8">
-
-                {{-- Rail de hermanos --}}
-                @if(count($hermanos) > 0)
-                    <aside class="hidden lg:block w-52 shrink-0">
-                        <div class="rounded-lg border border-border bg-surface shadow-sm p-3 sticky top-4">
-                            <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2 px-1">
-                                {{ in_array($nivelActual, ['class', 'family'], true) ? 'Otras' : 'Otros' }} {{ $nivelesPluralNavegacion[$nivelActual] ?? 'taxones' }}
-                            </h4>
-                            <div class="space-y-0.5">
-                                @foreach($hermanos as $hermano)
-                                    <button
-                                        type="button" wire:click="navegar(@js($hermano['nivel']), @js($hermano['taxon']))" wire:loading.attr="disabled" wire:target="navegar,cambiarPaginaHermanos"
-                                        class="w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm text-text-secondary hover:text-science-blue hover:bg-science-blue/5 transition-colors"
-                                    >
-                                        <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
-                                        <span class="tabular-nums text-xs shrink-0">
-                                            {{ number_format((int) ($hermano['total'] ?? 0), 0, ',', '.') }}
-                                        </span>
-                                    </button>
-                                @endforeach
-                            </div>
-                            <x-catalogopublico::paginacion-hermanos :total="$totalHermanos" :pagina="$paginaHermanosActual" :ultima="$ultimaPaginaHermanos" />
-                        </div>
-                    </aside>
-                @endif
 
                 {{-- Contenido principal --}}
                 <div class="flex-1 min-w-0">
@@ -367,31 +343,6 @@
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex gap-8">
 
-                {{-- Rail de géneros hermanos --}}
-                @if(count($hermanos) > 0)
-                    <aside class="hidden lg:block w-52 shrink-0">
-                        <div class="rounded-lg border border-border bg-surface shadow-sm p-3 sticky top-4">
-                            <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2 px-1">
-                                Otros géneros
-                            </h4>
-                            <div class="space-y-0.5">
-                                @foreach($hermanos as $hermano)
-                                    <button
-                                        type="button" wire:click="navegar(@js($hermano['nivel']), @js($hermano['taxon']))" wire:loading.attr="disabled" wire:target="navegar,cambiarPaginaHermanos"
-                                        class="w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm text-text-secondary hover:text-science-blue hover:bg-science-blue/5 transition-colors"
-                                    >
-                                        <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
-                                        <span class="tabular-nums text-xs shrink-0">
-                                            {{ number_format((int) ($hermano['total'] ?? 0), 0, ',', '.') }}
-                                        </span>
-                                    </button>
-                                @endforeach
-                            </div>
-                            <x-catalogopublico::paginacion-hermanos :total="$totalHermanos" :pagina="$paginaHermanosActual" :ultima="$ultimaPaginaHermanos" />
-                        </div>
-                    </aside>
-                @endif
-
                 {{-- Lista de especies --}}
                 <div class="flex-1 min-w-0">
                     <div class="mb-4 flex items-center justify-between">
@@ -454,31 +405,6 @@
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="collection-species-layout">
 
-                {{-- Rail de especies hermanas --}}
-                @if(count($hermanos) > 0)
-                    <aside class="hidden lg:block w-52 shrink-0">
-                        <div class="rounded-lg border border-border bg-surface shadow-sm p-3 sticky top-4">
-                            <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2 px-1">
-                                Otras especies
-                            </h4>
-                            <div class="space-y-0.5">
-                                @foreach($hermanos as $hermano)
-                                    <button
-                                        type="button" wire:click="navegar(@js($hermano['nivel']), @js($hermano['taxon']))" wire:loading.attr="disabled" wire:target="navegar,cambiarPaginaHermanos"
-                                        class="w-full text-left flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs text-text-secondary hover:text-science-blue hover:bg-science-blue/5 transition-colors"
-                                    >
-                                        <span class="font-serif italic truncate">{{ $hermano['taxon'] }}</span>
-                                        <span class="tabular-nums shrink-0">
-                                            {{ number_format((int) ($hermano['total'] ?? 0), 0, ',', '.') }}
-                                        </span>
-                                    </button>
-                                @endforeach
-                            </div>
-                            <x-catalogopublico::paginacion-hermanos :total="$totalHermanos" :pagina="$paginaHermanosActual" :ultima="$ultimaPaginaHermanos" />
-                        </div>
-                    </aside>
-                @endif
-
                 {{-- Registros de registros --}}
                 <div class="collection-species-content">
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -505,8 +431,8 @@
                         $jerarquiaEspecie = array_column($ruta, 'taxon', 'nivel');
                         $ilustracionEspecie = \Modules\CatalogoPublico\Application\Services\IlustracionTaxonomica::paraTaxon($jerarquiaEspecie);
                     @endphp
-                    <x-catalogopublico::referencia-taxonomica :nombre="$taxonActual" :familia-visible="isset($jerarquiaEspecie['family'])" :familia-original="$jerarquiaEspecie['family'] ?? null" />
-                    <section class="mb-6">
+                    <section class="collection-species-summary mb-6" aria-label="Fotografía y clasificación de la especie">
+                        <div class="collection-species-summary-photo">
                         <div class="mb-3 flex items-center gap-2">
                             <h3 class="text-sm font-semibold text-text-primary flex items-center gap-2">
                                 <flux:icon name="photo" class="size-4 text-text-secondary" />
@@ -520,20 +446,28 @@
                             <button
                                 type="button"
                                 @click="$dispatch('lightbox-open', { url: @js($portadaEspecie['url']), alt: @js($taxonActual), nombreArchivo: @js($portadaEspecie['nombreArchivo']), atribuciones: @js($portadaEspecie['atribuciones'] ?? []), vista: @js($portadaEspecie['vista'] ?? ''), invocador: $event.currentTarget })"
-                                class="group/portada block max-w-xs overflow-hidden rounded-lg border border-bio-green ring-2 ring-bio-green/30 bg-surface shadow-sm cursor-zoom-in text-left"
+                                class="collection-species-cover group/portada block overflow-hidden rounded-lg border border-bio-green bg-surface shadow-sm cursor-zoom-in text-left"
                                 title="Ver imagen completa"
                             >
-                                <div class="relative aspect-square bg-bg-main">
-                                    <img src="{{ $portadaEspecie['url'] }}" alt="{{ $taxonActual }}" class="h-full w-full object-cover transition-transform group-hover/portada:scale-105" loading="lazy" />
+                                <div class="collection-species-cover-image relative bg-bg-main">
+                                    <img src="{{ $portadaEspecie['url'] }}" alt="{{ $taxonActual }}" class="h-full w-full object-contain" loading="eager" decoding="async" />
                                     <span class="absolute inset-0 flex items-end justify-end bg-blue-navy/0 p-2 transition-colors group-hover/portada:bg-blue-navy/20">
                                         <span class="opacity-0 transition-opacity group-hover/portada:opacity-100 rounded-full bg-blue-navy/80 p-1.5 text-white">
                                             <flux:icon name="magnifying-glass-plus" class="size-4" />
                                         </span>
                                     </span>
                                 </div>
+                                <span class="collection-photo-credit-button">Ejemplar de la colección</span>
                             </button>
-                            <x-catalogopublico::atribuciones-imagen :datos="$portadaEspecie['atribuciones'] ?? []" />
                         @endif
+                        </div>
+                        <div class="collection-species-summary-text">
+                            <h3>Clasificación pública</h3>
+                            <p><strong>{{ number_format($totalEspecimenes, 0, ',', '.') }}</strong> {{ $totalEspecimenes === 1 ? 'registro en la selección actual' : 'registros en la selección actual' }}</p>
+                            <dl>@foreach($ruta as $rango)<div><dt>{{ $etiquetas[$rango['nivel']] ?? $rango['nivel'] }}</dt><dd><em>{{ $rango['taxon'] }}</em></dd></div>@endforeach</dl>
+                            <button type="button" class="hub-ig-button" wire:click="cambiarVista('registros')">Ver registros de esta selección</button>
+                            <x-catalogopublico::referencia-taxonomica :nombre="$taxonActual" :familia-visible="isset($jerarquiaEspecie['family'])" :familia-original="$jerarquiaEspecie['family'] ?? null" />
+                        </div>
                     </section>
 
                     {{-- ══════════════════════════════════
@@ -616,7 +550,7 @@
                                     x-on:keydown.enter.self.prevent="$wire.abrirFichaRegistro(@js($especimen->especimen_id))"
                                     x-on:keydown.space.self.prevent="$wire.abrirFichaRegistro(@js($especimen->especimen_id))"
                                 >
-                                    <div class="flex">
+                                    <div class="collection-specimen-overview">
 
                                         {{-- Miniatura: si hay imágenes, abre la galería del registro; si no, placeholder --}}
                                         @if($numImagenes > 0)
@@ -916,12 +850,14 @@
 
     @endif {{-- fin modo árbol / explorar --}}
     @php $totalPaginado = $nivelActual === 'species' && $nivelExplorar === '' ? $totalEspecimenes : $totalTarjetas; @endphp
-    @if($totalPaginado > 6)
-        <nav class="collection-card-pagination" aria-label="Páginas de tarjetas">
-            <button type="button" wire:click="cambiarPagina({{ $paginaActual - 1 }})" wire:loading.attr="disabled" @disabled($paginaActual <= 1)>Anterior</button>
-            <span>Página {{ $paginaActual }} de {{ $ultimaPagina }} · 6 por página · {{ number_format($totalPaginado, 0, ',', '.') }} en total</span>
-            <button type="button" wire:click="cambiarPagina({{ $paginaActual + 1 }})" wire:loading.attr="disabled" @disabled($paginaActual >= $ultimaPagina)>Siguiente</button>
-        </nav>
+    @if($totalPaginado > 0)
+        <div class="collection-card-pagination" data-card-progress role="status">{{ number_format(min($totalPaginado, $paginaActual * 6), 0, ',', '.') }} de {{ number_format($totalPaginado, 0, ',', '.') }}</div>
+        @if($paginaActual < $ultimaPagina)
+            <div wire:key="tarjetas-mas-{{ $this->claveTarjetasCargadas }}-{{ $paginaActual }}" class="collection-card-pagination" x-data="hubCardScroll(@js($this->claveTarjetasCargadas), {{ $paginaActual }})">
+                <span x-show="!error" role="status">Cargando más tarjetas…</span>
+                <button type="button" x-show="error" x-cloak x-on:click="load()">Reintentar carga de tarjetas</button>
+            </div>
+        @endif
     @endif
     @endif {{-- fin vista mapa / registros / tarjetas --}}
         </div>

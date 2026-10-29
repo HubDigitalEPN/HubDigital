@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/archivo/imagen/{id}', \App\Http\Controllers\ServirImagenArchivo::class)->middleware(['auth', 'verified'])->name('archivo.imagen');
 
 Route::view('/', 'portal-inicio')->name('home');
+Route::view('/el-laboratorio', 'portal-laboratorio')->name('laboratorio');
+Route::get('/el-laboratorio/fotos/{foto}/{hash}', \App\Http\Controllers\FotoPaginaLaboratorio::class)
+    ->whereIn('foto', array_keys(config('pagina-laboratorio.fotos')))->where('hash', '[a-f0-9]{64}')->name('laboratorio.foto');
 Route::get('/version', VersionPortalController::class)->name('portal.version');
 Route::view('/informacion/privacidad', 'portal-informacion-legal', ['tipo' => 'privacidad'])->name('portal.privacidad');
 Route::view('/informacion/terminos', 'portal-informacion-legal', ['tipo' => 'terminos'])->name('portal.terminos');
@@ -60,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:admin')->name('admin.formato-ipt');
     Route::get('/administracion/textos-portal', \App\Livewire\Administracion\ConfiguracionTextosPortal::class)
         ->middleware('role:curador')->name('admin.textos-portal');
+    Route::get('/administracion/el-laboratorio', \App\Livewire\Administracion\ConfiguracionLaboratorio::class)
+        ->middleware('role:curador')->name('admin.laboratorio');
     Route::get('/administracion/fichas-taxonomicas', \App\Livewire\Administracion\FichasTaxonomicasPortal::class)
         ->middleware('role:curador')->name('admin.fichas-taxonomicas');
     Route::get('/administracion/fichas-taxonomicas/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)

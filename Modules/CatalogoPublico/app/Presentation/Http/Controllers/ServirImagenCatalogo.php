@@ -7,13 +7,14 @@ namespace Modules\CatalogoPublico\Presentation\Http\Controllers;
 use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Modules\CatalogoPublico\Infrastructure\Adapters\StorageImagenesAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 final class ServirImagenCatalogo
 {
-    public function __invoke(string $objeto, AlmacenamientoDepositos $almacenamiento): StreamedResponse
+    public function __invoke(string $objeto, AlmacenamientoDepositos $almacenamiento, Request $request): Response
     {
         try {
             $ruta = StorageImagenesAdapter::rutaDesdeObjetoPublico($objeto);
@@ -23,6 +24,13 @@ final class ServirImagenCatalogo
             }
 
             $sha256 = strtolower(trim((string) $imagen->sha256));
+            // La publicación se comprueba incluso al reutilizar la caché HTTP.
+            // Un 304 no necesita HEAD ni descargar de nuevo el objeto de R2.
+            $identidad = preg_match('/\A[a-f0-9]{64}\z/', $sha256) ? $sha256 : null;
+            if ($identidad !== null) {
+                $condicional = response('', 200, ['Cache-Control' => 'public, max-age=300'])->setEtag($identidad);
+                if ($condicional->isNotModified($request)) return $condicional;
+            }
             $mime = $almacenamiento->mimeType($ruta);
             if (! str_starts_with($mime, 'image/')) {
                 abort(404);
@@ -32,13 +40,15 @@ final class ServirImagenCatalogo
             abort(404);
         }
 
-        return response()->stream(function () use ($contenido): void {
+        $respuesta = response()->stream(function () use ($contenido): void {
             echo $contenido;
         }, 200, [
             'Content-Type' => $mime,
             'Cache-Control' => 'public, max-age=300',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+        if ($identidad !== null) $respuesta->setEtag($identidad);
+        return $respuesta;
     }
 
     /**

@@ -136,6 +136,18 @@ test('la imagen divulgada se sirve desde R2 y la despublicada no consulta el obj
     Http::assertNothingSent();
 });
 
+test('el ETag reutiliza una fotografía sin consultar R2 y respeta su despublicación', function (): void {
+    $imagen = imagenPublicadaR2DePrueba();
+    $hash = hash('sha256', $imagen['contenido']);
+    DB::table('divulgacion.imagenes_taxonomicas')->where('ruta', $imagen['ruta'])->update(['sha256' => $hash]);
+    Http::fake();
+    $this->withHeader('If-None-Match', '"'.$hash.'"')->get(route('portal.imagen', ['objeto' => $imagen['objeto']]))->assertStatus(304);
+    Http::assertNothingSent();
+    DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $imagen['especimen_id'])->delete();
+    $this->get(route('portal.imagen', ['objeto' => $imagen['objeto']]))->assertNotFound();
+    Http::assertNothingSent();
+});
+
 test('una imagen de otra región publicada con nombre y coordenadas públicas se sirve sin alterar el original', function (): void {
     $imagen = imagenPublicadaR2DePrueba();
     DB::table('taxonomia.especimenes')->where('id', $imagen['especimen_id'])->update(['decimal_latitude' => 40.4, 'decimal_longitude' => -3.7]);

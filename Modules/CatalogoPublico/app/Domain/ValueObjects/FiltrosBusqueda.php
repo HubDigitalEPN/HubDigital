@@ -43,6 +43,8 @@ final readonly class FiltrosBusqueda
         public readonly ?string $localidadTexto = null,
         public readonly string $nivelNavegado = '',
         public readonly string $taxonNavegado = '',
+        public readonly ?string $universal = null,
+        public readonly ?string $registroId = null,
     ) {}
 
     public static function vacio(): self
@@ -139,6 +141,8 @@ final readonly class FiltrosBusqueda
             taxonId: \Illuminate\Support\Str::isUuid((string) ($datos['filtroTaxonId'] ?? '')) ? strtolower((string) $datos['filtroTaxonId']) : null,
             taxonIds: array_values(array_unique(array_filter($normalizarArray($datos['filtroTaxonIds'] ?? []), static fn ($id) => \Illuminate\Support\Str::isUuid($id)))),
             localidadTexto: $textoOpcional('filtroLocalidadTexto'),
+            universal: $textoOpcional('filtroUniversal'),
+            registroId: \Illuminate\Support\Str::isUuid((string) ($datos['filtroRegistroId'] ?? '')) ? (string) $datos['filtroRegistroId'] : null,
             nivelNavegado: (string) ($datos['nivelNavegado'] ?? ''),
             taxonNavegado: (string) ($datos['taxonNavegado'] ?? ''),
             geografias: $normalizarArray($datos['filtroGeografias'] ?? []),
@@ -178,6 +182,7 @@ final readonly class FiltrosBusqueda
             && $this->taxonId === null
             && $this->taxonIds === []
             && $this->localidadTexto === null
+            && $this->universal === null && $this->registroId === null
             && $this->taxonNavegado === ''
             && $this->geografias === []
             && $this->colectores === []

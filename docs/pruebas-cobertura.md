@@ -321,3 +321,53 @@ Cambios de empaquetado o selector por si solos no disparan UI. Se siguen consumi
 La autoprueba Java conserva lectura exacta de QR a 144 y 220 dpi, rechazo del original sin QR y comprobaciones criptograficas. El detector QRMultiple examina todas las ternas de localizadores sobre la pagina renderizada completa; prueba binarizacion local y global, sin ampliar ni recortar. Se ejercitan tres desplazamientos fraccionarios de la apariencia con cuatro contenidos distintos. La aceptacion Linux del candidato tambien se exige antes de poner la aplicacion actual en mantenimiento; se mantiene la aceptacion final. Los contratos Node cubren salida continua y propagacion de fallos del staging, uso del asistente incluido en el bundle y orden previo a mantenimiento.
 La puerta Java previa al mantenimiento pausa solo una JVM de firma que estuviera activa y la restaura al salir, tanto al aprobar como al fallar; evita dos JVM simultaneas en las VM de 1 GB. Los contratos del despliegue comprueban esta restauracion y el orden anterior a la autoprueba.
 `PortalMapaRecuperacionQa6Test` comprueba que un presupuesto SQL aprobado conserva los limites de la transaccion exterior y que una cancelacion real restaura tanto `statement_timeout` como `lock_timeout`. Mantiene los limites productivos de ocho y dos segundos y todas las aserciones de recuperacion de cache y seleccion.
+
+
+## Chat abierto, LOV y avisos multicanal (29 de octubre de 2026)
+
+`AgenteHibridoPresupuestoTest.php` comprueba con HTTP simulado el reparto 80/20,
+la conversación general en los dos chats, el bloqueo fuera de PROD y la reserva
+privada del presupuesto. No consume créditos reales.
+
+`BusquedaUniversalPublicaTest.php` cubre texto, fechas y números, linajes públicos,
+campos ocultos, registros no publicados y la selección compartida entre mapa,
+árbol, tarjetas, registros y enlaces. Sus datos usan transacciones reversibles.
+También comprueba el reemplazo puntual de la descripción institucional.
+
+`CanalesCampanaTest.php` cubre los doce tipos de evento, correo y push, ausencia
+de datos privados en la vista previa y trabajos independientes por canal.
+Los casos seleccionados de `DepositosCincoPuntosTest.php` conservan la campana
+inmediata y el destino QA restringido; el envío externo a curaduría incluye push.
+
+`portal-universal-search.test.mjs` prueba respuestas fuera de orden, aplicación
+solo al seleccionar y la escala amarillo-rojo por registros.
+`pwa-install-and-push.test.mjs` ejecuta el contrato de instalación y el service
+worker con el portal activo, otra web o ninguna ventana, sin botones de acciones.
+La recepción real depende del permiso, suscripción, VAPID y servicio de push;
+estas pruebas no envían avisos a personas ni acreditan entrega por el proveedor.
+
+Estos casos no duplican escenarios Gherkin. La comprobación visual focalizada
+se realiza en Opera Neon sobre localhost, sin repetir los nueve recorridos.
+
+### Página del laboratorio, grids y fotografías
+
+`PaginaLaboratorioTest.php` comprueba la nueva navegación, el texto principal,
+la publicación de fotos y textos, restauración, permisos y edición concurrente.
+`TarjetasFiltrosScrollTest.php` verifica selección compartida, acumulación sin
+duplicados, rechazo de cargas obsoletas y la presentación de ficha/fotografía.
+`GridFormulariosTest.php` comprueba los tres formularios que se incorporaron al
+grid común; el caso propio de cabecera de `AdminInteractiveGridTest.php` verifica
+filtrado de servidor, paginación y parámetros rechazados.
+
+`interactive-grid-client.test.mjs` cubre columnas movibles sin mover controles
+Livewire, búsqueda combinada de cabeceras y orden. `interactive-grid-coverage`
+inventaría las tablas de pantalla; PDF, correo y hoja imprimible no son grids.
+`card-scroll.test.mjs` comprueba una solicitud por centinela y reintento manual.
+`chat-shell.test.mjs` comprueba ocultación completa, persistencia y recuperación.
+Los casos propios de fotografía conservan identificación, licencias y abortado;
+el visor añade cierre desde el botón y devolución del foco. El caso ETag de
+`RutasObjetosR2Test.php` exige publicación vigente antes de reutilizar un 304.
+Son controles focalizados: no acreditan una suite integral ni despliegues.
+# Contratos focales de UI por MCP
+
+Los cambios de laboratorio, tarjetas, registros, fichas y chat usan el cuerpo DOM de `tests/Browser/contratos-ui-focales.mjs`, ejecutado en la pestaña QA de localhost mediante MCP `opera_neon`. Los recibos locales validan todos los controles del caso y las mismas huellas de fuentes/build antes y después. No renuevan las fechas ni acreditan la ejecución de los nueve recorridos históricos. Los contratos de servidor y Node siguen siendo independientes.

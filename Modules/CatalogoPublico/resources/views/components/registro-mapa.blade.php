@@ -28,7 +28,7 @@
                     default => $registro->{$campo},
                     };
                 @endphp
-                <div><dt data-copy-preserve>{{ $etiquetasCatalogo[$campo] ?? $etiqueta }}</dt><dd>{{ $valor }}@if($campo === 'sampling_protocol' && $valor !== $registro->{$campo}) <small>Valor original: {{ $registro->{$campo} }}</small>@endif</dd></div>
+                <div><dt data-copy-preserve>{{ ($etiquetasLegibles ?? false) ? $etiqueta : ($etiquetasCatalogo[$campo] ?? $etiqueta) }}</dt><dd>{{ $valor }}@if($campo === 'sampling_protocol' && $valor !== $registro->{$campo}) <small>Valor original: {{ $registro->{$campo} }}</small>@endif</dd></div>
             @endif
         @endforeach
     </dl>

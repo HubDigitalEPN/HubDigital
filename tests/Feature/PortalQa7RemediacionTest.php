@@ -151,7 +151,7 @@ test('QA7 005 006 glosario capacidades y actualidad se atienden localmente', fun
     ['¿Qué significa tipo nomenclatural?', 'portal.glosario', 'typeStatus'],
     ['las coordenadas recuperadas del Excel son exactas?', 'portal.glosario', 'nunca cero'],
     ['¿Qué noticias ocurrieron hoy en Ecuador?', 'general.sin_actualidad', 'No puedo verificar noticias'],
-    ['como filtro por provincia y por metodo de colecta?', 'portal.filtros', 'Ejemplar y colecta'],
+    ['como filtro por provincia y por metodo de colecta?', 'portal.filtros', 'Búsqueda universal'],
 ]);
 
 test('QA7 006 la clasificación local respeta familia y género reservados', function (): void {

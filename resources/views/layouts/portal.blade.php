@@ -25,7 +25,8 @@
 
             <nav class="hidden h-full min-w-0 items-center gap-0 lg:flex" aria-label="{{ $navegacion('principal') }}">
                 <a href="{{ route('home') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('home') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('inicio') }}</a>
-                <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('portal.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('coleccion') }}</a>
+                <a href="{{ route('laboratorio') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('laboratorio') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('el_laboratorio') }}</a>
+                <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('portal.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('explorar_coleccion') }}</a>
                 <a href="{{ route('depositos.portal') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('depositos.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('depositos') }}</a>
             </nav>
 
@@ -50,6 +51,7 @@
                 </div>
             @else
             <div class="hidden shrink-0 items-center gap-3 lg:flex">
+                <x-pwa-install-button />
                 @auth
                     <a href="{{ route('dashboard') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-md border border-blue-navy px-4 py-2 text-sm font-semibold !text-blue-navy transition hover:bg-blue-navy/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue">
                         <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-none stroke-current stroke-2"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
@@ -106,8 +108,10 @@
         >
             <div class="portal-container mx-auto grid gap-1">
                 <a href="{{ route('home') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('inicio') }}</a>
-                <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('coleccion') }}</a>
+                <a href="{{ route('laboratorio') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 px-3 text-sm font-semibold {{ request()->routeIs('laboratorio') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-blue-navy hover:bg-[#F5F8FC]' }}">{{ $navegacion('el_laboratorio') }}</a>
+                <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('explorar_coleccion') }}</a>
                 <a href="{{ route('depositos.portal') }}" @click="abierto = false" class="flex min-h-11 items-center border-l-2 border-transparent px-3 text-sm font-semibold !text-blue-navy hover:border-science-blue hover:bg-[#F5F8FC]">{{ $navegacion('depositos') }}</a>
+                <x-pwa-install-button />
                 @auth
                     @if(auth()->user()->hasVerifiedEmail() && !auth()->user()->must_change_password && auth()->user()->rolesAsignados()->count() > 1)
                         <details class="my-2 rounded-md border border-blue-navy/20 p-3" x-data x-on:keydown.escape.stop="$el.open = false">

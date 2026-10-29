@@ -1,0 +1,8 @@
+[data-chat-restore] { display: none; }
+html[data-chat-hidden] [data-chat-restore] { display: inline-flex; }
+html[data-chat-hidden] :is(#portal-chat-mobile-trigger, .portal-chat-shell) { display: none !important; }
+.portal-chat-launcher { display: flex; align-items: center; gap: .3rem; }
+.portal-chat-hide { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border: 1px solid #bfd0df; border-radius: 50%; background: #fff; color: #102f48; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 5px #0002; }
+.portal-chat-hide:is(:hover, :focus-visible) { outline: 2px solid #0874b9; outline-offset: 2px; }
+.portal-chat-hide svg { width: 1rem; height: 1rem; }
+@media(max-width: 639px) { .portal-chat-launcher:has(#chat-bot-trigger[style*="display: none"]) { display: none; } }

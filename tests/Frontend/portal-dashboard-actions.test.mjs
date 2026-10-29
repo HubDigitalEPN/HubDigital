@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
+import {crearRegistrosInfinitos} from '../../resources/js/portal-record-scroll.js';
+import {crearVisorImagen} from '../../resources/js/portal-image-model.js';
 import {crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from '../../resources/js/portal-map-model.js';
-import {colorFilo, composicionFilos, fondoFilos} from '../../resources/js/portal-map-model.js';
+import {colorFilo, composicionFilos, fondoFilos, colorCantidadRegistros} from '../../resources/js/portal-map-model.js';
 
 const fuenteDashboard = readFileSync(new URL('../../resources/js/portal-dashboard.js', import.meta.url), 'utf8');
 const plantillaDashboard = readFileSync(new URL('../../Modules/CatalogoPublico/resources/views/dashboard-coleccion.blade.php', import.meta.url), 'utf8');
@@ -56,7 +58,7 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
         capasOriginales.push(this);
     }};
     const contexto = {
-        L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos,
+        L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos, colorCantidadRegistros, crearRegistrosInfinitos, crearVisorImagen,
         window: {innerWidth: 1280, innerHeight: 800, Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}, removeEventListener() {}},
         document: {
             documentElement: {classList: {add() {}, remove() {}}},
@@ -363,15 +365,14 @@ test('cerrar el árbol devuelve el foco al marcador vigente tras repintar y al m
     assert.doesNotMatch(detalle, /\$wire\.cerrarCelda/);
 });
 
-test('una ubicación compartida muestra todos sus colores y abre las coordenadas originales con teclado', () => {
+test('una ubicación compartida usa el color de su cantidad y abre las coordenadas originales con teclado', () => {
     const celdas = [{lat: -0.63194, lon: -76.14416, total: 8, filos: {Arthropoda: 6, Mollusca: 2}}];
     const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
     assert.equal(marcadores.length, 1);
     const mixto = marcadores[0];
     assert.equal(mixto.opciones.icon.className, 'atlas-map-count');
     assert.equal(mixto.opciones.icon.html.children[0].textContent, '8');
-    assert.match(mixto.elemento.style.background, /#17699b/);
-    assert.match(mixto.elemento.style.background, /#d17d28/);
+    assert.equal(mixto.elemento.style.background, colorCantidadRegistros(8));
     assert.match(mixto.elemento.atributos['aria-label'], /Mollusca: 2/);
     const aperturas = [];
     dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
@@ -381,7 +382,7 @@ test('una ubicación compartida muestra todos sus colores y abre las coordenadas
     assert.deepEqual(Array.from(aperturas[0]), [-0.63194, -76.14416, 8]);
     dashboard.actualizar({celdas: [{...celdas[0], total: 2, filos: {Mollusca: 2}}], filos: {Mollusca: 2}});
     pintar();
-    assert.equal(marcadores[0].elemento.style.background, '#d17d28');
+    assert.equal(marcadores[0].elemento.style.background, colorCantidadRegistros(2));
     assert.equal(marcadores[0].opciones.icon.html.children[0].textContent, '2');
     assert.deepEqual(Array.from(marcadores[0].coordenadas), [-0.63194, -76.14416]);
 });

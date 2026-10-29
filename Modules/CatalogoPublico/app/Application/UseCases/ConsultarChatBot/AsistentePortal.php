@@ -166,7 +166,7 @@ final class AsistentePortal
             ]];
         }
         if (preg_match('/^buscar por localidad/', $normal)) {
-            return ['texto' => 'Abre el catálogo y usa el filtro de localidad para consultar los especímenes publicados.', 'opciones' => [
+            return ['texto' => 'Abre el catálogo y escribe la localidad en Búsqueda universal. Pulsa la lupa, busca y selecciona un ejemplar o todos los resultados para actualizar las vistas.', 'opciones' => [
                 ['label' => 'Abrir catálogo', 'url' => route('portal.catalogo')],
             ]];
         }
@@ -214,8 +214,10 @@ final class AsistentePortal
             return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
         }
         if ($explicacionGeneral) {
-            return $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes)
-                ?? app(FuentesPublicasChat::class)->responder($pregunta);
+            $conocida = $this->conocimiento->responder($pregunta, $nodoAnterior, $variantesRecientes);
+            if ($conocida !== null) return $conocida;
+            if ($interpretarConModelo && ($general = $this->respuestaGeneralIA($pregunta, $historial)) !== null) return $general;
+            return app(FuentesPublicasChat::class)->responder($pregunta);
         }
         $consultaCientifica = (bool) preg_match('/\b(tienen|cuant[oa]s?|busca|buscar|existe|registros|especies|familias|generos|ejemplares|especimenes|catalogo)\b/', $normal)
             || (bool) preg_match('/^[\p{L}][\p{L}\d_.:-]*(?:\s+[\p{L}][\p{L}.-]*)?$/u', trim($pregunta))
@@ -256,6 +258,7 @@ final class AsistentePortal
 
         if (preg_match('/portal|catalogo|coleccion|ejemplares|coordenadas|catalgo|espesimenes/', $normal)) return $this->ayudaFiltros($pregunta, $contextoCatalogo, $seleccionPortal);
         if ($interpretarConModelo) {
+            if (($general = $this->respuestaGeneralIA($pregunta, $historial)) !== null) return $general;
             $preguntas = [
                 'deposito' => '¿Cómo hago un depósito?',
                 'documentos' => '¿Qué documentos debo adjuntar para el depósito?',
@@ -281,6 +284,13 @@ final class AsistentePortal
         return app(FuentesPublicasChat::class)->responder($pregunta);
     }
 
+    private function respuestaGeneralIA(string $pregunta, array $historial): ?array
+    {
+        $texto = app(\App\Services\IA\AgenteHibrido::class)->conversar($pregunta, $historial,
+            'Este chat está en el portal público. Los datos publicados y sus conteos se consultan con los filtros del catálogo; los hechos que no hayan sido devueltos por esa consulta no están confirmados.');
+        return $texto === null ? null : ['texto' => $texto, 'fuente' => 'agente_hibrido', 'intent' => 'general.conversacion', 'opciones' => []];
+    }
+
     private function enlaceSeleccion(array $contextoCatalogo, ?array $seleccionPortal, string $vista): string
     {
         $parametros = $seleccionPortal === null
@@ -292,7 +302,7 @@ final class AsistentePortal
 
     private function instruccionesMapa(): string
     {
-        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores, filos. Abre un punto para consultar el árbol taxonómico: hasta cinco registros aparecen como hojas; con más de cinco, el árbol llega hasta familia y eliges el ejemplar con un buscador. La tabla adapta los registros por página a la altura disponible. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
+        return 'Cómo usar el mapa: abre Mapa y análisis. Al alejar, los clústeres reúnen varias ubicaciones y muestran su número; púlsalos para acercar. Cada punto original reúne registros con el mismo par de coordenadas. Su tamaño expresa registros y sus colores van de amarillo (menos registros) a rojo (más registros). Abre un punto para consultar el árbol taxonómico: hasta cinco registros aparecen como hojas; con más de cinco, el árbol llega hasta familia y eliges el ejemplar con un buscador. La tabla adapta los registros por página a la altura disponible. Las coordenadas aproximadas conservan sus advertencias; los conteos no equivalen a abundancia natural.';
     }
 
     private function ayudaPuntosMapa(array $contextoCatalogo, ?array $seleccionPortal): array

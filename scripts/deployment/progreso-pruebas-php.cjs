@@ -123,10 +123,27 @@ function stopOwnedChild(child) {
 
 // El binario Pest 4 consume --teamcity antes de entrar a ParaTest. El logger
 // --log-teamcity conserva el protocolo oficial tanto en serie como en paralelo.
-function pestArguments(workers, progressDirectory, tests = []) {
+function pestArguments(workers, progressDirectory, tests = [], root = process.cwd()) {
     const protocolLogPath = path.join(progressDirectory, 'suite.teamcity');
+    let selection = tests;
+    if (tests.length > 1) {
+        // ParaTest admite una sola ruta posicional. Conservar el bootstrap y
+        // entorno oficiales, sustituyendo exclusivamente la lista de archivos.
+        const xml = value => String(value).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+        // Pest indexa cada archivo por su ruta nativa real; C:/ y C:\ no son
+        // la misma clave de su repositorio aunque Windows abra ambas rutas.
+        const absolute = value => xml(fs.realpathSync(path.resolve(root,value)));
+        let config = fs.readFileSync(path.join(root,'phpunit.xml'),'utf8');
+        if ((config.match(/<testsuites>[\s\S]*?<\/testsuites>/g) || []).length !== 1) throw Error('No se pudo acotar la configuracion PHP oficial.');
+        config = config.replace(/<testsuites>[\s\S]*?<\/testsuites>/, '<testsuites><testsuite name="Cambio seleccionado">'+tests.map(file=>'<file>'+absolute(file)+'</file>').join('')+'</testsuite></testsuites>')
+            .replace(/\b(bootstrap|xsi:noNamespaceSchemaLocation)="([^"]+)"/g, (_,key,value)=>key+'="'+absolute(value)+'"')
+            .replace(/<directory([^>]*)>([^<]+)<\/directory>/g, (_,attrs,value)=>'<directory'+attrs+'>'+absolute(value)+'</directory>');
+        const configPath=path.join(progressDirectory,'seleccion.xml');
+        fs.writeFileSync(configPath,config,{flag:'wx',mode:0o600});
+        selection=['--configuration='+configPath];
+    }
     return {protocolLogPath, args: ['artisan', 'test', '--parallel', `--processes=${workers}`, '--without-databases',
-        '--exclude-group=bootstrap-inicial', `--log-teamcity=${protocolLogPath}`, '--colors=never', `--tmp-dir=${progressDirectory}`, ...tests]};
+        '--exclude-group=bootstrap-inicial', `--log-teamcity=${protocolLogPath}`, '--colors=never', `--tmp-dir=${progressDirectory}`, ...selection]};
 }
 
 async function runSuite({program, args, cwd, logPath, progressDirectory, protocolLogPath, write = text => process.stdout.write(text), heartbeatMs = 10000, signal}) {
@@ -264,6 +281,10 @@ async function main() {
     const tests = selected && !selected.integral ? selected.paquete.pruebas_php : [];
     if (!Array.isArray(tests) || tests.some(file => typeof file !== 'string' || !/^(tests|Modules)\/.+Test\.php$/u.test(file) || /[\\\x00-\x1f]/u.test(file) || file.split('/').some(part => part === '..' || part === '.' || part === '') || !fs.existsSync(path.join(cwd, file)))) throw new Error('Seleccion PHP invalida.');
     if (selected && !selected.integral && tests.length === 0) throw new Error('La seleccion PHP no puede estar vacia al iniciar Pest.');
+    const checkpoints=selected&&!selected.integral?require('./php-parcial.cjs'):null;
+    const before=checkpoints?.state(cwd,selected),cache=checkpoints?.load(cwd,selected,before);
+    const testsToRun=checkpoints?checkpoints.pending(tests,cache,before):tests;
+    if(checkpoints){console.log(`PHP: conservar ${tests.length-testsToRun.length} archivos completos; ejecutar ${testsToRun.length} pendientes.`);if(!testsToRun.length){process.exitCode=0;return;}for(const file of testsToRun)delete cache.entries[file];checkpoints.write(cwd,selected,cache);}
     const directory = path.join(cwd, '.local', 'deployment');
     fs.mkdirSync(directory, {recursive: true});
     const controller = new AbortController();
@@ -271,11 +292,13 @@ async function main() {
     const cancel = () => controller.abort();
     process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
     try {
-        const invocation = pestArguments(workers, progressDirectory, tests);
+        const invocation = pestArguments(workers, progressDirectory, testsToRun, cwd);
         console.log(`Concurrencia PHP configurada: ${workers} procesos. Se muestra el caso activo de cada worker.`);
+        const logPath=path.join(directory, `pruebas-php-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.log`);
         process.exitCode = await runSuite({program: php, cwd,
             ...invocation,
-            logPath: path.join(directory, `pruebas-php-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.log`), progressDirectory, signal: controller.signal});
+            logPath, progressDirectory, signal: controller.signal});
+        if(checkpoints){const after=checkpoints.state(cwd,selected);checkpoints.record(cwd,selected,cache,before,after,logPath);if(checkpoints.pending(tests,cache,after).length)process.exitCode=process.exitCode||1;}
     } finally {
         process.off('SIGINT', cancel); process.off('SIGTERM', cancel);
         // Retirar solo archivos regulares del directorio creado en esta llamada.

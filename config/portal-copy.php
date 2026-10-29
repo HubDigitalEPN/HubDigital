@@ -64,6 +64,8 @@ return [
         'principal' => 'Navegación principal',
         'principal_movil' => 'Navegación principal móvil',
         'inicio' => 'Inicio',
+        'el_laboratorio' => 'El Laboratorio',
+        'explorar_coleccion' => 'Explorar la colección',
         'coleccion' => 'Colección Biológica',
         'depositos' => 'Depósitos',
         'cuenta' => 'Mi cuenta',

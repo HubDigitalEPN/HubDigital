@@ -10,6 +10,8 @@ use Modules\CatalogoPublico\Infrastructure\Adapters\PhpSpreadsheetGeneradorXlsxA
 use Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+uses(Tests\InfrastructureTestCase::class);
+
 function registroExportableQa6(array $cambios = [], ?ConfiguracionVisibilidad $visibilidad = null): RegistroExportable
 {
     return RegistroExportable::desde(...array_replace([

@@ -4,9 +4,8 @@ set -euo pipefail
 # tar --no-same-permissions debe conservar lectura del runtime para www-data.
 umask 0022
 
-# Valida y prepara un candidato sin cambiar current. Tras una migración no hay
-# reversión automática de código: el destino queda en mantenimiento para que un
-# operador evalúe compatibilidad de esquema y datos.
+# Valida y prepara el candidato; solo tras completar todos los controles activa
+# la release. Un fallo de preparacion conserva mantenimiento y no cambia current.
 if [[ "${EUID}" -ne 0 ]]; then
     echo 'Ejecuta el despliegue con sudo.' >&2
     exit 64
@@ -14,6 +13,10 @@ fi
 
 archive="${1:-}"
 checksum_file="${2:-${archive}.sha256}"
+# El asistente PROD completa su estado y respaldo antes de encadenar la
+# activacion completa. Las invocaciones directas activan sin otro comando.
+defer_activation="${HUBDIGITAL_DEFER_ACTIVATION:-0}"
+[[ "$defer_activation" == 0 || "$defer_activation" == 1 ]] || { echo 'HUBDIGITAL_DEFER_ACTIVATION debe ser 0 o 1.' >&2; exit 64; }
 [[ -f "${archive}" && -r "${checksum_file}" ]] || {
     echo 'Uso: sudo deploy-release.sh /ruta/release.tar.gz /ruta/release.tar.gz.sha256' >&2
     exit 64
@@ -146,7 +149,11 @@ printf '{"release_id":"%s","release_sha256":"%s","manifest_sha256":"%s","content
 chmod 0600 "/var/lib/hubdigital/migration/release-${release_id}.json"
 printf 'Release preparada en mantenimiento: %s\n' "${release_id}"
 printf 'No se iniciaron worker, scheduler ni Tunnel.\n'
-printf 'Validaciones superadas. Puede activar ahora copiando y ejecutando:\n'
-printf 'sudo %q %q\n' \
-    "${release_dir}/deploy/oracle/scripts/activate-release.sh" \
-    "${release_id}"
+# BEGIN AUTOMATIC ACTIVATION
+if [[ "${defer_activation}" == 1 ]]; then
+    printf 'Preparacion comprobada; la activacion continuara desde el asistente PROD.\n'
+else
+    printf 'Preparacion y comprobaciones completadas. Activando la release automaticamente...\n'
+    exec "${release_dir}/deploy/oracle/scripts/activate-release.sh" "${release_id}"
+fi
+# END AUTOMATIC ACTIVATION

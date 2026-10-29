@@ -1,139 +1,153 @@
-PRODUCCION - SUBIR Y ACTIVAR EN https://labinvepn.org
-==================================================
-
-El flujo es como en DEV: transferir, preparar candidato, preparar release y
-activar. Se ejecutan archivos ya generados; no hay que crear scripts pegando
-bloques largos. Cada comando muestra el siguiente comando completo.
+PRODUCCION - DESPLEGAR EN https://labinvepn.org
+=============================================
 
 Paquete: __PACKAGE_ID__
-Commit: __GIT_COMMIT__
+Commit esperado: __GIT_COMMIT__
 VM PROD: ubuntu@150.136.219.112
+Clave de Cloud Shell: ~/equiframe/LP.key
+Respaldo y registros: /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod
 
-CORRECCION DEL FALSO ERROR DE NGINX VISTO EN DEV
-----------------------------------------------
-Use el archivo __PROD_SCRIPT__ actualizado de esta carpeta, aunque haya subido
-antes otro con el mismo nombre. El asistente consume completa la salida de
-Nginx y PHP-FPM durante la preparacion y activacion: evita el falso fallo por
-SIGPIPE de grep -Fq con pipefail. Conserva el rechazo de rutas incorrectas y
-de comandos fallidos, y todas las comprobaciones originales.
-No modifica el bundle, sus manifiestos, sus huellas ni los binarios del sistema.
-El .tar.gz sigue siendo el publicado; solo se actualizan el .sh y esta guia.
+Use solo estos DOS archivos de este mismo paquete:
+  __SOURCE_ARCHIVE__
+  __PROD_SCRIPT__
+El primero lleva AMBOS en su nombre; el segundo, PROD. No suba archivos DEV,
+su checksum ni su entorno a PROD. No se crea un comprimido cloudshell-upload
+adicional. El manual TXT y la base local de validacion tampoco van a la VM.
 
-Si llego a crear el asistente de la version anterior de esta guia, borre solo
-ese archivo dentro de la VM PROD con:
-
-rm -f -- "$HOME/hubdigital-prod-__PACKAGE_ID__.sh"
-
-Ese comando no borra respaldos. No se da por ejecutado ningun respaldo previo:
-el nuevo archivo lo crea automaticamente antes de preparar el candidato.
-
-PASO PROD 1 - TRANSFERIR DESDE OCI CLOUD SHELL
+PASO PROD 1 - ELEGIR LA RUTA DE TRANSFERENCIA
 -------------------------------------------
-En Cloud Shell > Menu > Upload suba estos DOS archivos de la carpeta del paquete:
+Ejecute solamente la alternativa que corresponde al destino elegido.
 
-__SOURCE_ARCHIVE__
-__PROD_SCRIPT__
+A. SI USO -Destino LP (COPIA DIRECTA DESDE WINDOWS)
 
-La clave privada de PROD debe estar en ~/equiframe-dw-a1-2026-09-30.key.
-Si falta, subala una vez. Es una clave diferente de la usada para DEV.
-Ejecute en Cloud Shell:
+crear-paquete-oci ya copio y verifico por SHA-256 los dos archivos en:
+  /home/ubuntu/TEMP-BORRAR/__PACKAGE_ID__
+No vuelva a subirlos ni a ejecutar el asistente desde Cloud Shell para copiarlos.
+La copia todavia no prepara ni activa la release.
 
+Para conectarse desde Cloud Shell:
+ssh -i ~/equiframe/LP.key -o IdentitiesOnly=yes ubuntu@150.136.219.112
+
+Ya DENTRO DE PROD, ejecute:
+cd /home/ubuntu/TEMP-BORRAR/__PACKAGE_ID__
+bash ./__PROD_SCRIPT__
+
+Continue con el PASO PROD 2. Los archivos se conservaran en TEMP-BORRAR hasta
+finalizar toda la activacion. La carpeta tambien se eliminara cuando corresponda.
+
+B. SI USO -Destino W (SUBIDA MANUAL POR CLOUD SHELL)
+
+Desde Windows, abra la carpeta artifacts/oci de ESTE paquete. En Cloud Shell >
+Menu > Upload suba solo __SOURCE_ARCHIVE__ y __PROD_SCRIPT__ al directorio ~.
+La clave autorizada ya debe existir en ~/equiframe/LP.key. No la suba otra vez
+por cada despliegue ni la mezcle con los archivos temporales.
+
+Ejecute en CLOUD SHELL:
+chmod 700 ~/equiframe
+chmod 600 ~/equiframe/LP.key
 cd ~
 bash ./__PROD_SCRIPT__
 
-Comprueba el SHA-256 y copia el bundle y el script a /tmp de PROD mediante SSH.
-La primera conexion puede pedir confirmar la huella SSH: compruebela contra la
-identidad registrada de la VM antes de aceptarla. No se transfiere ningun .env.
-Al terminar muestra este comando de conexion; ejecutelo:
+El asistente comprueba el SHA-256 esperado del bundle y transfiere los dos
+archivos a /tmp de PROD. Solo tras completar scp elimina sus copias de Cloud
+Shell. Conserva ~/equiframe y las claves. Si la copia falla, conserve los archivos
+y resuelva la transferencia; no vuelva a validar o crear el paquete.
+Si una primera conexion pide aceptar la huella SSH, compruebela contra la
+identidad conocida de PROD antes de continuar.
 
-ssh -i ~/equiframe-dw-a1-2026-09-30.key -o IdentitiesOnly=yes ubuntu@150.136.219.112
+Desde CLOUD SHELL, conectese a PROD:
+ssh -i ~/equiframe/LP.key -o IdentitiesOnly=yes ubuntu@150.136.219.112
 
-PASO PROD 2 - PREPARAR EL CANDIDATO EN LA VM
-------------------------------------------
-Dentro de la VM PROD ejecute, como hizo en DEV:
-
+Ya DENTRO DE PROD, ejecute:
 cd /tmp
 bash ./__PROD_SCRIPT__
 
-El script comprueba que esta en labinvepn.org y conserva su configuracion.
-Crea automaticamente el respaldo de codigo, entorno, PostgreSQL y servicios.
-Si ya existe un respaldo completo de este paquete, lo conserva y lo reutiliza.
-Construye el candidato Linux mediante los scripts oficiales del bundle.
-Todavia no aplica migraciones, no cambia current y no detiene el portal.
-Continue solo cuando diga "Candidato PROD preparado correctamente".
+PASO PROD 2 - ESPERAR EL CANDIDATO Y EL RESPALDO
+---------------------------------------------
+El comando ejecutado en la VM en el paso anterior comprueba el entorno de
+labinvepn.org. Conserva la configuracion, la base y los datos propios de PROD.
+Crea y verifica un respaldo de codigo, entorno, PostgreSQL y servicios; reutiliza
+un respaldo completo existente de este paquete sin borrarlo.
+Construye el candidato Linux con los scripts oficiales del bundle y comprueba
+su identidad. Esta etapa aun no aplica migraciones ni cambia current.
 
-PASO PROD 3 - PREPARAR LA RELEASE CON MIGRACIONES
+Continue solo cuando aparezca:
+  Candidato PROD preparado correctamente: ID
+
+No copie el ID de DEV: el ID correcto se calcula en esta VM. No reinstale
+bibliotecas por rutina ni mezcle codigo de otra release.
+
+PASO PROD 3 - PREPARAR Y ACTIVAR EN UNA SOLA ORDEN
 -----------------------------------------------
-Copie y ejecute el comando que aparece bajo
-"COPIE Y PEGUE EN ESTA VM (CON MIGRACIONES)". Para este paquete es:
+Copie el comando que imprime el asistente bajo:
+  COPIE Y PEGUE EN ESTA VM (CON MIGRACIONES)
 
+Para este paquete, DENTRO DE PROD, es:
 sudo bash /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh preparar
 
-Este paso entra en mantenimiento, detiene escritores y toma un respaldo fresco
-antes de las migraciones. Aplica APPLY_MIGRATIONS=1 con deploy-release.sh,
-conservando la base y los datos propios de PROD. Valida el candidato y deja la
-release en mantenimiento, igual que la preparacion realizada en DEV.
-Continue solo tras "Release PROD preparada en mantenimiento".
+Este comando entra en mantenimiento, detiene escritores y toma un respaldo
+fresco antes de aplicar las migraciones pendientes con APPLY_MIGRATIONS=1.
+Valida la preparacion y comprueba el estado aprobado. Si todo es correcto,
+encadena automaticamente la activacion de ESA MISMA release.
+No ejecute una segunda orden activar ni un paso adicional de completar.
+Si falla una comprobacion, se detiene; conserve la salida, los temporales y los
+respaldos. No cambie current ni fuerce permisos para saltarse la comprobacion.
 
-PASO PROD 4 - ACTIVAR PRODUCCION
--------------------------------
-Copie y ejecute el comando que aparece bajo
-"COPIE Y PEGUE EN ESTA VM PARA ACTIVAR PRODUCCION". Para este paquete es:
+PASO PROD 4 - COMPROBACION FINAL AUTOMATICA
+-----------------------------------------
+Continua dentro de la misma orden preparar. Verifica identidad e integridad,
+Java, PDF, asistente y las condiciones de activacion; completa el retorno a
+produccion con HUBDIGITAL_VALIDATION_MODE=false, caches, worker en la cola
+default y consumidor R2 segun la configuracion. Recupera el estado previo del
+scheduler; Cloudflare Tunnel permanece detenido.
+Comprueba las respuestas HTTP del portal y /depositos, y el commit de /version.
+Estas comprobaciones de aceptacion no repiten las suites locales del paquete.
 
-sudo bash /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh activar
+El exito de PROD se confirma solamente con:
+  PRODUCCION_COMPLETA_OK=ID
+  COMMIT_PUBLICO=__GIT_COMMIT__
 
-Ejecuta activate-release.sh y sus comprobaciones. En esa MISMA orden completa
-el retorno a produccion: HUBDIGITAL_VALIDATION_MODE=false, caches, worker en la
-cola default y consumidor R2 segun la configuracion. Recupera el estado previo
-del scheduler. No hace falta ejecutar un paso adicional de "completar".
+Revise https://labinvepn.org/version y confirme el commit indicado. Abra el
+portal, recargue con Ctrl+F5 y compruebe los cambios. Para pruebas de Codex,
+use Opera Neon QA con zoom inicial 75 %.
 
-El despliegue termina solamente cuando aparece:
+LIMPIEZA SEGUN LA RUTA ELEGIDA
+----------------------------
+- LP: despues de la aceptacion final se eliminan los dos archivos transferidos
+  y /home/ubuntu/TEMP-BORRAR/__PACKAGE_ID__. Se elimina tambien TEMP-BORRAR si
+  queda vacia; se conservan otros paquetes pendientes y todos los respaldos.
+  Si falla una etapa previa, no se eliminan estos temporales.
+- W: las copias de Cloud Shell ya se retiraron al completar scp. Solo DESPUES de
+  PRODUCCION_COMPLETA_OK, dentro de PROD puede retirar estas dos copias de /tmp:
+  rm -f -- /tmp/__SOURCE_ARCHIVE__ /tmp/__PROD_SCRIPT__
+  No borre /tmp completo ni /var/backups/hubdigital.
+- Las claves ~/equiframe/LD.key y ~/equiframe/LP.key se conservan siempre.
+- La release activa, la anterior valida y los respaldos no son temporales de
+  transferencia. No los borre al limpiar TEMP-BORRAR.
+- Si aparece una advertencia de limpieza despues del exito, la release ya esta
+  activa: revise solo esa limpieza, sin volver a preparar, activar ni empaquetar.
 
-PRODUCCION_COMPLETA_OK=ID
-COMMIT_PUBLICO=__GIT_COMMIT__
+REINTENTOS Y DIAGNOSTICO
+-----------------------
+Si falla solo la copia automatica LP, en Windows ejecute exactamente el comando
+de reintento de transferencia mostrado por crear-paquete-oci. Usa la carpeta
+temporal conservada y no repite pruebas, commit, push ni empaquetado.
 
-Revise https://labinvepn.org/version y luego el portal con Opera Neon QA,
-zoom inicial 75 %, y Ctrl+F5. El ID se calcula en la VM; no copie el ID de DEV.
+Ante un fallo dentro de PROD, conserve la salida y revise la etapa y sus logs:
+  /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/staging.log
+  /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/preparar.log
+  /var/log/nginx/error.log
+  /var/log/php8.4-fpm.log
+No repita staging si el candidato ya existe ni vuelva a ejecutar preparar si
+la release ya quedo activa. No restaure ni borre la base para reintentar.
 
-IMPORTANTE
-----------
-- Use el archivo __PROD_SCRIPT__ para PROD.
-  El archivo *-cloudshell-vm.sh del flujo DEV instala un entorno de DEV y no debe
-  ejecutarse en produccion.
-- El bundle publicado se conserva intacto: el nuevo .sh es el asistente externo
-  de transferencia y operacion, no modifica las fuentes identificadas del bundle.
-- Si falla un paso, detengase y conserve la salida. No ejecute el siguiente
-  comando, no borre respaldos ni cambie current manualmente.
-- Los registros y respaldos estan en:
-  /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod
-- Si los dos primeros pasos ya terminaron con una copia ANTERIOR del .sh y aun
-  NO ejecuto preparar, reenvie el .sh actualizado con --solo-script y, dentro
-  de PROD, actualice la copia operativa con este comando; despues siga el paso 3:
-  sudo install -o root -g root -m 0700 /tmp/__PROD_SCRIPT__ /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh
-  No repita staging ni fuerce sobrescrituras de una release.
-- Para reenviar solamente el nuevo .sh cuando el bundle ya esta en /tmp de PROD,
-  puede subir solo ese archivo a Cloud Shell y ejecutar:
-  bash ./__PROD_SCRIPT__ --solo-script
-- crear-paquete-oci genera estos archivos e instrucciones; no despliega en PROD.
+Solo para el fallo de permisos "Could not open input file: artisan" reconocido
+por el asistente, utilice la copia operativa conservada dentro de PROD:
+sudo bash /var/backups/hubdigital/deploy-__PACKAGE_ID__-prod/operar-produccion.sh reanudar
+Este modo exige sus comprobaciones especificas y conserva los respaldos y los
+datos. No es un reintento generico para otros errores.
 
-REANUDAR EL FALLO "Could not open input file: artisan"
-----------------------------------------------------
-Si la preparacion ya fallo con ese mensaje, no repita staging ni preparar.
-Descargue la version corregida de __PROD_SCRIPT__ y sustituya
-el archivo del mismo nombre mediante Upload en Cloud Shell. En Cloud Shell:
-
-cd ~
-bash ./__PROD_SCRIPT__ --solo-script
-
-Conectese a PROD con el comando SSH mostrado y ejecute dentro de la VM:
-
-sudo bash /tmp/__PROD_SCRIPT__ reanudar
-
-Esta orden confirma que el candidato fallo por permisos y que la release
-anterior sigue en mantenimiento. Conserva los respaldos, el candidato fallido
-y sus registros, reconstruye el bundle Linux con permisos de lectura correctos
-y vuelve a ejecutar TODA la preparacion oficial con un nuevo respaldo fresco.
-No modifica las fuentes del commit ni restaura o borra la base de datos.
-Solo cuando termine con "Release PROD preparada en mantenimiento", ejecute
-el comando activar que muestre. Si la comprobacion no coincide con este fallo,
-se detiene para diagnosticar; no fuerce cambios de permisos ni de current.
+Use siempre los archivos generados juntos por crear-paquete-oci. No sustituya
+el asistente por uno de otro paquete ni modifique el bundle, sus manifiestos o
+sus huellas. Crear/copiar el paquete no significa que PROD este desplegado:
+la preparacion y activacion comienzan con la orden manual del PASO PROD 3.

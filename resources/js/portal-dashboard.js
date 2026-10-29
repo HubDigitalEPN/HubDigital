@@ -1,3 +1,4 @@
+import {crearRegistrosInfinitos} from './portal-record-scroll.js';
 import L from 'leaflet';
 L.Map.addInitHook(function () {
     this.whenReady(() => {
@@ -10,8 +11,8 @@ L.Map.addInitHook(function () {
 import {exportarPdfPaneles} from './portal-dashboard-export.js';
 import {distribuirArbol} from './portal-tree-model.js';
 import {crearGeojsonMapa, prepararPuntosMapa, crearAgrupadorMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES} from './portal-map-model';
-import {colorFilo, composicionFilos, fondoFilos} from './portal-map-model';
-import {nombreDescargaImagen} from './portal-image-model';
+import {composicionFilos, colorCantidadRegistros} from './portal-map-model';
+import {crearVisorImagen} from './portal-image-model';
 import {crearHistorialCatalogo} from './portal-history-model';
 import {enlaceRecuperacionCatalogo, vigilarPeticionCatalogo} from './portal-request-model';
 
@@ -47,7 +48,7 @@ window.L = L;
 function agregarAgrupacionMapa(capa, mapa, grupo) {
     const boton = L.DomUtil.create('button', 'atlas-map-cluster-button');
     boton.type = 'button';
-    boton.style.background = fondoFilos(grupo.filos);
+    boton.style.background = colorCantidadRegistros(grupo.cantidad);
     const etiqueta = etiquetaAgrupacionMapa(grupo);
     boton.setAttribute('aria-label', etiqueta);
     boton.title = etiqueta;
@@ -196,69 +197,7 @@ const registrarDashboard = () => {
         destroy() { this.observador?.disconnect(); },
     }));
 
-    window.Alpine.data('portalRegistrosInfinitos', () => ({
-        observador: null, cuadro: null, alCambiar: null, alDesplazar: null, tabla: null,
-        solicitando: false, errorCarga: '',
-        init() {
-            this.alCambiar = () => {
-                cancelAnimationFrame(this.cuadro);
-                this.cuadro = requestAnimationFrame(() => this.ajustar());
-            };
-            this.alDesplazar = () => this.comprobarCarga();
-            this.observador = new ResizeObserver(this.alCambiar);
-            this.observador.observe(this.$el);
-            window.addEventListener('resize', this.alCambiar);
-            window.visualViewport?.addEventListener('resize', this.alCambiar);
-            this.$nextTick(() => {
-                this.tabla = this.$el.querySelector('.atlas-record-table-scroll');
-                this.tabla?.addEventListener('scroll', this.alDesplazar, { passive: true });
-                const contenido = this.tabla?.querySelector('table');
-                if (contenido) this.observador.observe(contenido);
-                this.alCambiar();
-            });
-        },
-        ajustar() {
-            if (!this.$el.isConnected) return;
-            const rect = this.$el.getBoundingClientRect();
-            const escala = rect.width / this.$el.clientWidth || 1;
-            this.$el.style.height = `${Math.max(0, ((window.visualViewport?.height || window.innerHeight) - rect.top - 12) / escala)}px`;
-            this.$el.classList.toggle('portal-records-compact', this.$el.clientHeight < 360);
-            this.comprobarCarga();
-        },
-        comprobarCarga() {
-            if (!this.tabla || this.tabla.clientHeight < 1 || this.errorCarga) return;
-            if (this.tabla.scrollHeight - this.tabla.scrollTop - this.tabla.clientHeight < 160) this.cargarMas();
-        },
-        async cargarMas() {
-            if (this.solicitando || !this.$el.isConnected || this.$el.dataset.hayMas !== 'true') return;
-            this.solicitando = true;
-            this.errorCarga = '';
-            const { seleccion, paginas } = this.$el.dataset;
-            const posicion = { top: this.tabla?.scrollTop || 0, left: this.tabla?.scrollLeft || 0 };
-            try {
-                await this.$wire.cargarMasRegistros(seleccion, Number(paginas));
-                await this.$nextTick();
-                // Livewire termina el pintado en el siguiente frame; mantener la carga
-                // bloqueada hasta entonces evita medir la tabla durante el morph.
-                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-                if (this.$el.isConnected && this.$el.dataset.seleccion === seleccion && this.tabla) {
-                    this.tabla.scrollTop = posicion.top;
-                    this.tabla.scrollLeft = posicion.left;
-                }
-            } catch {
-                this.errorCarga = 'No se pudieron cargar más registros. Pulsa Cargar más registros para reintentar.';
-            } finally {
-                this.solicitando = false;
-            }
-        },
-        destroy() {
-            cancelAnimationFrame(this.cuadro);
-            this.observador?.disconnect();
-            this.tabla?.removeEventListener('scroll', this.alDesplazar);
-            window.removeEventListener('resize', this.alCambiar);
-            window.visualViewport?.removeEventListener('resize', this.alCambiar);
-        },
-    }));
+    window.Alpine.data('portalRegistrosInfinitos', crearRegistrosInfinitos);
 
     window.Alpine.data('portalRegistros', (cantidad, ubicacion = false) => ({
         cantidad, ubicacion, observador: null, alCambiar: null, cuadro: null, solicitando: false, anchoMedido: 0, alturaFilaMaxima: 0,
@@ -394,26 +333,7 @@ const registrarDashboard = () => {
         },
     }));
 
-    window.Alpine.data('portalVisorImagen', () => ({
-        url: '',
-        alt: '',
-        filename: 'imagen',
-        atribuciones: {},
-        vista: '',
-        invocador: null,
-        abrir(datos) {
-            this.invocador = datos.invocador || document.activeElement;
-            this.url = datos.url;
-            this.alt = datos.alt || '';
-            this.filename = nombreDescargaImagen(datos.nombreArchivo);
-            this.atribuciones = datos.atribuciones || {};
-            this.vista = datos.vista || this.atribuciones.view || '';
-            if (!this.$el.open) this.$el.showModal();
-            this.$nextTick(() => this.$refs.cerrar.focus({preventScroll: true}));
-        },
-        cerrar() { this.$el.close(); },
-        restaurarFoco() { this.invocador?.focus({preventScroll: true}); },
-    }));
+    window.Alpine.data('portalVisorImagen', crearVisorImagen);
 
     window.Alpine.data('portalPanel', (tipo, titulo, datos) => ({
         abierto: false,
@@ -469,7 +389,7 @@ const registrarDashboard = () => {
                     mapa.fitBounds(L.latLngBounds(ubicaciones.map(({lat, lon}) => [lat, lon])), {padding: [24, 24], maxZoom: 10});
                     for (const {lat, lon, cantidad, radio} of ubicaciones) {
                         const marcador = new CirculoCoordenadaOriginal([lat, lon], {
-                            radius: radio, color: '#0e4975', weight: 1, fillColor: '#17699b', fillOpacity: .8,
+                            radius: radio, color: colorCantidadRegistros(cantidad), weight: 1, fillColor: colorCantidadRegistros(cantidad), fillOpacity: .8,
                         }).addTo(mapa);
                         const popup = L.DomUtil.create('div');
                         const nombre = L.DomUtil.create('p', '', popup);
@@ -731,7 +651,7 @@ const registrarDashboard = () => {
                 }).addTo(capa) : new CirculoCoordenadaOriginal([lat, lon], {
                     pane: 'registros',
                     radius: radio,
-                    color: colorFilo(partes[0]?.filo), weight: 1, fillColor: colorFilo(partes[0]?.filo), fillOpacity: .85,
+                    color: colorCantidadRegistros(cantidad), weight: 1, fillColor: colorCantidadRegistros(cantidad), fillOpacity: .85,
                 }).addTo(capa);
                 const elemento = marcador.getElement();
                 const acceso = this.$el.querySelector('[data-acceso-registros]')?.dataset.accesoRegistros==='true';
@@ -744,7 +664,7 @@ const registrarDashboard = () => {
                 marcador.on('mouseover', () => this.mostrarAyudaMapa(descripcion, elemento));
                 marcador.on('mouseout', () => this.ocultarAyudaMapa());
                 if (elemento) {
-                    if (compartida || partes.length > 1) elemento.style.background = fondoFilos(nodo.filos);
+                    if (compartida || partes.length > 1) elemento.style.background = colorCantidadRegistros(cantidad);
                     elemento.setAttribute('tabindex', '0');
                     elemento.setAttribute('role', 'button');
                     elemento.setAttribute('aria-label', descripcion);

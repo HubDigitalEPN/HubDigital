@@ -12,6 +12,14 @@ export function radioRegistros(cantidad) {
     return Math.min(17, 4 + Math.sqrt(Number.isFinite(total) && total > 0 ? total : 0) * .7);
 }
 
+/** Escala continua por registros, estable al acercar y filtrar el mapa. */
+export function colorCantidadRegistros(cantidad) {
+    const valor = Number(cantidad);
+    const proporcion = Math.min(1, Math.max(0, Math.log10(Number.isFinite(valor) ? Math.max(1, valor) : 1) / 3));
+    const inicio = [255, 230, 0], fin = [215, 25, 28];
+    return '#' + inicio.map((v, i) => Math.round(v + (fin[i] - v) * proporcion).toString(16).padStart(2, '0')).join('');
+}
+
 export const COLORES_FILOS = Object.freeze({
     Arthropoda: '#17699b', Mollusca: '#d17d28', Annelida: '#568c59',
     Nematoda: '#8c62a5', Nematomorpha: '#b94e6b',

@@ -3,7 +3,28 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 import observer from '../../scripts/deployment/progreso-pruebas-php.cjs';
+
+test('dos rutas seleccionadas usan una configuracion exacta que Pest interpreta sin ampliar los casos', () => {
+    const root=path.resolve(new URL('../..',import.meta.url).pathname.replace(/^\/([A-Za-z]:)/,'$1'));
+    const directory=mkdtempSync(path.join(tmpdir(),'hub-pest-selection-'));
+    try {
+        const files=['tests/Unit/RolMembresiaTest.php','tests/Unit/TextoOficioTest.php'];
+        const invocation=observer.pestArguments(2,directory,files,root);
+        const config=invocation.args.find(arg=>arg.startsWith('--configuration=')).slice('--configuration='.length);
+        const xml=readFileSync(config,'utf8');
+        assert.equal((xml.match(/<file>/g)||[]).length,2);
+        assert.ok(!invocation.args.some(arg=>files.includes(arg)));
+        assert.match(xml,/<env name="APP_ENV" value="testing"/);
+        assert.ok(xml.includes('bootstrap="'+path.join(root,'tests','bootstrap.php')+'"'));
+        const result=spawnSync('php.exe',['vendor/bin/pest','--configuration',config,'--list-tests','--colors=never'],{cwd:root,encoding:'utf8',windowsHide:true,timeout:15000});
+        assert.equal(result.status,0,result.stdout+result.stderr);
+        assert.match(result.stdout,/tieneRol_detecta/);
+        assert.match(result.stdout,/conserva_nombres_propios/);
+        assert.doesNotMatch(result.stdout,/PortalCartografiaRealTest|AdminInteractiveGridTest/);
+    } finally { assert.equal(path.dirname(directory),path.resolve(tmpdir()));assert.ok(path.basename(directory).startsWith('hub-pest-selection-'));rmSync(directory,{recursive:true,force:true}); }
+});
 
 const escape = value => String(value).replaceAll('|', '||').replaceAll("'", "|'")
     .replaceAll('\n', '|n').replaceAll('\r', '|r').replaceAll('[', '|[').replaceAll(']', '|]');

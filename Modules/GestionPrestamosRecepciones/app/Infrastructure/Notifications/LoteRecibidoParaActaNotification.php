@@ -14,7 +14,7 @@ use NotificationChannels\WebPush\WebPushMessage;
 /** Alerta accionable para que curaduría genere y firme el acta final. */
 final class LoteRecibidoParaActaNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use \App\Notifications\CanalesCampana;
 
     /** La cola solo recibe el aviso después de confirmar la constatación física. */
     public function __construct(
@@ -32,17 +32,7 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
     /** @return list<string> */
     public function via(object $notifiable): array
     {
-        $channels = ['mail', 'database'];
-
-        if (filled(config('webpush.vapid.subject'))
-            && filled(config('webpush.vapid.public_key'))
-            && filled(config('webpush.vapid.private_key'))
-            && method_exists($notifiable, 'pushSubscriptions')
-            && $notifiable->pushSubscriptions()->exists()) {
-            $channels[] = WebPushChannel::class;
-        }
-
-        return $channels;
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -79,19 +69,7 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
 
     public function toWebPush(object $notifiable): WebPushMessage
     {
-        // El contenido visible en la pantalla bloqueada es deliberadamente
-        // genérico; el detalle sensible permanece tras autenticación.
-        return (new WebPushMessage)
-            ->title('Acción pendiente en HubDigital')
-            ->body('Un depósito recibido requiere revisión curatorial y firma del acta.')
-            ->icon('/images/hub-icon.png')
-            ->badge('/images/hub-icon.png')
-            ->tag($this->eventoId())
-            ->data([
-                'notificationId' => $this->eventoId(),
-                'url' => route('prestamos.curador.deposito.acta', $this->solicitudId),
-            ])
-            ->options(['TTL' => 86400, 'urgency' => 'high']);
+        return $this->mensajeWebPushCampana($notifiable);
     }
 
     private function eventoId(): string

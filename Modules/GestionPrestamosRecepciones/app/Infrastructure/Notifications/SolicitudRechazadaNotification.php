@@ -14,8 +14,9 @@ use NotificationChannels\WebPush\WebPushMessage;
  * corrección o rechazo permanente), incluyendo el comentario del curador. Se envía
  * por correo y por el portal (campana).
  */
-final class SolicitudRechazadaNotification extends Notification
+final class SolicitudRechazadaNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -27,17 +28,7 @@ final class SolicitudRechazadaNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        $channels = ['mail', 'database'];
-
-        if (filled(config('webpush.vapid.subject'))
-            && filled(config('webpush.vapid.public_key'))
-            && filled(config('webpush.vapid.private_key'))
-            && method_exists($notifiable, 'pushSubscriptions')
-            && $notifiable->pushSubscriptions()->exists()) {
-            $channels[] = WebPushChannel::class;
-        }
-
-        return $channels;
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -68,17 +59,7 @@ final class SolicitudRechazadaNotification extends Notification
 
     public function toWebPush(object $notifiable): WebPushMessage
     {
-        return (new WebPushMessage)
-            ->title('Actualización pendiente en HubDigital')
-            ->body('Una solicitud requiere correcciones antes de continuar.')
-            ->icon('/images/hub-icon.png')
-            ->badge('/images/hub-icon.png')
-            ->tag($this->eventoId())
-            ->data([
-                'notificationId' => $this->eventoId(),
-                'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
-            ])
-            ->options(['TTL' => 86400, 'urgency' => 'high']);
+        return $this->mensajeWebPushCampana($notifiable);
     }
 
     private function eventoId(): string

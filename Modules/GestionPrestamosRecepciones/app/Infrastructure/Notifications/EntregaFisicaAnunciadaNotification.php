@@ -7,8 +7,9 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Notifications;
 use Illuminate\Notifications\Notification;
 
 /** Aviso interno de que un consultor anunció una entrega física aprobada. */
-final class EntregaFisicaAnunciadaNotification extends Notification
+final class EntregaFisicaAnunciadaNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         private readonly string $solicitudId,
         private readonly ?string $numero,
@@ -18,7 +19,7 @@ final class EntregaFisicaAnunciadaNotification extends Notification
     /** @return list<string> */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return $this->canalesCampana($notifiable);
     }
 
     /** @return array<string, mixed> */

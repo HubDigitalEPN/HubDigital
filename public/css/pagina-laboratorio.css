@@ -1,0 +1,95 @@
+.lab-page { color: #0a1a11; background: #fff; font-family: Inter, Arial, sans-serif; }
+.lab-introduction { padding: 3rem 4.3%; max-width: 100rem; margin: auto; }
+.lab-introduction h1 { font: 700 2.25rem/1.2 Inter,Arial,sans-serif; margin: 0 0 1.25rem; color: #0a1a11; }
+.lab-introduction p { font-size: 1.1rem; line-height: 1.75; color: #505855; margin: 0; white-space: pre-line; }
+.lab-personal { width: 100%; padding-bottom: 1.58cqw; container-type: inline-size; }
+.lab-photo { display: block; width: 100%; height: 100%; object-fit: cover; overflow: hidden; }
+.lab-personal-hero { position: relative; min-height: 13.55cqw; }
+.lab-personal-heading { position: relative; z-index: 1; padding: 3.1cqw 0 0 4.3cqw; width: 43%; }
+.lab-rule { display: block; width: 2.6cqw; height: 1px; background: #a3b2a6; }
+.lab-personal-heading > .lab-rule { width: 3.65cqw; background: #506c58; height: 2px; }
+.lab-personal-heading h2 { font: 400 4.8cqw/1.15 Inter,Arial,sans-serif; letter-spacing: -.035em; white-space: nowrap; margin: 1.3cqw 0 .45cqw; }
+.lab-personal-heading h2 strong { font-weight: 800; }
+.lab-personal-heading > p { color: #565d59; font-size: 1.3cqw; line-height: 1.2; margin: 0; max-width: 37cqw; }
+.lab-personal-banner { position: absolute; top: 0; right: 0; width: 56.8%; height: 13.55cqw; clip-path: polygon(8.4% 0,100% 0,100% 100%,0 100%); }
+.lab-staff-grid { display: grid; grid-template-columns: 44.55% 53.45%; gap: 2%; margin: 2.95cqw 4.3cqw 2.6cqw; }
+.lab-staff-grid h3, .lab-volunteers h3 { font-family: Inter,Arial,sans-serif; font-weight: 700; color: #0a1a11; margin: 0; }
+.lab-curador { display: grid; grid-template-columns: 56% 40%; gap: 4%; padding-right: 4%; border-right: 1px solid #e0e5df; }
+.lab-curador-portrait { min-height: 31.78cqw; }
+.lab-curador-info { display: flex; flex-direction: column; align-items: flex-start; padding-top: 1.9cqw; min-width: 0; }
+.lab-curador h3 { font-size: 1.95cqw; line-height: 1.15; }
+.lab-role { margin: .2cqw 0 0; font-weight: 600; color: #526f5a; }
+.lab-curador .lab-role { font-size: 1.5cqw; line-height: 1.3; }
+.lab-adrian-bio { color: #565d59; font-size: 1.25cqw; line-height: 1.3; margin: .55cqw 0 1.7cqw; }
+.lab-adrian-specialty { color: #565d59; font-size: 1.3cqw; line-height: 1.27; margin: 1.55cqw 0 1cqw; }
+.lab-ant { margin-top: auto; height: 10.85cqw; }
+.lab-vladimir-top { display: grid; grid-template-columns: 55% 42%; gap: 3%; min-height: 10.75cqw; }
+.lab-vladimir-top > .lab-photo { height: 9.9cqw; }
+.lab-vladimir h3 { font-size: 1.8cqw; line-height: 1.1; }
+.lab-vladimir .lab-role { font-size: 1.25cqw; line-height: 1.35; }
+.lab-vladimir .lab-rule { margin: .9cqw 0 .85cqw; }
+.lab-vladimir-bio { color: #565d59; font-size: 1.25cqw; line-height: 1.18; margin: 0; }
+.lab-invertebrates { display: grid; grid-template-columns: 42.6% 26.5% 27.5%; gap: 1.7%; height: 6.3cqw; align-items: end; }
+.lab-invertebrates .lab-photo:not(:first-child) { height: 5.1cqw; }
+.lab-david { display: grid; grid-template-columns: 37.1% 60.4%; gap: 2.5%; margin-top: 1.9cqw; }
+.lab-field-portrait { height: 12.25cqw; }
+.lab-david-info { padding-top: .55cqw; }
+.lab-ground-beetle { float: right; width: 39.4%; height: 9.6cqw; margin: -.55cqw 0 .35cqw 1.6cqw; }
+.lab-david h3 { font-size: 1.8cqw; line-height: 1.15; }
+.lab-david .lab-role { font-size: 1.25cqw; line-height: 1.3; }
+.lab-david .lab-rule { margin: .85cqw 0 .75cqw; }
+.lab-david-bio { font-size: 1.17cqw; line-height: 1.3; color: #565d59; margin: 0; }
+.lab-volunteers { position: relative; display: grid; grid-template-columns: 33.4fr 22fr; padding: 1.7cqw 0 1.7cqw 44.6%; min-height: 10.15cqw; background: #dfe2d8; }
+.lab-volunteers-photo { position: absolute; left: 0; top: 0; width: 43.2%; height: 100%; mask-image: linear-gradient(to right,#000 75%,transparent); }
+.lab-volunteers-info { align-self: center; padding-right: 2.7cqw; }
+.lab-volunteers-info h3 { font-size: 1.55cqw; line-height: 1.3; }
+.lab-volunteers .lab-rule { margin: 1cqw 0 .85cqw; background: #56715a; }
+.lab-volunteers-info p { color: #555f56; font-size: .9cqw; line-height: 1.45; margin: 0; }
+.lab-contact { border-left: 1px solid #aeb9a9; display: flex; flex-direction: column; justify-content: center; text-align: center; padding: .6cqw 1.8cqw; }
+.lab-contact h3 { font-size: 1.3cqw; line-height: 1.4; }
+.lab-contact a { color: #566157; font-size: 1.25cqw; line-height: 1.5; text-decoration: none; }
+.lab-contact a:hover { text-decoration: underline; }
+.lab-admin-photos { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 1rem; }
+.lab-admin-preview { height: 150px; margin: .75rem 0; background: #f2f5f3; }
+.lab-admin-field { display: grid; gap: .4rem; font-size: .9rem; font-weight: 600; }
+.lab-admin-field input, .lab-admin-field textarea { border: 1px solid var(--color-border,#ccd9e4); border-radius: .3rem; padding: .6rem; background: var(--color-surface,#fff); color: var(--color-text-primary,#142a1c); font-weight: 400; width: 100%; }
+@media(max-width: 760px) {
+    .lab-introduction { padding: 2rem 5%; }
+    .lab-introduction h1 { font-size: 1.8rem; }
+    .lab-introduction p { font-size: 1rem; line-height: 1.65; }
+    .lab-personal { padding-bottom: 1.5rem; }
+    .lab-personal-hero { display: flex; flex-direction: column; }
+    .lab-personal-heading { width: 100%; padding: 1.4rem 5%; }
+    .lab-personal-heading h2 { font-size: clamp(2rem,7.5cqw,3.6rem); margin: .9rem 0 .6rem; white-space: normal; }
+    .lab-personal-heading > p { font-size: 1rem; line-height: 1.4; max-width: 100%; }
+    .lab-personal-heading > .lab-rule { width: 3rem; }
+    .lab-personal-banner { position: static; width: 100%; height: 24cqw; clip-path: polygon(7% 0,100% 0,100% 100%,0 100%); }
+    .lab-staff-grid { display: block; margin: 1.7rem 5%; }
+    .lab-curador { border: 0; padding: 0; grid-template-columns: 53% 43%; }
+    .lab-curador-portrait { min-height: 62cqw; }
+    .lab-curador-info { padding-top: .5rem; }
+    .lab-staff-grid h3 { font-size: 1.25rem; }
+    .lab-staff-grid .lab-role { font-size: 1rem; margin-top: .2rem; }
+    .lab-staff-grid p:not(.lab-role) { font-size: .95rem; line-height: 1.4; }
+    .lab-rule { width: 2.5rem; }
+    .lab-adrian-bio { margin: .7rem 0 1rem; }
+    .lab-adrian-specialty { margin: 1rem 0; }
+    .lab-ant { height: 26cqw; }
+    .lab-right-column { margin-top: 1.8rem; }
+    .lab-vladimir-top { min-height: 0; grid-template-columns: 53% 43%; }
+    .lab-vladimir-top > .lab-photo { height: 32cqw; }
+    .lab-vladimir .lab-rule { margin: .8rem 0; }
+    .lab-invertebrates { margin-top: 1rem; height: 15cqw; }
+    .lab-invertebrates .lab-photo:not(:first-child) { height: 12cqw; }
+    .lab-david { margin-top: 1.6rem; grid-template-columns: 40% 57.5%; }
+    .lab-field-portrait { height: 40cqw; }
+    .lab-david .lab-rule { margin: .8rem 0; }
+    .lab-ground-beetle { width: 38%; height: 19cqw; margin-left: .7rem; }
+    .lab-volunteers { display: block; padding: 2rem 5%; }
+    .lab-volunteers-photo { position: static; width: calc(100% + 11%); height: 27cqw; margin: -2rem -5.5% 1.5rem; mask-image: none; }
+    .lab-volunteers-info { padding: 0; }
+    .lab-volunteers h3 { font-size: 1.3rem; }
+    .lab-volunteers p, .lab-contact a { font-size: 1rem; }
+    .lab-volunteers .lab-rule { margin: .8rem 0; }
+    .lab-contact { border-left: 0; border-top: 1px solid #aeb9a9; margin-top: 1.5rem; padding: 1.3rem 0 0; }
+}

@@ -32,15 +32,14 @@ self.addEventListener('push', (event) => {
     const payload = readPushPayload(event.data);
     const notificationId = payload.notificationId ?? payload.data?.notificationId ?? payload.id ?? null;
     event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-        // Con una sesión abierta la campana durable entrega el aviso inferior;
-        // así no se duplica una alerta nativa por el mismo evento.
+        // La campana conserva el aviso durable y el sistema muestra el push
+        // nativo tanto dentro como fuera del portal.
         const curadorActivo = windows.find((client) => client.focused
             && client.visibilityState === 'visible'
             && new URL(client.url).origin === self.location.origin
             && /^\/(curador|prestamos|dashboard)(?:\/|$)/.test(new URL(client.url).pathname));
         if (curadorActivo) {
             curadorActivo.postMessage({ type: 'hubdigital-push-pendiente', notificationId });
-            return undefined;
         }
 
         return self.registration.showNotification(payload.title ?? 'HubDigital', {
@@ -49,7 +48,7 @@ self.addEventListener('push', (event) => {
             badge: payload.badge ?? '/images/hub-icon.png',
             tag: payload.tag ?? (notificationId ? `hubdigital-${notificationId}` : 'hubdigital'),
             renotify: false,
-            actions: payload.actions ?? [{ action: 'open', title: 'Abrir expediente' }],
+            actions: [],
             data: { notificationId, url: payload.data?.url ?? payload.url ?? '/dashboard' },
         });
     }));

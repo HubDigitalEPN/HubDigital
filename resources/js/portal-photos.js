@@ -57,7 +57,7 @@ export function crearEstadoFotografias(taxon, fotosLocales = [], limite = 4, opc
                     observador?.disconnect();
                     observador = null;
                     this.cargar();
-                });
+                }, {rootMargin: '300px 0px'});
                 observador.observe(this.$el);
             } else { this.cargar(); }
         },
@@ -137,7 +137,9 @@ export function crearFotografiaTarjeta(taxon, fotosLocales = []) {
         fallo: false,
         get fotografia() {
             const foto = this.fotos[0];
-            return foto ? {...foto, url: referenciaWebp(foto.url) || foto.url} : null;
+            // La miniatura pública ya tiene tamaño medium. La ruta WebP queda
+            // como alternativa; mostrarla primero evita descargar/convertir en PHP.
+            return foto ? {...foto, urlRapida: foto.url, url: referenciaWebp(foto.url) || foto.url} : null;
         },
     };
 }

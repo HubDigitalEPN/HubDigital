@@ -115,14 +115,20 @@ function inputs({root, sources, contents, environment, runtime, dependencies = {
     }
     return Object.fromEntries(ids.map(id => [id, {values: result[id], sha256: hash(result[id])}]));
 }
-function select({root, entries, current, force = false, now = Date.now()}) {
+function select({root, entries, current, force = false, onlyCases, now = Date.now()}) {
     const ejecutar = [], reutilizar = [], motivos = {}, evidencia = {};
     for (const id of ids) {
         const previous = entries?.[id];
+        if (!force && onlyCases && !onlyCases.includes(id)) {
+            reutilizar.push(id);
+            motivos[id] = 'Fuera del cambio seleccionado; se conserva la aprobacion historica sin renovar su fecha.';
+            if (previous) evidencia[id] = {approved_at: previous.approved_at, input_sha256: previous.input_sha256, provenance: previous.provenance};
+            continue;
+        }
         let reason = '';
         if (force) reason = 'Integral solicitado: se comprueba de nuevo este caso.';
         else if (!previous || previous.root !== root || previous.status !== 'passed') reason = 'No existe base aprobada propia de este caso.';
-        else if (!Number.isFinite(Date.parse(previous.approved_at)) || now - Date.parse(previous.approved_at) > days * 86400000 || now < Date.parse(previous.approved_at) - 60000) reason = 'La evidencia del caso venció o tiene fecha inválida.';
+        else if (!Number.isFinite(Date.parse(previous.approved_at)) || (!onlyCases && now - Date.parse(previous.approved_at) > days * 86400000) || now < Date.parse(previous.approved_at) - 60000) reason = 'La evidencia del caso venció o tiene fecha inválida.';
         else if (String(current[id].values.entorno).startsWith('incompleto:')) reason = 'El entorno no pudo identificarse completamente.';
         else if (previous.input_sha256 !== current[id].sha256) {
             const changes = [...new Set([...Object.keys(previous.inputs || {}), ...Object.keys(current[id].values)])].filter(key => previous.inputs?.[key] !== current[id].values[key]);
@@ -133,7 +139,7 @@ function select({root, entries, current, force = false, now = Date.now()}) {
         if (reason) ejecutar.push(id);
         else { reutilizar.push(id); evidencia[id] = {approved_at: previous.approved_at, input_sha256: previous.input_sha256, provenance: previous.provenance}; }
     }
-    return {version: 1, root, ejecutar, reutilizar, motivos, evidencia, inputs: current};
+    return {version: 1, root, ejecutar, reutilizar, motivos, evidencia, inputs: current, ...(onlyCases ? {only_cases: onlyCases} : {})};
 }
 // Conservación verificable de TODAS las aserciones, incluidas las de helpers.
 function assertionStatements(text) {
@@ -188,7 +194,7 @@ function migration({origin, root, current, runner, fixtureHash, layout, now = Da
     }
     return migrated;
 }
-function loadPlan({root, sources, environment, runtime, dependencies, force = false, now = Date.now()}) {
+function loadPlan({root, sources, environment, runtime, dependencies, force = false, onlyCases, now = Date.now()}) {
     const directory = path.join(root, '.local/validation'), filename = path.join(directory, 'base-navegador.json');
     const base = read(filename), entries = base?.version === 1 && base.root === root ? {...base.cases} : {};
     const current = inputs({root, sources, environment, runtime, dependencies});
@@ -200,10 +206,10 @@ function loadPlan({root, sources, environment, runtime, dependencies, force = fa
         Object.assign(entries, migrated);
         if (Object.keys(migrated).length) write(filename, {version: 1, root, cases: entries});
     }
-    return select({root, entries, current, force, now});
+    return select({root, entries, current, force, onlyCases, now});
 }
 function verify(root, plan, state) {
-    const fresh = loadPlan({...state, root});
+    const fresh = loadPlan({...state, root, ...(plan.only_cases ? {onlyCases: plan.only_cases, dependencies: {}} : {})});
     if (plan.root !== root || ids.some(id => plan.inputs[id].sha256 !== fresh.inputs[id].sha256)) throw new Error('Cambió una entrada del navegador después de seleccionar los casos.');
     for (const id of plan.reutilizar) if (!fresh.reutilizar.includes(id) || JSON.stringify(fresh.evidencia[id]) !== JSON.stringify(plan.evidencia[id])) throw new Error(`La evidencia reutilizada de ${id} cambió o venció.`);
 }

@@ -439,6 +439,22 @@
 /* Las fichas se adaptan al espacio disponible entre ambos filtros y el rail. */
 .collection-species-layout { display:block; width:100%; min-width:0; }
 .collection-species-content, .collection-specimen-list { width:100%; min-width:0; }
+.collection-species-summary { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:1.5rem; align-items:start; }
+.collection-species-summary-photo, .collection-species-summary-text { min-width:0; }
+.collection-species-cover { width:100%; }
+.collection-species-cover-image { height:clamp(14rem,28vw,24rem); }
+.collection-species-cover-image img { object-fit:contain; }
+.collection-species-cover > span { display:block; padding:.55rem .7rem; font-size:.8rem; }
+.collection-species-summary-text { padding:1rem 1.2rem; border:1px solid #dce5ec; border-radius:.5rem; background:#fff; }
+.collection-species-summary-text h3 { margin:0 0 .6rem; font:700 1rem Georgia,serif; }
+.collection-species-summary-text > p { margin:0 0 1rem; color:#506b80; font-size:.85rem; }
+.collection-species-summary-text > dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem 1rem; margin:0 0 1rem; }
+.collection-species-summary-text > dl dt { font-size:.75rem; font-weight:600; color:#506b80; }
+.collection-species-summary-text > dl dd { margin:0; font-size:.85rem; overflow-wrap:anywhere; }
+.collection-species-summary-text > button { padding:.6rem .8rem; color:#155d91; border:1px solid #b4cad9; border-radius:.3rem; font-size:.8rem; }
+.collection-species-summary .collection-taxonomic-representation { max-width:none; margin-bottom:0; }
+.collection-species-summary .collection-representation-lineage { display:none; }
+@media(max-width:760px) { .collection-species-summary { grid-template-columns:minmax(0,1fr); gap:.8rem; } }
 .collection-species-map { position:relative; isolation:isolate; }
 @media(min-width:1024px) {
   .collection-species-layout { display:flex; gap:2rem; }
@@ -446,12 +462,16 @@
 }
 .collection-specimen-card { width:100%; box-sizing:border-box; container-type:inline-size; min-width:0; overflow-wrap:anywhere; }
 .collection-specimen-thumbnail { display:none; border-radius:.4rem 0 0 .4rem; }
+.collection-specimen-overview { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; }
+.collection-specimen-overview .collection-specimen-thumbnail { width:100%; height:auto; min-height:10rem; aspect-ratio:4 / 3; }
+.collection-specimen-thumbnail img { object-fit:contain; max-height:26rem; }
 .collection-specimen-metadata { display:grid; grid-template-columns:minmax(0,1fr); gap:.7rem 1.25rem; }
 .collection-specimen-metadata > div { display:block; min-width:0; }
 .collection-specimen-metadata dt { width:auto; margin:0 0 .2rem; font-weight:600; }
 .collection-specimen-metadata dd { margin:0; min-width:0; overflow-wrap:anywhere; white-space:normal; }
 .collection-specimen-metadata .font-mono { font-size:.73rem; }
 @container (min-width:36rem) {
+  .collection-specimen-overview { grid-template-columns:minmax(14rem,35%) minmax(0,1fr); }
   .collection-specimen-card .collection-specimen-thumbnail { display:flex; }
   .collection-specimen-metadata { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
@@ -491,15 +511,27 @@
 .collection-table-hint { display:none; margin:0 0 .75rem; color:#506b80; font-size:.8rem; line-height:1.5; }
 .collection-table-scroll:focus-visible { outline:2px solid #17699b; outline-offset:-2px; }
 @media(max-width:900px) { .collection-table-hint { display:block; } }
-.collection-image-dialog { width:min(72rem,96vw); max-width:96vw; max-height:92dvh; margin:auto; padding:1rem; border:1px solid #b4cad9; border-radius:.6rem; background:#fff; color:#18354d; overflow:auto; overscroll-behavior:contain; }
-.collection-image-dialog[open] { display:flex; flex-direction:column; gap:.75rem; }
+.collection-image-dialog { width:min(88rem,96vw); max-width:96vw; height:min(52rem,94dvh); max-height:94dvh; margin:auto; padding:1rem; border:1px solid #b4cad9; border-radius:.6rem; background:#fff; color:#18354d; overflow:hidden; overscroll-behavior:contain; }
+.collection-image-dialog[open] { display:grid; grid-template-columns:minmax(0,1fr) minmax(15rem,23%); grid-template-rows:auto auto minmax(0,1fr); gap:.75rem 1.25rem; }
 .collection-image-dialog::backdrop { background:#102d48db; }
-.collection-image-dialog header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
+.collection-image-dialog header { display:flex; align-items:center; justify-content:space-between; gap:.75rem; grid-column:1 / -1; }
 .collection-image-dialog h2 { margin:0; font:700 1.05rem Georgia,serif; }
 .collection-image-dialog header > div { display:flex; flex:none; align-items:center; gap:.5rem; }
 .collection-image-dialog header a, .collection-image-dialog header button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-height:2.5rem; border:1px solid #b4cad9; border-radius:.3rem; padding:.45rem .65rem; background:#f3f7fa; color:#155d91; font-size:.8rem; }
 .collection-image-dialog header a:focus-visible, .collection-image-dialog header button:focus-visible { outline:2px solid #17699b; outline-offset:2px; }
-.collection-image-dialog > img { align-self:center; display:block; flex:none; min-height:0; max-width:100%; max-height:62dvh; object-fit:contain; }
+.collection-image-dialog > img { display:block; min-height:0; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; grid-column:1; grid-row:3; }
+.collection-image-dialog > .photo-attributions { grid-column:2; grid-row:2 / 4; min-height:0; overflow:auto; align-self:start; max-height:100%; padding:.5rem; }
+.collection-image-dialog .photo-attributions dl > div { display:block; margin-bottom:.85rem; }
+.collection-image-dialog .photo-attributions dt { margin-bottom:.2rem; }
+.collection-image-dialog .photo-attributions dd { white-space:normal; overflow-wrap:anywhere; }
+@media(max-width:640px) {
+  .collection-image-dialog[open] { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(8rem,1fr) auto; gap:.4rem; padding:.7rem; }
+  .collection-image-dialog > .photo-attributions { grid-column:1; grid-row:4; overflow:visible; padding:.25rem; }
+  .collection-image-dialog .photo-attributions h3 { font-size:.75rem; margin-bottom:.3rem; }
+  .collection-image-dialog .photo-attributions dl { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.3rem .65rem; font-size:.65rem; }
+  .collection-image-dialog .photo-attributions dl > div { margin:0; }
+  .collection-image-dialog .photo-attributions dl > div:last-child { grid-column:1 / -1; }
+}
 .collection-image-dialog > p { margin:0; text-align:center; font-size:.8rem; overflow-wrap:anywhere; }
 .collection-image-dialog > .collection-photo-view { text-align:left; justify-self:start; font-weight:700; }
 .collection-card-pagination { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:1rem; margin:0 0 1.5rem; font-size:.8rem; color:#506b80; }

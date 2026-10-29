@@ -11,8 +11,9 @@ use Illuminate\Notifications\Notification;
  * Notifica al depositante que EPN constató el lote con observaciones que curaduría
  * incorporará después al acta final.
  */
-final class RecepcionConObservacionesNotification extends Notification
+final class RecepcionConObservacionesNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     /**
      * @param  list<string>  $observaciones
      */
@@ -27,7 +28,7 @@ final class RecepcionConObservacionesNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

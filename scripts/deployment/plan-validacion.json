@@ -2,10 +2,10 @@
   "version": 3,
   "unidad": "familias de control; no porcentaje de tiempo ni de casos individuales",
   "impacto": {
-    "version": 1,
-    "base_max_dias": 7,
-    "max_archivos_selectivos": 20,
-    "max_areas_selectivas": 2,
+    "version": 2,
+    "seleccion_paquete": "solo-cambio",
+    "base_caduca_por_fecha": false,
+    "integral_solo_explicito": true,
     "modulos": {"portal": "CatalogoPublico", "inventario": "InventarioGestionColeccion", "depositos": "GestionPrestamosRecepciones"}
   },
   "controles": [

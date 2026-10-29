@@ -250,8 +250,10 @@ test('la ayuda del mapa de esta selección conserva exactamente la consulta de l
     $seleccion = ['ft' => 'Formicidae', 'nivel' => 'species', 'taxon' => 'Neoponera carinulata'];
     $catalogo = Livewire::withQueryParams($seleccion + ['vista' => 'tarjetas', 'pagina' => 2])->test(PortalCatalogo::class)
         ->assertSet('nivel', 'species')->assertSet('taxon', 'Neoponera carinulata')
-        ->assertViewHas('totalRegistrosVista', 13)->assertViewHas('paginaActual', 2)
+        ->assertViewHas('totalRegistrosVista', 13)->assertViewHas('paginaActual', 1)
         ->assertViewHas('especimenes', fn ($filas) => count($filas) === 6);
+    $catalogo->call('cargarMasTarjetas', $catalogo->get('claveTarjetasCargadas'), 1)
+        ->assertViewHas('especimenes', fn ($filas) => count($filas) === 12);
     $chat = Livewire::test(ChatBotWidget::class)->call('nuevaConversacion');
     expect(seleccionChatRenderizada($catalogo))->toEqual($seleccion);
 

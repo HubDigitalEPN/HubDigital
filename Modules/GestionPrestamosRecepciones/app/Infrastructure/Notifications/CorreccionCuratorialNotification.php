@@ -14,8 +14,9 @@ use Illuminate\Notifications\Notification;
  * que se entere de lo que se tocó, no llenarle el buzón. El depositante firmó esa
  * matriz al enviarla, así que los cambios posteriores no pueden quedar en silencio.
  */
-final class CorreccionCuratorialNotification extends Notification
+final class CorreccionCuratorialNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     /**
      * @param  list<array{campo: string, anterior: mixed, nuevo: mixed, especie: string}>  $correcciones
      */
@@ -30,7 +31,7 @@ final class CorreccionCuratorialNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

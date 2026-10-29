@@ -12,8 +12,9 @@ use Illuminate\Notifications\Notification;
  * recepción de su lote por una anomalía subsanable. El Código QR sigue vigente para
  * reintentar la recepción. Se envía por correo y por el portal (campana).
  */
-final class OrdenAccionCorrectivaNotification extends Notification
+final class OrdenAccionCorrectivaNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -26,7 +27,7 @@ final class OrdenAccionCorrectivaNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

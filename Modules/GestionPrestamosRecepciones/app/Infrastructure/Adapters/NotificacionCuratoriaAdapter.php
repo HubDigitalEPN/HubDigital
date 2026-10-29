@@ -157,7 +157,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         if ($destinoQa !== '') {
             Notification::route('mail', $destinoQa)->notify($notificacion->soloCorreo());
         } else {
-            Notification::send($curadores, $notificacion->soloCorreo());
+            Notification::send($curadores, $notificacion->canalesExternos());
         }
 
         return $referencia;

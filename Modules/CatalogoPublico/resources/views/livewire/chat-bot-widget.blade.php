@@ -1,10 +1,10 @@
 <div
     class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
-    x-data="{ abierto: false, devolverFoco() { if (this.$refs.trigger.offsetParent) { this.$refs.trigger.focus(); return } document.getElementById('portal-chat-mobile-trigger')?.focus() }, seleccionCatalogo() { const catalogo = document.querySelector('[data-catalogo-seleccion]'); return catalogo ? JSON.parse(catalogo.dataset.catalogoSeleccion) : null } }"
+    x-data="hubChatShell()"
     x-effect="$dispatch('portal-chat-state', { abierto })"
-    x-on:portal-chat-toggle.window="abierto = !abierto; $nextTick(() => abierto ? $refs.input.focus() : devolverFoco())"
+    x-on:portal-chat-toggle.window="alternar()"
     x-on:keydown.escape.window="if (abierto && !$event.defaultPrevented && !document.querySelector('dialog[open]')) { $event.preventDefault(); abierto = false; $nextTick(() => devolverFoco()) }"
-    x-on:chat-respuesta.window="$nextTick(() => { $refs.messages.scrollTop = $refs.messages.scrollHeight; $refs.input.focus() })"
+    x-on:chat-respuesta.window="$nextTick(() => { $refs.messages.scrollTop = $refs.messages.scrollHeight; if (abierto && !minimizado) $refs.input.focus() })"
 >
     <div class="pointer-events-none flex w-full max-w-[25rem] flex-col items-end gap-2">
         <section
@@ -31,8 +31,12 @@
                     aria-label="Cerrar chat">
                     <flux:icon name="x-mark" class="size-5" />
                 </button>
-                <button type="button" wire:click="nuevaConversacion" wire:loading.attr="disabled" wire:target="nuevaConversacion"
-                    class="col-span-2 justify-self-start cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white" title="Borrar el contexto de este chat">Nueva conversación</button>
+                <div class="col-span-2 flex flex-wrap items-center justify-between gap-1">
+                    <button type="button" x-on:click="ocultar()" class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Oculta también el icono; puedes recuperarlo desde el pie de página">Ocultar asistente</button>
+                    <button type="button" wire:click="nuevaConversacion" wire:loading.attr="disabled" wire:target="nuevaConversacion"
+                        class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white" title="Borrar el contexto de este chat">Nueva conversación</button>
+                    <x-pwa-install-button :oscuro="true" />
+                </div>
             </header>
 
             <div x-ref="messages" class="portal-chat-messages min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F5F8FC] px-3 py-4" aria-live="polite" aria-relevant="additions text">
@@ -110,6 +114,8 @@
             </form>
         </section>
 
+        <div class="portal-chat-launcher" x-show="!abierto && !minimizado" x-cloak>
+        <button type="button" class="portal-chat-hide" x-on:click="ocultar()" aria-label="Ocultar también el icono del asistente" title="Ocultar asistente"><flux:icon name="minus" /></button>
         <button x-ref="trigger" id="chat-bot-trigger" type="button"
             x-on:click="abierto = true; $nextTick(() => $refs.input.focus())"
             x-show="!abierto"
@@ -117,5 +123,6 @@
             aria-controls="chat-bot-panel" aria-label="Abrir asistente HubDigital" :aria-expanded="abierto.toString()">
             <flux:icon name="chat-bubble-left-right" class="size-6" />
         </button>
+        </div>
     </div>
 </div>

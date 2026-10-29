@@ -11,8 +11,9 @@ use Illuminate\Notifications\Notification;
  * Notifica al depositante que EPN recibió y constató físicamente su lote. La
  * accesión todavía espera el acta final firmada por curaduría.
  */
-final class RecepcionFinalizadaNotification extends Notification
+final class RecepcionFinalizadaNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -24,7 +25,7 @@ final class RecepcionFinalizadaNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

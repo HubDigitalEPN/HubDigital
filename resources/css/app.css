@@ -1590,3 +1590,44 @@ body:has(.hub-app-sidebar) { --color-accent: #174a9a; --color-accent-foreground:
     .hub-request-cell--email { max-width: none; }
 }
 @media (max-width: 639px) { .hub-wizard-steps { overflow-x: auto; } }
+
+/* LOV universal: hereda el tema elegido por el usuario. */
+.research-universal { padding-top: 1rem; border-top: 1px solid var(--color-border, #ccd9e4); }
+.research-universal > label { font-weight: 600; }
+.research-universal-input, .research-universal-query > div { display: flex; gap: .4rem; }
+.research-universal-input input, .research-universal-query input { min-width: 0; flex: 1; }
+.research-universal-input button { padding: .55rem; color: inherit; border: 1px solid var(--color-border, #ccd9e4); border-radius: .3rem; }
+.research-universal small { font-size: .8rem; }
+.research-universal-dialog { margin: auto; padding: 0; width: min(50rem, 96vw); max-height: 85dvh; border: 1px solid var(--color-border, #ccd9e4); border-radius: .6rem; color: var(--color-text-primary); background: var(--color-surface); }
+.research-universal-dialog::backdrop { background: #102f4b80; }
+.research-universal-dialog header, .research-universal-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; }
+.research-universal-dialog h2 { font-size: 1.25rem; font-weight: 700; }
+.research-universal-dialog button { cursor: pointer; padding: .5rem .8rem; border-radius: .3rem; }
+.research-universal-dialog button:focus-visible { outline: 2px solid #0077b6; outline-offset: 2px; }
+.research-universal-dialog button:disabled { opacity: .5; cursor: default; }
+.research-universal-query { padding: 0 1rem; }
+.research-universal-query input { background: var(--color-surface); color: inherit; border: 1px solid var(--color-border, #ccd9e4); border-radius: .3rem; padding: .6rem; }
+.research-universal-query button, .research-universal-all { background: #006ba6; color: white; }
+.research-universal-status { padding: .5rem 1rem; font-size: .85rem; }
+.research-universal-all { display: block; margin: 0 1rem .5rem; max-width: calc(100% - 2rem); text-align: left; }
+.research-universal-results { overflow-y: auto; max-height: 45dvh; min-height: 4rem; padding: 0 1rem; }
+.research-universal-row { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr; gap: .25rem 1rem; width: 100%; text-align: left; border-bottom: 1px solid var(--color-border, #ccd9e4); }
+.research-universal-row small { grid-column: 1 / -1; }
+.research-universal-row:hover { background: color-mix(in srgb, #0077b6 12%, var(--color-surface)); }
+@media (max-width: 480px) { .research-universal-row { grid-template-columns: 1fr; } }
+
+.hub-install { display: inline-flex; align-items: center; }
+.hub-install-button { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid transparent; border-radius: .35rem; padding: .4rem .5rem; font: 500 .75rem/1.3 system-ui, sans-serif; color: var(--color-text-primary); cursor: pointer; }
+.hub-install-button:hover { border-color: currentColor; }
+.hub-install-button-dark { color: white; }
+.hub-install-button:focus-visible, .hub-pwa-enable:focus-visible { outline: 2px solid #049cdb; outline-offset: 2px; }
+.hub-install-button:disabled { opacity: .65; cursor: default; }
+.hub-install-help { margin: auto; width: min(28rem, 94vw); padding: 1.5rem; border: 1px solid var(--color-border, #ccd9e4); border-radius: .7rem; background: var(--color-surface); color: var(--color-text-primary); }
+.hub-install-help::backdrop { background: #102f4b80; }
+.hub-install-help h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: .75rem; }
+.hub-install-help p { line-height: 1.6; }
+.hub-install-help button { display: block; margin: 1rem 0 0 auto; padding: .5rem 1rem; border-radius: .3rem; background: #006ba6; color: white; }
+.hub-pwa-opt-in { margin: .5rem 0; }
+.hub-pwa-enable { width: 100%; display: flex; align-items: center; justify-content: center; gap: .4rem; padding: .75rem; background: #006ba6; color: white; border-radius: .45rem; font-size: .8rem; font-weight: 600; cursor: pointer; white-space: normal; }
+.hub-pwa-enable:disabled { background: #087f5b; cursor: default; }
+.hub-pwa-opt-in p { margin-top: .4rem; font-size: .75rem; white-space: normal; }

@@ -9,7 +9,7 @@ use Modules\CatalogoPublico\Domain\ValueObjects\FiltrosBusqueda;
 /** Parámetros públicos del enlace: nunca incluye ejemplares ni el borrador del formulario. */
 final class EnlaceSeleccionCatalogo
 {
-    private const ESCALARES = ['nivel', 'taxon', 'fc', 'ft', 'fti', 'fco', 'ffd', 'ffh', 'flat', 'flax', 'flon', 'flox',
+    private const ESCALARES = ['fu', 'frid', 'nivel', 'taxon', 'fc', 'ft', 'fti', 'fco', 'ffd', 'ffh', 'flat', 'flax', 'flon', 'flox',
         'fed', 'feh', 'fh', 'fsti', 'fd', 'fca', 'fes', 'fpais', 'fprov', 'fph', 'fmes', 'fid', 'fgeo', 'fap'];
 
     private const LISTAS = ['fp', 'fg', 'fm', 'fb', 'fprovs', 'fphs'];
@@ -18,6 +18,7 @@ final class EnlaceSeleccionCatalogo
     {
         return self::limpiar([
             'nivel' => $nivel, 'taxon' => $taxon,
+            'fu' => $filtros->universal, 'frid' => $filtros->registroId,
             'fc' => implode(', ', $filtros->codigosCatalogo), 'fp' => $filtros->preparaciones,
             'ft' => $filtros->taxonNombre, 'fg' => $filtros->geografias,
             'fti' => $filtros->taxonId,

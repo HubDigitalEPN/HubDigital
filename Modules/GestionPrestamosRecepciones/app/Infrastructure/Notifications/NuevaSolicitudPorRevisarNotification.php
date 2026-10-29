@@ -16,7 +16,7 @@ use Illuminate\Notifications\Notification;
  */
 final class NuevaSolicitudPorRevisarNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use \App\Notifications\CanalesCampana;
 
     public int $tries = 5;
 
@@ -43,6 +43,13 @@ final class NuevaSolicitudPorRevisarNotification extends Notification implements
         return $correo;
     }
 
+    public function canalesExternos(): self
+    {
+        $externa = clone $this;
+        $externa->canales = ['mail', \NotificationChannels\WebPush\WebPushChannel::class];
+        return $externa;
+    }
+
     public function backoff(): array
     {
         return [10, 60, 300, 900];
@@ -53,7 +60,7 @@ final class NuevaSolicitudPorRevisarNotification extends Notification implements
      */
     public function via(object $notifiable): array
     {
-        return $this->canales;
+        return $this->canalesCampana($notifiable, $this->canales);
     }
 
     public function toMail(object $notifiable): MailMessage

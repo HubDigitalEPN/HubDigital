@@ -6,7 +6,7 @@
     @error('permisos')<p role="alert" class="text-error">{{ $message }}</p>@enderror
     <form wire:submit="guardar" class="space-y-5">
         <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-            <table class="w-full min-w-[65rem] text-sm">
+            <x-grid-frame label="Permisos de botones por perfil"><table class="w-full min-w-[65rem] text-sm">
                 <caption class="sr-only">Permisos para ver y usar botones según el perfil activo</caption>
                 <thead><tr class="border-b border-border bg-bg-main"><th scope="col" class="p-4 text-left">Botón</th>@foreach($roles as $rol)<th scope="col" class="p-3 text-left">{{ $rol->etiqueta() }}</th>@endforeach</tr></thead>
                 <tbody>@foreach($botones as $clave => $boton)<tr class="border-b border-border last:border-0"><th scope="row" class="p-4 text-left"><span class="block font-normal text-xs text-text-secondary">{{ $boton['grupo'] }}</span>{{ $boton['nombre'] }}</th>
@@ -18,7 +18,7 @@
                         @else<span class="text-text-secondary">Reservado al equipo</span>@endif
                     </td>@endforeach
                 </tr>@endforeach</tbody>
-            </table>
+            </table></x-grid-frame>
         </div>
         <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar permisos</flux:button>
     </form>

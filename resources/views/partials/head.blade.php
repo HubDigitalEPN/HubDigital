@@ -4,6 +4,7 @@
 <script src="{{ asset('js/mapa-pantalla-completa.js') }}?v={{ filemtime(public_path('js/mapa-pantalla-completa.js')) }}" defer></script>
 <style>.hub-map-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:9999!important;background:white}.leaflet-container:fullscreen{width:100vw!important;height:100dvh!important}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+@if(request()->routeIs('laboratorio', 'admin.laboratorio'))<link rel="stylesheet" href="{{ asset('css/pagina-laboratorio.css') }}?v={{ filemtime(public_path('css/pagina-laboratorio.css')) }}" />@endif
 <style>:root { color-scheme: light; } :root.dark { color-scheme: dark; }</style>
 <script src="{{ asset('js/hub-appearance.js') }}?v={{ filemtime(public_path('js/hub-appearance.js')) }}" data-navigate-once></script>
 <script>
@@ -45,6 +46,9 @@
 @endif
 
 <script src="{{ asset('js/interactive-grid.js') }}?v={{ filemtime(public_path('js/interactive-grid.js')) }}" defer></script>
+<script src="{{ asset('js/card-scroll.js') }}?v={{ filemtime(public_path('js/card-scroll.js')) }}" defer></script>
+<script src="{{ asset('js/chat-shell.js') }}?v={{ filemtime(public_path('js/chat-shell.js')) }}" defer></script>
+<link rel="stylesheet" href="{{ asset('css/chat-shell.css') }}?v={{ filemtime(public_path('css/chat-shell.css')) }}" />
 @livewireScriptConfig
 <script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}" defer></script>
 @vite(['resources/css/app.css', 'resources/css/portal.css', 'resources/js/app.js'])

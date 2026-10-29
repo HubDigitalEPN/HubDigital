@@ -84,6 +84,10 @@ final class AsistenteDocumentalDepositos
         if (preg_match('/^gracias[!. ]*$/', $normal)) return 'Con gusto. Puedes seguir preguntándome por los documentos de este expediente.';
 
         if ($interpretarConModelo) {
+            $general = app(\App\Services\IA\AgenteHibrido::class)->conversar($pregunta,
+                array_column(array_filter($historial, static fn ($m): bool => is_array($m) && ($m['rol'] ?? '') === 'usuario'), 'texto'),
+                'Chat de ayuda documental. Documentos requeridos en este paso: '.$lista.'. La respuesta es orientación; nunca equivale a aprobar contenido ni firmas.');
+            if ($general !== null) return $general;
             $preguntas = [
                 'carta' => '¿Cómo redacto mi carta de justificación?',
                 'recoleccion' => '¿Qué autorización de recolección debo subir?',

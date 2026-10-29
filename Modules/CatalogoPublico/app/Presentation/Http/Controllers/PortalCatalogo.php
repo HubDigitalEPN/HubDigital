@@ -49,6 +49,32 @@ final class PortalCatalogo extends Component
 
     public string $avisoFiltrosDependientes = '';
     public string $filtroLocalidadTexto = '';
+    public string $filtroUniversal = '';
+    public string $filtroRegistroId = '';
+    #[Locked]
+    public string $etiquetaUniversal = '';
+
+    #[\Livewire\Attributes\Renderless]
+    public function buscarUniversal(string $texto, int $pagina = 1): array
+    {
+        validator(['texto' => $texto, 'pagina' => $pagina], ['texto' => 'string|max:120', 'pagina' => 'integer|min:1|max:1000'])->validate();
+        $limite = 'lov-universal:'.hash('sha256', request()->ip() ?? 'local');
+        abort_if(\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limite, 120), 429);
+        \Illuminate\Support\Facades\RateLimiter::hit($limite, 60);
+        $datos = $this->valoresFiltros();
+        $datos['filtroUniversal'] = $datos['filtroRegistroId'] = '';
+        return app(\Modules\CatalogoPublico\Infrastructure\BusquedaUniversalPublica::class)
+            ->opciones(FiltrosBusqueda::desde($datos), $texto, $pagina, $this->nivel, $this->taxon);
+    }
+
+    public function aplicarUniversal(string $texto, string $registroId = ''): void
+    {
+        validator(['texto' => $texto, 'registro' => $registroId], ['texto' => 'string|max:120', 'registro' => 'nullable|uuid'])->validate();
+        $this->borradorFiltros['filtroUniversal'] = trim($texto);
+        $this->borradorFiltros['filtroRegistroId'] = $registroId;
+        $this->etiquetaUniversal = trim($texto);
+        $this->aplicarBorrador();
+    }
 
     #[Locked]
     public bool $mostrarFotoComposicion = false;
@@ -90,7 +116,7 @@ final class PortalCatalogo extends Component
     #[Computed]
     public function criteriosActivos(): array
     {
-        $etiquetas = ['filtroCatalogo' => 'Catálogo', 'filtroTaxon' => 'Taxón', 'filtroProvincia' => 'Provincia',
+        $etiquetas = ['filtroUniversal' => 'Búsqueda universal', 'filtroRegistroId' => 'Ejemplar', 'filtroCatalogo' => 'Catálogo', 'filtroTaxon' => 'Taxón', 'filtroProvincia' => 'Provincia',
             'filtroPais' => 'País', 'filtroFiloId' => 'Filo', 'filtroFilos' => 'Filo', 'filtroProvincias' => 'Provincia',
             'filtroGeografias' => 'Localidad', 'filtroPreparaciones' => 'Preparación', 'filtroMetodos' => 'Método',
             'filtroColector' => 'Colector', 'filtroBiomas' => 'Bioma', 'filtroHabitat' => 'Hábitat',
@@ -108,6 +134,7 @@ final class PortalCatalogo extends Component
             foreach ($valores as $indice => $valor) {
                 if (trim((string) $valor) === '') continue;
                 $visible = match ($campo) {
+                    'filtroRegistroId' => 'Seleccionado',
                     'filtroMes' => ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][(int) $valor - 1] ?? $valor,
                     'filtroEstadio' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::etapa(\Modules\CatalogoPublico\Domain\ValueObjects\EstadioVidaPublico::clave($valor)),
                     'filtroTipo' => \Modules\CatalogoPublico\Infrastructure\EtiquetaDatoPublico::tipo(\Modules\CatalogoPublico\Domain\ValueObjects\CondicionMaterialPublica::tipoFiltro($valor)),
@@ -202,6 +229,7 @@ final class PortalCatalogo extends Component
         'fprov' => 'filtroProvincia', 'fph' => 'filtroFiloId', 'fmes' => 'filtroMes', 'fid' => 'filtroIdentificacion',
         'fprovs' => 'filtroProvincias', 'fphs' => 'filtroFilos',
         'fgeo' => 'filtroSoloUbicacion', 'fap' => 'filtroDatosCompletos',
+        'fu' => 'filtroUniversal', 'frid' => 'filtroRegistroId',
     ];
 
     public function hydrate(): void
@@ -662,6 +690,22 @@ final class PortalCatalogo extends Component
     #[Locked]
     public string $claveRegistrosCargados = '';
 
+    #[Locked] public int $paginasTarjetasCargadas = 1;
+    #[Locked] public int $ultimaPaginaTarjetas = 1;
+    #[Locked] public string $claveTarjetasCargadas = '';
+
+    private function claveSeleccionTarjetas(): string
+    {
+        return sha1(json_encode([$this->filtrosActuales(), $this->nivel, $this->taxon, $this->explorar]));
+    }
+
+    public function cargarMasTarjetas(string $seleccion, int $paginas): void
+    {
+        if ($this->vista !== 'tarjetas' || $seleccion !== $this->claveSeleccionTarjetas()
+            || $seleccion !== $this->claveTarjetasCargadas || $paginas !== $this->paginasTarjetasCargadas) return;
+        if ($this->paginasTarjetasCargadas < $this->ultimaPaginaTarjetas) $this->paginasTarjetasCargadas++;
+    }
+
     #[Locked]
     public int $ultimaPaginaRegistros = 1;
 
@@ -776,7 +820,6 @@ final class PortalCatalogo extends Component
 
     public function navegar(string $nivel, string $taxon): void
     {
-        $this->filtroTaxonId = '';
         $this->mostrarFotoComposicion = false;
         $this->nivel = $nivel;
         $this->taxon = $taxon;
@@ -807,6 +850,8 @@ final class PortalCatalogo extends Component
             'filtroTaxonIds' => ['array', 'max:100'],
             'filtroTaxonIds.*' => ['uuid'],
             'filtroLocalidadTexto' => ['nullable', 'string', 'max:120'],
+            'filtroUniversal' => ['nullable', 'string', 'max:120'],
+            'filtroRegistroId' => ['nullable', 'uuid'],
             'filtroFilos' => ['array', 'max:100'],
             'filtroFilos.*' => ['uuid'],
             'filtroProvincias' => ['array', 'max:100'],
@@ -990,6 +1035,7 @@ final class PortalCatalogo extends Component
             'taxon_id' => $filtros->taxonId,
             'taxon_ids' => $filtros->taxonIds,
             'localidad_texto' => $filtros->localidadTexto,
+            'universal' => $filtros->universal, 'registro_id' => $filtros->registroId,
             'provincia' => $this->filtroProvincia,
             'pais' => $this->filtroPais,
             'geografias' => $this->filtroGeografias,
@@ -1032,7 +1078,6 @@ final class PortalCatalogo extends Component
 
     public function explorarNivel(string $nivel): void
     {
-        $this->filtroTaxonId = '';
         $this->mostrarFotoComposicion = false;
         $this->explorar = $nivel;
         $this->nivel = '';
@@ -1053,6 +1098,8 @@ final class PortalCatalogo extends Component
         $this->mostrarFotoComposicion = false;
         $this->pagina = 1;
         $this->filtroCatalogo = (string) ($datos['filtroCatalogo'] ?? '');
+        $this->filtroUniversal = (string) ($datos['filtroUniversal'] ?? '');
+        $this->filtroRegistroId = (string) ($datos['filtroRegistroId'] ?? '');
         $this->filtroPreparaciones = (array) ($datos['filtroPreparaciones'] ?? []);
         $this->filtroTaxon = (string) ($datos['filtroTaxon'] ?? '');
         $this->filtroGeografias = (array) ($datos['filtroGeografias'] ?? []);
@@ -1082,6 +1129,7 @@ final class PortalCatalogo extends Component
     public function limpiarFiltros(): void
     {
         $this->filtroTaxonIds = []; $this->filtroLocalidadTexto = '';
+        $this->filtroUniversal = $this->filtroRegistroId = $this->etiquetaUniversal = '';
         $this->mostrarFotoComposicion = false;
         $this->resetValidation();
         $this->avisoFiltrosDependientes = $this->avisoSeleccionUrl = '';
@@ -1287,6 +1335,7 @@ final class PortalCatalogo extends Component
     {
         return FiltrosBusqueda::desde([
             'filtroCatalogo' => $this->filtroCatalogo,
+            'filtroUniversal' => $this->filtroUniversal, 'filtroRegistroId' => $this->filtroRegistroId,
             'filtroPreparaciones' => $this->filtroPreparaciones,
             'filtroTaxon' => $this->filtroTaxon,
             'filtroTaxonId' => $this->filtroTaxonId,
@@ -1336,6 +1385,11 @@ final class PortalCatalogo extends Component
         ConsultarGaleriaTaxonHandler $galeriaHandler,
     ): View {
         $filtros = $this->filtrosActuales();
+        if ($this->vista === 'tarjetas') {
+            $clave = $this->claveSeleccionTarjetas();
+            if ($clave !== $this->claveTarjetasCargadas) $this->paginasTarjetasCargadas = 1;
+            $this->claveTarjetasCargadas = $clave;
+        }
         $datosMapa = null;
         $errorMapa = false;
         if ($this->vista === 'mapa') {
@@ -1390,9 +1444,11 @@ final class PortalCatalogo extends Component
             $resumenRaiz = app(EloquentProveedorEspecimenesParaArbol::class)->resumenRaiz($filtros);
             $totalTarjetas = count($resumenRaiz['hijos']);
             $ultimaPagina = max(1, (int) ceil($totalTarjetas / EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA));
-            $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
-            $this->pagina = $paginaActual;
-            $resumenRaiz['hijos'] = array_slice($resumenRaiz['hijos'], ($paginaActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
+            $paginaActual = min($this->paginasTarjetasCargadas, $ultimaPagina);
+            $this->ultimaPaginaTarjetas = $ultimaPagina;
+            $this->paginasTarjetasCargadas = $paginaActual;
+            $this->pagina = 1;
+            $resumenRaiz['hijos'] = array_slice($resumenRaiz['hijos'], 0, $paginaActual * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
             return view('catalogopublico::livewire.portal-catalogo', $resumenRaiz + [
                 'totalTarjetas' => $totalTarjetas, 'paginaActual' => $paginaActual, 'ultimaPagina' => $ultimaPagina, 'totalEspecimenes' => 0,
                 'provinciasDisponibles' => $this->provinciasDisponibles, 'filosDisponibles' => $this->filosDisponibles,
@@ -1424,18 +1480,18 @@ final class PortalCatalogo extends Component
         $totalRegistrosVista = $totalEspecimenes = $conteos[$this->nivel.':'.$this->taxon] ?? $totalGlobal;
         $totalTarjetas = $this->nivel === 'species' ? $totalEspecimenes : ($this->explorar !== '' ? count($taxonesExplorados) : count($hijos) + count($especiesActuales));
         $ultimaPagina = max(1, (int) ceil($totalTarjetas / EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA));
-        $paginaActual = min(max(1, $this->pagina), $ultimaPagina);
+        $paginaActual = min(max(1, $this->paginasTarjetasCargadas), $ultimaPagina);
         if ($this->nivel === 'species' && $this->vista === 'tarjetas') {
-            $paginaEspecie = $repositorio->paginaPublica($filtros, $this->pagina, $this->nivel, $this->taxon);
+            $paginaEspecie = $repositorio->paginaPublica($filtros, 1, $this->nivel, $this->taxon, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, $paginaActual);
             $especimenes = $this->cargarDetallesPorEspecimenIds($paginaEspecie['ids'], $proveedor, $repoDivulgable);
             $totalRegistrosVista = $totalEspecimenes = $totalTarjetas = $paginaEspecie['total'];
-            $paginaActual = $paginaEspecie['pagina'];
+            $paginaActual = $paginaEspecie['hasta'];
             $ultimaPagina = $paginaEspecie['ultima'];
         } elseif ($this->explorar !== '') {
-            $taxonesExplorados = array_slice($taxonesExplorados, ($paginaActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
+            $taxonesExplorados = array_slice($taxonesExplorados, 0, $paginaActual * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
         } else {
             $tarjetas = array_merge(array_map(static fn (array $n): array => ['tipo' => 'nodo', 'nodo' => $n], $hijos), array_map(static fn (array $n): array => ['tipo' => 'especie', 'nodo' => $n], $especiesActuales));
-            $tarjetas = array_slice($tarjetas, ($paginaActual - 1) * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA, EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
+            $tarjetas = array_slice($tarjetas, 0, $paginaActual * EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA);
             $hijos = array_values(array_map(static fn (array $n): array => $n['nodo'], array_filter($tarjetas, static fn (array $n): bool => $n['tipo'] === 'nodo')));
             $especiesActuales = array_values(array_map(static fn (array $n): array => $n['nodo'], array_filter($tarjetas, static fn (array $n): bool => $n['tipo'] === 'especie')));
         }
@@ -1444,10 +1500,13 @@ final class PortalCatalogo extends Component
         $idTaxonActual = $ruta === [] ? '' : ($ruta[array_key_last($ruta)]['id'] ?? '');
         $claveMapaEspecie = sha1(json_encode([$idTaxonActual, $filtros, $puntosEspecie]));
         $descendientes = $resumen['descendientes'];
-        $this->pagina = $paginaActual;
+        $this->pagina = 1;
+        $this->ultimaPaginaTarjetas = $ultimaPagina;
+        $this->paginasTarjetasCargadas = $paginaActual;
 
         $filtrosActivos = [
             'filtroCatalogo' => $this->filtroCatalogo,
+            'filtroUniversal' => $this->filtroUniversal, 'filtroRegistroId' => $this->filtroRegistroId,
             'filtroPreparaciones' => $this->filtroPreparaciones,
             'filtroTaxon' => $this->filtroTaxon,
             'filtroGeografias' => $this->filtroGeografias,
@@ -1563,7 +1622,7 @@ final class PortalCatalogo extends Component
             })
             ->select('d.nivel', 'd.valor_taxon', 'i.ruta', 'i.disco', 'i.nombre_original', 'i.autor_nombre_completo',
                 'i.photographer', 'i.license', 'i.license_holder', 'i.license_institution', 'i.contact', 'i.view')
-            ->limit(12)
+            ->limit(count($claves))
             ->get()
             ->map(fn ($r): array => [
                 'clave' => $r->nivel.':'.$r->valor_taxon, 'url' => StorageImagenesAdapter::urlPublica($r->ruta),

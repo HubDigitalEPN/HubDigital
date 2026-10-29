@@ -12,8 +12,9 @@ use Illuminate\Notifications\Notification;
  * Código QR de lote está disponible para la entrega física. Se envía por correo y
  * por el portal (campana).
  */
-final class CodigoQrDisponibleNotification extends Notification
+final class CodigoQrDisponibleNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
+    use \App\Notifications\CanalesCampana;
     public function __construct(
         public readonly string $solicitudId,
         public readonly ?string $numero,
@@ -26,7 +27,7 @@ final class CodigoQrDisponibleNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->canalesCampana($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

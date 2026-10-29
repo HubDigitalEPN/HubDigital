@@ -2,6 +2,7 @@ import { Livewire } from '../../vendor/livewire/livewire/dist/livewire.esm';
 import './hubdigital-firmador';
 import { crearLov } from './hubdigital-lov';
 import './pwa-notifications';
+import './pwa-install';
 import './connectivity-status';
 import { portalSessionReady } from './portal-pwa';
 import './portal-theme';

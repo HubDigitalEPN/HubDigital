@@ -5,7 +5,6 @@
         $valor = $aplicados[$campo] ?? '';
         return is_array($valor) ? array_any($valor, static fn ($item) => trim((string) $item) !== '') : trim((string) $valor) !== '';
     };
-    $colectaActiva = array_any(['filtroLocalidadTexto', 'filtroColector', 'filtroPreparaciones', 'filtroMetodos', 'filtroBiomas', 'filtroHabitat', 'filtroTipo', 'filtroDisposicion', 'filtroCasta', 'filtroEstadio'], $activo);
 @endphp
 
 <details class="research-sidebar" open wire:key="catalogo-filtros" x-data="portalFiltros" wire:ignore.self wire:loading.attr="inert">
@@ -46,21 +45,7 @@
         @if($activo('filtroMes'))<p class="research-filter-active research-filter-note">Mes seleccionado: {{ ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][(int) $aplicados['filtroMes'] - 1] ?? $aplicados['filtroMes'] }}</p>@endif
         @if($activo('filtroElevDesde') || $activo('filtroElevHasta'))<p class="research-filter-active research-filter-note">Elevación: {{ $aplicados['filtroElevDesde'] ?? '' }} — {{ $aplicados['filtroElevHasta'] ?? '' }} m</p>@endif
 
-        <details @class(['research-filter-section', 'research-filter-active' => $colectaActiva]) @if($colectaActiva) open @endif>
-            <summary>{{ $filtroTexto('colecta') }}</summary>
-            <div class="research-filter-fields">
-                <label @class(['research-filter-active' => $activo('filtroLocalidadTexto')])><span>Localidad, sitio o referencia de colecta</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroLocalidadTexto" maxlength="120" placeholder="Buscar en todos los campos de localidad"></label>
-                <label @class(['research-filter-active' => $activo('filtroColector')])><span>{{ $filtroTexto('colector') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroColector" aria-invalid="{{ $errors->has('filtroColector') ? 'true' : 'false' }}" aria-describedby="error-filtroColector" placeholder="{{ $filtroTexto('colector_placeholder') }}" maxlength="120"></label>
-                @if($preparaciones !== [])<fieldset @class(['research-filter-active' => $activo('filtroPreparaciones')])><legend>{{ $filtroTexto('preparacion') }}</legend><div class="research-check-list">@foreach($preparaciones as $preparacion)<label><input type="checkbox" wire:model.live.debounce.400ms="borradorFiltros.filtroPreparaciones" aria-invalid="{{ $errors->has('filtroPreparaciones') ? 'true' : 'false' }}" aria-describedby="error-filtroPreparaciones" value="{{ $preparacion }}">{{ $preparacion }}</label>@endforeach</div></fieldset>@endif
-                @if($metodos !== [])<fieldset @class(['research-filter-active' => $activo('filtroMetodos')])><legend>{{ $filtroTexto('metodo') }}</legend><div class="research-check-list">@foreach($metodos as $metodo)<label title="Código original: {{ $metodo }}"><input type="checkbox" wire:model.live.debounce.400ms="borradorFiltros.filtroMetodos" aria-invalid="{{ $errors->has('filtroMetodos') ? 'true' : 'false' }}" aria-describedby="error-filtroMetodos" value="{{ $metodo }}"><span>{{ \Modules\CatalogoPublico\Infrastructure\ProtocoloColectaPublico::etiqueta($metodo) }} <small>({{ $metodo }})</small></span></label>@endforeach</div></fieldset>@endif
-                @if($biomas !== [])<fieldset @class(['research-filter-active' => $activo('filtroBiomas')])><legend>{{ $filtroTexto('bioma') }}</legend><div class="research-check-list">@foreach($biomas as $bioma)<label><input type="checkbox" wire:model.live.debounce.400ms="borradorFiltros.filtroBiomas" aria-invalid="{{ $errors->has('filtroBiomas') ? 'true' : 'false' }}" aria-describedby="error-filtroBiomas" value="{{ $bioma }}">{{ $bioma }}</label>@endforeach</div></fieldset>@endif
-                <label @class(['research-filter-active' => $activo('filtroHabitat')])><span>{{ $filtroTexto('habitat') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroHabitat" aria-invalid="{{ $errors->has('filtroHabitat') ? 'true' : 'false' }}" aria-describedby="error-filtroHabitat" placeholder="{{ $filtroTexto('habitat_placeholder') }}" maxlength="120"></label>
-                <label @class(['research-filter-active' => $activo('filtroTipo')])><span>{{ $filtroTexto('tipo') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroTipo" aria-invalid="{{ $errors->has('filtroTipo') ? 'true' : 'false' }}" aria-describedby="error-filtroTipo" placeholder="{{ $filtroTexto('tipo_placeholder') }}" maxlength="120"></label>
-                <label @class(['research-filter-active' => $activo('filtroDisposicion')])><span>{{ $filtroTexto('disposicion') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroDisposicion" aria-invalid="{{ $errors->has('filtroDisposicion') ? 'true' : 'false' }}" aria-describedby="error-filtroDisposicion" placeholder="{{ $filtroTexto('disposicion_placeholder') }}" maxlength="120"></label>
-                <label @class(['research-filter-active' => $activo('filtroCasta')])><span>{{ $filtroTexto('casta') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroCasta" aria-invalid="{{ $errors->has('filtroCasta') ? 'true' : 'false' }}" aria-describedby="error-filtroCasta" placeholder="{{ $filtroTexto('casta_placeholder') }}" maxlength="120"></label>
-                <label @class(['research-filter-active' => $activo('filtroEstadio')])><span>{{ $filtroTexto('estadio') }}</span><input type="search" wire:model.live.debounce.400ms="borradorFiltros.filtroEstadio" aria-invalid="{{ $errors->has('filtroEstadio') ? 'true' : 'false' }}" aria-describedby="error-filtroEstadio" placeholder="{{ $filtroTexto('estadio_placeholder') }}" maxlength="120"></label>
-            </div>
-        </details>
+        <x-catalogopublico::busqueda-universal :activo="$activo('filtroUniversal') || $activo('filtroRegistroId')" />
 
         @foreach($errors->messages() as $campo => $mensajesError)
             <p id="error-{{ $campo }}" class="research-filter-error" role="alert">{{ $mensajesError[0] }} La selección anterior se conserva.</p>

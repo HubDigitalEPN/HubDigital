@@ -340,6 +340,10 @@
                             <flux:sidebar.item icon="pencil-square" :href="route('admin.textos-portal')" :current="request()->routeIs('admin.textos-portal')" wire:navigate>
                                 Textos del portal
                             </flux:sidebar.item>
+                            @if(in_array(auth()->user()->rolActivo(), [RolUsuario::ADMIN, RolUsuario::CURADOR], true))
+                            <flux:sidebar.item icon="photo" :href="route('admin.laboratorio')" :current="request()->routeIs('admin.laboratorio')" wire:navigate>El Laboratorio: textos y fotos</flux:sidebar.item>
+                            @endif
+
                         </flux:sidebar.group>
                         @if($rolActivo === RolUsuario::ADMIN)
                             <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*')" class="grid">
@@ -481,6 +485,7 @@
                     </div>
 
                     <flux:menu.separator />
+                    <div class="p-3"><x-pwa-install-button /><x-pwa-notification-button /></div>
 
                     <flux:menu.radio.group>
                         <flux:modal.trigger name="account-settings">

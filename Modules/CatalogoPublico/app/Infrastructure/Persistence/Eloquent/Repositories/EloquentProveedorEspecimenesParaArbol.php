@@ -83,6 +83,7 @@ final class EloquentProveedorEspecimenesParaArbol implements ProveedorEspecimene
             ->join('divulgacion.especimenes_divulgables as ed', 'ed.especimen_id', '=', 'te.id')
             ->where('ed.publicado', true)->whereRaw(ElegibilidadGeograficaPortal::sql());
         $this->aplicarFiltros($query, $filtros);
+        \Modules\CatalogoPublico\Infrastructure\BusquedaUniversalPublica::aplicar($query, $filtros->universal, $filtros->registroId);
         $rangos = ['phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'genero', 'species' => 'especie'];
         if (isset($rangos[$nivel]) && $taxon !== '') {
             if ($nivel === 'family') $query->where('ed.family_visible', true);

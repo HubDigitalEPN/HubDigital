@@ -1,4 +1,4 @@
-@props(['server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100]])
+@props(['pageSizeLabel' => 'Filas por página', 'server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100]])
 <div class="hub-ig-actions" x-on:click.outside="closeMenu(false)">
     <button type="button" class="hub-ig-button" x-ref="actionsButton" aria-haspopup="menu" :aria-expanded="menuOpen.toString()"
         x-on:click="openMenu()" x-on:keydown.arrow-down.prevent="if (!menuOpen) openMenu()">Acciones <flux:icon name="chevron-down" /></button>
@@ -9,9 +9,12 @@
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="openFilters()"><flux:icon name="funnel" /><span>Filtrar</span><span class="hub-ig-menu-trailing">…</span></button>
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="openSort()"><flux:icon name="arrows-up-down" /><span>Ordenar</span><span class="hub-ig-menu-trailing">…</span></button>
             @endif
+            @unless($server || $client)
+                <button type="button" role="menuitem" tabindex="-1" x-on:click="openColumn(0, headers()[0])"><flux:icon name="funnel" /><span>Filtrar columnas de esta página</span><span class="hub-ig-menu-trailing">…</span></button>
+            @endunless
             @if($server || $client || $pageSizeAction)
                 <div class="hub-ig-menu-separator" role="separator"></div>
-                <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('rows')"><flux:icon name="bars-3" /><span>Filas por página</span><span class="hub-ig-menu-trailing">@if($server){{ $this->gridPerPage }}@elseif($client)<span x-text="clientPerPage"></span>@else{{ $pageSize }}@endif <flux:icon name="chevron-right" /></span></button>
+                <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('rows')"><flux:icon name="bars-3" /><span>{{ $pageSizeLabel }}</span><span class="hub-ig-menu-trailing">@if($server){{ $this->gridPerPage }}@elseif($client)<span x-text="clientPerPage"></span>@else{{ $pageSize }}@endif <flux:icon name="chevron-right" /></span></button>
             @endif
             <button type="button" role="menuitem" tabindex="-1" aria-haspopup="menu" x-on:click="changeMenu('format')"><flux:icon name="adjustments-horizontal" /><span>Formato</span><flux:icon name="chevron-right" class="hub-ig-menu-trailing" /></button>
             {{ $slot }}
@@ -25,7 +28,7 @@
         </div>
         @if($server || $client || $pageSizeAction)
             <div data-menu-view="rows" x-show="menuView === 'rows'" x-cloak>
-                <button type="button" role="menuitem" tabindex="-1" class="hub-ig-menu-back" x-on:click="changeMenu('main')"><flux:icon name="chevron-left" /> Filas por página</button>
+                <button type="button" role="menuitem" tabindex="-1" class="hub-ig-menu-back" x-on:click="changeMenu('main')"><flux:icon name="chevron-left" /> {{ $pageSizeLabel }}</button>
                 @foreach($pageSizes as $amount)
                     @if($client)
                         <button type="button" role="menuitemradio" tabindex="-1" :aria-checked="(clientPerPage === {{ $amount }}).toString()" x-on:click="clientPerPage = {{ $amount }}; closeMenu()"><span class="hub-ig-menu-check"><flux:icon name="check" x-show="clientPerPage === {{ $amount }}" /></span>{{ $amount }} filas</button>
@@ -61,6 +64,7 @@
     </div>
     <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.columnsDialog.close()">Cancelar</button><button type="button" class="hub-ig-button hub-ig-button-primary" x-on:click="applyColumnSelection()">Aplicar</button></div>
 </dialog>
+<x-grid-column-menu />
 @if($server || $client)
     <dialog wire:ignore.self class="hub-ig-dialog" x-ref="filterDialog" :aria-labelledby="$id('grid-filter-title')" x-on:close="$refs.actionsButton.focus()">
         <form x-on:submit.prevent="await applyFilters()">

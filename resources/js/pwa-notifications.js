@@ -16,7 +16,11 @@ function emitStatus(status, message) {
 async function registration() {
     if (!('serviceWorker' in navigator) || !window.isSecureContext) return null;
     await navigator.serviceWorker.register('/service-worker.js', { scope: '/', updateViaCache: 'none' });
-    return navigator.serviceWorker.ready;
+    let reloj;
+    try {
+        return await Promise.race([navigator.serviceWorker.ready,
+            new Promise((_, reject) => { reloj = setTimeout(() => reject(new Error('El servicio de notificaciones no respondió.')), 10000); })]);
+    } finally { clearTimeout(reloj); }
 }
 
 function csrfToken() {
@@ -31,6 +35,7 @@ function urlBase64ToUint8Array(value) {
 
 async function jsonRequest(url, options = {}) {
     const response = await fetch(url, {
+        signal: AbortSignal.timeout(12000),
         credentials: 'same-origin',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), ...options.headers },
         ...options,
@@ -122,7 +127,10 @@ async function status() {
     }
     const serviceWorker = await registration();
     const subscription = await serviceWorker?.pushManager.getSubscription();
-    emitStatus(subscription ? 'enabled' : Notification.permission === 'denied' ? 'denied' : 'disabled', subscription ? 'Avisos activos en este dispositivo.' : null);
+    const activa = subscription && Notification.permission === 'granted';
+    emitStatus(activa ? 'enabled' : Notification.permission === 'denied' ? 'denied' : 'disabled', activa
+        ? 'Avisos activos en este dispositivo.' : Notification.permission === 'denied'
+            ? 'Las notificaciones están bloqueadas. Permítelas en la configuración de este sitio en el navegador.' : null);
 }
 
 async function enable() {

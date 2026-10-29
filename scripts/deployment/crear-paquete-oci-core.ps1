@@ -14,6 +14,14 @@ si ya existe en el entorno. No consulta el gestor global de credenciales de Git.
 
 .EXAMPLE
 crear-paquete-oci -DescripcionCambio "actualiza solicitudes de deposito"
+# Destino LD por defecto: copia a la VM DEV en ~/TEMP-BORRAR.
+
+.EXAMPLE
+crear-paquete-oci -Destino W -DescripcionCambio "paquete local"
+
+.EXAMPLE
+crear-paquete-oci -Destino LP -DescripcionCambio "paquete para produccion"
+# Copia a la VM PROD; la preparacion y activacion siguen siendo manuales.
 
 .EXAMPLE
 crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
@@ -23,7 +31,8 @@ crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
 [CmdletBinding()]
 param(
     [string]$Proyecto,
-    [string]$Destino,
+    [ValidateSet('W', 'LD', 'LP')] [string]$Destino = 'LD',
+    [string]$DirectorioSalida,
     [string]$DescripcionCambio,
     [switch]$SoloValidacionLocal,
     [switch]$ValidacionAgente,
@@ -177,10 +186,9 @@ set -Eeuo pipefail
 package_name='__PACKAGE__'
 checksum_name='__CHECKSUM__'
 environment_name='__ENVIRONMENT__'
-kit_name="${package_name%.tar.gz}-cloudshell-upload.tar.gz"
 vm_host="${VM_HOST:-129.153.23.57}"
 vm_user="${VM_USER:-ubuntu}"
-key_path="${SSH_KEY_PATH:-${HOME}/ssh-key-2026-09-18.key}"
+key_path="${SSH_KEY_PATH:-${HOME}/equiframe/LD.key}"
 self_path="$(readlink -f -- "$0")"
 base_dir="$(dirname -- "${self_path}")"
 stage_script='/srv/hubdigital/current/deploy/oracle/scripts/stage-linux-candidate.sh'
@@ -212,7 +220,9 @@ install_environment() {
     done
     sudo install -o root -g www-data -m 0600 "${source}" "${target}"
     sudo /srv/hubdigital/current/deploy/oracle/scripts/configure-postgres.sh
-    sudo rm -f -- "${source}"
+    if [[ "$(dirname -- "${base_dir}")" != /home/ubuntu/TEMP-BORRAR ]]; then
+        sudo rm -f -- "${source}"
+    fi
     printf 'Entorno OCI completo instalado automaticamente en %s.\n' "${target}"
 }
 
@@ -238,9 +248,17 @@ if [[ -f "${stage_script}" ]]; then
     [[ "${staging}" =~ ^/srv/hubdigital/staging/[0-9a-f]{16}$ ]] || fail 'El staging no devolvio una ruta valida.'
     release_id="${checksum:0:16}"
 
-    rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${base_dir}/${environment_name}" "${self_path}"
+    if [[ "$(dirname -- "${base_dir}")" == /home/ubuntu/TEMP-BORRAR ]]; then
+        # La carpeta se conserva hasta que la activacion termine con exito.
+        transfer_record="/var/lib/hubdigital/migration/transferencia-${release_id}.txt"
+        sudo mkdir -p -- /var/lib/hubdigital/migration
+        printf '%s\n' DEV "${base_dir}" "${package_name}" "${checksum_name}" "${environment_name}" "$(basename -- "${self_path}")" | sudo tee "${transfer_record}" >/dev/null
+        sudo chmod 0600 "${transfer_record}"
+    else
+        rm -f -- "${base_dir}/${package_name}" "${base_dir}/${checksum_name}" "${base_dir}/${environment_name}" "${self_path}"
+    fi
     printf '\nCandidato preparado correctamente.\n'
-    printf 'Archivos temporales enviados a /tmp eliminados.\n'
+    printf 'TEMP-BORRAR se elimina con sus archivos al finalizar la activacion; en el flujo /tmp se retira la copia transferida.\n'
     printf 'Registro conservado: %s\n' "${stage_log}"
     printf 'Candidato: %s\n' "${candidate}"
     printf 'Staging: %s\n' "${staging}"
@@ -253,11 +271,8 @@ if [[ -f "${stage_script}" ]]; then
         "/srv/hubdigital/staging/${candidate}" \
         "/srv/hubdigital/staging/${candidate}.sha256"
     printf '============================================================\n'
-    printf '\nSOLAMENTE SI EL COMANDO ANTERIOR TERMINA CON\n'
-    printf '"Release preparada en mantenimiento", active la release con:\n'
-    printf 'sudo %q %q\n' \
-        "/srv/hubdigital/releases/${release_id}/deploy/oracle/scripts/activate-release.sh" \
-        "${release_id}"
+    printf '\nEste comando comprueba la preparacion y, si todo termina OK, activa la release automaticamente.\n'
+    printf 'No hace falta copiar otro comando de activacion. Ante un error se detiene sin activar.\n'
     exit 0
 fi
 
@@ -278,15 +293,14 @@ for transferred_file in \
     "${base_dir}/${package_name}" \
     "${base_dir}/${checksum_name}" \
     "${base_dir}/${environment_name}" \
-    "${self_path}" \
-    "${HOME}/${kit_name}"; do
+    "${self_path}"; do
     if [[ -e "${transferred_file}" ]] && ! rm -f -- "${transferred_file}"; then
         printf 'ADVERTENCIA: no se pudo eliminar de Cloud Shell: %s\n' "${transferred_file}" >&2
         cleanup_failed=1
     fi
 done
 if [[ "${cleanup_failed}" -eq 0 ]]; then
-    printf 'Limpieza Cloud Shell: OK. Paquete, entorno, checksum, script y kit eliminados.\n'
+    printf 'Limpieza Cloud Shell: OK. Paquete, entorno, checksum y script eliminados.\n'
     printf 'Clave SSH conservada: %s\n' "${key_path}"
 else
     printf 'Limpieza Cloud Shell: NO OK. Revise las advertencias anteriores.\n' >&2
@@ -363,8 +377,11 @@ function Get-HuellasCodigo {
 }
 
 $Proyecto = [IO.Path]::GetFullPath($Proyecto)
-if ([string]::IsNullOrWhiteSpace($Destino)) { $Destino = Join-Path $Proyecto 'artifacts\oci' }
-$Destino = [IO.Path]::GetFullPath($Destino)
+$Destino = $Destino.ToUpperInvariant()
+if ($DirectorioSalida -and $Destino -ne 'W') { throw '-DirectorioSalida solo se admite con -Destino W.' }
+$raizSalidaPaquete = if ($Destino -eq 'W') {
+    if ($DirectorioSalida) { [IO.Path]::GetFullPath($DirectorioSalida) } else { Join-Path $Proyecto 'artifacts\oci' }
+} else { Join-Path $Proyecto '.local\deployment\oci-transfer' }
 if (-not (Test-Path -LiteralPath (Join-Path $Proyecto 'artisan') -PathType Leaf)) {
     throw "No se encontro el proyecto Laravel en: $Proyecto"
 }
@@ -381,6 +398,10 @@ if ($ValidacionAgente) {
 } else {
     Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'verificar', $Proyecto) -Descripcion 'Comprobando evidencia vigente del 30 % del agente'
     Write-Host 'VALIDACION PAQUETE: 14 de 20 familias (70 %); el 30 % acreditado no se repite.' -ForegroundColor Cyan
+}
+
+if (-not $SoloValidacionLocal -and $Destino -ne 'W') {
+    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'destino-paquete.cjs'), 'comprobar', $Proyecto, $Destino) -Descripcion "Comprobando acceso al destino $Destino antes de pruebas y publicacion"
 }
 
 while ([string]::IsNullOrWhiteSpace($DescripcionCambio)) {
@@ -464,24 +485,6 @@ if ($rutasProhibidas) {
     throw "Hay archivos sensibles no ignorados. No se agrego nada a Git: $($rutasProhibidas -join ', ')"
 }
 
-# El flujo Pest de deposito firma y verifica con el certificado real autorizado.
-# Confirmar los insumos del paquete sin imprimir la clave ni el P12.
-if (-not $ValidacionAgente) {
-$directorioCertificadoPruebas = Join-Path $Proyecto '.local\secrets'
-$certificadoPruebas = Join-Path $directorioCertificadoPruebas 'HERNAN AUGUSTO TROYA PROANO 1707514251-241025084137.p12'
-$credencialesPruebas = Join-Path $directorioCertificadoPruebas 'credencialesp12 .txt'
-if (-not (Test-Path -LiteralPath $certificadoPruebas -PathType Leaf) -or
-    -not (Test-Path -LiteralPath $credencialesPruebas -PathType Leaf)) {
-    throw 'Falta el P12 real autorizado o su archivo de credenciales en .local/secrets. La suite Pest no puede validar la firma de deposito.'
-}
-$textoCredencialesPruebas = [System.IO.File]::ReadAllText($credencialesPruebas)
-if ((Get-Item -LiteralPath $certificadoPruebas).Length -eq 0 -or
-    $textoCredencialesPruebas -notmatch '(?im)^\s*clave\s+\S+\s*$') {
-    throw 'El P12 real o la linea de clave de sus credenciales locales esta vacia o ilegible.'
-}
-$textoCredencialesPruebas = $null
-}
-
 $headAntesValidacion = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
 $huellasAntesValidacion = @(Get-HuellasCodigo)
 
@@ -490,6 +493,23 @@ $argumentosImpacto = @((Join-Path $directorioScript 'impacto-validacion.cjs'), $
 if ($Integral) { $argumentosImpacto += 'integral' }
 Invoke-Comando -Programa 'node.exe' -Argumentos $argumentosImpacto -Descripcion 'Determinando impacto acumulado y cobertura que se ejecuta o reutiliza'
 $planImpacto = [IO.File]::ReadAllText($planImpactoRuta, [Text.Encoding]::UTF8) | ConvertFrom-Json
+# Las comprobaciones de sintaxis tambien se limitan a la nueva diferencia con
+# la base aprobada, no a cambios anteriores ya incorporados a esa base.
+$archivosCambiados = @($planImpacto.changes)
+
+if (-not $ValidacionAgente -and ($planImpacto.integral -or @($planImpacto.paquete.pruebas_php | Where-Object { $_ -match 'FlujoDepositoPersistenciaE2ETest\.php$' }).Count -gt 0)) {
+    $directorioCertificadoPruebas = Join-Path $Proyecto '.local\secrets'
+    $certificadoPruebas = Join-Path $directorioCertificadoPruebas 'HERNAN AUGUSTO TROYA PROANO 1707514251-241025084137.p12'
+    $credencialesPruebas = Join-Path $directorioCertificadoPruebas 'credencialesp12 .txt'
+    if (-not (Test-Path -LiteralPath $certificadoPruebas -PathType Leaf) -or -not (Test-Path -LiteralPath $credencialesPruebas -PathType Leaf)) {
+        throw 'Falta el P12 real autorizado o sus credenciales para el caso de firma seleccionado.'
+    }
+    $textoCredencialesPruebas = [IO.File]::ReadAllText($credencialesPruebas)
+    if ((Get-Item -LiteralPath $certificadoPruebas).Length -eq 0 -or $textoCredencialesPruebas -notmatch '(?im)^\s*clave\s+\S+\s*$') {
+        throw 'El P12 real o la linea de clave de sus credenciales locales esta vacia o ilegible.'
+    }
+    $textoCredencialesPruebas = $null
+}
 
 if (-not $ValidacionAgente) {
     Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'diff', $upstream, '--check') -Descripcion 'Validando espacios, conflictos y formato basico del diff'
@@ -532,7 +552,9 @@ if ($ValidacionAgente) {
         Invoke-Comando -Programa $composerPrograma -Argumentos @('install', '--no-interaction', '--prefer-dist', '--no-progress') -Descripcion 'Sincronizando dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
     } else { Write-Host 'REUTILIZADO: vendor tiene evidencia compatible de su sector.' }
 } else {
-    Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock' -DirectorioTrabajo $Proyecto
+    if ($planImpacto.integral -or 'composer.json' -in $archivosCambiados -or 'composer.lock' -in $archivosCambiados) {
+        Invoke-Comando -Programa $composerPrograma -Argumentos @('validate', '--no-check-publish') -Descripcion 'Validando composer.json y composer.lock modificados' -DirectorioTrabajo $Proyecto
+    } else { Write-Host 'REUTILIZADO: contrato Composer sin cambios; su auditoria de seguridad se actualiza igualmente.' }
     Invoke-Comando -Programa $composerPrograma -Argumentos @('audit', '--locked', '--format=plain', '--no-interaction') -Descripcion 'Comprobando vulnerabilidades de dependencias PHP desde composer.lock' -DirectorioTrabajo $Proyecto
 }
 
@@ -549,7 +571,7 @@ if ($ValidacionAgente -and $planImpacto.agente.java_build) {
 if (!(Test-Path -LiteralPath (Join-Path $Proyecto 'tests/Python/test_portal_ete.py') -PathType Leaf)) {
     throw 'Falta el contrato obligatorio del renderizador ETE; no se admite una suite Python vacía.'
 }
-if (-not $ValidacionAgente) {
+if (-not $ValidacionAgente -and $planImpacto.paquete.python) {
     $basesPaquete = Join-Path $directorioScript 'bases-sectores-paquete.cjs'
     $argumentosSectorEte = @($basesPaquete, 'seleccionar-ete', $Proyecto)
     if ($Integral) { $argumentosSectorEte += 'integral' }
@@ -558,10 +580,17 @@ if (-not $ValidacionAgente) {
     if ($decisionEte -eq 'EJECUTAR') {
         Invoke-Comando -Programa 'powershell.exe' -Argumentos @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $Proyecto 'scripts/development/instalar-ete.ps1')) -Descripcion 'Preparando runtime aislado ETE del portal' -DirectorioTrabajo $Proyecto
         Invoke-Comando -Programa 'node.exe' -Argumentos @($basesPaquete, 'preparar-ete', $Proyecto) -Descripcion 'Identificando entradas y runtime ETE antes de su prueba'
-        Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validando renderizado ETE, identidades y vistas taxonómicas' -DirectorioTrabajo $Proyecto
+        if ($planImpacto.integral) {
+            Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos @('-m', 'unittest', 'discover', '-s', 'tests/Python', '-p', 'test_*.py') -Descripcion 'Validacion Python integral solicitada' -DirectorioTrabajo $Proyecto
+        } else {
+            foreach ($pruebaPython in @($planImpacto.paquete.python_tests)) {
+                $argumentosPython = @('-m', 'unittest', 'discover', '-s', (Split-Path -Parent $pruebaPython), '-p', (Split-Path -Leaf $pruebaPython))
+                Invoke-Comando -Programa (Join-Path $Proyecto '.local/ete-venv/Scripts/python.exe') -Argumentos $argumentosPython -Descripcion "Validando solo el contrato Python del cambio: $pruebaPython" -DirectorioTrabajo $Proyecto
+            }
+        }
         Invoke-Comando -Programa 'node.exe' -Argumentos @($basesPaquete, 'acreditar-ete', $Proyecto) -Descripcion 'Conservando la aprobacion propia de ETE'
     } else { Write-Host 'REUTILIZADO: ETE/Python conserva fuentes, dependencias, interprete y fecha real aprobados.' }
-}
+} elseif (-not $ValidacionAgente) { Write-Host 'REUTILIZADO: ETE/Python fuera del cambio; no se instala runtime ni se ejecutan sus pruebas.' }
 
 # El navegador valida exactamente el build nuevo mientras PostgreSQL permanece activo.
 $suiteJavaScriptCompletada = $false
@@ -647,7 +676,7 @@ if ($archivosShell -and -not $ValidacionAgente) {
 }
 # Validar la misma generacion que se usara al empaquetar, antes del commit/push.
 # Son archivos temporales sin credenciales: Bash solo analiza, nunca los ejecuta.
-if (-not $ValidacionAgente) {
+if (-not $ValidacionAgente -and $planImpacto.paquete.guias) {
     $archivosProduccionPrueba = Get-ArchivosProduccionOci -Identificador 'validacion-oci' -ArchivoFuente 'validacion-oci.tar.gz' -CommitFuente ('0' * 40) -ShaFuente ('0' * 64) -NombreScript 'validacion-oci-produccion-vm.sh'
     $scriptsGeneradosPrueba = [ordered]@{
         DEV = (Get-ScriptTransferenciaDev -ArchivoFuente 'validacion-oci.tar.gz' -ArchivoChecksum 'validacion-oci.tar.gz.sha256' -ArchivoEntorno 'validacion-oci.env')
@@ -666,7 +695,9 @@ if (-not $ValidacionAgente) {
 }
 if (-not $phpPrograma) { throw 'No se encontro PHP: la validacion completa exige PHP/PostgreSQL.' }
 if (-not $ValidacionAgente) {
-    Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel' -DirectorioTrabajo $Proyecto
+    if ($planImpacto.paquete.laravel) {
+        Invoke-Comando -Programa $phpPrograma -Argumentos @('artisan', 'about', '--only=environment') -Descripcion 'Validando el arranque de Laravel requerido por el cambio' -DirectorioTrabajo $Proyecto
+    } else { Write-Host 'REUTILIZADO: arranque Laravel fuera del cambio.' }
     # El plan incluye contratos directos e indirectos o exige la suite completa.
     $validadorPostgres = Join-Path $raizRepositorio 'scripts\deployment\windows\validar-postgresql-temporal.ps1'
     if (-not (Test-Path -LiteralPath $validadorPostgres -PathType Leaf)) { throw "No se encontro el validador PostgreSQL: $validadorPostgres" }
@@ -680,7 +711,9 @@ if (-not $ValidacionAgente) {
     $suiteNavegadorCompletada = $true
     $solucionPdfComprobada = $true
     Write-Host 'PHP, navegador y PDF finalizados. Siguen migraciones, sintaxis PHP y escenarios Gherkin.' -ForegroundColor Cyan
-    Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-migration-classes.php') -Descripcion 'Comprobando clases de migraciones sin ejecutar cambios en la base' -DirectorioTrabajo $Proyecto
+    if ($planImpacto.paquete.migraciones) {
+        Invoke-Comando -Programa $phpPrograma -Argumentos @('deploy/oracle/scripts/verify-migration-classes.php') -Descripcion 'Comprobando clases de las migraciones modificadas' -DirectorioTrabajo $Proyecto
+    } else { Write-Host 'REUTILIZADO: migraciones sin cambios.' }
     if ($archivosPhp) {
         Write-Host "`n==> Validando sintaxis PHP" -ForegroundColor Cyan
         foreach ($archivo in $archivosPhp) {
@@ -852,8 +885,8 @@ if (-not $suitePostgresCompletada -or -not $suiteGherkinCompletada -or -not $sui
     throw 'No se completaron las validaciones PHP/PostgreSQL, Gherkin, navegador/tooltip/Livewire y PDF obligatorias. main no se publica y no se crea el paquete.'
 }
 
+Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'impacto-validacion.cjs'), 'acreditar', $Proyecto) -Descripcion 'Incorporando el cambio aprobado a la base local; sin Git ni VM'
 if ($SoloValidacionLocal) {
-    Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'impacto-validacion.cjs'), 'acreditar', $Proyecto) -Descripcion 'Registrando pruebas ejecutadas, reutilizadas y base integral cuando corresponda'
     Write-Host 'VALIDACION LOCAL COMPLETA: cobertura ejecutada y reutilizada registrada; auditorias actualizadas aprobadas.' -ForegroundColor Green
     Write-Host 'Los cambios permanecen en la rama de trabajo. Sin commit, push ni paquete OCI.'
     exit 0
@@ -886,29 +919,27 @@ if ($rama -ne 'main') {
 Invoke-Comando -Programa 'git.exe' -Argumentos @('-C', $Proyecto, 'branch', '--set-upstream-to=origin/main', 'main') -Descripcion 'Vinculando main local al repositorio oficial'
 
 
-New-Item -ItemType Directory -Path $Destino -Force | Out-Null
+New-Item -ItemType Directory -Path $raizSalidaPaquete -Force | Out-Null
 $marcaTiempo = (Get-Date).ToString('yyyyMMdd-HHmmss')
 $identificadorPaquete = "$nombreSeguro-$marcaTiempo"
-$directorioPaquete = Join-Path $Destino $identificadorPaquete
+$directorioPaquete = Join-Path $raizSalidaPaquete $identificadorPaquete
 if (Test-Path -LiteralPath $directorioPaquete) {
     throw "Ya existe el directorio de salida del paquete: $directorioPaquete"
 }
 New-Item -ItemType Directory -Path $directorioPaquete | Out-Null
 
-$nombre = "$identificadorPaquete.tar.gz"
-$nombreScriptTransferencia = "$identificadorPaquete-cloudshell-vm.sh"
-$nombreKitCloudShell = "$identificadorPaquete-cloudshell-upload.tar.gz"
+$nombre = "$identificadorPaquete-AMBOS.tar.gz"
+$nombreScriptTransferencia = "$identificadorPaquete-DEV-cloudshell-vm.sh"
 $nombreInstruccionesCloudShell = "$identificadorPaquete-INSTRUCCIONES-CLOUD-SHELL.txt"
-$nombreScriptProduccion = "$identificadorPaquete-produccion-vm.sh"
-$nombreEntornoOci = "$identificadorPaquete-hubdigital.env"
+$nombreScriptProduccion = "$identificadorPaquete-PROD-produccion-vm.sh"
+$nombreEntornoOci = "$identificadorPaquete-DEV-hubdigital.env"
 $paquete = Join-Path $directorioPaquete $nombre
-$suma = "$paquete.sha256"
+$suma = Join-Path $directorioPaquete "$identificadorPaquete-DEV.sha256"
 $scriptTransferencia = Join-Path $directorioPaquete $nombreScriptTransferencia
-$kitCloudShell = Join-Path $directorioPaquete $nombreKitCloudShell
 $instruccionesCloudShell = Join-Path $directorioPaquete $nombreInstruccionesCloudShell
 $scriptProduccion = Join-Path $directorioPaquete $nombreScriptProduccion
 $entornoOci = Join-Path $directorioPaquete $nombreEntornoOci
-foreach ($salida in @($paquete, $suma, $scriptTransferencia, $kitCloudShell, $instruccionesCloudShell, $scriptProduccion, $entornoOci)) {
+foreach ($salida in @($paquete, $suma, $scriptTransferencia, $instruccionesCloudShell, $scriptProduccion, $entornoOci)) {
     if (Test-Path -LiteralPath $salida) { throw "Ya existe un archivo de salida: $salida" }
 }
 
@@ -1057,7 +1088,7 @@ try {
     )
     foreach ($clave in $clavesOciRequeridas) {
         if ([string]::IsNullOrWhiteSpace($valoresEntorno[$clave])) {
-            throw "El .env local no tiene un valor para $clave; no se genero un kit incompleto."
+            throw "El .env local no tiene un valor para $clave; no se genero un entorno OCI incompleto."
         }
     }
     if ($valoresEntorno['DEPOSIT_STORAGE_DRIVER'] -ne 'r2' -or
@@ -1151,21 +1182,6 @@ try {
     $contenidoChecksum = "$hash  $nombre`n$hashScript  $nombreScriptTransferencia`n$hashEntorno  $nombreEntornoOci`n"
     [IO.File]::WriteAllText($suma, $contenidoChecksum, [Text.UTF8Encoding]::new($false))
 
-    Invoke-Comando -Programa 'tar.exe' -Argumentos @(
-        '-czf', $kitCloudShell, '-C', $directorioPaquete,
-        $nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia, $nombreEntornoOci
-    ) -Descripcion 'Agrupando el kit de subida unica para Cloud Shell'
-    $contenidoKit = @(& tar.exe -tzf $kitCloudShell)
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudo volver a leer el kit de Cloud Shell.' }
-    $esperadoKit = @($nombre, [IO.Path]::GetFileName($suma), $nombreScriptTransferencia, $nombreEntornoOci) | Sort-Object
-    $contenidoKitOrdenado = @($contenidoKit | Sort-Object)
-    if (($contenidoKitOrdenado -join "`n") -ne ($esperadoKit -join "`n")) {
-        Remove-Item -LiteralPath $kitCloudShell -Force
-        throw "El kit de Cloud Shell no contiene exactamente los cuatro archivos esperados: $($contenidoKit -join ', ')"
-    }
-    $hashKit = (Get-FileHash -LiteralPath $kitCloudShell -Algorithm SHA256).Hash.ToLowerInvariant()
-    Remove-Item -LiteralPath $entornoOci -Force
-
     $contenidoInstruccionesCloudShell = @"
 MANUAL COMPLETO DE DESPLIEGUE OCI - HUBDIGITAL
 ==============================================
@@ -1175,104 +1191,188 @@ Commit Git: $commit
 Repositorio: $repositorioGit
 Rama remota: $upstream
 Identidad: SOURCE-METADATA.json registra el commit de main y las huellas de Java y Vite.
-Kit que debe subirse: $nombreKitCloudShell
-VM OCI: ubuntu@129.153.23.57
+DEV: https://dev.labinvepn.org - ubuntu@129.153.23.57
+PROD: https://labinvepn.org - ubuntu@150.136.219.112
 Migraciones de base de datos: se aplican en la preparacion, antes de activar
+
+Este manual corresponde a los archivos de ESTE paquete. No mezcle archivos de
+paquetes diferentes ni cambie sus nombres: los scripts verifican su identidad.
+La seccion PROD esta al final. Los comandos DEV no deben ejecutarse en PROD.
+
+CREACION DEL PAQUETE EN WINDOWS (POWERSHELL)
+------------------------------------------
+crear-paquete-oci -DescripcionCambio "Descripcion del cambio"
+Equivale a -Destino LD: valida el cambio, publica y copia directamente a DEV.
+
+crear-paquete-oci -Destino LP -DescripcionCambio "Descripcion del cambio"
+Valida el cambio, publica y copia directamente a PROD.
+
+crear-paquete-oci -Destino W -DescripcionCambio "Descripcion del cambio"
+Conserva los archivos en Windows para su transferencia manual por Cloud Shell.
+Si desea desplegar exactamente el mismo bundle en DEV y PROD, use W y conserve
+esa carpeta: suba el AMBOS y los archivos DEV para DEV, y despues el MISMO AMBOS
+y el asistente PROD para PROD. LD/LP eligen un solo destino y sus copias son temporales.
+
+La validacion reutiliza la ultima base aprobada y selecciona pruebas propias
+del cambio. Si falta base compatible o cobertura mapeada, se detiene sin lanzar
+una integral automaticamente. Las auditorias actuales y la integridad del
+paquete siguen siendo obligatorias. El cambio aprobado se incorpora a la
+nueva base local. .local/validation no va a Git, Cloud Shell ni las VM.
+-SoloValidacionLocal comprueba en localhost, sin publicar, empaquetar ni copiar.
+Estos comandos se ejecutan en Windows; no se ejecutan dentro de Cloud Shell.
+
+DESTINO SELECCIONADO: $Destino
+-----------------------------
+W conserva los seis archivos en Windows, dentro de artifacts/oci/<paquete>.
+LD (predeterminado) copia AMBOS + DEV a ubuntu@129.153.23.57.
+LP copia AMBOS + PROD a ubuntu@150.136.219.112.
+LD y LP usan /home/ubuntu/TEMP-BORRAR/$identificadorPaquete en la VM elegida;
+no necesitan Cloud Shell. Tras verificar los hashes remotos se elimina la
+copia temporal de Windows. Si la transferencia falla, se conserva para reintentar.
+La guia TXT se conserva en Windows. La copia no aplica migraciones ni activa
+la release. No vuelva a subir los archivos a Cloud Shell si ya uso LD o LP.
+Los archivos y la carpeta del paquete en TEMP-BORRAR se eliminan solo al
+finalizar correctamente TODA la activacion. TEMP-BORRAR se elimina si queda
+vacia; los paquetes pendientes y respaldos se conservan.
+
+RUTA DIRECTA LD - DEV
+--------------------
+Desde Cloud Shell, conectese usando la clave DEV:
+ssh -i ~/equiframe/LD.key -o IdentitiesOnly=yes ubuntu@129.153.23.57
+Ya dentro de DEV, ejecute:
+cd /home/ubuntu/TEMP-BORRAR/$identificadorPaquete
+sha256sum -c $([IO.Path]::GetFileName($suma))
+bash ./$nombreScriptTransferencia
+Espere "Candidato preparado correctamente". Continue con el PASO DEV 5 de
+este manual: ejecute el comando de preparacion que acaba de mostrar la VM.
+El comando mostrado calcula el candidato y su checksum y activa automaticamente
+la misma release solo si toda la preparacion es correcta.
+
+RUTA DIRECTA LP - PROD
+---------------------
+Desde Cloud Shell, conectese usando la clave PROD:
+ssh -i ~/equiframe/LP.key -o IdentitiesOnly=yes ubuntu@150.136.219.112
+Ya dentro de PROD, ejecute:
+cd /home/ubuntu/TEMP-BORRAR/$identificadorPaquete
+bash ./$nombreScriptProduccion
+Continue con el PASO PROD 3 de la seccion PRODUCCION al final de este manual.
+El asistente conserva la configuracion y los datos propios de PROD y crea sus
+respaldos; nunca use el asistente DEV ni su archivo de entorno en PROD.
+
+Si falla solamente la copia LD/LP, conserve la carpeta temporal local y use
+el comando de reintento que imprime crear-paquete-oci. No vuelva a ejecutar
+pruebas ni a publicar o empaquetar para repetir una transferencia.
+Las claves de Windows para la copia directa siguen siendo las originales;
+equiframe/LD.key y equiframe/LP.key son las copias usadas desde Cloud Shell.
+
+ALTERNATIVA MANUAL W - CLOUD SHELL PARA DEV
+-----------------------------------------
+Los PASOS DEV 1 a 4 siguientes son SOLO para -Destino W. Si uso LD, ya puede
+continuar con el PASO DEV 5. Para W en PROD use exclusivamente la seccion PROD.
 
 OBJETIVO
 --------
-Este procedimiento transfiere una release validada desde Windows a OCI Cloud
-Shell, luego a la VM y finalmente la activa en https://dev.labinvepn.org.
+La alternativa W transfiere los archivos desde Windows a Cloud Shell y luego
+a la VM elegida. DEV se activa en https://dev.labinvepn.org; PROD usa su propio
+asistente y https://labinvepn.org, segun la seccion final de este manual.
 El despliegue verifica checksums SHA-256 y aplica las migraciones pendientes
 antes de activar la release.
 
 ARCHIVOS GENERADOS EN WINDOWS
 -----------------------------
-La carpeta de este paquete contiene seis archivos:
+Con -Destino W, la carpeta del paquete contiene seis archivos. LD y LP solo
+transfieren los necesarios al entorno elegido y conservan la guia localmente.
+Los nombres indican donde se copian: DEV, PROD o AMBOS.
+El manual se conserva en Windows y no se copia a ninguna VM.
 
-1. $nombreKitCloudShell
-   Es el unico archivo que debe subir manualmente a Cloud Shell. Contiene el
-   entorno OCI completo cifrado durante el transporte SSH, pero no debe
-   compartirse ni conservarse despues del despliegue.
-2. $nombre
+1. $nombre
    Es el paquete fuente de produccion del commit indicado de main. La preparacion Linux verifica su identidad antes de continuar.
-3. $([IO.Path]::GetFileName($suma))
-   Contiene los checksums SHA-256.
-4. $nombreScriptTransferencia
+2. $([IO.Path]::GetFileName($suma))
+   Checksums SHA-256 del paquete, script y entorno de DEV. Exclusivo de DEV;
+   PROD verifica el SHA-256 del paquete desde su propio asistente.
+3. $nombreScriptTransferencia
    Automatiza Cloud Shell y el staging dentro de la VM.
+4. $nombreEntornoOci
+   Entorno privado exclusivo de DEV. Contiene secretos en texto plano; no lo
+   comparta ni lo incluya en Git. En LD se conserva en TEMP-BORRAR hasta la
+   activacion exitosa. En W se retira de Cloud Shell tras la copia verificada
+   y de /tmp de DEV al completar el staging.
 5. $nombreInstruccionesCloudShell
    Es este manual; no necesita subirlo.
 6. $nombreScriptProduccion
    Asistente exclusivo de PROD. Se usa junto al bundle fuente segun el apartado
-   de produccion al final de este manual; no esta dentro del kit DEV.
+   de produccion al final de este manual. No utiliza el entorno DEV.
 
-REQUISITOS PREVIOS
-------------------
-- La VM debe responder por SSH desde OCI Cloud Shell.
-- La clave debe existir en:
-  ~/ssh-key-2026-09-18.key
-- Para comprobarla en Cloud Shell:
+CLAVES DE CLOUD SHELL
+--------------------
+DEV:  ~/equiframe/LD.key
+PROD: ~/equiframe/LP.key
+La carpeta se llama equiframe y debe tener permisos 700; cada clave, 600.
+Las claves ya copiadas permanecen alli entre sesiones. No vuelva a subirlas
+por cada despliegue ni las incluya entre los archivos temporales a borrar.
+Si falta alguna, suba solo la clave autorizada de ese entorno una vez y dejela
+en la ruta indicada. No cree otra carpeta .ssh para estas copias.
 
-ls -l ~/ssh-key-2026-09-18.key
+Para revisar la clave DEV en Cloud Shell:
+ls -l ~/equiframe/LD.key
+chmod 700 ~/equiframe
+chmod 600 ~/equiframe/LD.key
 
-Si la clave no existe, use Cloud Shell > Menu > Upload y subala una sola vez.
-Cloud Shell conserva el directorio personal entre sesiones. El script aplica
-chmod 600 automaticamente antes de usar la clave. Nunca comparta, renombre,
-incluya en Git ni copie la clave dentro del paquete.
+La VM debe responder por SSH. Si una primera conexion pide aceptar su huella,
+compruebela contra la identidad conocida de la VM antes de continuar.
 
-PASO 1 - SUBIR EL KIT A CLOUD SHELL
+PASO DEV 1 - SUBIR LOS ARCHIVOS A CLOUD SHELL (SOLO W)
 -----------------------------------
-En OCI Cloud Shell use Menu > Upload y seleccione solamente:
+En OCI Cloud Shell use Menu > Upload y suba estos cuatro archivos al directorio
+personal (~):
 
-$nombreKitCloudShell
+$nombre
+$([IO.Path]::GetFileName($suma))
+$nombreScriptTransferencia
+$nombreEntornoOci
 
-No suba por separado el paquete, checksum, entorno ni script: ya estan dentro
-del kit.
+Se usa directamente el paquete fuente. No se genera ni se extrae un archivo
+comprimido adicional para Cloud Shell. No suba el entorno DEV a PROD.
 
-PASO 2 - EXTRAER Y EJECUTAR EN CLOUD SHELL
+PASO DEV 2 - EJECUTAR EN CLOUD SHELL (SOLO W)
 -------------------------------------------
 Copie y ejecute este bloque completo en Cloud Shell:
 
-mkdir -p ~/hubdigital-upload
-tar -xzf ~/$nombreKitCloudShell \
-  -C ~/hubdigital-upload
-
-cd ~/hubdigital-upload
+cd ~
+chmod 600 ./$nombreEntornoOci
 bash ./$nombreScriptTransferencia
 
 El script realiza estas acciones:
 - Comprueba los checksums del paquete, entorno y del propio script.
 - Aplica permisos 600 a la clave SSH.
 - Copia paquete, checksum, entorno y script a /tmp de la VM mediante scp.
-- Si scp termina correctamente, elimina de Cloud Shell el kit y los cuatro
-  archivos extraidos. No elimina la clave SSH.
+- Si scp termina correctamente, elimina de Cloud Shell los cuatro archivos
+  transferidos. No elimina la clave SSH.
 - Muestra "Limpieza Cloud Shell: OK" o explica que archivo no pudo eliminar.
 
 Si aparece ERROR, FAILED, checksum distinto de OK o scp incompleto, detengase.
 No continue con la VM hasta resolverlo.
 
-PASO 3 - CONECTARSE A LA VM
+PASO DEV 3 - CONECTARSE A LA VM (SOLO W)
 ---------------------------
 Despues de la transferencia, el script mostrara este comando:
 
-ssh -i ~/ssh-key-2026-09-18.key ubuntu@129.153.23.57
+ssh -i ~/equiframe/LD.key -o IdentitiesOnly=yes ubuntu@129.153.23.57
 
 Ejecutelo desde Cloud Shell. Sabra que entro en la VM cuando el prompt comience
 con ubuntu@labinvepn-dev-vnic. No copie el texto del prompt como si fuera parte
 de un comando.
 
-PASO 4 - VERIFICAR Y PREPARAR EL CANDIDATO EN LA VM
+PASO DEV 4 - VERIFICAR Y PREPARAR EL CANDIDATO (SOLO W)
 ----------------------------------------------------
-En una VM existente, el staging exige Java 17. Si falta,
-instale el runtime PDF antes de preparar el candidato:
-
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends openjdk-17-jre-headless
+El staging exige el runtime Java 17. Si ya esta disponible, reutilicelo;
+no reinstale bibliotecas por cada despliegue. Solo si el preflight informa
+que falta Java, resuelva ese requisito antes de reintentar el paso pendiente.
 
 Dentro de la VM ejecute:
 
 cd /tmp
-sha256sum -c ${nombre}.sha256
+sha256sum -c $([IO.Path]::GetFileName($suma))
 bash ./$nombreScriptTransferencia
 
 Que hace este paso:
@@ -1290,7 +1390,7 @@ Que hace este paso:
 Los mensajes "Deprecated" de Composer son advertencias. El exito real se
 confirma con "platform=ok" y "Candidato preparado correctamente".
 
-PASO 5 - PREPARAR LA RELEASE Y APLICAR MIGRACIONES
+PASO DEV 5 - PREPARAR Y ACTIVAR LA RELEASE (LD O W)
 --------------------------------------------
 Al terminar el staging aparecera un bloque titulado:
 
@@ -1307,22 +1407,15 @@ release. El proceso verifica que no quede ninguna migracion pendiente antes
 de declarar el candidato listo para activar.
 
 Este paso valida PostgreSQL, R2, correo, temporales, colas y caches. Detiene
-worker y scheduler y deja la release preparada en mantenimiento. Continue solo
-si termina con:
+worker y scheduler, aplica las migraciones y registra la preparacion aprobada.
+Si todo termina correctamente, ejecuta automaticamente la activacion de esa
+misma release. No hay que copiar ni ejecutar otro comando de activacion.
+Si falla una comprobacion de preparacion, se detiene sin activar; conserve
+la salida y los temporales para corregir la causa y reintentar el paso pendiente.
 
-Release preparada en mantenimiento: ID
-Validaciones superadas. Puede activar ahora copiando y ejecutando:
-
-Si aparece un error, no repita comandos ni active la release. Conserve toda la
-salida para diagnosticar la causa.
-
-PASO 6 - ACTIVAR LA RELEASE
----------------------------
-El paso anterior mostrara el comando completo. Tendra esta forma:
-
-sudo /srv/hubdigital/releases/ID/deploy/oracle/scripts/activate-release.sh ID
-
-Use el mismo ID en la ruta y en el argumento. No use el ID de otro paquete.
+PASO DEV 6 - COMPROBACION FINAL AUTOMATICA
+-------------------------------------
+Forma parte del mismo comando de preparacion y activacion.
 
 La activacion comprueba automaticamente:
 - La identidad e integridad de la release.
@@ -1344,16 +1437,12 @@ El despliegue solo esta activo cuando aparece:
 Verificacion final OK: release, URLs publicas, servicios, Java y admision PDF de depositos en el estado esperado.
 Release activa en el origen directo: ID.
 
-Si esta VM tenia ClamAV instalado, retire sus paquetes y firmas residuales
-despues de activar esta release (la aplicacion ya no los utiliza):
-
-sudo apt-get purge -y clamav clamav-base clamav-freshclam
-sudo rm -rf -- /var/lib/clamav
-
-PASO 7 - VERIFICACION EN EL NAVEGADOR
+PASO DEV 7 - VERIFICACION EN EL NAVEGADOR
 -------------------------------------
 Abra https://dev.labinvepn.org y haga una recarga completa con Ctrl+F5.
 Compruebe visualmente los cambios incluidos en este paquete.
+En las pruebas de Codex use Opera Neon QA con zoom inicial 75 %. Revise /version
+y confirme que el commit publicado coincide con $commit.
 
 SCHEDULER Y TUNNEL
 ------------------
@@ -1367,25 +1456,27 @@ permanece detenido. El proxy DNS de Cloudflare no es lo mismo que Tunnel.
 
 LIMPIEZA Y CONSERVACION
 -----------------------
-- Cloud Shell elimina automaticamente los archivos del despliegue despues de
-  transferirlos; conserva la clave SSH.
-- La VM elimina paquete, entorno, checksum y script de /tmp despues de un staging
-  correcto.
+- LD/LP: al terminar TODA la activacion, se retiran los archivos y la carpeta
+  /home/ubuntu/TEMP-BORRAR/$identificadorPaquete. Se retira tambien TEMP-BORRAR
+  si queda vacia. Si falla una etapa, se conservan para resolverla.
+- W por Cloud Shell: se eliminan las copias transferidas al terminar scp.
+  ~/equiframe, LD.key y LP.key se conservan.
+- W en DEV: los cuatro archivos de /tmp se retiran tras un staging correcto.
+  W en PROD: la seccion PROD indica como retirar sus dos archivos de /tmp
+  despues de PRODUCCION_COMPLETA_OK. Nunca borre /tmp completo.
 - Despues de una activacion exitosa, la VM conserva automaticamente current y
   la release activada valida inmediatamente anterior. Elimina otras releases,
   candidatos fallidos y todo el staging antiguo.
-- Windows conserva la carpeta del paquete en artifacts/oci hasta que usted la
-  elimine. Puede regenerarla ejecutando crear-paquete-oci.
+- W conserva la carpeta del paquete en artifacts/oci. LD/LP eliminan solo la
+  copia temporal local tras verificar todos los hashes recibidos; la guia TXT
+  permanece en artifacts/oci. Conserve el paquete aprobado si necesita volver
+  a transferirlo; no vuelva a generarlo solo por una copia fallida.
 - La release activa dentro de /srv/hubdigital/releases NO debe eliminarse.
 
 La limpieza automatica no toca PostgreSQL, R2, respaldos ni secretos. Para
 revisar manualmente la politica sin borrar nada:
 
 sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --dry-run
-
-Para aplicarla manualmente:
-
-sudo /srv/hubdigital/current/deploy/oracle/scripts/cleanup-old-releases.sh --apply
 
 DIAGNOSTICO SI FALLA LA ACTIVACION
 ----------------------------------
@@ -1400,8 +1491,9 @@ sudo journalctl -u php8.4-fpm.service --since "15 minutes ago" --no-pager -n 150
 REGLAS IMPORTANTES
 -------------------
 - Copie solamente comandos, nunca los textos del prompt.
-- Revise las migraciones y verifique un respaldo PostgreSQL antes del paso 5.
-- No active Scheduler ni Tunnel durante este procedimiento.
+- Revise las migraciones y verifique un respaldo PostgreSQL antes del paso DEV 5.
+- En DEV, Scheduler y Tunnel quedan detenidos. En PROD se recupera el estado
+  previo del scheduler como parte del retorno completo; no active Tunnel.
 - No borre la clave SSH ni la release activa.
 - Ante cualquier NO OK, detengase y revise la causa antes de reintentar.
 "@
@@ -1432,23 +1524,23 @@ finally {
     }
 }
 
-Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'impacto-validacion.cjs'), 'acreditar', $Proyecto) -Descripcion 'Registrando cobertura y base integral despues de completar el paquete'
-Write-Host "`nProceso completo." -ForegroundColor Green
+Write-Host "`nPaquete generado correctamente." -ForegroundColor Green
 Write-Host "Commit:    $commit"
 Write-Host "Mensaje:   $mensajeCommit"
 Write-Host "Git:       $repositorioGit/tree/main"
 Write-Host "Main:      $upstream sincronizado"
 Write-Host "Identidad: $commit (incluida y verificada en el paquete)"
-Write-Host "Directorio: $directorioPaquete"
+Write-Host "Destino:   $Destino"
+Write-Host "Directorio de preparacion: $directorioPaquete"
+Write-Host 'Destino por nombre: DEV = solo desarrollo; PROD = solo produccion; AMBOS = compartido. La guia queda en Windows.'
 Write-Host "Paquete:   $paquete"
 Write-Host "Checksum:  $suma"
 Write-Host "Script:    $scriptTransferencia"
 Write-Host "Script PROD: $scriptProduccion"
-Write-Host "Kit unico: $kitCloudShell"
+Write-Host "Entorno DEV: $entornoOci (privado; no compartir ni usar en PROD)"
 Write-Host "Guia:      $instruccionesCloudShell"
 Write-Host "Produccion: siga el apartado PROD de la guia; usa el bundle fuente y $nombreScriptProduccion."
 Write-Host "SHA-256:   $hash"
-Write-Host "SHA kit:   $hashKit"
 Write-Host "Tamano:    $tamanoMiB MiB"
 Write-Host 'Cobertura: ejecucion integral o por impacto, con reutilizacion desde bases integrales o de sector aprobadas y compatibles.'
 Write-Host "Detalle: $planImpactoRuta y .local/validation/ultima-validacion.json"
@@ -1462,11 +1554,27 @@ if ($solucionPdfComprobada) {
 } else {
     Write-Host 'Solucion PDF: comprobacion integrada local omitida; se exigira al activar la release en OCI.' -ForegroundColor Yellow
 }
-Write-Host "`nSube solamente este archivo a OCI Cloud Shell: $nombreKitCloudShell"
-Write-Host "Luego ejecuta:"
-Write-Host "  mkdir -p ~/hubdigital-upload && tar -xzf ~/$nombreKitCloudShell -C ~/hubdigital-upload"
-Write-Host "  cd ~/hubdigital-upload && bash ./$nombreScriptTransferencia"
-Write-Host "`nEstos mismos comandos quedaron guardados en: $nombreInstruccionesCloudShell"
+if ($Destino -eq 'W') {
+    Write-Host "`nArchivos conservados en Windows: $directorioPaquete"
+    Write-Host 'Para una transferencia manual use los archivos marcados DEV o PROD, junto al paquete AMBOS.'
+    Write-Host "Guia y comandos: $nombreInstruccionesCloudShell"
+}
+if ($Destino -ne 'W') {
+    # La guia no se transfiere: conservarla localmente antes de retirar los temporales.
+    $directorioGuias = Join-Path $Proyecto 'artifacts\oci'
+    New-Item -ItemType Directory -Path $directorioGuias -Force | Out-Null
+    Copy-Item -LiteralPath $instruccionesCloudShell -Destination (Join-Path $directorioGuias $nombreInstruccionesCloudShell)
+    Write-Host "`nCopiando directamente a la VM seleccionada ($Destino), dentro de TEMP-BORRAR..." -ForegroundColor Cyan
+    try {
+        Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'destino-paquete.cjs'), 'copiar', $Proyecto, $Destino, $directorioPaquete) -Descripcion "Transferencia verificada a $Destino"
+    } catch {
+        Write-Host "Los archivos se conservan en: $directorioPaquete" -ForegroundColor Yellow
+        Write-Host 'Reintente SOLO la transferencia, sin volver a validar, publicar ni empaquetar:'
+        Write-Host ('node "{0}" copiar "{1}" {2} "{3}"' -f (Join-Path $directorioScript 'destino-paquete.cjs'), $Proyecto, $Destino, $directorioPaquete)
+        throw
+    }
+}
+Write-Host "`nProceso completo." -ForegroundColor Green
 # Las sondas nativas admiten códigos informativos; solo se llega aquí después
 # de todas las puertas obligatorias y de verificar el artefacto publicado.
 exit 0

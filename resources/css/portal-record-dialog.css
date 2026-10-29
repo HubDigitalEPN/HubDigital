@@ -12,11 +12,20 @@
 .portal-record-dialog .atlas-record-card { padding: 0; border: 0; box-shadow: none; }
 .portal-record-dialog .atlas-record-card h3 { font-size: 1.05rem; margin-bottom: 3px; }
 .portal-record-dialog .atlas-record-card > p { margin: 3px 0 10px; }
-.portal-record-dialog .atlas-record-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px 20px; margin-top: 10px; }
-.portal-record-dialog .atlas-record-card dl > div { min-width: 0; border: 0; padding: 0; }
-.portal-record-dialog .atlas-record-card dt { font-size: .72rem; color: #52667a; }
-.portal-record-dialog .atlas-record-card dd { font-size: .85rem; overflow-wrap: anywhere; line-height: 1.4; margin: 0; }
-.portal-record-dialog .atlas-record-photos { float: right; max-width: 170px; margin: 0 0 12px 20px; }
-.portal-record-dialog .atlas-record-photos img { max-height: 120px; width: 100%; object-fit: contain; }
-@media (max-width: 650px) { .portal-record-dialog { padding: 16px; } .portal-record-dialog .atlas-record-photos { float: none; max-width: none; margin: 0 0 12px; } .portal-record-dialog .atlas-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
-@media (max-width: 380px) { .portal-record-dialog .atlas-record-card dl { grid-template-columns: minmax(0, 1fr); } }
+.portal-record-dialog-header button { margin-left: auto; flex:none; }
+.portal-record-dialog .atlas-record-card > dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 20px; margin-top: 15px; }
+.portal-record-dialog .atlas-record-card > dl > div { min-width: 0; border: 0; padding: 0; }
+.portal-record-dialog .atlas-record-card > dl dt { font-size: .8rem; color: #52667a; font-weight:600; margin-bottom:.25rem; }
+.portal-record-dialog .atlas-record-card > dl dd { font-size: .9rem; overflow-wrap: anywhere; line-height: 1.45; margin: 0; }
+.portal-record-dialog .atlas-record-photos { float: none; max-width: none; margin: 1rem 0; display:grid; grid-template-columns:minmax(0,1fr); }
+.portal-record-dialog .atlas-record-photos figure { display:grid; grid-template-columns:minmax(12rem,45%) minmax(0,1fr); gap:1.25rem; align-items:start; min-width:0; }
+.portal-record-dialog .atlas-record-photos img { max-height: 15rem; width: 100%; object-fit: contain; background:#f4f7fa; }
+.portal-record-dialog .photo-attributions { min-width:0; padding:0; }
+.portal-record-dialog .photo-attributions dl { display:grid; grid-template-columns:minmax(0,1fr); gap:.5rem; margin:0; }
+.portal-record-dialog .photo-attributions dl > div { display:grid; grid-template-columns:minmax(6rem,.8fr) minmax(0,1.4fr); gap:.7rem; }
+.portal-record-dialog .photo-attributions dd { overflow-wrap:anywhere; white-space:normal; }
+.portal-record-dialog .photo-attributions dt { font-size:.8rem; font-weight:600; }
+.portal-record-dialog .photo-attributions dd { font-size:.85rem; line-height:1.45; }
+dialog > header > button[aria-label^="Cerrar"], dialog > header > div:last-child { margin-inline-start:auto; }
+@media (max-width: 650px) { .portal-record-dialog { padding: 16px; } .portal-record-dialog .atlas-record-photos figure { grid-template-columns:minmax(0,1fr); } .portal-record-dialog .atlas-record-card > dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (max-width: 380px) { .portal-record-dialog .atlas-record-card > dl { grid-template-columns: minmax(0, 1fr); } }
