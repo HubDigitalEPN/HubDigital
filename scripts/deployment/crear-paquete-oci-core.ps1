@@ -221,7 +221,14 @@ if [[ -f "${stage_script}" ]]; then
     verify_transfer
     install_environment
     stage_log="/tmp/${package_name%.tar.gz}-stage.log"
-    sudo "${stage_script}" "${base_dir}/${package_name}" | tee "${stage_log}"
+    # Usar el staging del bundle verificado, no el de una release antigua.
+    stage_driver="$(mktemp /tmp/hubdigital-stage.XXXXXX)"
+    trap 'rm -f -- "${stage_driver}"' EXIT
+    tar -xOzf "${base_dir}/${package_name}" deploy/oracle/scripts/stage-linux-candidate.sh > "${stage_driver}"
+    [[ -s "${stage_driver}" ]] || fail 'El bundle no contiene el asistente de staging.'
+    sudo bash "${stage_driver}" "${base_dir}/${package_name}" 2>&1 | tee "${stage_log}"
+    rm -f -- "${stage_driver}"
+    trap - EXIT
 
     candidate="$(awk -F= '$1 == "candidate" {print $2}' "${stage_log}" | tail -n 1)"
     checksum="$(awk -F= '$1 == "checksum" {print $2}' "${stage_log}" | tail -n 1)"

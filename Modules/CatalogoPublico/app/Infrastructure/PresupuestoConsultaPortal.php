@@ -22,7 +22,21 @@ final class PresupuestoConsultaPortal
     public function ejecutar(callable $calcular): array
     {
         try {
-            return DB::transaction(fn (): array => $this->etapa('agregados', $calcular));
+            return DB::transaction(function () use ($calcular): array {
+                // RELEASE SAVEPOINT conserva los SET LOCAL en la transaccion
+                // exterior. Restaurarlos al aprobar evita limitar otras consultas.
+                // Si falla, el rollback de esta transaccion restaura los ajustes.
+                $limites = DB::connection()->getDriverName() === 'pgsql'
+                    ? DB::selectOne("SELECT current_setting('statement_timeout') AS statement_timeout, current_setting('lock_timeout') AS lock_timeout")
+                    : null;
+                $resultado = $this->etapa('agregados', $calcular);
+                if ($limites !== null) {
+                    DB::selectOne("SELECT set_config('statement_timeout', ?, true), set_config('lock_timeout', ?, true)", [
+                        $limites->statement_timeout, $limites->lock_timeout,
+                    ]);
+                }
+                return $resultado;
+            });
         } catch (QueryException|DeadlockException $error) {
             throw new ConsultaMapaNoDisponible('La consulta del mapa no está disponible.', previous: $error);
         }

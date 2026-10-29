@@ -1036,19 +1036,30 @@ public final class PdfSignatureCli {
     private static String leerQrPrueba(PDDocument pdf, int dpi) throws Exception {
         var image = new org.apache.pdfbox.rendering.PDFRenderer(pdf).renderImageWithDPI(0, dpi);
         int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-        var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
-            new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels)));
-        // En una página completa el sello ocupa mucho menos de un cuarto del alto.
-        // El barrido rápido de ZXing puede saltarse sus localizadores a 220 dpi;
-        // TRY_HARDER recorre filas más cercanas sin alterar ni recortar la imagen.
-        try {
-            return new com.google.zxing.MultiFormatReader().decode(bitmap, java.util.Map.of(
-                com.google.zxing.DecodeHintType.POSSIBLE_FORMATS, List.of(com.google.zxing.BarcodeFormat.QR_CODE),
-                com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE)).getText();
+        var source = new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels);
+        // El detector de un solo QR escoge una terna de localizadores y abandona
+        // si esa terna no decodifica. En la página completa puede escoger marcas
+        // del propio patrón o del texto. Examinar todas las ternas no presupone
+        // dónde está el sello y conserva la imagen renderizada a su DPI real.
+        Set<String> leidos = new HashSet<>();
+        for (var binarizer : List.of(new com.google.zxing.common.HybridBinarizer(source),
+            new com.google.zxing.common.GlobalHistogramBinarizer(source))) {
+            try {
+                for (var result : new com.google.zxing.multi.qrcode.QRCodeMultiReader().decodeMultiple(
+                    new com.google.zxing.BinaryBitmap(binarizer),
+                    java.util.Map.of(com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE))) {
+                    leidos.add(result.getText());
+                }
+            } catch (com.google.zxing.NotFoundException ignored) {
+                // Otra binarización puede encontrar los localizadores; nunca se
+                // acepta el contenido esperado sin decodificar los píxeles.
+            }
         }
-        catch (com.google.zxing.NotFoundException error) {
-            throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi.", error);
-        }
+        image.flush();
+        if (leidos.isEmpty()) throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi.",
+            com.google.zxing.NotFoundException.getNotFoundInstance());
+        if (leidos.size() != 1) throw new IllegalStateException("La autoprueba contiene códigos QR ambiguos a " + dpi + " dpi.");
+        return leidos.iterator().next();
     }
 
     private static void selftestOficial(Path temp, Path p12, X509Certificate cert, KeyPair keys) throws Exception {
@@ -1121,6 +1132,7 @@ public final class PdfSignatureCli {
                     throw new IllegalStateException("El QR no identifica exactamente el original y certificado a " + dpi + " dpi.");
                 }
             }
+            selftestPosicionQr(result, datosEsperados);
             // La firma sin su apariencia visible debe fallar el contrato oficial.
             var widget = result.getDocumentCatalog().getAcroForm().getFields().get(0).getWidgets().get(0);
             widget.getCOSObject().removeItem(COSName.AP);
@@ -1142,6 +1154,7 @@ public final class PdfSignatureCli {
                     throw new IllegalStateException("El QR no abre exactamente el enlace HTTPS de verificación a " + dpi + " dpi.");
                 }
             }
+            selftestPosicionQr(conQr, verificationUrl);
         }
         for (String muestra : List.of("qr-variacion-1", "qr-variacion-2")) {
             String urlVariada = verificationUrl.substring(0, verificationUrl.length() - 64)
@@ -1161,6 +1174,7 @@ public final class PdfSignatureCli {
                         throw new IllegalStateException("No se lee exactamente una variante del enlace de verificación a " + dpi + " dpi.");
                     }
                 }
+                selftestPosicionQr(conQr, urlVariada);
             }
         }
         Path rejected = temp.resolve("no-debe-existir.pdf");
@@ -1196,6 +1210,25 @@ public final class PdfSignatureCli {
         Path tokenEquivalent = temp.resolve("identidad-firmada.pdf");
         FirmadorPdfOficial.firmarConIdentidad(original, tokenEquivalent, keys.getPrivate(), new Certificate[]{cert}, profile);
         if (!verify(tokenEquivalent).cryptographicallyValid) throw new IllegalStateException("Falló la firma con identidad suministrada.");
+    }
+
+    private static void selftestPosicionQr(PDDocument pdf, String esperado) throws Exception {
+        var widget = pdf.getDocumentCatalog().getAcroForm().getFields().get(0).getWidgets().get(0);
+        var original = widget.getRectangle();
+        try {
+            // El sello conserva tamano y datos. Fracciones de punto ejercitan
+            // las fases de rasterizacion que difieren entre JDK y plataformas.
+            for (float desplazamiento : new float[] {-.25f, .125f, .375f}) {
+                widget.setRectangle(new org.apache.pdfbox.pdmodel.common.PDRectangle(
+                    original.getLowerLeftX() + desplazamiento, original.getLowerLeftY() + desplazamiento,
+                    original.getWidth(), original.getHeight()));
+                for (int dpi : List.of(144, 220)) {
+                    if (!esperado.equals(leerQrPrueba(pdf, dpi))) {
+                        throw new IllegalStateException("El QR cambia al desplazar su sello " + desplazamiento + " puntos a " + dpi + " dpi.");
+                    }
+                }
+            }
+        } finally { widget.setRectangle(original); }
     }
 
     private record FechaFirma(Date fecha, String baseTemporal, Date validoDesde, Date validoHasta, boolean caducadoAhora) {}

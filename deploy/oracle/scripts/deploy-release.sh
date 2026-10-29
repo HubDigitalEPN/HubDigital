@@ -82,6 +82,9 @@ PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer bash "${release_dir}/depl
 candidate_artisan config:clear
 candidate_artisan cache:clear
 candidate_artisan migrate:status --no-interaction
+# La misma autoprueba exigida al activar debe pasar en Linux ANTES de afectar
+# la disponibilidad de la release actual. No sustituye la aceptacion final.
+bash "${release_dir}/deploy/oracle/scripts/verify-java-pdf.sh" "${release_dir}"
 candidate_artisan down --retry=60 --no-interaction
 candidate_artisan depositos:verificar-almacenamiento --exigir-r2
 

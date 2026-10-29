@@ -16,17 +16,39 @@ source_archive="${1:-}"
 
 source_dir="$(mktemp -d /tmp/hubdigital-source.XXXXXX)"
 build_dir="$(mktemp -d /tmp/hubdigital-build.XXXXXX)"
-cleanup() { rm -rf -- "${source_dir}" "${build_dir}"; }
+heartbeat=''
+cleanup() {
+    if [[ -n "${heartbeat}" ]]; then kill "${heartbeat}" 2>/dev/null || true; wait "${heartbeat}" 2>/dev/null || true; fi
+    rm -rf -- "${source_dir}" "${build_dir}"
+}
 trap cleanup EXIT
-tar --extract --gzip --file="${source_archive}" --directory="${source_dir}" --no-same-owner --no-same-permissions
+
+# BEGIN RELEASE PHASE
+run_phase() {
+    local label="$1" started="${SECONDS}" status=0
+    shift
+    printf '==> %s\n' "${label}" >&2
+    (while sleep 10; do printf 'En curso: %s (%s s)\n' "${label}" "$((SECONDS - started))" >&2; done) &
+    heartbeat=$!
+    "$@" || status=$?
+    kill "${heartbeat}" 2>/dev/null || true
+    wait "${heartbeat}" 2>/dev/null || true
+    heartbeat=''
+    printf '%s: %s (%s s)\n' "$([[ "${status}" -eq 0 ]] && printf OK || printf FALLO)" "${label}" "$((SECONDS - started))" >&2
+    return "${status}"
+}
+# END RELEASE PHASE
+
+run_phase 'Extrayendo el bundle fuente' tar --extract --gzip --file="${source_archive}" --directory="${source_dir}" --no-same-owner --no-same-permissions
 [[ -f "${source_dir}/artisan" && -f "${source_dir}/vendor/autoload.php" ]] || { echo 'El bundle fuente no contiene runtime.' >&2; exit 65; }
 
-if ! build_output="$(OUTPUT_DIR="${build_dir}/dist" PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer \
-    bash "${source_dir}/deploy/oracle/scripts/build-release.sh" 2>&1)"; then
-    printf '%s\n' "${build_output}" | tail -n 40 >&2
-    exit 1
-fi
-archive="$(printf '%s\n' "${build_output}" | tail -n 1)"
+build_log="${build_dir}/build.log"
+build_linux() {
+    OUTPUT_DIR="${build_dir}/dist" PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer \
+        bash "${source_dir}/deploy/oracle/scripts/build-release.sh" 2>&1 | tee "${build_log}" >&2
+}
+run_phase 'Construyendo y comprobando el candidato Linux' build_linux
+archive="$(tail -n 1 "${build_log}")"
 checksum="${archive}.sha256"
 [[ -r "${archive}" && -r "${checksum}" ]] || { echo 'No se produjo candidato y suma.' >&2; exit 1; }
 sha_expected="$(awk 'NR == 1 {print $1}' "${checksum}")"
@@ -40,8 +62,8 @@ target_dir="${staging}/${release_id}"
 install -d -m 0755 "${target_dir}"
 install -m 0644 "${archive}" "${staging}/$(basename "${archive}")"
 install -m 0644 "${checksum}" "${staging}/$(basename "${checksum}")"
-tar --extract --gzip --file="${archive}" --directory="${target_dir}" --no-same-owner --no-same-permissions
-PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer bash "${target_dir}/deploy/oracle/scripts/verify-platform.sh" "${target_dir}"
+run_phase 'Extrayendo el candidato Linux' tar --extract --gzip --file="${archive}" --directory="${target_dir}" --no-same-owner --no-same-permissions
+run_phase 'Comprobando la plataforma del candidato' env PHP_BIN=/usr/bin/php8.4 COMPOSER_BIN=/usr/bin/composer bash "${target_dir}/deploy/oracle/scripts/verify-platform.sh" "${target_dir}"
 /usr/bin/php8.4 -l "${target_dir}/config/deposit-storage.php" >/dev/null
 /usr/bin/php8.4 -l "${target_dir}/Modules/GestionPrestamosRecepciones/app/Infrastructure/Storage/AlmacenamientoDepositos.php" >/dev/null
 /usr/bin/php8.4 -l "${target_dir}/Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/ConocimientoPortal.php" >/dev/null

@@ -100,8 +100,25 @@ test('QA6 la URL directa de mapa muestra un error recuperable con la selección 
         ->assertDontSee('SQLSTATE')->assertDontSee('pg_sleep');
 });
 
+test('QA6 un presupuesto aprobado restaura ambos limites de la transaccion exterior', function (): void {
+    $antes = DB::selectOne("SELECT current_setting('statement_timeout') AS statement_timeout, current_setting('lock_timeout') AS lock_timeout");
+    $nivelAntes = DB::connection()->transactionLevel();
+    $resultado = (new PresupuestoConsultaPortal('fixture-qa6-exito'))->ejecutar(static function (): array {
+        $limites = DB::selectOne("SELECT extract(epoch FROM current_setting('statement_timeout')::interval) AS sentencia, extract(epoch FROM current_setting('lock_timeout')::interval) AS bloqueo");
+        expect((float) $limites->sentencia)->toBeGreaterThan(0)->toBeLessThanOrEqual(8)
+            ->and((float) $limites->bloqueo)->toBeGreaterThan(0)->toBeLessThanOrEqual(2);
+        return ['aprobado' => true];
+    });
+    $despues = DB::selectOne("SELECT current_setting('statement_timeout') AS statement_timeout, current_setting('lock_timeout') AS lock_timeout");
+    expect($resultado)->toBe(['aprobado' => true])
+        ->and($despues->statement_timeout)->toBe($antes->statement_timeout)
+        ->and($despues->lock_timeout)->toBe($antes->lock_timeout)
+        ->and(DB::connection()->transactionLevel())->toBe($nivelAntes);
+});
+
 test('QA6 PostgreSQL cancela una consulta lenta dentro del presupuesto y restaura la conexión', function (): void {
     $antes = DB::selectOne('SHOW statement_timeout')->statement_timeout;
+    $bloqueoAntes = DB::selectOne('SHOW lock_timeout')->lock_timeout;
     $presupuesto = new PresupuestoConsultaPortal('fixture-qa6-timeout');
     $error = null;
     try {
@@ -121,6 +138,7 @@ test('QA6 PostgreSQL cancela una consulta lenta dentro del presupuesto y restaur
         ->and($error->getPrevious())->toBeInstanceOf(QueryException::class)
         ->and((string) $error->getPrevious()->getCode())->toBe('57014')
         ->and(DB::selectOne('SHOW statement_timeout')->statement_timeout)->toBe($antes)
+        ->and(DB::selectOne('SHOW lock_timeout')->lock_timeout)->toBe($bloqueoAntes)
         ->and((int) DB::selectOne('SELECT 1 AS disponible')->disponible)->toBe(1);
 });
 
