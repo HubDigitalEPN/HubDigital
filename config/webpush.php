@@ -14,6 +14,9 @@ return [
     'table_name' => env('WEBPUSH_DB_TABLE', 'push_subscriptions'),
     'database_connection' => env('WEBPUSH_DB_CONNECTION', env('DB_CONNECTION', 'pgsql')),
     'automatic_padding' => true,
+    // Conservar el envío pendiente durante una semana si el equipo está apagado.
+    // FCM admite como máximo cuatro semanas; el historial de la campana es independiente.
+    'ttl' => max(60, min(2419200, (int) env('WEBPUSH_TTL', 604800))),
     'client_options' => [
         'timeout' => 10,
         'allow_redirects' => false,

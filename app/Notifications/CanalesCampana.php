@@ -63,6 +63,6 @@ trait CanalesCampana
         return (new WebPushMessage)->title('HubDigital · '.$titulo)->body($resumen)
             ->icon('/images/hub-icon.png')->badge('/images/hub-icon.png')->tag($evento)
             ->data(['notificationId' => $evento, 'url' => $datos['url'] ?? route('dashboard')])
-            ->options(['TTL' => 86400, 'urgency' => ($datos['prioridad'] ?? '') === 'alta' ? 'high' : 'normal']);
+            ->options(['TTL' => (int) config('webpush.ttl', 604800), 'urgency' => ($datos['prioridad'] ?? '') === 'alta' ? 'high' : 'normal']);
     }
 }

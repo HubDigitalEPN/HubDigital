@@ -79,6 +79,14 @@ $variablesLocal = @{
     DB_DATABASE = $BaseDatos; DB_USERNAME = $UsuarioBD;
     SESSION_DRIVER = 'file'; SESSION_DOMAIN = 'null'; SESSION_SECURE_COOKIE = 'false';
     CACHE_STORE = 'file'; QUEUE_CONNECTION = 'sync'; MAIL_MAILER = 'log'
+    # Claves oficiales de prueba de Cloudflare: solo en este servidor loopback.
+    # Se mantienen el widget y siteverify; no se exportan a .env ni a OCI.
+    TURNSTILE_ENABLED = 'true'
+    TURNSTILE_SITE_KEY = '1x00000000000000000000AA'
+    TURNSTILE_SECRET = '1x0000000000000000000000000000000AA'
+    # La respuesta dummy no acredita hostname ni action reales.
+    TURNSTILE_EXPECTED_HOSTNAME = 'null'
+    TURNSTILE_EXPECTED_ACTION = 'null'
     JAVA_SIGNATURE_WORKER_ENABLED = 'true'
     PORTAL_ETE_URL = 'http://127.0.0.1:8001'; QT_QPA_PLATFORM = 'offscreen'
 }

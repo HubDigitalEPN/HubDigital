@@ -133,7 +133,7 @@
         {{ $slot }}
     </main>
 
-    @unless(request()->routeIs('portal.catalogo', 'portal.estadisticas', 'prestamos.curador.matriz.columnas'))
+    @unless(request()->routeIs('laboratorio', 'portal.catalogo', 'portal.estadisticas', 'prestamos.curador.matriz.columnas'))
     <footer class="border-t-4 border-bio-green bg-[#102B4E] text-white/75">
         @php($versionPortal = app(\App\Support\InformacionRelease::class)->obtener())
         <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">

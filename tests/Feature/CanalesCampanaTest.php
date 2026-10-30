@@ -78,3 +78,11 @@ test('un evento crea un trabajo independiente por canal y soloCorreo no duplica 
     expect($aviso->canalesExternos()->via($usuario))->toContain('mail', WebPushChannel::class)->not->toContain('database')
         ->and($aviso->canalesExternos()->via(destinatarioCampana(false)))->toBe(['mail']);
 });
+
+test('la vigencia push permite esperar siete días y respeta la configuración del servidor', function (): void {
+    $usuario = destinatarioCampana();
+    expect(config('webpush.ttl'))->toBe(604800);
+    foreach (avisosCampana() as $aviso) expect($aviso->toWebPush($usuario)->getOptions()['TTL'])->toBe(604800);
+    config(['webpush.ttl' => 172800]);
+    foreach (avisosCampana() as $aviso) expect($aviso->toWebPush($usuario)->getOptions()['TTL'])->toBe(172800);
+});

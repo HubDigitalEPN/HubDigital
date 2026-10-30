@@ -1,4 +1,5 @@
-@props(['foto', 'clave'])
+@props(['foto', 'clave', 'marcar' => true])
+@php($attributes = $marcar ? $attributes->merge(['data-lab-element' => 'foto-'.$clave, 'data-lab-kind' => 'foto', 'data-lab-label' => $foto['alt']]) : $attributes)
 @if($foto['ruta'])
     <img {{ $attributes->class(['lab-photo']) }} src="{{ route('laboratorio.foto', ['foto' => $clave, 'hash' => $foto['sha256']]) }}" alt="{{ $foto['alt'] }}" loading="{{ $clave === 'cabecera' ? 'eager' : 'lazy' }}" decoding="async">
 @else

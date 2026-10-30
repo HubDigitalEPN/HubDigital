@@ -1,10 +1,29 @@
 <meta charset="utf-8" />
+<script id="hub-pwa-install-bootstrap" data-navigate-once>
+    // Conservar el evento nativo antes de cargar Vite, Alpine o Livewire.
+    window.hubPwaInstallState ??= {pendiente: null, instalada: false, escuchando: false, enProceso: false};
+    if (!window.hubPwaInstallState.escuchando) {
+        window.hubPwaInstallState.escuchando = true;
+        window.addEventListener('beforeinstallprompt', evento => {
+            evento.preventDefault();
+            window.hubPwaInstallState.pendiente = evento;
+            window.dispatchEvent(new Event('hub-pwa-install-state'));
+        });
+        window.addEventListener('appinstalled', () => {
+            window.hubPwaInstallState.instalada = true;
+            window.hubPwaInstallState.pendiente = null;
+            window.dispatchEvent(new Event('hub-pwa-installed'));
+            window.dispatchEvent(new Event('hub-pwa-install-state'));
+        });
+    }
+</script>
 <script id="textos-sistema-datos" type="application/json">{!! json_encode(\App\Support\TextosSistema::diccionario(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
 <script src="{{ asset('js/textos-sistema.js') }}?v={{ filemtime(public_path('js/textos-sistema.js')) }}" defer></script>
 <script src="{{ asset('js/mapa-pantalla-completa.js') }}?v={{ filemtime(public_path('js/mapa-pantalla-completa.js')) }}" defer></script>
 <style>.hub-map-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:9999!important;background:white}.leaflet-container:fullscreen{width:100vw!important;height:100dvh!important}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 @if(request()->routeIs('laboratorio', 'admin.laboratorio'))<link rel="stylesheet" href="{{ asset('css/pagina-laboratorio.css') }}?v={{ filemtime(public_path('css/pagina-laboratorio.css')) }}" />@endif
+@if(request()->routeIs('laboratorio', 'admin.laboratorio'))<script src="{{ asset('js/laboratorio-layout.js') }}?v={{ filemtime(public_path('js/laboratorio-layout.js')) }}" data-navigate-once></script>@endif
 <style>:root { color-scheme: light; } :root.dark { color-scheme: dark; }</style>
 <script src="{{ asset('js/hub-appearance.js') }}?v={{ filemtime(public_path('js/hub-appearance.js')) }}" data-navigate-once></script>
 <script>

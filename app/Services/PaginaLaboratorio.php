@@ -36,7 +36,16 @@ final class PaginaLaboratorio
                 $fotos[$clave]['ruta'] = $foto['ruta']; $fotos[$clave]['sha256'] = $foto['sha256'];
             }
         }
-        return ['textos' => $textos, 'fotos' => $fotos, 'version' => hash('sha256', $original)];
+        $bloques = [];
+        foreach (array_slice((array) ($datos['bloques'] ?? []), 0, 30) as $bloque) {
+            if (!is_array($bloque) || !preg_match('/\A[a-f0-9]{16}\z/', (string) ($bloque['id'] ?? ''))) continue;
+            $bloques[] = [
+                'id' => $bloque['id'], 'titulo' => (string) ($bloque['titulo'] ?? ''),
+                'texto' => (string) ($bloque['texto'] ?? ''), 'alt' => (string) ($bloque['alt'] ?? ''),
+                'foto' => $this->fotoBloque((array) ($bloque['foto'] ?? []), (string) ($bloque['alt'] ?? '')),
+            ];
+        }
+        return ['textos' => $textos, 'fotos' => $fotos, 'bloques' => $bloques, 'posiciones' => (array) ($datos['posiciones'] ?? []), 'version' => hash('sha256', $original)];
     }
 
     public function prepararFoto(string $contenido): array
@@ -53,9 +62,9 @@ final class PaginaLaboratorio
         return ['ruta' => $ruta, 'sha256' => $hash];
     }
 
-    public function guardar(array $textos, array $alt, array $nuevas, array $restaurar, string $version, string $autor): void
+    public function guardar(array $textos, array $alt, array $nuevas, array $restaurar, string $version, string $autor, ?array $bloques = null, ?array $posiciones = null): void
     {
-        DB::transaction(function () use ($textos, $alt, $nuevas, $restaurar, $version, $autor): void {
+        DB::transaction(function () use ($textos, $alt, $nuevas, $restaurar, $version, $autor, $bloques, $posiciones): void {
             $fila = DB::table('usuarios.textos_portal')->where('clave', self::CLAVE)->lockForUpdate()->first();
             if (! hash_equals(hash('sha256', (string) ($fila->contenido ?? '')), $version)) {
                 throw ValidationException::withMessages(['version' => 'Otra persona actualizó la página. Recarga el editor antes de guardar.']);
@@ -66,7 +75,20 @@ final class PaginaLaboratorio
                 $foto = $nuevas[$clave] ?? (!empty($restaurar[$clave]) ? [] : ($actual['fotos'][$clave] ?? []));
                 $fotos[$clave] = array_intersect_key($foto, array_flip(['ruta', 'sha256'])) + ['alt' => trim($alt[$clave])];
             }
-            $valores = ['contenido' => json_encode(['textos' => array_intersect_key($textos, config('pagina-laboratorio.textos')), 'fotos' => $fotos], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+            $anteriores = collect((array) ($actual['bloques'] ?? []))->keyBy('id');
+            $guardados = [];
+            foreach ($bloques ?? $anteriores->values()->all() as $bloque) {
+                $id = (string) ($bloque['id'] ?? '');
+                if (!preg_match('/\A[a-f0-9]{16}\z/', $id)) throw new \InvalidArgumentException('Bloque de contenido no válido.');
+                $clave = 'bloque-'.$id;
+                // La ruta publicada procede del servidor; nunca del formulario.
+                $foto = $nuevas[$clave] ?? (!empty($restaurar[$clave]) ? [] : ($anteriores->get($id)['foto'] ?? []));
+                $guardados[] = array_intersect_key($bloque, array_flip(['id', 'titulo', 'texto', 'alt']))
+                    + ['foto' => $this->fotoBloque((array) $foto, (string) ($bloque['alt'] ?? ''))];
+            }
+            $contenido = ['textos' => array_intersect_key($textos, config('pagina-laboratorio.textos')), 'fotos' => $fotos, 'bloques' => $guardados];
+            $contenido['posiciones'] = DisenoLaboratorio::validar($posiciones ?? (array) ($actual['posiciones'] ?? []), $contenido);
+            $valores = ['contenido' => json_encode($contenido, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
                 'updated_by' => $autor, 'updated_at' => now()];
             if (!$fila) $valores['created_at'] = now();
             DB::table('usuarios.textos_portal')->updateOrInsert(['clave' => self::CLAVE], $valores);
@@ -76,10 +98,19 @@ final class PaginaLaboratorio
 
     public function contenidoFoto(string $clave, string $hash): string
     {
-        $foto = $this->leer()['fotos'][$clave] ?? null;
+        $datos = $this->leer();
+        $foto = $datos['fotos'][$clave] ?? null;
+        foreach ($datos['bloques'] as $bloque) if ($clave === 'bloque-'.$bloque['id']) $foto = $bloque['foto'];
         abort_unless($foto && is_string($foto['sha256']) && hash_equals($foto['sha256'], $hash), 404);
         $contenido = $this->archivos->obtenerVerificado($foto['ruta'], $hash);
         abort_unless((@getimagesizefromstring($contenido)['mime'] ?? '') === 'image/webp', 404);
         return $contenido;
+    }
+
+    private function fotoBloque(array $foto, string $alt): array
+    {
+        $hash = (string) ($foto['sha256'] ?? '');
+        $valida = preg_match('/\A[a-f0-9]{64}\z/', $hash) && ($foto['ruta'] ?? '') === self::PREFIJO.$hash.'.webp';
+        return ['alt' => $alt, 'ruta' => $valida ? $foto['ruta'] : null, 'sha256' => $valida ? $hash : null];
     }
 }

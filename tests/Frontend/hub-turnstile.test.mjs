@@ -4,6 +4,18 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const source = readFileSync(new URL('../../public/js/hub-turnstile.js', import.meta.url), 'utf8');
+test('localhost usa el par oficial dummy dentro del entorno temporal sin escribir .env', () => {
+    const launcher = readFileSync(new URL('../../scripts/development/localhost.ps1', import.meta.url), 'utf8');
+    const local = launcher.match(/\$variablesLocal = @\{([\s\S]*?)\r?\n\}/)[1];
+    assert.match(local, /APP_ENV = 'local'/);
+    assert.match(local, /TURNSTILE_SITE_KEY = '1x00000000000000000000AA'/);
+    assert.match(local, /TURNSTILE_SECRET = '1x0000000000000000000000000000000AA'/);
+    assert.match(local, /TURNSTILE_ENABLED = 'true'/);
+    assert.match(local, /TURNSTILE_EXPECTED_HOSTNAME = 'null'/);
+    assert.match(local, /TURNSTILE_EXPECTED_ACTION = 'null'/);
+    assert.match(launcher, /finally \{[\s\S]*SetEnvironmentVariable\(\$nombreLocal, \$anterioresLocal\[\$nombreLocal\], 'Process'\)/);
+    assert.doesNotMatch(launcher, /WriteAllText\([^\r\n]*['"]\.env['"]/);
+});
 function fixture({registration = false, api = true, dark = false} = {}) {
     const events = [], listeners = new Map(), timers = new Map(), renders = [], removed = [];
     let next = 0;

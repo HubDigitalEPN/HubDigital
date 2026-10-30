@@ -5,7 +5,7 @@ const path = require('node:path');
 const {createHash} = require('node:crypto');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const definitions = {
-    laboratorio: {sources: ['config/pagina-laboratorio.php','public/css/pagina-laboratorio.css','public/images/laboratorio/personal-referencia.png','resources/views/portal-laboratorio.blade.php','resources/views/components/laboratorio-foto.blade.php','resources/views/layouts/portal.blade.php'], checks:['navigation','copy','photos','responsive']},
+    laboratorio: {sources: ['config/pagina-laboratorio.php','public/css/pagina-laboratorio.css','public/js/laboratorio-layout.js','public/images/laboratorio/personal-referencia.png','resources/views/portal-laboratorio.blade.php','resources/views/components/laboratorio-foto.blade.php','resources/views/components/laboratorio-texto.blade.php','resources/views/partials/laboratorio-libre.blade.php','resources/views/livewire/administracion/configuracion-laboratorio.blade.php','resources/views/layouts/portal.blade.php'], checks:['navigation','copy','photos','responsive']},
     tarjetas: {sources: ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/PortalCatalogo.php','Modules/CatalogoPublico/resources/views/livewire/portal-catalogo.blade.php','Modules/CatalogoPublico/resources/views/components/fotografia-tarjeta.blade.php','resources/js/portal-record-scroll.js','public/js/card-scroll.js'], checks:['filtered','noSiblingRail','noPageButtons','scroll','unique']},
     registros: {sources: ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/PortalCatalogo.php','Modules/CatalogoPublico/resources/views/livewire/portal-catalogo.blade.php','resources/js/portal-record-scroll.js','public/js/interactive-grid.js','public/css/interactive-grid.css','resources/views/components/grid-frame.blade.php','resources/views/components/grid-tools.blade.php','resources/views/components/grid-column-menu.blade.php','resources/css/portal-taxonomy-dialogs.css'], checks:['edge','scroll','preservedPosition','columnMenu','columnMove','noPageButtons']},
     fichas: {sources: ['Modules/CatalogoPublico/resources/views/components/ficha-registro-publico.blade.php','Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php','Modules/CatalogoPublico/resources/views/components/atribuciones-imagen.blade.php','Modules/CatalogoPublico/resources/views/components/visor-imagen.blade.php','resources/js/portal-image-model.js','resources/js/portal-dashboard.js','resources/css/portal-record-dialog.css','resources/css/portal-estadisticas.css'], checks:['summary','labels','closeRight','recordClose','photoCreditsFit','photoClose']},
@@ -28,6 +28,8 @@ const contracts = {
     'app/Http/Controllers/FotoPaginaLaboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],
     'app/Livewire/Concerns/WithInteractiveGrid.php':['tests/Feature/Auth/AdminInteractiveGridTest.php'],
     'app/Notifications/CanalesCampana.php':['tests/Feature/CanalesCampanaTest.php'],
+    'config/webpush.php':['tests/Feature/CanalesCampanaTest.php'],
+    'app/Services/DisenoLaboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],
     'config/pagina-laboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],
     'config/portal-copy.php':['tests/Feature/PaginaLaboratorioTest.php','tests/Feature/BusquedaUniversalPublicaTest.php'],
     'routes/web.php':['tests/Feature/PaginaLaboratorioTest.php','tests/Feature/GridFormulariosTest.php'],

@@ -153,7 +153,12 @@ async function enable() {
         if (!subscription) subscription = await serviceWorker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(configuration.publicKey) });
         const payload = subscription.toJSON();
         await jsonRequest(SUBSCRIPTIONS_URL, { method: 'POST', body: JSON.stringify({ endpoint: subscription.endpoint, keys: payload.keys, contentEncoding: PushManager.supportedContentEncodings?.[0] ?? 'aes128gcm' }) });
-        emitStatus('enabled', 'Avisos activos en este dispositivo.');
+        emitStatus('enabled', 'Notificaciones activadas correctamente en este dispositivo.');
+        showNotification({
+            title: 'Notificaciones activadas',
+            message: 'Este dispositivo ya puede recibir las notificaciones de HubDigital.',
+            variant: 'success',
+        });
     } catch { emitStatus('error', 'No fue posible activar los avisos. Inténtalo nuevamente.'); }
 }
 

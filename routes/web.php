@@ -22,7 +22,7 @@ Route::get('/archivo/imagen/{id}', \App\Http\Controllers\ServirImagenArchivo::cl
 Route::view('/', 'portal-inicio')->name('home');
 Route::view('/el-laboratorio', 'portal-laboratorio')->name('laboratorio');
 Route::get('/el-laboratorio/fotos/{foto}/{hash}', \App\Http\Controllers\FotoPaginaLaboratorio::class)
-    ->whereIn('foto', array_keys(config('pagina-laboratorio.fotos')))->where('hash', '[a-f0-9]{64}')->name('laboratorio.foto');
+    ->where('foto', '(?:'.implode('|', array_keys(config('pagina-laboratorio.fotos'))).'|bloque-[a-f0-9]{16})')->where('hash', '[a-f0-9]{64}')->name('laboratorio.foto');
 Route::get('/version', VersionPortalController::class)->name('portal.version');
 Route::view('/informacion/privacidad', 'portal-informacion-legal', ['tipo' => 'privacidad'])->name('portal.privacidad');
 Route::view('/informacion/terminos', 'portal-informacion-legal', ['tipo' => 'terminos'])->name('portal.terminos');
