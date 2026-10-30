@@ -58,7 +58,7 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
         capasOriginales.push(this);
     }};
     const contexto = {
-        L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos, colorCantidadRegistros, crearRegistrosInfinitos, crearVisorImagen,
+        L, crearAgrupadorMapa, crearGeojsonMapa, prepararPuntosMapa, etiquetaAgrupacionMapa, ZOOM_UBICACIONES_ORIGINALES, colorFilo, composicionFilos, fondoFilos, colorCantidadRegistros, crearRegistrosInfinitos, crearVisorImagen, performance,
         window: {innerWidth: 1280, innerHeight: 800, Alpine: {data: (nombre, fabrica) => registros.set(nombre, fabrica)}, addEventListener() {}, removeEventListener() {}},
         document: {
             documentElement: {classList: {add() {}, remove() {}}},
@@ -80,7 +80,7 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
     dashboard.$id = () => 'ayuda-mapa-prueba';
     dashboard.$nextTick = tarea => tarea();
     dashboard.init();
-    return {dashboard, filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, focos, eventosMapa, eventosTeselas, encuadres, redibujosTeselas: () => redibujosTeselas, pintar() {
+    return {dashboard, catalogo: registros.get('portalCatalogo')(), filtros: registros.get('portalFiltros')(), ventana: contexto.window, marcadores, capasOriginales, ayudas, focos, eventosMapa, eventosTeselas, encuadres, redibujosTeselas: () => redibujosTeselas, pintar() {
         while (cuadros.size) {
             const [id, tarea] = cuadros.entries().next().value;
             cuadros.delete(id);
@@ -88,6 +88,25 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
         }
     }};
 }
+
+test('abrir una tarjeta desde su botón espera la respuesta y enfoca el título visible del catálogo', async () => {
+    const {catalogo, ventana, pintar} = dashboardConMapa([]);
+    let terminar, cargando = true, foco = false, posicion = 800;
+    const oculto = {getClientRects: () => []};
+    const titulo = {textContent: 'Dolichoderus curvilobus · Especie', getClientRects: () => [{}], closest: () => cargando ? {} : null,
+        setAttribute() {}, focus(opciones) { assert.equal(opciones.preventScroll, true); foco = true; }};
+    const raiz = {isConnected: true, dataset: {catalogoSeleccion: '{}'}, querySelectorAll: () => [oculto, titulo]};
+    // Alpine proporciona $el desde el botón invocador, no desde la raíz.
+    catalogo.$el = {closest: () => raiz}; catalogo.$nextTick = fn => fn();
+    catalogo.$wire = {navegar: (nivel, taxon) => { assert.equal(nivel, 'species'); assert.equal(taxon, 'Dolichoderus curvilobus'); return new Promise(resolve => terminar = resolve); }};
+    ventana.scrollTo = ({top}) => posicion = top;
+    const navegacion = catalogo.navegarTarjeta('species', 'Dolichoderus curvilobus');
+    assert.equal(posicion, 800); assert.equal(foco, false);
+    terminar(); await navegacion; assert.equal(foco, false);
+    raiz.dataset.catalogoSeleccion = JSON.stringify({nivel: 'species', taxon: 'Dolichoderus curvilobus'}); cargando = false; pintar();
+    assert.equal(posicion, 0); assert.equal(foco, true);
+    assert.equal(typeof catalogo.abrirTaxon, 'function');
+});
 
 function activarComposicion(dashboard, identificador) {
     // Usa la contextualización de la versión de Livewire instalada: el scope Alpine

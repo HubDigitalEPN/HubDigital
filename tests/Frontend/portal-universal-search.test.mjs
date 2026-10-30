@@ -16,7 +16,7 @@ test('el LOV descarta respuestas fuera de orden y solo aplica al seleccionar', a
 });
 
 test('el color aumenta de amarillo hacia rojo según registros sin alterar geometría', () => {
-    assert.equal(colorCantidadRegistros(1), '#ffe600');
+    assert.equal(colorCantidadRegistros(1), '#ffc400');
     assert.equal(colorCantidadRegistros(1000), '#d7191c');
     assert.equal(colorCantidadRegistros(10000), '#d7191c');
     const verde = cantidad => parseInt(colorCantidadRegistros(cantidad).slice(3, 5), 16);

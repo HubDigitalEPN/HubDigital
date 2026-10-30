@@ -12,6 +12,11 @@ const definitions = {
     chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css'], checks:['install','hide','stored','restore','focus']},
 };
 const owner = {};
+definitions.laboratorio.checks.push('branches','originals');
+definitions.tarjetas.checks.push('uniform','start');
+definitions.fichas.checks.push('markerContrast');
+definitions.chat.checks.push('catalogRestore','bothHidden');
+definitions.laboratorio.sources.push(...['Adrian.jpg','vladimir_carvajal.jpg','David_Donoso_2.jpg','asistente.jpg','edith_montalvo.jpg','Edith_M.jpg','Dayana_T1.jpg','Monica_Guerra.png','Diego_Almeida.png','Michelle_Velez.jpg','Pablo_Arguello.png','Selene_Baez.png'].map(file=>'public/images/laboratorio/equipo/'+file));
 for (const [id, value] of Object.entries(definitions)) for (const source of value.sources) (owner[source] ||= []).push(id);
 Object.assign(owner, {
     'tests/Browser/contratos-ui-focales.mjs':Object.keys(definitions),
@@ -23,6 +28,8 @@ Object.assign(owner, {
     'Modules/CatalogoPublico/resources/views/components/busqueda-universal.blade.php':['tarjetas'],
 });
 const contracts = {
+    'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EstadisticasCatalogoChat.php':['tests/Feature/PortalChatFilosYBiologiaTest.php'],
+    'database/migrations/2026_10_30_000001_completar_perfiles_laboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],
     'Modules/CatalogoPublico/app/Presentation/Http/Controllers/ServirImagenCatalogo.php':['tests/Feature/RutasObjetosR2Test.php'],
     'app/Console/Commands/ActualizarDescripcionInstitucional.php':['tests/Feature/BusquedaUniversalPublicaTest.php'],
     'app/Http/Controllers/FotoPaginaLaboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],

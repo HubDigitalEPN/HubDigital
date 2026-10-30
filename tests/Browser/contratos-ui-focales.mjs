@@ -11,7 +11,9 @@ export async function comprobarUIFocal(caso) {
         const nav=all('nav[aria-label="Navegación principal"] a').map(x=>x.textContent.trim());
         checks.navigation=nav.slice(0,4).join('|')==='Inicio|El Laboratorio|Explorar la colección|Depósitos';
         checks.copy=q('.lab-introduction').textContent.includes('Generamos conocimiento sobre taxonomía-sistemática') && q('.lab-introduction').textContent.includes('para la conservación de la naturaleza.');
-        checks.photos=all('[data-lab-personal] .lab-photo').length===10;
+        checks.photos=all('[data-lab-personal] .lab-photo').length===18;
+        checks.branches=all('[data-lab-branch]').length===5 && q('.lab-branch-title')?.textContent.includes('Entomología');
+        checks.originals=all('img.lab-photo[src*="/images/laboratorio/equipo/"]').length===12;
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='tarjetas') {
         await wait(()=>q('[data-card-progress]'));
@@ -23,6 +25,12 @@ export async function comprobarUIFocal(caso) {
         checks.scroll=count()>before;
         const names=all('.collection-taxon-main').map(x=>x.textContent.trim());checks.unique=new Set(names).size===names.length;
         metrics={before,after:count()};
+        const sizes=all('.grid > .collection-taxon-card').map(x=>x.getBoundingClientRect());
+        checks.uniform=sizes.length>1 && sizes.every(x=>Math.abs(x.width-sizes[0].width)<1 && Math.abs(x.height-sizes[0].height)<1);
+        const target=all('.collection-taxon-main').at(-1),previous=q('[data-catalogo-seleccion]').dataset.catalogoSeleccion;
+        target.scrollIntoView({block:'center'});target.click();await wait(()=>q('[data-catalogo-seleccion]').dataset.catalogoSeleccion!==previous);await frame();
+        await wait(()=>window.scrollY<1 && document.activeElement.matches('.collection-main h1,.collection-main h2'));
+        checks.start=true;
     } else if(caso==='registros') {
         await wait(()=>q('.portal-records-viewport')?.style.height);
         const root=q('.portal-records-viewport'),table=root.querySelector('.atlas-record-table-scroll');
@@ -39,6 +47,10 @@ export async function comprobarUIFocal(caso) {
         checks.noPageButtons=!root.querySelector('.hub-ig-page-button');metrics={edges,before,after:table.querySelectorAll('tbody tr').length};
     } else if(caso==='fichas') {
         await wait(()=>q('.collection-specimen-card'));checks.summary=!!q('.collection-species-summary');
+        const mapa=q('.collection-species-map') || q('[x-data^="portalMapaEspecie"]');
+        mapa?.scrollIntoView({block:'center'});await frame();
+        await wait(()=>all('.collection-main .leaflet-overlay-pane path.leaflet-interactive').length>0);
+        checks.markerContrast=all('.collection-main .leaflet-overlay-pane path.leaflet-interactive').every(x=>x.getAttribute('stroke')==='#704500' && Number(x.getAttribute('stroke-width'))>=1.8 && Number(x.getAttribute('fill-opacity'))===1);
         q('.collection-specimen-card').click();await wait(()=>q('.portal-record-dialog')?.open);
         const dialog=q('.portal-record-dialog'),head=dialog.querySelector('header'),close=head.querySelector('button');
         const labels=[...dialog.querySelectorAll('.atlas-record-card > dl dt')].map(x=>x.textContent.trim());
@@ -58,7 +70,9 @@ export async function comprobarUIFocal(caso) {
         await wait(()=>q('#chat-bot-panel').getClientRects().length>0);
         all('#chat-bot-panel button').find(x=>x.textContent.trim()==='Ocultar asistente').click();await frame();
         checks.hide=getComputedStyle(q('.portal-chat-shell')).display==='none';checks.stored=localStorage.getItem('hubdigital.chat.oculto')==='1';
+        checks.catalogRestore=!!q('[data-chat-restore-catalogo]') && getComputedStyle(q('[data-chat-restore-catalogo]')).display!=='none' && q('[data-chat-restore-catalogo]').getClientRects().length>0;
         q('[data-chat-restore]').click();await frame();checks.restore=!document.documentElement.hasAttribute('data-chat-hidden') && q('#chat-bot-panel').getClientRects().length>0;
+        checks.bothHidden=all('[data-chat-restore]').every(x=>getComputedStyle(x).display==='none');
         checks.focus=document.activeElement===q('#chat-bot-panel input');
         q('#chat-bot-panel button[aria-label="Cerrar chat"]').click();
     } else throw Error('Contrato desconocido.');

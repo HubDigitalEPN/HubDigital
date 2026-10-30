@@ -127,6 +127,25 @@ const registrarDashboard = () => {
             };
             window.addEventListener('popstate', alVolver);
         },
+        async navegarTarjeta(nivel, taxon) {
+            const raiz = this.$el.closest('[data-catalogo-seleccion]');
+            try { await this.$wire.navegar(nivel, taxon); } catch { return; }
+            const limite = performance.now() + 3000;
+            const enfocar = () => {
+                if (!raiz?.isConnected) return;
+                const seleccion = JSON.parse(raiz.dataset.catalogoSeleccion);
+                const titulo = [...raiz.querySelectorAll('.collection-main h1, .collection-main h2')].find(elemento => elemento.getClientRects().length > 0 && elemento.textContent.includes(taxon));
+                // Livewire retira inert al terminar su estado de carga, después
+                // de resolver la acción. Antes de eso el navegador ignora focus.
+                if (seleccion.nivel !== nivel || seleccion.taxon !== taxon || !titulo || titulo.closest('[inert]')) {
+                    if (performance.now() < limite) requestAnimationFrame(enfocar);
+                    return;
+                }
+                window.scrollTo({top: 0, behavior: 'instant'});
+                titulo.setAttribute('tabindex', '-1'); titulo.focus({preventScroll: true});
+            };
+            this.$nextTick(() => requestAnimationFrame(enfocar));
+        },
         actualizarHistorial(evento) { historial?.recibir(evento.estado, evento.restauracion, evento.version); },
         destroy() {
             historial?.destroy();
@@ -389,7 +408,7 @@ const registrarDashboard = () => {
                     mapa.fitBounds(L.latLngBounds(ubicaciones.map(({lat, lon}) => [lat, lon])), {padding: [24, 24], maxZoom: 10});
                     for (const {lat, lon, cantidad, radio} of ubicaciones) {
                         const marcador = new CirculoCoordenadaOriginal([lat, lon], {
-                            radius: radio, color: colorCantidadRegistros(cantidad), weight: 1, fillColor: colorCantidadRegistros(cantidad), fillOpacity: .8,
+                            radius: radio, color: '#704500', weight: 1.8, fillColor: colorCantidadRegistros(cantidad), fillOpacity: 1,
                         }).addTo(mapa);
                         const popup = L.DomUtil.create('div');
                         const nombre = L.DomUtil.create('p', '', popup);
@@ -651,7 +670,7 @@ const registrarDashboard = () => {
                 }).addTo(capa) : new CirculoCoordenadaOriginal([lat, lon], {
                     pane: 'registros',
                     radius: radio,
-                    color: colorCantidadRegistros(cantidad), weight: 1, fillColor: colorCantidadRegistros(cantidad), fillOpacity: .85,
+                    color: '#704500', weight: 1.8, fillColor: colorCantidadRegistros(cantidad), fillOpacity: 1,
                 }).addTo(capa);
                 const elemento = marcador.getElement();
                 const acceso = this.$el.querySelector('[data-acceso-registros]')?.dataset.accesoRegistros==='true';

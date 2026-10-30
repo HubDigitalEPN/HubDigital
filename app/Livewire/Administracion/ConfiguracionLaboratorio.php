@@ -62,7 +62,7 @@ final class ConfiguracionLaboratorio extends Component
         $reglas = ['textos' => ['required', 'array'], 'alternativos' => ['required', 'array'],
             'fotos' => ['array:'.implode(',', array_keys(config('pagina-laboratorio.fotos')))], 'restaurarFotos.*' => ['boolean']];
         $largos = ['principal', 'personal_descripcion', 'adrian_bio', 'adrian_especialidad', 'vladimir_bio', 'david_bio', 'colaboracion_texto'];
-        foreach (config('pagina-laboratorio.textos') as $clave => $defecto) $reglas['textos.'.$clave] = ['required', 'string', 'max:'.(in_array($clave, $largos, true) ? '20000' : '5000'), 'not_regex:/^\s*$/u'];
+        foreach (config('pagina-laboratorio.textos') as $clave => $defecto) $reglas['textos.'.$clave] = ['required', 'string', 'max:'.(in_array($clave, $largos, true) || str_ends_with($clave, '_bio') ? '20000' : '5000'), 'not_regex:/^\s*$/u'];
         $reglas += [
             'bloques' => ['array', 'max:30'], 'bloques.*.id' => ['required', 'regex:/\A[a-f0-9]{16}\z/', 'distinct'],
             'bloques.*.titulo' => ['nullable', 'string', 'max:180'], 'bloques.*.texto' => ['nullable', 'string', 'max:20000'],

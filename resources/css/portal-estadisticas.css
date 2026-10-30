@@ -476,6 +476,10 @@
   .collection-specimen-metadata { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 .collection-taxon-card { position:relative; min-width:0; overflow-wrap:anywhere; }
+.grid:has(> .collection-taxon-card) { grid-auto-rows:1fr; align-items:stretch; }
+.grid > .collection-taxon-card { display:flex; flex-direction:column; height:100%; }
+.grid > .collection-taxon-card > .p-3\.5 { flex:1; display:flex; flex-direction:column; }
+.grid > .collection-taxon-card > .p-3\.5 > .border-t { margin-top:auto; padding-top:.65rem; min-height:3.6rem; }
 .collection-taxon-main { text-align:left; overflow-wrap:anywhere; }
 .collection-taxon-main::after { content:''; position:absolute; inset:0; border-radius:inherit; }
 .collection-taxon-main:focus-visible { outline:none; }

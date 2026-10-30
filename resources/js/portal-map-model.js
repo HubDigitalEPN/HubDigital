@@ -16,7 +16,7 @@ export function radioRegistros(cantidad) {
 export function colorCantidadRegistros(cantidad) {
     const valor = Number(cantidad);
     const proporcion = Math.min(1, Math.max(0, Math.log10(Number.isFinite(valor) ? Math.max(1, valor) : 1) / 3));
-    const inicio = [255, 230, 0], fin = [215, 25, 28];
+    const inicio = [255, 196, 0], fin = [215, 25, 28];
     return '#' + inicio.map((v, i) => Math.round(v + (fin[i] - v) * proporcion).toString(16).padStart(2, '0')).join('');
 }
 

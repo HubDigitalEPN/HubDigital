@@ -1,4 +1,18 @@
 .lab-page { color: #0a1a11; background: #fff; font-family: Inter, Arial, sans-serif; }
+.lab-branch-title { margin:2rem 4.3% 0; font-size:1.5rem; font-weight:700; color:#244d35; }
+.lab-source { margin:0 4.3% 2rem; font-size:.85rem; color:#44634f; }
+.lab-source a, .lab-branch header a { text-decoration:underline; text-underline-offset:3px; }
+.lab-branch { margin:2.5rem 4.3%; padding-top:1.8rem; border-top:1px solid #dce5dc; }
+.lab-branch header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:.5rem 1rem; margin-bottom:1.4rem; }
+.lab-branch h2 { margin:0; font-size:1.8rem; font-weight:700; color:#244d35; }
+.lab-branch header a { color:#44634f; font-size:.85rem; }
+.lab-branch-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.5rem; }
+.lab-branch-profile { display:grid; grid-template-columns:minmax(8rem,32%) minmax(0,1fr); align-items:start; gap:1.2rem; padding:1.25rem; border:1px solid #dce5dc; border-radius:.6rem; background:#fafcf9; }
+.lab-branch-profile > .lab-photo { height:auto; aspect-ratio:3/4; object-position:top; border-radius:.3rem; }
+.lab-branch-profile h3 { margin:0 0 .65rem; font-size:1.2rem; font-weight:700; }
+.lab-branch-profile p { margin:0; font-size:1rem; line-height:1.65; color:#505855; white-space:pre-line; overflow-wrap:anywhere; }
+@media(max-width:1000px) { .lab-branch-grid { grid-template-columns:1fr; } }
+@media(max-width:480px) { .lab-branch-profile { grid-template-columns:1fr; } .lab-branch-profile > .lab-photo { max-width:14rem; } }
 .lab-introduction { padding: 3rem 4.3%; max-width: 100rem; margin: auto; }
 .lab-introduction h1 { font: 700 2.25rem/1.2 Inter,Arial,sans-serif; margin: 0 0 1.25rem; color: #0a1a11; }
 .lab-introduction p { font-size: 1.1rem; line-height: 1.75; color: #505855; margin: 0; white-space: pre-line; }

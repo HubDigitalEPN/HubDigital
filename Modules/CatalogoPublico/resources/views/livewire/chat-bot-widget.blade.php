@@ -32,7 +32,7 @@
                     <flux:icon name="x-mark" class="size-5" />
                 </button>
                 <div class="col-span-2 flex flex-wrap items-center justify-between gap-1">
-                    <button type="button" x-on:click="ocultar()" class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Oculta también el icono; puedes recuperarlo desde el pie de página">Ocultar asistente</button>
+                    <button type="button" x-on:click="ocultar()" class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Puedes recuperarlo desde la barra del catálogo o el pie de página">Ocultar asistente</button>
                     <button type="button" wire:click="nuevaConversacion" wire:loading.attr="disabled" wire:target="nuevaConversacion"
                         class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white" title="Borrar el contexto de este chat">Nueva conversación</button>
                     <x-pwa-install-button :oscuro="true" />
@@ -52,6 +52,15 @@
                             </span>
                             <div class="portal-chat-bubble portal-chat-bubble-incoming max-w-[88%] min-w-0 rounded-2xl rounded-bl-sm border border-blue-navy/10 bg-white px-3.5 py-2.5 text-sm leading-5 text-blue-navy shadow-sm">
                                 <p class="whitespace-pre-wrap break-words">{{ $mensaje['texto'] }}</p>
+                                @if(!empty($mensaje['tabla']))
+                                    <div class="portal-chat-table-scroll" tabindex="0" role="region" aria-label="{{ $mensaje['tabla']['titulo'] }}">
+                                        <table class="portal-chat-table">
+                                            <caption>{{ $mensaje['tabla']['titulo'] }}</caption>
+                                            <thead><tr><th scope="col">Filo</th><th scope="col">Registros</th></tr></thead>
+                                            <tbody>@foreach($mensaje['tabla']['filas'] as $fila)<tr><th scope="row">{{ $fila['nombre'] }}</th><td>{{ number_format($fila['registros'], 0, ',', '.') }}</td></tr>@endforeach</tbody>
+                                        </table>
+                                    </div>
+                                @endif
                                 @if(! empty($mensaje['opciones']))
                                     <div class="portal-chat-suggestions mt-2.5 flex flex-wrap gap-1.5">
                                         @foreach($mensaje['opciones'] as $opcion)

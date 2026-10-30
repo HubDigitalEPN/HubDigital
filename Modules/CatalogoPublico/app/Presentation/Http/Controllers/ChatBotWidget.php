@@ -83,6 +83,7 @@ final class ChatBotWidget extends Component
         $this->mensajes[] = [
             'rol' => 'chatbot',
             'texto' => $output['texto'],
+            'tabla' => $output['tabla'] ?? null,
             'opciones' => $output['opciones'] ?? [],
             'node_id' => $output['node_id'] ?? null,
             'variant_id' => $output['variant_id'] ?? null,

@@ -18,6 +18,7 @@ final class EstadisticasCatalogoChat
     {
         $normal = rtrim(app(TextoChat::class)->normalizar($pregunta), '?.! ');
         $normal = preg_replace('/^(?:hola|ola) /', '', $normal) ?? $normal;
+        if (($agrupacion = $this->agruparPorFilo($normal, $seleccionPortal)) !== null) return $agrupacion;
         $normal = preg_replace('/^en (cual|que) (localidad|provincia) hay /', '$1 $2 tiene ', $normal) ?? $normal;
         $ambito = '(?:este portal|el portal|(?:toda )?la coleccion|esta seleccion|la seleccion (?:actual|aplicada))';
         $ranking = preg_match('/^(?:y )?(?:cual|que)(?: es)?(?: la)? (localidad|provincia) (?:tiene|tienen|hay con|con|reune) (?:mas|mayor (?:cantidad|numero) de) (especies|registros)(?: (?:en|de) '.$ambito.')?$/', $normal, $m);
@@ -81,6 +82,37 @@ final class EstadisticasCatalogoChat
         $texto .= $unidad === 'especies' ? ' Se cuentan especies distintas, no ejemplares ni nombres a rango familia.' : ' Cada registro corresponde a una entrada publicada del catálogo.';
         $texto .= ' La comparación incluye únicamente ubicaciones publicadas.';
         return $this->resultado($texto, 'catalogo.ranking_'.$dimension, $maximo, $nombres, $opciones);
+    }
+
+    private function agruparPorFilo(string $normal, ?array $seleccionPortal): ?array
+    {
+        // Vocabulario acotado: una explicación de qué es un filo no pide conteos.
+        $normal = preg_replace('/\b(?:flios|flos)\b/', 'filos', $normal) ?? $normal;
+        $agrupacion = preg_match('/\bpor filos?\b/', $normal)
+            || preg_match('/\b(?:tabla|clasifica\w*|agrupa\w*|desglosa\w*)\b.*\bfilos\b/', $normal);
+        $conteoFilos = preg_match('/\bcuant[oa]s? filos\b/', $normal) || preg_match('/^(?:y )?filos?$/', $normal);
+        if (!$agrupacion && !$conteoFilos) return null;
+        if (!config('chatbot.specimen_search', true)) return ['texto' => 'La consulta de la colección no está disponible en este momento.', 'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => []];
+        $filtrar = !preg_match('/\b(?:completo|completa|todos|toda|global)\b/', $normal) && $seleccionPortal !== null;
+        $seleccion = $filtrar ? SeleccionPaginaChat::desde($seleccionPortal) : null;
+        if (str_contains($normal, 'seleccion') && $seleccion === null) return ['texto' => 'Abre el catálogo y aplica los filtros para consultar esa selección.', 'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => []];
+        $parametros = $seleccion?->parametros ?? [];
+        // La misma consulta SQL y política de divulgación que las tarjetas y filtros.
+        // Ninguna instrucción SQL escrita por el visitante se ejecuta.
+        $resumen = app(EloquentProveedorEspecimenesParaArbol::class)->resumenJerarquia($seleccion?->filtros ?? FiltrosBusqueda::vacio(), $parametros['nivel'] ?? '', $parametros['taxon'] ?? '');
+        $filas = [];
+        foreach ($resumen['nodos'] as $nodo) {
+            if ($nodo['nivel'] !== 'phylum') continue;
+            $cantidad = (int) ($resumen['conteos']['phylum:'.$nodo['taxon']] ?? 0);
+            if ($cantidad > 0) $filas[] = ['nombre' => $nodo['taxon'], 'registros' => $cantidad];
+        }
+        usort($filas, static fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
+        $total = array_sum(array_column($filas, 'registros'));
+        $alcance = $seleccion !== null ? 'en la selección aplicada de la página' : 'en el catálogo público completo';
+        $texto = 'Hay '.count($filas).' '.(count($filas) === 1 ? 'filo' : 'filos').' con '.$total.' registros publicados '.$alcance.'. La tabla cuenta registros, no individuos, y usa la clasificación interna publicada.';
+        $opciones = [['label' => 'Ver registros consultados', 'url' => route('portal.catalogo', $parametros + ['vista' => 'registros'])]];
+        return $this->resultado($texto, 'catalogo.tabla_filos', $total, $filas, $opciones)
+            + ['tabla' => ['titulo' => 'Registros por filo', 'filas' => $filas]];
     }
 
     private function resultado(string $texto, string $intent, int $total, array $rows, array $opciones): array

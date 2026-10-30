@@ -114,6 +114,9 @@
         />
         <div class="collection-main" wire:key="catalogo-contenido" wire:loading.attr="inert">
     <nav class="collection-view-bar" wire:key="catalogo-vistas" aria-label="Vista de la Colección Biológica">
+        <button type="button" class="collection-chat-restore" data-chat-restore data-chat-restore-catalogo x-on:click="$dispatch('portal-chat-toggle')" aria-controls="chat-bot-panel" aria-label="Mostrar asistente HubDigital" title="Mostrar asistente">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>
+        </button>
         <div class="collection-active-filters" role="group" aria-label="Filtros activos de la selección aplicada">
             @foreach($this->criteriosActivos as $criterio)
                 <button type="button" wire:key="criterio-{{ $criterio['clave'] }}-{{ $criterio['indice'] }}" wire:click="$wire.retirarCriterio(@js($criterio['clave']), {{ $criterio['indice'] }})" wire:loading.attr="disabled"
@@ -299,7 +302,7 @@
                                     <div class="p-3.5">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="min-w-0">
-                                                <button type="button" wire:click="navegar('{{ $hijo['nivel'] }}', '{{ $hijo['taxon'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
+                                                <button type="button" x-on:click="navegarTarjeta(@js($hijo['nivel']), @js($hijo['taxon']))" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                                     {{ $hijo['taxon'] }}
                                                 </button>
                                                 <div class="text-xs text-text-secondary mt-0.5">
@@ -372,7 +375,7 @@
                                     <x-catalogopublico::fotografia-tarjeta :nombre="$especie['especie']" nivel="species" :jerarquia="array_column($ruta, 'taxon', 'nivel')" :url="$portadaEspecie" :datos="$datosPortadas['species:'.$especie['especie']] ?? []" :compacto="true" />
 
                                     <div class="min-w-0 flex-1">
-                                        <button type="button" wire:click="navegar('species', '{{ $especie['especie'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
+                                        <button type="button" x-on:click="navegarTarjeta('species', @js($especie['especie']))" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                             {{ $especie['especie'] }}
                                         </button>
                                         <div class="text-xs text-text-secondary mt-0.5">
@@ -810,7 +813,7 @@
                         <div class="p-3.5">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <button type="button" wire:click="navegar('{{ $nodo['nivel'] }}', '{{ $nodo['taxon'] }}')" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
+                                    <button type="button" x-on:click="navegarTarjeta(@js($nodo['nivel']), @js($nodo['taxon']))" class="collection-taxon-main font-serif italic text-base text-text-primary group-hover:text-science-blue transition-colors">
                                         {{ $nodo['taxon'] }}
                                     </button>
                                     <div class="text-xs text-text-secondary mt-0.5">

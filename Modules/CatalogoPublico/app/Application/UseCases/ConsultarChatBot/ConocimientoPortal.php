@@ -52,6 +52,9 @@ final class ConocimientoPortal
         $ranking = $this->ranker->evaluar($pregunta, $anterior);
         $confidence = $this->ranker->confianza($ranking);
         $best = $ranking['candidatos'][0] ?? null;
+        // Un parecido léxico con «muy bien» no convierte una consulta en saludo.
+        if (($best['node']->slug ?? '') === 'saludo'
+            && preg_match('/\b(?:dime|explica\w*|cuenta\w*|hablame|que es|que son|clasifica\w*|tabla|cuantos?|cuantas?)\b/', $this->texto->normalizar($pregunta))) return null;
         if ($best === null || in_array($confidence['nivel'], ['UNKNOWN', 'LOW'], true) && ! $confidence['ambiguo']) {
             if ($registrar && $best !== null) {
                 $this->registrarNoReconocida($pregunta, $best['score'], $best['id']);

@@ -18,6 +18,7 @@
                 </div>
                 <x-laboratorio-foto class="lab-personal-banner" clave="cabecera" :foto="$pagina['fotos']['cabecera']" />
             </header>
+            <h2 class="lab-branch-title" data-lab-element="texto-rama_entomologia_titulo">{{ $t['rama_entomologia_titulo'] }}</h2>
             <div class="lab-staff-grid">
                 <section class="lab-curador" aria-labelledby="adrian-title">
                     <x-laboratorio-foto class="lab-curador-portrait" clave="adrian" :foto="$pagina['fotos']['adrian']" />
@@ -59,6 +60,22 @@
                     </section>
                 </div>
             </div>
+            <p class="lab-source"><a href="https://biologia.epn.edu.ec/index.php/secciones/entomologia/personal" target="_blank" rel="noopener noreferrer">Perfiles institucionales de Entomología</a></p>
+            @foreach(config('pagina-laboratorio.ramas') as $rama => $datosRama)
+                <section class="lab-branch" aria-labelledby="rama-{{ $rama }}" data-lab-branch="{{ $rama }}">
+                    <header><h2 id="rama-{{ $rama }}" data-lab-element="texto-rama_{{ $rama }}_titulo">{{ $t['rama_'.$rama.'_titulo'] }}</h2>
+                        <a href="{{ $datosRama['fuente'] }}" target="_blank" rel="noopener noreferrer">Perfiles institucionales</a></header>
+                    <div class="lab-branch-grid">
+                        @foreach($datosRama['personas'] as $persona)
+                            <article class="lab-branch-profile">
+                                <x-laboratorio-foto :clave="$persona" :foto="$pagina['fotos'][$persona]" />
+                                <div><h3 data-lab-element="texto-{{ $persona }}_nombre">{{ $t[$persona.'_nombre'] }}</h3>
+                                    <x-laboratorio-texto :clave="$persona.'_bio'" :texto="$t[$persona.'_bio']" /></div>
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+            @endforeach
             @if($pagina['bloques'])
                 <section class="lab-extra-grid" aria-label="Más sobre el laboratorio" data-lab-extra>
                     @foreach($pagina['bloques'] as $bloque)

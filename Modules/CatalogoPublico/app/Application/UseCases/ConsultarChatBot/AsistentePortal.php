@@ -29,6 +29,7 @@ final class AsistentePortal
                 : $social;
         }
         $definicion = app(TextoChat::class)->normalizar($pregunta);
+        $definicion = preg_replace('/^(?:(?:muy bien|bien|gracias|ok|hola)[, ]+)?dime (?:que (?:es|son) |que )?/', 'que es ', $definicion) ?? $definicion;
         if (preg_match('/^que (?:es|son|significa) (?:una |la |esta )?coleccion biologica$/', $definicion)) {
             return ['texto' => 'Una colección biológica reúne ejemplares de seres vivos conservados y organizados para su estudio. Cada ejemplar se acompaña de datos, como su nombre, dónde y cuándo se recolectó y quién lo recolectó. Esa información permite estudiar la diversidad, comparar organismos y documentar cambios a lo largo del tiempo. En este portal puedes consultar los registros públicos de la colección del Laboratorio de Invertebrados.',
                 'fuente' => 'portal', 'intent' => 'portal.definicion_coleccion', 'entidades' => [],
@@ -402,6 +403,10 @@ final class AsistentePortal
         $normal = preg_replace('/\bormigas?\b/u', 'hormigas', $normal) ?? $normal;
         $normal = str_replace(['nematomorph', 'annelid'], ['nematomorf', 'anelid'], $normal);
         $temas = [
+            'formicid' => [
+                'Formicidae es la familia de las hormigas, dentro del orden Hymenoptera y la clase Insecta. Son insectos sociales que suelen vivir en colonias con reinas y obreras. Sus funciones ecológicas incluyen depredación, dispersión de semillas y reciclaje de materia orgánica, según la especie. Esta es una explicación biológica general; para consultar los ejemplares del laboratorio puedes pedir «registros de Formicidae».',
+                'Smithsonian', 'https://naturalhistory.si.edu/research/entomology/collections-overview/hymenoptera',
+            ],
             'nematomorf' => [
                 'Los nematomorfos son gusanos largos y muy delgados, conocidos como gusanos crin de caballo. En las formas de agua dulce, sus larvas crecen dentro de insectos; los adultos salen al agua para reproducirse. Pueden encontrarse en charcos y arroyos, a veces formando nudos.',
                 'University of Kentucky', 'https://entomology.mgcafe.uky.edu/ef613',

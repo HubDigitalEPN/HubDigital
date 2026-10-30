@@ -5,4 +5,13 @@ html[data-chat-hidden] :is(#portal-chat-mobile-trigger, .portal-chat-shell) { di
 .portal-chat-hide { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border: 1px solid #bfd0df; border-radius: 50%; background: #fff; color: #102f48; cursor: pointer; pointer-events: auto; box-shadow: 0 1px 5px #0002; }
 .portal-chat-hide:is(:hover, :focus-visible) { outline: 2px solid #0874b9; outline-offset: 2px; }
 .portal-chat-hide svg { width: 1rem; height: 1rem; }
+.collection-chat-restore { flex:none; align-items:center; justify-content:center; width:2.5rem; height:2.5rem; border:1px solid #bfcedb; border-radius:.5rem; background:#fff; color:#244e6b; cursor:pointer; }
+.collection-chat-restore svg { width:1.3rem; height:1.3rem; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.collection-chat-restore:is(:hover,:focus-visible) { color:#075d94; border-color:#075d94; outline:2px solid #075d94; outline-offset:2px; }
+.portal-chat-table-scroll { max-width:100%; overflow:auto; margin:.65rem 0; }
+.portal-chat-table { width:100%; border-collapse:collapse; font-size:.8rem; text-align:left; }
+.portal-chat-table caption { text-align:left; font-weight:700; padding-bottom:.4rem; }
+.portal-chat-table :is(th,td) { padding:.35rem .5rem; border-bottom:1px solid #d1dce5; }
+.portal-chat-table thead { background:#edf4f8; }
+.portal-chat-table td { text-align:right; font-variant-numeric:tabular-nums; }
 @media(max-width: 639px) { .portal-chat-launcher:has(#chat-bot-trigger[style*="display: none"]) { display: none; } }

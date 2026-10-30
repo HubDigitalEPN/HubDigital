@@ -20,13 +20,27 @@ beforeEach(function () {
 });
 afterEach(fn () => PortalCopy::forget());
 
+test('la actualización de perfiles conserva ediciones propias y los bloques guardados', function () {
+    $contenido = ['textos' => ['adrian_bio' => 'Biólogo entomólogo.', 'david_bio' => 'Biografía editada por curaduría'], 'bloques' => [['id' => 'abcdef1234567890', 'texto' => 'Contenido propio']], 'posiciones' => ['texto-titulo' => ['x' => 5]]];
+    DB::table('usuarios.textos_portal')->insert(['clave' => PaginaLaboratorio::CLAVE, 'contenido' => json_encode($contenido), 'created_at' => now(), 'updated_at' => now()]);
+    $migracion = require database_path('migrations/2026_10_30_000001_completar_perfiles_laboratorio.php');
+    $migracion->up(); $migracion->up();
+    $actual = json_decode(DB::table('usuarios.textos_portal')->where('clave', PaginaLaboratorio::CLAVE)->value('contenido'), true);
+    expect($actual['textos']['adrian_bio'])->toBe(config('pagina-laboratorio.textos.adrian_bio'))
+        ->and($actual['textos']['david_bio'])->toBe('Biografía editada por curaduría')
+        ->and($actual['bloques'])->toBe($contenido['bloques'])->and($actual['posiciones'])->toBe($contenido['posiciones']);
+});
+
 test('la página publica el texto solicitado y conserva la composición y navegación', function () {
     $this->get(route('laboratorio'))->assertOk()
         ->assertSee(config('pagina-laboratorio.textos.principal'))
         ->assertSeeInOrder(['>Inicio<', '>El Laboratorio<', 'Explorar la colección', 'Depósitos'], false)
         ->assertSee('data-lab-personal', false)->assertSee('Nuestro')->assertSee('Vladimir Carvajal')
         ->assertSee('personal-referencia.png')->assertSee('mailto:adrian.troya@epn.edu.ec', false);
-    expect(app(PaginaLaboratorio::class)->leer()['fotos'])->toHaveCount(10);
+    expect(app(PaginaLaboratorio::class)->leer()['fotos'])->toHaveCount(18);
+    $this->get(route('laboratorio'))->assertSeeInOrder(['Entomología ·', 'Mastozoología', 'Ornitología', 'Herpetología', 'Ictiología', 'Ecología'])
+        ->assertSee('Dayana Togán')->assertSee('Michelle Vélez Cárdenas')->assertSee('Selene Báez')
+        ->assertSee('images/laboratorio/equipo/Adrian.jpg', false);
 });
 
 test('solo administración y curador pueden editar la página', function () {

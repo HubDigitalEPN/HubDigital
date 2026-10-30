@@ -14,7 +14,7 @@ final class DisenoLaboratorio
         $elementos = [];
         foreach ($pagina['textos'] as $clave => $texto) {
             if (in_array($clave, ['personal_destacado', 'personal_titulo', 'contacto_email'], true)) continue;
-            $tag = $clave === 'titulo' ? 'h1' : (str_ends_with($clave, '_nombre') || str_ends_with($clave, '_titulo') ? 'h3' : 'p');
+            $tag = $clave === 'titulo' ? 'h1' : (str_starts_with($clave, 'rama_') ? 'h2' : (str_ends_with($clave, '_nombre') || str_ends_with($clave, '_titulo') ? 'h3' : 'p'));
             $elementos['texto-'.$clave] = ['tipo' => $clave === 'contacto_accion' ? 'enlace' : 'texto', 'texto' => $texto, 'tag' => $tag, 'etiqueta' => ucfirst(str_replace('_', ' ', $clave))];
         }
         $elementos['texto-personal'] = ['tipo' => 'texto', 'texto' => $pagina['textos']['personal_destacado'].' '.$pagina['textos']['personal_titulo'], 'tag' => 'h2', 'etiqueta' => 'Título del equipo'];
@@ -24,6 +24,13 @@ final class DisenoLaboratorio
             if (filled($bloque['titulo'])) $elementos['texto-'.$id.'-titulo'] = ['tipo' => 'texto', 'texto' => $bloque['titulo'], 'tag' => 'h3', 'etiqueta' => $bloque['titulo']];
             if (filled($bloque['texto'])) $elementos['texto-'.$id.'-texto'] = ['tipo' => 'texto', 'texto' => $bloque['texto'], 'tag' => 'p', 'etiqueta' => 'Texto: '.($bloque['titulo'] ?: 'bloque adicional')];
             if ($bloque['foto']['ruta']) $elementos['foto-'.$id] = ['tipo' => 'foto', 'clave' => $id, 'foto' => $bloque['foto'], 'etiqueta' => $bloque['alt']];
+        }
+        // Las ramas nuevas conservan juntos título, fotografía y perfil al
+        // incorporarse al editor libre de una página con posiciones guardadas.
+        foreach (config('pagina-laboratorio.ramas', []) as $rama => $datos) {
+            $ids = ['texto-rama_'.$rama.'_titulo'];
+            foreach ($datos['personas'] as $persona) array_push($ids, 'foto-'.$persona, 'texto-'.$persona.'_nombre', 'texto-'.$persona.'_bio');
+            foreach ($ids as $id) { $elemento = $elementos[$id]; unset($elementos[$id]); $elementos[$id] = $elemento; }
         }
         return $elementos;
     }

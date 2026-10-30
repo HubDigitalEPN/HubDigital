@@ -18,7 +18,8 @@ test('dos rutas seleccionadas usan una configuracion exacta que Pest interpreta 
         assert.ok(!invocation.args.some(arg=>files.includes(arg)));
         assert.match(xml,/<env name="APP_ENV" value="testing"/);
         assert.ok(xml.includes('bootstrap="'+path.join(root,'tests','bootstrap.php')+'"'));
-        const result=spawnSync('php.exe',['vendor/bin/pest','--configuration',config,'--list-tests','--colors=never'],{cwd:root,encoding:'utf8',windowsHide:true,timeout:15000});
+        assert.ok(invocation.args.includes('--cache-directory='+directory));
+        const result=spawnSync('php.exe',['vendor/bin/pest','--configuration',config,'--cache-directory='+directory,'--list-tests','--colors=never'],{cwd:root,encoding:'utf8',windowsHide:true,timeout:15000});
         assert.equal(result.status,0,result.stdout+result.stderr);
         assert.match(result.stdout,/tieneRol_detecta/);
         assert.match(result.stdout,/conserva_nombres_propios/);
@@ -42,6 +43,7 @@ test('el argumento del logger sobrevive al filtro real de Pest y activa los arch
     assert.deepEqual(forwarded, invocation.args);
     assert.ok(forwarded.includes(`--log-teamcity=${invocation.protocolLogPath}`));
     assert.ok(forwarded.includes('--without-databases'));
+    assert.ok(forwarded.includes('--cache-directory='+path.resolve('registro separado')));
     assert.ok(forwarded.includes('--exclude-group=bootstrap-inicial'));
     assert.ok(forwarded.includes('tests/Feature/FirmaTest.php'));
     assert.match(vendor('brianium/paratest/src/Options.php'), /needsTeamcity\s*=\s*\$configuration->outputIsTeamCity\(\)\s*\|\|\s*\$configuration->hasLogfileTeamcity\(\)/);
