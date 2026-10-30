@@ -13,7 +13,7 @@ final class DisenoLaboratorio
     {
         $elementos = [];
         foreach ($pagina['textos'] as $clave => $texto) {
-            if (in_array($clave, ['personal_destacado', 'personal_titulo', 'contacto_email'], true)) continue;
+            if (in_array($clave, ['personal_destacado', 'personal_titulo', 'contacto_email', 'adrian_especialidad'], true)) continue;
             $tag = $clave === 'titulo' ? 'h1' : (str_starts_with($clave, 'rama_') ? 'h2' : (str_ends_with($clave, '_nombre') || str_ends_with($clave, '_titulo') ? 'h3' : 'p'));
             $elementos['texto-'.$clave] = ['tipo' => $clave === 'contacto_accion' ? 'enlace' : 'texto', 'texto' => $texto, 'tag' => $tag, 'etiqueta' => ucfirst(str_replace('_', ' ', $clave))];
         }

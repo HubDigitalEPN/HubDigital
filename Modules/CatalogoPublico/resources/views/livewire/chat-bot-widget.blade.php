@@ -1,6 +1,7 @@
 <div
     class="portal-chat-shell pointer-events-none fixed inset-x-0 bottom-4 z-[9999] flex justify-end px-4 sm:bottom-6 sm:px-6"
-    x-data="hubChatShell()"
+    x-data="hubChatShell({ puedeOcultar: @js($puedeOcultar) })"
+    data-chat-ocultable="{{ $puedeOcultar ? 'true' : 'false' }}"
     x-effect="$dispatch('portal-chat-state', { abierto })"
     x-on:portal-chat-toggle.window="alternar()"
     x-on:keydown.escape.window="if (abierto && !$event.defaultPrevented && !document.querySelector('dialog[open]')) { $event.preventDefault(); abierto = false; $nextTick(() => devolverFoco()) }"
@@ -32,7 +33,9 @@
                     <flux:icon name="x-mark" class="size-5" />
                 </button>
                 <div class="col-span-2 flex flex-wrap items-center justify-between gap-1">
+                    @if($puedeOcultar)
                     <button type="button" x-on:click="ocultar()" class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15" title="Puedes recuperarlo desde la barra del catálogo o el pie de página">Ocultar asistente</button>
+                    @endif
                     <button type="button" wire:click="nuevaConversacion" wire:loading.attr="disabled" wire:target="nuevaConversacion"
                         class="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white" title="Borrar el contexto de este chat">Nueva conversación</button>
                     <x-pwa-install-button :oscuro="true" />
@@ -123,8 +126,10 @@
             </form>
         </section>
 
-        <div class="portal-chat-launcher" x-show="!abierto && !minimizado" x-cloak>
+        <div class="portal-chat-launcher" x-show="!abierto && !minimizado">
+        @if($puedeOcultar)
         <button type="button" class="portal-chat-hide" x-on:click="ocultar()" aria-label="Ocultar también el icono del asistente" title="Ocultar asistente"><flux:icon name="minus" /></button>
+        @endif
         <button x-ref="trigger" id="chat-bot-trigger" type="button"
             x-on:click="abierto = true; $nextTick(() => $refs.input.focus())"
             x-show="!abierto"

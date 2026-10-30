@@ -11,9 +11,22 @@ export async function comprobarUIFocal(caso) {
         const nav=all('nav[aria-label="Navegación principal"] a').map(x=>x.textContent.trim());
         checks.navigation=nav.slice(0,4).join('|')==='Inicio|El Laboratorio|Explorar la colección|Depósitos';
         checks.copy=q('.lab-introduction').textContent.includes('Generamos conocimiento sobre taxonomía-sistemática') && q('.lab-introduction').textContent.includes('para la conservación de la naturaleza.');
-        checks.photos=all('[data-lab-personal] .lab-photo').length===18;
-        checks.branches=all('[data-lab-branch]').length===5 && q('.lab-branch-title')?.textContent.includes('Entomología');
-        checks.originals=all('img.lab-photo[src*="/images/laboratorio/equipo/"]').length===12;
+        const frames=all('[data-lab-profile] > .lab-portrait-frame');
+        checks.photos=frames.length===12;
+        checks.branches=all('[data-lab-branch]').length===7 && q('.lab-branch-title')?.textContent.includes('Entomología');
+        for(const f of frames){f.scrollIntoView({block:'center'});await frame();await wait(()=>f.querySelector('img')?.complete && f.querySelector('img').naturalWidth>0);}
+        checks.originals=frames.every(f=>f.querySelector('img[src*="/images/laboratorio/equipo/"]'));
+        const sizes=frames.map(f=>f.getBoundingClientRect());
+        checks.uniform=sizes.every(r=>Math.abs(r.width-sizes[0].width)<1 && Math.abs(r.height-sizes[0].height)<1);
+        checks.noAnimals=!q('.lab-science-card,.lab-personal-banner') && !all('.lab-page a').some(a=>a.textContent.includes('Perfiles institucionales'));
+        checks.summaries=all('.lab-profile-summary > p').every(p=>p.textContent.trim().split(/\s+/u).length<=40);
+        const button=q('[data-lab-open-profile]');button.click();await frame();
+        const modal=document.getElementById(button.dataset.labOpenProfile);
+        checks.modal=modal.open && !!modal.querySelector('.lab-portrait-frame img') && modal.querySelector('.lab-profile-biography > p').textContent.trim().split(/\s+/u).length>40;
+        checks.wrap=getComputedStyle(modal.querySelector('.lab-portrait-frame')).float===(innerWidth>600?'left':'none');
+        modal.querySelector('[data-lab-close-profile]').click();await frame();
+        checks.modalClose=!modal.open && document.activeElement===button;
+        window.scrollTo(0,0);await frame();
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='tarjetas') {
         await wait(()=>q('[data-card-progress]'));
@@ -64,12 +77,14 @@ export async function comprobarUIFocal(caso) {
         photo.querySelector('[aria-label="Cerrar fotografía"]').click();await wait(()=>!photo.open);checks.photoClose=!photo.open;
     } else if(caso==='chat') {
         await wait(()=>q('.portal-chat-shell'));
+        checks.fresh=!document.documentElement.hasAttribute('data-chat-hidden') && q('#chat-bot-trigger').getClientRects().length>0 && localStorage.getItem('hubdigital.chat.oculto')===null;
+        checks.catalogOnly=q('.portal-chat-shell').dataset.chatOcultable==='true' && !!q('.portal-chat-hide');
         checks.install=all('button[title="Instalar HubDigital en este dispositivo"]').length>0;
         if(document.documentElement.hasAttribute('data-chat-hidden'))q('[data-chat-restore]').click();
         else if(!q('#chat-bot-panel').getClientRects().length)q('#chat-bot-trigger').click();
         await wait(()=>q('#chat-bot-panel').getClientRects().length>0);
         all('#chat-bot-panel button').find(x=>x.textContent.trim()==='Ocultar asistente').click();await frame();
-        checks.hide=getComputedStyle(q('.portal-chat-shell')).display==='none';checks.stored=localStorage.getItem('hubdigital.chat.oculto')==='1';
+        checks.hide=getComputedStyle(q('.portal-chat-shell')).display==='none';
         checks.catalogRestore=!!q('[data-chat-restore-catalogo]') && getComputedStyle(q('[data-chat-restore-catalogo]')).display!=='none' && q('[data-chat-restore-catalogo]').getClientRects().length>0;
         q('[data-chat-restore]').click();await frame();checks.restore=!document.documentElement.hasAttribute('data-chat-hidden') && q('#chat-bot-panel').getClientRects().length>0;
         checks.bothHidden=all('[data-chat-restore]').every(x=>getComputedStyle(x).display==='none');

@@ -1,4 +1,5 @@
 <meta charset="utf-8" />
+<meta name="hub-public-shell" content="2">
 <script id="hub-pwa-install-bootstrap" data-navigate-once>
     // Conservar el evento nativo antes de cargar Vite, Alpine o Livewire.
     window.hubPwaInstallState ??= {pendiente: null, instalada: false, escuchando: false, enProceso: false};
@@ -66,7 +67,8 @@
 
 <script src="{{ asset('js/interactive-grid.js') }}?v={{ filemtime(public_path('js/interactive-grid.js')) }}" defer></script>
 <script src="{{ asset('js/card-scroll.js') }}?v={{ filemtime(public_path('js/card-scroll.js')) }}" defer></script>
-<script src="{{ asset('js/chat-shell.js') }}?v={{ filemtime(public_path('js/chat-shell.js')) }}" defer></script>
+{{-- La fábrica debe existir antes de que Alpine inicie el primer documento. --}}
+<script src="{{ asset('js/chat-shell.js') }}?v={{ filemtime(public_path('js/chat-shell.js')) }}" data-navigate-once></script>
 <link rel="stylesheet" href="{{ asset('css/chat-shell.css') }}?v={{ filemtime(public_path('css/chat-shell.css')) }}" />
 @livewireScriptConfig
 <script src="{{ asset('js/lov-origen.js') }}?v={{ filemtime(public_path('js/lov-origen.js')) }}" defer></script>

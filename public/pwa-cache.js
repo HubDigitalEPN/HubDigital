@@ -100,7 +100,10 @@ const portalPwa = (() => {
         if (type === 'assets') return await read(request, 'assets').catch(() => null) || network(request, 'assets', event);
         if (type === 'home') {
             const cached = homeBlocked ? null : await read(request, 'home').catch(() => null);
-            if (cached && !request.headers.has('X-Portal-Revalidate') && !['reload', 'no-store'].includes(request.cache)) {
+            // Renovar el HTML de versiones anteriores antes de mostrar sus
+            // controles. Se conservan los recursos y el respaldo sin conexión.
+            const currentShell = cached && (await cached.clone().text()).includes('<meta name="hub-public-shell" content="2">');
+            if (currentShell && !request.headers.has('X-Portal-Revalidate') && !['reload', 'no-store'].includes(request.cache)) {
                 // Actualizar únicamente la copia pública: omitir cookies evita
                 // crear dos sesiones rivales mientras /pwa/sesion renueva el token.
                 event.waitUntil(network(new Request(request, {credentials: 'omit', cache: 'no-store'}), 'home', event).catch(() => {}));

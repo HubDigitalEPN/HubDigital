@@ -17,6 +17,14 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AsistentePorta
 
 final class ChatBotWidget extends Component
 {
+    #[\Livewire\Attributes\Locked]
+    public bool $puedeOcultar = false;
+
+    public function mount(bool $puedeOcultar = false): void
+    {
+        $this->puedeOcultar = $puedeOcultar;
+    }
+
     public string $pregunta = '';
 
     /** @var list<array{rol: 'visitante'|'chatbot', texto: string, referencias?: list<string>}> */

@@ -295,6 +295,14 @@ function approvedBase({plan, previous, files, runtime, environment, root, head, 
         cobertura: plan.cobertura, integral_approved_at: plan.forced_integral ? completedAt : previous.integral_approved_at || previous.completed_at};
 }
 
+function focalScope(changes) {
+    // El runner es una herramienta de control compartida: modificar sus casos
+    // no convierte componentes intactos en cambios de producto. Las fuentes
+    // propias seleccionan cada caso y su recibo sigue incluyendo el runner.
+    return [...new Set(changes.filter(file => file !== 'tests/Browser/contratos-ui-focales.mjs')
+        .flatMap(file => focalUI.owner[file] || []))];
+}
+
 function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     const force = plan.forced_integral === true;
     let entries = {};
@@ -303,7 +311,7 @@ function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     plan.pendientes = [...new Set([...(plan.pendientes || []), ...scope.pending])];
     plan.navegador = browserCases.loadPlan({root, sources: files, runtime, environment,
         dependencies: {}, force, onlyCases: force ? undefined : scope.cases});
-    const focalCases = force || !fs.existsSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs')) ? [] : [...new Set(plan.changes.flatMap(file=>focalUI.owner[file] || []))];
+    const focalCases = force || !fs.existsSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs')) ? [] : focalScope(plan.changes);
     plan.ui_focal = {cases:focalCases};
     for (const id of focalCases) if (!focalUI.status(root,id)) plan.pendientes.push('ui-focal:'+id);
     plan.paquete.navegador_casos = plan.navegador.ejecutar;
@@ -409,5 +417,5 @@ async function main() {
     }
 }
 
-module.exports = {selectPlan, changedFiles, closure, inventoryHash, policyHash, config, owner, graph, refreshRuntimePlan, browserScope, assertCoverage, approvedBase};
+module.exports = {selectPlan, changedFiles, closure, inventoryHash, policyHash, config, owner, graph, refreshRuntimePlan, browserScope, focalScope, assertCoverage, approvedBase};
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });

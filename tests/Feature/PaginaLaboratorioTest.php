@@ -36,11 +36,63 @@ test('la página publica el texto solicitado y conserva la composición y navega
         ->assertSee(config('pagina-laboratorio.textos.principal'))
         ->assertSeeInOrder(['>Inicio<', '>El Laboratorio<', 'Explorar la colección', 'Depósitos'], false)
         ->assertSee('data-lab-personal', false)->assertSee('Nuestro')->assertSee('Vladimir Carvajal')
-        ->assertSee('personal-referencia.png')->assertSee('mailto:adrian.troya@epn.edu.ec', false);
-    expect(app(PaginaLaboratorio::class)->leer()['fotos'])->toHaveCount(18);
+        ->assertSee('mailto:adrian.troya@epn.edu.ec', false);
+    expect(app(PaginaLaboratorio::class)->leer()['fotos'])->toHaveCount(12);
     $this->get(route('laboratorio'))->assertSeeInOrder(['Entomología ·', 'Mastozoología', 'Ornitología', 'Herpetología', 'Ictiología', 'Ecología'])
         ->assertSee('Dayana Togán')->assertSee('Michelle Vélez Cárdenas')->assertSee('Selene Báez')
-        ->assertSee('images/laboratorio/equipo/Adrian.jpg', false);
+        ->assertSee('images/laboratorio/equipo/adrian-retrato.jpg', false)
+        ->assertSee('Paleontología')->assertSee('José Luis Román')
+        ->assertDontSee('Perfiles institucionales')->assertDontSee('personal-referencia.png');
+});
+
+test('las ramas conservan su personal y los encuadres de retrato respetan los originales', function () {
+    $pagina = app(PaginaLaboratorio::class)->leer();
+    $ramas = config('pagina-laboratorio.ramas');
+    expect(array_map(fn ($rama) => count($rama['personas']), $ramas))->toBe([
+        'mastozoologia' => 1, 'ornitologia' => 2, 'herpetologia' => 3,
+        'ictiologia' => 1, 'ecologia' => 1, 'paleontologia' => 1,
+    ]);
+    foreach ($pagina['fotos'] as $foto) {
+        [$ancho, $alto] = getimagesize(public_path('images/laboratorio/equipo/'.$foto['archivo']));
+        [$w, $h, $x, $y, $cw, $ch] = $foto['retrato'];
+        expect([$w, $h])->toBe([$ancho, $alto]);
+        expect($cw / $ch)->toBe(0.75)->and($x)->toBeGreaterThanOrEqual(0)->and($y)->toBeGreaterThanOrEqual(0)
+            ->and($x + $cw)->toBeLessThanOrEqual($ancho)->and($y + $ch)->toBeLessThanOrEqual($alto);
+    }
+});
+
+test('el personal ampliado permite posicionar también los treinta bloques completos', function () {
+    $pagina = app(PaginaLaboratorio::class)->leer();
+    $pagina['bloques'] = array_map(fn ($i) => ['id' => str_pad(dechex($i), 16, '0', STR_PAD_LEFT),
+        'titulo' => 'Bloque '.$i, 'texto' => 'Texto del bloque '.$i, 'alt' => 'Foto '.$i,
+        'foto' => ['ruta' => 'foto-local.webp', 'alt' => 'Foto '.$i]], range(1, 30));
+    $posiciones = array_fill_keys(array_keys(\App\Services\DisenoLaboratorio::elementos($pagina)),
+        ['x' => 5, 'y' => 4, 'ancho' => 70, 'alto' => 12, 'fuente' => 2, 'capa' => 1]);
+    expect(count($posiciones))->toBeGreaterThan(120)
+        ->and(\App\Services\DisenoLaboratorio::validar($posiciones, $pagina))->toHaveCount(count($posiciones));
+});
+
+test('el resumen del perfil tiene cuarenta palabras y el modal conserva foto y texto completo', function () {
+    $pagina = app(PaginaLaboratorio::class)->leer();
+    foreach ([40, 41] as $cantidad) {
+        $pagina['textos']['vladimir_bio'] = implode(' ', range(1, $cantidad));
+        $html = view('components.laboratorio-perfil-texto', ['persona' => 'vladimir', 'pagina' => $pagina, 'attributes' => new \Illuminate\View\ComponentAttributeBag])->render();
+        preg_match('/<p[^>]*>(.*?)<\/p>/s', $html, $parrafo);
+        expect(preg_match_all('/\S+/u', strip_tags($parrafo[1])))->toBe(40);
+        if ($cantidad === 40) expect($html)->not->toContain('<dialog');
+        else expect($html)->toContain('<dialog', 'aria-haspopup="dialog"', 'Cerrar perfil de Vladimir', '40 41', 'vladimir_carvajal.jpg');
+    }
+});
+
+test('la ampliación del perfil actualiza solo las versiones predeterminadas y conserva ediciones propias', function () {
+    $contenido = ['textos' => ['adrian_bio' => 'Biólogo entomólogo.', 'vladimir_bio' => 'Nota propia de curaduría'], 'fotos' => ['vladimir' => ['alt' => 'Foto propia']], 'posiciones' => ['texto-titulo' => ['x' => 5]]];
+    DB::table('usuarios.textos_portal')->insert(['clave' => PaginaLaboratorio::CLAVE, 'contenido' => json_encode($contenido), 'created_at' => now(), 'updated_at' => now()]);
+    $migracion = require database_path('migrations/2026_10_30_000002_ampliar_perfil_institucional_adrian.php');
+    $migracion->up(); $migracion->up();
+    $actual = json_decode(DB::table('usuarios.textos_portal')->where('clave', PaginaLaboratorio::CLAVE)->value('contenido'), true);
+    expect($actual['textos']['adrian_bio'])->toBe(config('pagina-laboratorio.textos.adrian_bio'))
+        ->and($actual['textos']['vladimir_bio'])->toBe('Nota propia de curaduría')
+        ->and($actual['fotos'])->toBe($contenido['fotos'])->and($actual['posiciones'])->toBe($contenido['posiciones']);
 });
 
 test('solo administración y curador pueden editar la página', function () {

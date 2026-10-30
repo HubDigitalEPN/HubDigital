@@ -34,3 +34,18 @@ test('leer más desplaza los elementos inferiores y móvil usa altura automátic
     assert.equal(photo.style.top, '280px'); assert.equal(canvas.style.height, '412px');
     window.innerWidth = 430; events.resize(); assert.equal(canvas.style.height, 'auto');
 });
+
+test('los perfiles se abren después de navegar y el cierre devuelve el foco al botón', () => {
+    const events={}, window={}, opened=[];
+    const opener={dataset:{labOpenProfile:'perfil-prueba'},focus(options){opened.push(options.preventScroll?'focus':'scroll');}};
+    const modal={open:false,showModal(){this.open=true;},close(){this.open=false;events.close({target:this});},
+        matches(){return true;},getBoundingClientRect(){return {left:10,right:100,top:10,bottom:100};}};
+    const document={addEventListener(name,fn){events[name]=fn;},getElementById(id){assert.equal(id,'perfil-prueba');return modal;}};
+    runInNewContext(source,{window,document});
+    events.click({target:{closest(selector){return selector==='[data-lab-open-profile]'?opener:null;}}});
+    assert.equal(modal.open,true);
+    // Un clic sobre el contenido no cierra; uno fuera del rectángulo sí.
+    events.click({target:{closest(){return null;}}});
+    events.click({target:Object.assign(modal,{closest(){return null;}}),clientX:2,clientY:2});
+    assert.equal(modal.open,false);assert.deepEqual(opened,['focus']);
+});

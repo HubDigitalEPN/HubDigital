@@ -15,3 +15,6 @@ html[data-chat-hidden] :is(#portal-chat-mobile-trigger, .portal-chat-shell) { di
 .portal-chat-table thead { background:#edf4f8; }
 .portal-chat-table td { text-align:right; font-variant-numeric:tabular-nums; }
 @media(max-width: 639px) { .portal-chat-launcher:has(#chat-bot-trigger[style*="display: none"]) { display: none; } }
+@media(max-width: 639px) {
+    body.portal-publico:has(#portal-chat-mobile-trigger) .portal-chat-shell #chat-bot-trigger { display:flex; }
+}

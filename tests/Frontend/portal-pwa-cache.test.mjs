@@ -163,12 +163,12 @@ test('guardar un recurso lento no bloquea entregar ni consumir la respuesta orig
 });
 
 test('reabrir Inicio después de cinco minutos entrega la copia sin esperar al servidor y renueva en segundo plano', {timeout: 2000}, async () => {
-    const w = worker(), request = w.req('/'); w.state({permission: 'document', body: '<head></head><body>portada</body>'});
+    const w = worker(), request = w.req('/'); w.state({permission: 'document', body: '<head><meta name="hub-public-shell" content="2"></head><body>portada</body>'});
     await prime(w, request);
     const store = w.stores.get('hubdigital-public-v10-home'), headers = new Headers(store.get(request.url).headers);
     headers.set('X-Portal-Cached-At', String(Date.now() - 86400000));
-    store.set(request.url, new Response('<head><script>window.hubPortalCachedHome=true;</script></head><body>portada</body>', {headers}));
-    w.state({body: '<head></head><body>portada actualizada</body>'}); w.blockNetwork();
+    store.set(request.url, new Response('<head><meta name="hub-public-shell" content="2"><script>window.hubPortalCachedHome=true;</script></head><body>portada</body>', {headers}));
+    w.state({body: '<head><meta name="hub-public-shell" content="2"></head><body>portada actualizada</body>'}); w.blockNetwork();
     try {
         const cached = await w.serve(request);
         assert.match(await cached.response.text(), /hubPortalCachedHome=true.*portada/s);
@@ -179,7 +179,7 @@ test('reabrir Inicio después de cinco minutos entrega la copia sin esperar al s
 });
 
 test('el arranque prepara el primer documento y solo sus recursos públicos sin esperar una segunda visita', async () => {
-    const w = worker(), waiting = []; w.state({permission: 'document', body: '<head></head><body>Inicio</body>'});
+    const w = worker(), waiting = []; w.state({permission: 'document', body: '<head><meta name="hub-public-shell" content="2"></head><body>Inicio</body>'});
     await w.pwa.warmHome({source: {url: 'https://portal.test/'}, data: {assets: [
         '/build/assets/app-a.js', '/images/portal-laboratorio-hero.jpg', '/portal/pwa/sesion', '/portal/imagenes/privada', 'https://externo.test/foto.webp',
     ]}, waitUntil(task) {waiting.push(task);}});
@@ -189,17 +189,17 @@ test('el arranque prepara el primer documento y solo sus recursos públicos sin 
     w.state({offline: true});
     const cached = await w.serve(w.req('/')); await cached.background;
     assert.match(await cached.response.text(), /hubPortalCachedHome=true/);
-    assert.equal(await (await w.serve(w.req('/build/assets/app-a.js'))).response.text(), '<head></head><body>Inicio</body>');
+    assert.equal(await (await w.serve(w.req('/build/assets/app-a.js'))).response.text(), '<head><meta name="hub-public-shell" content="2"></head><body>Inicio</body>');
     assert.deepEqual(w.requests, [...primed, 'https://portal.test/'], 'Reabrir intenta renovar solo el documento; los recursos preparados no vuelven a la red.');
 });
 
 test('reiniciar el service worker al reabrir el navegador conserva Inicio y sus recursos sin red', async () => {
-    const initial = worker(); initial.state({permission: 'document', body: '<head></head><body>Inicio guardado</body>'});
+    const initial = worker(); initial.state({permission: 'document', body: '<head><meta name="hub-public-shell" content="2"></head><body>Inicio guardado</body>'});
     await prime(initial, initial.req('/')); await prime(initial, initial.req('/build/assets/app-a.css'));
     const reopened = worker({stores: initial.stores}); reopened.state({offline: true});
     const home = await reopened.serve(reopened.req('/')); await home.background;
     assert.match(await home.response.text(), /hubPortalCachedHome=true.*Inicio guardado/s);
-    assert.equal(await (await reopened.serve(reopened.req('/build/assets/app-a.css'))).response.text(), '<head></head><body>Inicio guardado</body>');
+    assert.equal(await (await reopened.serve(reopened.req('/build/assets/app-a.css'))).response.text(), '<head><meta name="hub-public-shell" content="2"></head><body>Inicio guardado</body>');
 });
 
 test('login, logout y cambios de rol invalidan Inicio antes de enviar la petición sin borrar recursos', async () => {
@@ -229,8 +229,23 @@ test('una recarga explícita puede pedir Inicio vigente en lugar de la copia', a
     assert.equal(await (await prime(w, w.req('/', 'GET', {'X-Portal-Revalidate': '1'}))).response.text(), 'vigente');
 });
 
+test('Inicio renueva el HTML antiguo del asistente antes de ofrecerlo y conserva el respaldo si no hay red', async () => {
+    const w = worker(), request = w.req('/');
+    w.state({permission:'document',body:'<head></head><body>asistente anterior</body>'});
+    await prime(w,request); await prime(w,w.req('/build/assets/app-a.js'));
+    w.state({body:'<head><meta name="hub-public-shell" content="2"></head><body>asistente vigente</body>'});
+    const fresh=await prime(w,request);
+    assert.match(await fresh.response.text(),/asistente vigente/);
+    assert.equal(w.stores.get('hubdigital-public-v10-assets').size,1,'Renovar HTML no elimina recursos compatibles.');
+    w.state({offline:true});
+    assert.match(await (await w.serve(request)).response.text(),/asistente vigente/);
+    const old=worker();old.state({permission:'document',body:'<head></head><body>respaldo anterior</body>'});
+    await prime(old,old.req('/'));old.state({offline:true});
+    assert.match(await (await old.serve(old.req('/'))).response.text(),/respaldo anterior/);
+});
+
 test('una actualización anónima en vuelo no restaura Inicio después de iniciar sesión', async () => {
-    const w = worker(); w.state({permission: 'document'}); await prime(w, w.req('/'));
+    const w = worker(); w.state({permission: 'document', body: '<head><meta name="hub-public-shell" content="2"></head>'}); await prime(w, w.req('/'));
     w.blockNetwork(); const cached = await w.serve(w.req('/'));
     w.state({permission: '', authenticated: true});
     const login = w.serve(w.req('/login', 'POST'));

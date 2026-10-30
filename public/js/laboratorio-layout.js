@@ -31,6 +31,24 @@
     document.addEventListener('DOMContentLoaded', iniciarPublico);
     document.addEventListener('livewire:navigated', iniciarPublico);
 
+    document.addEventListener('click', event => {
+        const abrir = event.target.closest('[data-lab-open-profile]');
+        if (abrir) {
+            const modal = document.getElementById(abrir.dataset.labOpenProfile);
+            if (modal && !modal.open) { modal.__labOpener = abrir; modal.showModal(); }
+            return;
+        }
+        const cerrar = event.target.closest('[data-lab-close-profile]');
+        if (cerrar) { cerrar.closest('dialog')?.close(); return; }
+        const modal = event.target;
+        if (!modal.matches?.('dialog[data-lab-profile-dialog][open]')) return;
+        const rect = modal.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) modal.close();
+    });
+    document.addEventListener('close', event => {
+        if (event.target.matches?.('[data-lab-profile-dialog]')) event.target.__labOpener?.focus({preventScroll:true});
+    }, true);
+
     window.laboratorioEditor = (wire, originales, catalogo) => ({
         posiciones: Object.assign({}, JSON.parse(JSON.stringify(originales))), catalogo, seleccion: '', mensaje: 'Selecciona y arrastra un texto o una fotografía.', nodos: {}, wire,
         iniciar() {

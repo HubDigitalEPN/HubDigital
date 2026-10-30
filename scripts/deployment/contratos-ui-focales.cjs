@@ -9,13 +9,16 @@ const definitions = {
     tarjetas: {sources: ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/PortalCatalogo.php','Modules/CatalogoPublico/resources/views/livewire/portal-catalogo.blade.php','Modules/CatalogoPublico/resources/views/components/fotografia-tarjeta.blade.php','resources/js/portal-record-scroll.js','public/js/card-scroll.js'], checks:['filtered','noSiblingRail','noPageButtons','scroll','unique']},
     registros: {sources: ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/PortalCatalogo.php','Modules/CatalogoPublico/resources/views/livewire/portal-catalogo.blade.php','resources/js/portal-record-scroll.js','public/js/interactive-grid.js','public/css/interactive-grid.css','resources/views/components/grid-frame.blade.php','resources/views/components/grid-tools.blade.php','resources/views/components/grid-column-menu.blade.php','resources/css/portal-taxonomy-dialogs.css'], checks:['edge','scroll','preservedPosition','columnMenu','columnMove','noPageButtons']},
     fichas: {sources: ['Modules/CatalogoPublico/resources/views/components/ficha-registro-publico.blade.php','Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php','Modules/CatalogoPublico/resources/views/components/atribuciones-imagen.blade.php','Modules/CatalogoPublico/resources/views/components/visor-imagen.blade.php','resources/js/portal-image-model.js','resources/js/portal-dashboard.js','resources/css/portal-record-dialog.css','resources/css/portal-estadisticas.css'], checks:['summary','labels','closeRight','recordClose','photoCreditsFit','photoClose']},
-    chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css'], checks:['install','hide','stored','restore','focus']},
+    chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css','resources/views/layouts/portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/ChatBotWidget.php'], checks:['install','hide','fresh','catalogOnly','restore','focus']},
 };
 const owner = {};
 definitions.laboratorio.checks.push('branches','originals');
+definitions.laboratorio.checks.push('uniform','noAnimals','summaries','modal','wrap','modalClose');
+definitions.laboratorio.sources.push('resources/views/components/laboratorio-retrato.blade.php','resources/views/components/laboratorio-perfil-texto.blade.php',...['adrian-retrato.jpg','joseluisroman.jpg'].map(file=>'public/images/laboratorio/equipo/'+file));
 definitions.tarjetas.checks.push('uniform','start');
 definitions.fichas.checks.push('markerContrast');
 definitions.chat.checks.push('catalogRestore','bothHidden');
+definitions.chat.sources.push('public/pwa-cache.js','public/service-worker.js');
 definitions.laboratorio.sources.push(...['Adrian.jpg','vladimir_carvajal.jpg','David_Donoso_2.jpg','asistente.jpg','edith_montalvo.jpg','Edith_M.jpg','Dayana_T1.jpg','Monica_Guerra.png','Diego_Almeida.png','Michelle_Velez.jpg','Pablo_Arguello.png','Selene_Baez.png'].map(file=>'public/images/laboratorio/equipo/'+file));
 for (const [id, value] of Object.entries(definitions)) for (const source of value.sources) (owner[source] ||= []).push(id);
 Object.assign(owner, {
@@ -30,6 +33,7 @@ Object.assign(owner, {
 const contracts = {
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EstadisticasCatalogoChat.php':['tests/Feature/PortalChatFilosYBiologiaTest.php'],
     'database/migrations/2026_10_30_000001_completar_perfiles_laboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],
+    'database/migrations/2026_10_30_000002_ampliar_perfil_institucional_adrian.php':['tests/Feature/PaginaLaboratorioTest.php'],
     'Modules/CatalogoPublico/app/Presentation/Http/Controllers/ServirImagenCatalogo.php':['tests/Feature/RutasObjetosR2Test.php'],
     'app/Console/Commands/ActualizarDescripcionInstitucional.php':['tests/Feature/BusquedaUniversalPublicaTest.php'],
     'app/Http/Controllers/FotoPaginaLaboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],

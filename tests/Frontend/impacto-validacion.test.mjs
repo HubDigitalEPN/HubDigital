@@ -32,6 +32,14 @@ test('el cuerpo DOM focal exige su recibo MCP propio sin seleccionar los nueve r
     assert.throws(()=>impact.assertCoverage(p),/UI focal laboratorio/);
 });
 
+test('el runner focal compartido conserva UI intacta y exige los casos de las fuentes propias', () => {
+    const runner='tests/Browser/contratos-ui-focales.mjs';
+    assert.deepEqual(impact.focalScope([runner]),[]);
+    assert.deepEqual(impact.focalScope([runner,'public/css/chat-shell.css']),['chat']);
+    assert.deepEqual(impact.focalScope([runner,'config/pagina-laboratorio.php','public/css/chat-shell.css']),['laboratorio','chat']);
+    assert.deepEqual(impact.focalScope([runner,'public/js/card-scroll.js']),['tarjetas']);
+});
+
 test('falta de base, linaje incompatible o fecha invalida detienen sin ejecutar todo', () => {
     for (const base of [null, {...baseline, full_test_coverage: false}, {...baseline, completed_at: 'invalida'}]) {
         assert.throws(() => plan(original, {baseline: base}), /base|fecha/);

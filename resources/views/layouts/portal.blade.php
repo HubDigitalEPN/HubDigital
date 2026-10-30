@@ -181,7 +181,7 @@
     <x-platform-footer />
 
     @if(config('chatbot.enabled', true))
-        @livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class)
+        @livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class, ['puedeOcultar' => request()->routeIs('portal.catalogo')])
     @endif
 
     {{-- Descargar desde la cabecera sin bloquear el contenido. La sesión queda vigente antes de Livewire. --}}
