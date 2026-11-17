@@ -23,6 +23,14 @@ final class AsistentePortal
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
         if (($estadistica = app(EstadisticasCatalogoChat::class)->responder($pregunta, $seleccionPortal)) !== null) return $estadistica;
+        if (app(MatrizDatosCatalogoChat::class)->solicitada($pregunta)) {
+            $respuesta = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo, $seleccionPortal);
+            if ($respuesta !== null) {
+                if ($respuesta['requiere_seleccion'] ?? false) $respuesta['solicitud_pendiente'] = $pregunta;
+                return $respuesta;
+            }
+            return ['texto' => 'La consulta de datos del catálogo no está disponible en este momento.', 'fuente' => 'aclaracion', 'intent' => 'catalogo.aclaracion', 'opciones' => []];
+        }
         if (($social = $this->conversacion->responder($pregunta)) !== null) {
             return $social['intent'] === 'saludo'
                 ? ($this->conocimiento->saludoPublicado($nodoAnterior, $variantesRecientes) ?? $social)

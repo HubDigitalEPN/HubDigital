@@ -136,7 +136,7 @@ final class DetectorEntidadesChat
         preg_match_all('/\b[A-ZÁÉÍÓÚ][a-záéíóúñ]{2,}\b/u', $pregunta, $matches);
         $omitidos = ['son', 'por', 'puedes', 'dame', 'estoy', 'solo', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'no', 'esa', 'ese', 'esta', 'este', 'como', 'que', 'cual', 'cuantos', 'cuantas', 'tienen', 'tengo', 'quiero', 'busca', 'buscar', 'especimenes', 'registros', 'genero', 'familia', 'hola', 'buenos', 'buenas', 'gracias', 'necesito', 'donde', 'muestra', 'existe'];
         $result = [];
-        $omitidos = [...$omitidos, 'para', 'con', 'ahora', 'estos', 'esas', 'estas', 'esos', 'aplicada', 'actual', 'pagina', 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera', 'quien', 'primero', 'ultimo', 'finalmente', 'muestrame', 'dime', 'explicame', 'resto'];
+        $omitidos = [...$omitidos, 'para', 'con', 'ahora', 'estos', 'esas', 'estas', 'esos', 'aplicada', 'actual', 'pagina', 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'matriz', 'haz', 'has', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera', 'quien', 'primero', 'ultimo', 'finalmente', 'muestrame', 'dime', 'explicame', 'resto'];
         foreach ($matches[0] as $principal) {
             if (in_array($this->texto->normalizar($principal), $omitidos, true)) {
                 continue;

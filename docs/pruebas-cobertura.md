@@ -1,5 +1,23 @@
 # Distribución de cobertura
 
+`PortalChatMatrizDatosTest` reproduce las frases de tabla/matriz del catálogo,
+incluidos los errores «dtaos» y «tabal», sin peticiones a IA. Comprueba filas
+reales, selección aplicada, consulta explícita, contexto previo, permisos de
+divulgación, cero resultados, límite de diez filas, total y escape HTML del
+widget. La tabla por filos conserva sus casos independientes. La comprobación
+Neon local añade interacción, desplazamiento horizontal y presentación móvil;
+no sustituye ni renueva recorridos históricos ajenos. No se añade Gherkin porque
+estos casos ya quedan cubiertos por Pest.
+
+`R2S3ClientTest` simula socket roto y error 502 para GET/HEAD/PUT/DELETE, comprueba
+la transición al mismo destino HTTPS con TLS verificado, firma/ruta/bytes
+idénticos, ausencia de redirecciones, límite de intentos y rechazo definitivo.
+Prueba también el guardado y lectura íntegra de una imagen y un documento por
+el cliente compartido tras el fallo. `AlmacenamientoDepositosTest` conserva los
+rechazos de escrituras/lecturas alteradas y `ColaDocumentosR2Test` conserva la
+outbox cifrada durante una caída. Son pruebas sintéticas locales; la aceptación
+de cada release comprueba aparte el R2 configurado en su VM.
+
 `deployment-config-output.test.mjs` ejecuta los bloques reales de comprobación
 de Nginx y PHP-FPM mediante Bash (Git Bash en Windows). Un productor externo
 imprime más de 1 MiB: la ruta correcta debe aprobar incluso al principio de la

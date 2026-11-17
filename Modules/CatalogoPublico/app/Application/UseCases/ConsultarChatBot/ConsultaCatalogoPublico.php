@@ -86,6 +86,7 @@ final class ConsultaCatalogoPublico
             return null;
         }
         $normal = $this->texto->normalizar($pregunta);
+        $matriz = app(MatrizDatosCatalogoChat::class)->solicitada($pregunta);
         $operadorProvincia = $this->detector->operadorProvincia($pregunta);
         if (isset($operadorProvincia['error_consulta'])) {
             $aclaracion = $this->aclaracion($operadorProvincia['error_consulta'], $contexto, sinDatos: true);
@@ -110,6 +111,7 @@ final class ConsultaCatalogoPublico
             && preg_match('/\b(?:registros|especimenes|ejemplares|especies|generos|familias)\b/', $normal)
             && preg_match('/\b(?:en|de)\s+(?:toda\s+)?(?:(?:la\s+)?coleccion|(?:el\s+)?catalogo)\b/', $normal)
             && ! preg_match('/\b(?:esa especie|ese taxon|esos registros|esos ejemplares|estos registros)\b/', $normal);
+        $coleccionExplicita = $coleccionExplicita || ($matriz && (bool) preg_match('/\b(?:catalogo|coleccion)\b.*\bcomplet[oa]\b|\b(?:tod[oa] (?:el catalogo|la coleccion)|global)\b/', $normal));
         $correction = (bool) preg_match('/^(perdon|corrijo|quise decir|queria decir|no )\b/', $normal);
         $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^(?:y|solo|dame solo|quita|quitar|elimina)\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros|de esos dos registros)\b/', $normal);
         $queryText = $pregunta;
@@ -125,6 +127,12 @@ final class ConsultaCatalogoPublico
             }
         }
         $entities = $retirarFiltro === null ? $this->detector->extraer($queryText) : [];
+        // Sin criterios nuevos, una matriz usa la página aplicada; fuera del
+        // catálogo conserva la consulta anterior. «Completo» pide alcance global.
+        if ($matriz && $entities === [] && ! $coleccionExplicita && ! $referenciaSeleccion && $alcanceConfirmado !== 'consulta') {
+            if ($seleccionPortal !== null) $referenciaSeleccion = true;
+            else $entities = $contexto;
+        }
         if (($correction || $followup || $retirarFiltro !== null) && ! $coleccionExplicita && ! $referenciaSeleccion && $contexto !== []) {
             $previous = array_intersect_key($contexto, array_flip(['taxon', 'provincia', 'localidad', 'pais', 'codigo', 'mes', 'desde', 'hasta', 'fecha_precision', 'ubicacion', 'identificacion', 'elev_desde', 'elev_hasta']));
             if (isset($entities['taxon']) || isset($entities['codigo'])) unset($previous['taxon'], $previous['codigo']);
@@ -201,7 +209,13 @@ final class ConsultaCatalogoPublico
                 return $respuesta;
             }
 
+            if ($matriz) return app(MatrizDatosCatalogoChat::class)->responder($seleccion, $seleccionPortal === null ? $contexto : [], $seleccionPortal !== null ? 'en la selección aplicada de la página' : 'en la consulta pública anterior');
             return $this->contarSeleccion($normal, $seleccion, $seleccionPortal === null ? $contexto : [], $seleccionPortal !== null);
+        }
+        if ($matriz) {
+            $seleccion = SeleccionPaginaChat::desde($this->parametros($entities));
+            if ($seleccion === null) return $this->aclaracion('Los criterios de la matriz son inválidos. Revisa los filtros; no he preparado datos parciales.', $contexto);
+            return app(MatrizDatosCatalogoChat::class)->responder($seleccion, $entities, $entities === [] ? 'en el catálogo público completo' : 'en la consulta solicitada');
         }
         $options = [['label' => 'Abrir catálogo para ver más', 'url' => route('portal.catalogo', $this->parametros($entities))]];
         $unidades = $this->unidadesSolicitadas($normal);

@@ -19,10 +19,13 @@ final class R2S3Client
     /** @var callable|null Conexiones TLS reutilizadas sólo dentro de este cliente privado. */
     private mixed $transporte = null;
 
+    private bool $evitarTransportePrivado = false;
+
     /** @param array<string, mixed> $configuracion */
     public function __construct(
         private readonly array $configuracion,
         private readonly ?\DateTimeImmutable $ahoraFijo = null,
+        private readonly ?TransportePrivadoR2 $transportePrivado = null,
     ) {}
 
     public function put(string $ruta, string $contenido, string $mime): void
@@ -203,19 +206,16 @@ final class R2S3Client
         ];
 
         $maxIntentos = max(1, min(3, (int) ($this->configuracion['max_attempts'] ?? 3)));
-        $socket = (string) ($this->configuracion['transport_socket'] ?? '');
-        $metadatosTransporte = dirname($socket).'/origin-host';
-        $transportePrivado = PHP_OS_FAMILY === 'Linux' && $socket === '/run/hubdigital/r2-transport/r2.sock'
-            && ! is_link($socket) && @filetype($socket) === 'socket' && (@fileperms($socket) & 0777) === 0600
-            && ! is_link($metadatosTransporte) && @fileowner($metadatosTransporte) === 0
-            && trim((string) @file_get_contents($metadatosTransporte)) === $host;
+        $socket = $this->evitarTransportePrivado ? null : ($this->transportePrivado ?? new TransportePrivadoR2)->socket($host, (string) ($this->configuracion['transport_socket'] ?? ''));
+        $transportePrivado = $socket !== null;
         for ($intento = 1; $intento <= $maxIntentos; $intento++) {
             try {
                 $peticion = Http::timeout(max(1, (int) ($this->configuracion['timeout_seconds'] ?? 45)))
                     ->setHandler($this->transporte ??= \GuzzleHttp\Utils::chooseHandler())
                     ->connectTimeout(max(1, (int) ($this->configuracion['connect_timeout_seconds'] ?? 10)))
                     ->withUserAgent('HubDigital-EPN/1.0 almacenamiento-privado')
-                    ->withHeaders($headers);
+                    ->withHeaders($headers)
+                    ->withOptions(['proxy' => '', 'allow_redirects' => false, 'verify' => true]);
                 if ($transportePrivado) {
                     // Solo el salto al socket es local; nginx verifica TLS con el mismo host R2 firmado.
                     $peticion = $peticion->withOptions(['curl' => [CURLOPT_UNIX_SOCKET_PATH => $socket],
@@ -232,7 +232,18 @@ final class R2S3Client
                 if (! $reintentable || $intento === $maxIntentos) {
                     return $respuesta;
                 }
+                if ($transportePrivado && $respuesta->serverError()) {
+                    $transportePrivado = false;
+                    $this->evitarTransportePrivado = true;
+                }
             } catch (Throwable) {
+                // Socket ausente, DNS o upstream obsoleto: el siguiente intento
+                // alcanza el mismo R2 por HTTPS verificado, con la misma firma,
+                // ruta y bytes. El presupuesto sigue siendo de tres intentos.
+                if ($transportePrivado) {
+                    $transportePrivado = false;
+                    $this->evitarTransportePrivado = true;
+                }
                 if ($intento === $maxIntentos) {
                     throw new \RuntimeException('No fue posible conectar de forma segura con R2.');
                 }

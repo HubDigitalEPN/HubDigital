@@ -46,7 +46,9 @@ test('la tabla respeta la selección y los permisos públicos', function (): voi
     expect($filtrada['rows'])->toBe([['nombre' => 'Arthropoda', 'registros' => 4]])
         ->and($filtrada['texto'])->toContain('selección aplicada');
     Livewire::test(ChatBotWidget::class)->set('pregunta', 'has una tabla de las cantidades por filos')->call('enviar')
-        ->assertSeeHtml('<table class="portal-chat-table">')->assertSee('Registros por filo')->assertDontSee('Nematomorpha');
+        ->assertSeeHtml('<table class="portal-chat-table" >')
+        ->assertSeeHtml('<th scope="col">Filo</th><th scope="col">Registros</th>')
+        ->assertSee('Registros por filo')->assertDontSee('Nematomorpha');
     config(['chatbot.specimen_search' => false]);
     expect($asistente->responder('filos', $handler)['intent'])->toBe('catalogo.aclaracion');
     Http::assertNothingSent();

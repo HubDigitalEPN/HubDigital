@@ -57,10 +57,15 @@
                                 <p class="whitespace-pre-wrap break-words">{{ $mensaje['texto'] }}</p>
                                 @if(!empty($mensaje['tabla']))
                                     <div class="portal-chat-table-scroll" tabindex="0" role="region" aria-label="{{ $mensaje['tabla']['titulo'] }}">
-                                        <table class="portal-chat-table">
+                                        <table class="portal-chat-table" @if(isset($mensaje['tabla']['columnas'])) data-chat-matrix @endif>
                                             <caption>{{ $mensaje['tabla']['titulo'] }}</caption>
-                                            <thead><tr><th scope="col">Filo</th><th scope="col">Registros</th></tr></thead>
-                                            <tbody>@foreach($mensaje['tabla']['filas'] as $fila)<tr><th scope="row">{{ $fila['nombre'] }}</th><td>{{ number_format($fila['registros'], 0, ',', '.') }}</td></tr>@endforeach</tbody>
+                                            @if(isset($mensaje['tabla']['columnas']))
+                                                <thead><tr>@foreach($mensaje['tabla']['columnas'] as $etiqueta)<th scope="col">{{ $etiqueta }}</th>@endforeach</tr></thead>
+                                                <tbody>@foreach($mensaje['tabla']['filas'] as $fila)<tr>@foreach($mensaje['tabla']['columnas'] as $clave => $etiqueta)@if($loop->first)<th scope="row">{{ $fila[$clave] ?? '—' }}</th>@else<td>{{ $fila[$clave] ?? '—' }}</td>@endif @endforeach</tr>@endforeach</tbody>
+                                            @else
+                                                <thead><tr><th scope="col">Filo</th><th scope="col">Registros</th></tr></thead>
+                                                <tbody>@foreach($mensaje['tabla']['filas'] as $fila)<tr><th scope="row">{{ $fila['nombre'] }}</th><td>{{ number_format($fila['registros'], 0, ',', '.') }}</td></tr>@endforeach</tbody>
+                                            @endif
                                         </table>
                                     </div>
                                 @endif

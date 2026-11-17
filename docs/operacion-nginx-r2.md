@@ -22,6 +22,22 @@ separación en futuras releases. La reparación operativa se puede aplicar como
 root con `deploy/oracle/scripts/repair-r2-dns-isolation.sh` desde fuentes revisadas.
 Hace respaldo y revierte si falla la recarga; no modifica la release de aplicación.
 
+El socket es una optimización de conexiones TLS, no el almacenamiento. Los
+archivos siguen guardándose en el mismo bucket privado de R2. El cliente común
+`R2S3Client` cambia a HTTPS directo si el socket falla o devuelve un error 5xx;
+conserva host, firma SigV4, ruta, consulta y bytes, verifica TLS y no sigue
+redirecciones. El cambio de transporte consume el presupuesto existente de
+como máximo tres intentos, y las siguientes operaciones de ese cliente evitan
+el socket averiado. Un 403 o 404 no se oculta mediante reintentos de transporte.
+
+La corrección cubre documentos e imágenes porque `StorageImagenesAdapter`
+utiliza `AlmacenamientoDepositos`, que comparte ese cliente. El guardado mantiene
+la lectura posterior y la comprobación de tamaño/SHA-256 antes de confirmarse.
+Si R2 y el acceso directo están indisponibles, se informa el fallo: no se declara
+guardada una imagen inexistente ni se usa una copia local silenciosa. Los
+documentos admitidos por la outbox conservan sus bytes cifrados pendientes hasta
+su entrega confirmada; el aislamiento no elimina ni confirma esos pendientes.
+
 En PROD se conservó `/srv/hubdigital/releases/d15249930ced62b1`. El respaldo está
 en `/var/backups/hubdigital/r2-dns.vsjgiHrz`. La aceptación comprobó ambos servicios
 activos, permisos, `nginx -t`, HTTP 200 en Inicio y catálogo, TLS válido y catálogo
