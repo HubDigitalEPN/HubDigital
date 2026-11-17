@@ -2,12 +2,30 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
-import {spawn} from 'node:child_process';
+import {spawn, spawnSync} from 'node:child_process';
 
 const stage = readFileSync(new URL('../../deploy/oracle/scripts/stage-linux-candidate.sh', import.meta.url), 'utf8');
 const phase = stage.split('# BEGIN RELEASE PHASE')[1].split('# END RELEASE PHASE')[0];
 const bash = process.env.HUBDIGITAL_BASH || (process.platform === 'win32'
     ? path.join(process.env.ProgramFiles || 'C:/Program Files', 'Git/bin/bash.exe') : 'bash');
+
+for (const pdfStatus of [0, 7]) test(`aceptación PDF con estado ${pdfStatus}: una sola JVM y fallo conservado`, () => {
+    const activation = readFileSync(new URL('../../deploy/oracle/scripts/activate-release.sh', import.meta.url), 'utf8');
+    const block = activation.split('# BEGIN ISOLATED PDF ACCEPTANCE')[1].split('# END ISOLATED PDF ACCEPTANCE')[0];
+    assert.ok(activation.indexOf('systemctl stop hubdigital-signature.service') < activation.indexOf('# BEGIN ISOLATED PDF ACCEPTANCE'));
+    const run = spawnSync(bash, ['--noprofile','--norc','-c', `set -euo pipefail
+signature_state=stopped; verification_failed=0; release_dir=/qa/release; env_file=/qa/env
+systemd-run() { [[ "$signature_state" == stopped ]] || return 91; printf 'qa:una-jvm\\n'; return ${pdfStatus}; }
+systemctl() { [[ "$1 $2" == 'restart hubdigital-signature.service' ]]; signature_state=active; printf 'firmador:restaurado\\n'; }
+runuser() { [[ "$signature_state" == active ]]; printf 'firmador:verificado\\n'; }
+${block}
+printf 'fallo=%s\\n' "$verification_failed"
+`], {encoding:'utf8',windowsHide:true,timeout:5000});
+    assert.ifError(run.error); assert.equal(run.status,0,run.stderr);
+    assert.match(run.stdout + run.stderr,/qa:una-jvm/); assert.match(run.stdout,/firmador:restaurado/);
+    assert.match(run.stdout,/firmador:verificado/); assert.match(run.stdout,new RegExp(`fallo=${pdfStatus ? 1 : 0}`));
+    if(pdfStatus) assert.match(run.stderr,/NO OK solucion PDF depositos/);
+});
 
 test('staging transmite progreso antes de finalizar y conserva el fallo real', async () => {
     const producer = "console.log('PROGRESO_VIVO');setTimeout(()=>{console.log('FIN_PRODUCTOR');process.exitCode=7;},300);";

@@ -19,6 +19,18 @@ if ($medirTiempoLocal && (! $app->environment('local') || ! in_array(
     exit(1);
 }
 
+// La aceptación remota comprueba criptografía y contenido con arranque frío.
+// Sólo --medir-tiempo-local acredita latencia y conserva la vía normal de 2,8 s.
+$verificarSintetico = static function (string $ruta) use ($medirTiempoLocal): \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma {
+    $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class);
+    if ($medirTiempoLocal) {
+        return $adaptador->verificarFirma($ruta);
+    }
+    $dictamen = $adaptador->verificarDocumentoExterno($ruta, 60);
+    return \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::tryFrom((string) ($dictamen['status'] ?? ''))
+        ?? \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::VerificacionNoDisponible;
+};
+
 $archivoValido = tempnam(sys_get_temp_dir(), 'hd-pdf-ok-');
 $archivoFalso = tempnam(sys_get_temp_dir(), 'hd-pdf-no-');
 $directorioFirma = sys_get_temp_dir().'/hd-firma-'.bin2hex(random_bytes(8));
@@ -71,8 +83,7 @@ try {
         // Rechazo esperado.
     }
 
-    $firma = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class)
-        ->verificarFirma($archivoValido);
+    $firma = $verificarSintetico($archivoValido);
     if ($firma !== \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::SinFirma) {
         throw new \RuntimeException('El adaptador PHP/Java no detectó el PDF sin firma.');
     }
@@ -179,7 +190,6 @@ try {
             config()->set('firma-electronica.worker_socket', $socketPrueba);
         }
     }
-    $adaptador = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter::class);
     // El camino oficial exige certificado de persona (no CA) y los dos
     // marcadores del perfil. La identidad sigue siendo sintética y efímera.
     file_put_contents($opensslConfig, "\n[v3_signer]\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,nonRepudiation\n", FILE_APPEND);
@@ -230,7 +240,7 @@ try {
         throw new \RuntimeException('La creación y comprobación de la firma superó tres segundos.');
     }
     $inicioValidacion = $medirTiempoLocal ? microtime(true) : null;
-    $resultado = $adaptador->verificarFirma($firmado);
+    $resultado = $verificarSintetico($firmado);
     $duracionFirma = $medirTiempoLocal ? microtime(true) - $inicioValidacion : null;
     if (! in_array($resultado, [
         \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::Firmado,
@@ -250,7 +260,7 @@ try {
     $contenido[7] = $contenido[7] === '6' ? '7' : '6';
     file_put_contents($alterado, $contenido);
     $inicioValidacion = $medirTiempoLocal ? microtime(true) : null;
-    $resultadoAlterado = $adaptador->verificarFirma($alterado);
+    $resultadoAlterado = $verificarSintetico($alterado);
     $duracionAlterado = $medirTiempoLocal ? microtime(true) - $inicioValidacion : null;
     if ($resultadoAlterado !== \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoValidacionFirma::FirmaInvalida) {
         throw new \RuntimeException('El adaptador PHP/Java aceptó un PDF firmado y alterado.');

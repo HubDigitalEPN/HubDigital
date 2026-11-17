@@ -388,4 +388,13 @@ el visor añade cierre desde el botón y devolución del foco. El caso ETag de
 Son controles focalizados: no acreditan una suite integral ni despliegues.
 # Contratos focales de UI por MCP
 
+La aceptación remota de PDF conserva las comprobaciones de documentos sin firma,
+firmas íntegras y alteraciones, con un plazo diagnóstico acotado de 60 segundos
+por comprobación. La medición `--medir-tiempo-local` sigue exigiendo tres segundos
+y utiliza el contrato normal del adaptador, sin ampliar su presupuesto de 2,8 s.
+`PresupuestoDiagnosticoFirmaTest.php` comprueba ambos contratos y rechaza plazos
+inválidos. `deployment-staging-progress.test.mjs` ejecuta la secuencia de aceptación
+con éxito y fallo: mantiene un solo motor Java y restaura el firmador antes de
+continuar, conservando el rechazo de la release cuando falla el PDF.
+
 Los cambios de laboratorio, tarjetas, registros, fichas y chat usan el cuerpo DOM de `tests/Browser/contratos-ui-focales.mjs`, ejecutado en la pestaña QA de localhost mediante MCP `opera_neon`. Los recibos locales validan todos los controles del caso y las mismas huellas de fuentes/build antes y después. No renuevan las fechas ni acreditan la ejecución de los nueve recorridos históricos. Los contratos de servidor y Node siguen siendo independientes.

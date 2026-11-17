@@ -153,12 +153,9 @@ else
     echo 'OK Java PDF: JAR de la release ejecutado; firma valida, alteracion, PDF sin firma, PDF activo y PDF danado comprobados.'
 fi
 
-if ! systemctl restart hubdigital-signature.service \
-    || ! runuser -u www-data -- /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-signature-worker.php"; then
-    echo 'El firmador preparado no está disponible; la release permanece en mantenimiento.' >&2
-    exit 1
-fi
-
+# BEGIN ISOLATED PDF ACCEPTANCE
+# El PDF sintético prepara su propia JVM: conservar detenido el firmador de
+# servicio hasta que termine evita dos motores en la VM de 1 GiB.
 if ! pdf_result="$(systemd-run --quiet --wait --collect --pipe \
     --property=User=www-data --property=Group=www-data \
     --property=MemoryMax=384M --property=MemorySwapMax=0 --property=RuntimeMaxSec=300 \
@@ -169,6 +166,12 @@ if ! pdf_result="$(systemd-run --quiet --wait --collect --pipe \
 else
     echo "${pdf_result}"
 fi
+if ! systemctl restart hubdigital-signature.service \
+    || ! runuser -u www-data -- /usr/bin/php8.4 "${release_dir}/deploy/oracle/scripts/verify-signature-worker.php"; then
+    echo 'El firmador preparado no está disponible; la release permanece en mantenimiento.' >&2
+    exit 1
+fi
+# END ISOLATED PDF ACCEPTANCE
 
 if ! chat_result="$(systemd-run --quiet --wait --collect --pipe \
     --property=User=www-data --property=Group=www-data \

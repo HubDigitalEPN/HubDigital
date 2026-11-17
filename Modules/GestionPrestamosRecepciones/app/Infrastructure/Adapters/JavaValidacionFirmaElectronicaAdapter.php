@@ -17,9 +17,13 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DirectorioTempora
 final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElectronicaPort
 {
     /** Dictamen completo del mismo motor, para diagnósticos y pruebas del corpus local. */
-    public function verificarDocumentoExterno(string $rutaAbsoluta): array
+    public function verificarDocumentoExterno(string $rutaAbsoluta, ?float $esperaDiagnostica = null): array
     {
-        return $this->ejecutarJava($rutaAbsoluta);
+        if ($esperaDiagnostica !== null && (! is_finite($esperaDiagnostica) || $esperaDiagnostica <= 0)) {
+            throw new \InvalidArgumentException('El presupuesto de diagnóstico debe ser positivo y finito.');
+        }
+
+        return $this->ejecutarJava($rutaAbsoluta, esperaDiagnostica: $esperaDiagnostica);
     }
 
     public function verificarFirma(string $rutaAbsoluta): ResultadoValidacionFirma
@@ -56,7 +60,7 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
     }
 
     /** @return array<string, mixed> */
-    private function ejecutarJava(string $ruta, ?string $original = null): array
+    private function ejecutarJava(string $ruta, ?string $original = null, ?float $esperaDiagnostica = null): array
     {
         $jar = (string) config('firma-electronica.java_signature_jar');
         if (! is_file($ruta) || ($original !== null && ! is_file($original)) || ! is_file($jar)) {
@@ -64,7 +68,9 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
         }
 
         $inicio = microtime(true);
-        $presupuesto = $original === null ? 2.8 : (float) config('firma-electronica.java_timeout', 60);
+        $presupuesto = $original === null
+            ? ($esperaDiagnostica === null ? 2.8 : min(60.0, $esperaDiagnostica))
+            : (float) config('firma-electronica.java_timeout', 60);
         try {
             // Las alternativas administradas son opcionales: el motor también usa
             // la evidencia del PDF y las fuentes publicadas en cada certificado.
@@ -107,7 +113,7 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
             $preparado = $resultado !== null;
             if ($resultado === null) {
                 $restante = $presupuesto - (microtime(true) - $inicio);
-                if ($restante <= 0) throw new \RuntimeException('La comprobación excedió el plazo de tres segundos.');
+                if ($restante <= 0) throw new \RuntimeException($esperaDiagnostica === null ? 'La comprobación excedió el plazo de tres segundos.' : 'La comprobación excedió el plazo diagnóstico.');
                 $resultado = ProcesoFirmaJava::ejecutar($comando, $entorno,
                     $ruta.($original !== null ? "\0".$original : ''), $restante);
             }
@@ -122,7 +128,7 @@ final class JavaValidacionFirmaElectronicaAdapter implements ValidacionFirmaElec
         } catch (\Throwable $error) {
             Log::warning('No se pudo ejecutar el motor Java de firmas', ['error' => $error->getMessage()]);
 
-            return $this->noDisponible($original === null
+            return $this->noDisponible($original === null && $esperaDiagnostica === null
                 ? 'La firma no pudo comprobarse dentro de tres segundos. Reintenta cuando el motor esté disponible.'
                 : 'No fue posible ejecutar el motor Java de validación de firmas.');
         }
