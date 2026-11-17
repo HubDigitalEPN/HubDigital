@@ -57,7 +57,7 @@
                                 <p class="whitespace-pre-wrap break-words">{{ $mensaje['texto'] }}</p>
                                 @if(!empty($mensaje['tabla']))
                                     <div class="portal-chat-table-scroll" tabindex="0" role="region" aria-label="{{ $mensaje['tabla']['titulo'] }}">
-                                        <table class="portal-chat-table" @if(isset($mensaje['tabla']['columnas'])) data-chat-matrix @endif>
+                                        <table class="portal-chat-table" @if(count($mensaje['tabla']['columnas'] ?? []) > 3) data-chat-matrix @endif>
                                             <caption>{{ $mensaje['tabla']['titulo'] }}</caption>
                                             @if(isset($mensaje['tabla']['columnas']))
                                                 <thead><tr>@foreach($mensaje['tabla']['columnas'] as $etiqueta)<th scope="col">{{ $etiqueta }}</th>@endforeach</tr></thead>

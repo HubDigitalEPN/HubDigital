@@ -19,6 +19,11 @@ final class AsistentePortal
     /** @return array{texto:string, opciones:array, node_id?:int, variant_id?:int|null} */
     public function responder(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior = null, array $variantesRecientes = [], array $contextoCatalogo = [], ?array $seleccionPortal = null, ?string $solicitudPendiente = null, bool $interpretarConModelo = true, array $historial = []): array
     {
+        return app(TablaRespuestaCatalogoChat::class)->aplicar($this->resolver($pregunta, $catalogo, $nodoAnterior, $variantesRecientes, $contextoCatalogo, $seleccionPortal, $solicitudPendiente, $interpretarConModelo, $historial));
+    }
+
+    private function resolver(string $pregunta, ConsultarChatBotHandler $catalogo, ?int $nodoAnterior, array $variantesRecientes, array $contextoCatalogo, ?array $seleccionPortal, ?string $solicitudPendiente, bool $interpretarConModelo, array $historial): array
+    {
         $pregunta = app(OrtografiaConsultaChat::class)->corregir($pregunta);
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
@@ -258,7 +263,11 @@ final class AsistentePortal
                             'opciones' => $opciones, 'fuente' => 'catalogo', 'intent' => 'catalogo.none',
                             'confianza' => 'HIGH', 'confianza_valor' => 1.0];
                     }
-                    return ['texto' => $salida->respuesta, 'opciones' => $opciones];
+                    $filas = $salida->contexto?->esRanking()
+                        ? array_map(static fn ($fila): array => ['nombre' => $fila->nombre, 'registros' => $fila->cantidadRegistros], $salida->contexto->estadisticas)
+                        : $salida->especimenesReferenciados;
+                    return ['texto' => $salida->respuesta, 'opciones' => $opciones, 'fuente' => 'catalogo',
+                        'datos' => ['total' => $salida->contexto?->totalUnicosEnRango ?? count($filas), 'filas' => $filas]];
                 }
             } catch (\Throwable $error) {
                 report($error);

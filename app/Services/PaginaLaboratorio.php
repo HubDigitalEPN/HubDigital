@@ -45,7 +45,10 @@ final class PaginaLaboratorio
                 'foto' => $this->fotoBloque((array) ($bloque['foto'] ?? []), (string) ($bloque['alt'] ?? '')),
             ];
         }
-        return ['textos' => $textos, 'fotos' => $fotos, 'bloques' => $bloques, 'posiciones' => (array) ($datos['posiciones'] ?? []), 'version' => hash('sha256', $original)];
+        $pagina = ['textos' => $textos, 'fotos' => $fotos, 'bloques' => $bloques, 'posiciones' => (array) ($datos['posiciones'] ?? []), 'version' => hash('sha256', $original)];
+        // Las secciones retiradas no dejan posiciones huérfanas ni espacios vacíos.
+        $pagina['posiciones'] = array_intersect_key($pagina['posiciones'], DisenoLaboratorio::elementos($pagina));
+        return $pagina;
     }
 
     public function prepararFoto(string $contenido): array

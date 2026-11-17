@@ -63,6 +63,7 @@ final class ConsultaCatalogoPublico
             $texto .= ' Contraste externo: '.$referencia['fuente'].' consultado el '.$referencia['fecha'].'. '.$referencia['decision'].'. '.$referencia['limite'];
         }
         return ['texto' => $texto, 'fuente' => 'catalogo', 'intent' => 'catalogo.clasificacion', 'entidades' => $entities,
+            'datos' => ['total' => count($ruta), 'filas' => array_values($ruta)],
             'opciones' => [['label' => 'Ver registros del taxón', 'url' => route('portal.catalogo', $this->parametros($entities))]]];
     }
 

@@ -14,8 +14,8 @@ export async function comprobarUIFocal(caso) {
         checks.navigation=nav.slice(0,4).join('|')==='Inicio|El Laboratorio|Explorar la colección|Depósitos';
         checks.copy=q('.lab-introduction').textContent.includes('Generamos conocimiento sobre taxonomía-sistemática') && q('.lab-introduction').textContent.includes('para la conservación de la naturaleza.');
         const frames=all('[data-lab-profile] > .lab-portrait-frame');
-        checks.photos=frames.length===12;
-        checks.branches=all('[data-lab-branch]').length===7 && q('.lab-branch-title')?.textContent.includes('Entomología');
+        checks.photos=frames.length===3;
+        checks.branches=all('[data-lab-branch]').length===1 && q('[data-lab-branch]')?.dataset.labBranch==='entomologia' && q('.lab-branch-title')?.textContent.includes('Entomología') && all('.lab-branch-nav a').map(a=>a.getAttribute('href')).join('|')==='#rama-entomologia';
         for(const f of frames){f.scrollIntoView({block:'center'});await frame();await wait(()=>f.querySelector('img')?.complete && f.querySelector('img').naturalWidth>0);}
         checks.originals=frames.every(f=>f.querySelector('img[src*="/images/laboratorio/equipo/"]'));
         const sizes=frames.map(f=>f.getBoundingClientRect());

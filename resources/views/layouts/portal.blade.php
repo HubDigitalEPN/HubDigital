@@ -73,7 +73,7 @@
             @endif
 
             <div class="portal-mobile-actions lg:hidden">
-            @if(config('chatbot.enabled', true))
+            @if(\App\Support\DisponibilidadChatPortal::habilitado())
             <button id="portal-chat-mobile-trigger" type="button" class="portal-mobile-chat-button"
                 x-data="{ chatAbierto: false }" x-on:portal-chat-state.window="chatAbierto = $event.detail.abierto"
                 x-on:click="abierto = false; $dispatch('portal-chat-toggle')"
@@ -180,7 +180,7 @@
 
     <x-platform-footer />
 
-    @if(config('chatbot.enabled', true))
+    @if(\App\Support\DisponibilidadChatPortal::habilitado())
         @livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class, ['puedeOcultar' => request()->routeIs('portal.catalogo')])
     @endif
 

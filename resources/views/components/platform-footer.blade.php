@@ -1,6 +1,8 @@
 <footer class="platform-footer border-t border-border bg-surface text-xs text-text-secondary" aria-label="Información de la plataforma">
     <nav class="platform-footer-links" aria-label="Información legal, citación y créditos">
+        @if(\App\Support\DisponibilidadChatPortal::habilitado())
         <button type="button" data-chat-restore x-data x-on:click="$dispatch('portal-chat-toggle')" aria-controls="chat-bot-panel">Mostrar asistente</button>
+        @endif
         <a href="{{ route('portal.privacidad') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Política de privacidad</a>
         <a href="{{ route('portal.terminos') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Términos de uso</a>
         <a href="{{ route('portal.licencia') }}" data-platform-information aria-haspopup="dialog" aria-controls="platform-information-dialog">Licencia</a>

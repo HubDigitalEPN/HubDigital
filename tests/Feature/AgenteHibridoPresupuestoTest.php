@@ -177,6 +177,7 @@ test('OpenAI permanece desactivado fuera de PROD aunque exista clave y saldo', f
 })->with([['local', 'http://localhost:8000'], ['production', 'https://dev.labinvepn.org'], ['testing', 'https://labinvepn.org']]);
 
 test('los dos chats responden preguntas generales con una sola inferencia y sin cargar Qwen', function (): void {
+    \Illuminate\Support\Facades\Log::spy();
     $this->presupuestoIA->inicializar('org-prueba', 'proj-prueba', 63_000_000, time() + 3600);
     Http::fake(['https://api.openai.com/v1/responses' => Http::response(['status' => 'completed',
         'usage' => ['input_tokens' => 200, 'output_tokens' => 30],
@@ -188,6 +189,7 @@ test('los dos chats responden preguntas generales con una sola inferencia y sin 
     expect($depositos->responder('¿Por qué el cielo es azul?', []))->toContain('Rayleigh');
     Http::assertSentCount(2);
     Http::assertSent(fn ($r): bool => str_contains($r['instructions'], 'cualquier tema') && str_contains($r['instructions'], 'No inventes'));
+    \Illuminate\Support\Facades\Log::shouldHaveReceived('info')->with('OpenAI: respuesta estructurada completada', \Mockery::on(fn ($datos) => $datos['modelo'] === 'gpt-6.1-terra' && $datos['tokens_entrada'] === 200 && !isset($datos['pregunta'], $datos['clave'])))->twice();
 });
 
 test('sin crédito la conversación general usa Qwen sin llamar otra vez a OpenAI', function (): void {

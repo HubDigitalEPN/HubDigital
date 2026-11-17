@@ -114,9 +114,11 @@
         />
         <div class="collection-main" wire:key="catalogo-contenido" wire:loading.attr="inert">
     <nav class="collection-view-bar" wire:key="catalogo-vistas" aria-label="Vista de la Colección Biológica">
+        @if(\App\Support\DisponibilidadChatPortal::habilitado())
         <button type="button" class="collection-chat-restore" data-chat-restore data-chat-restore-catalogo x-on:click="$dispatch('portal-chat-toggle')" aria-controls="chat-bot-panel" aria-label="Mostrar asistente HubDigital" title="Mostrar asistente">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>
         </button>
+        @endif
         <div class="collection-active-filters" role="group" aria-label="Filtros activos de la selección aplicada">
             @foreach($this->criteriosActivos as $criterio)
                 <button type="button" wire:key="criterio-{{ $criterio['clave'] }}-{{ $criterio['indice'] }}" wire:click="$wire.retirarCriterio(@js($criterio['clave']), {{ $criterio['indice'] }})" wire:loading.attr="disabled"

@@ -62,7 +62,12 @@ final class ClienteOpenAI
                 foreach ((array) ($item['content'] ?? []) as $contenido) {
                     if (($contenido['type'] ?? null) !== 'output_text') continue;
                     $datos = json_decode($contenido['text'] ?? '', true, 32, JSON_THROW_ON_ERROR);
-                    return is_array($datos) ? $datos : null;
+                    if (! is_array($datos)) return null;
+                    \Illuminate\Support\Facades\Log::info('OpenAI: respuesta estructurada completada', [
+                        'modelo' => $cuerpo['model'], 'respuesta_id' => $r->json('id'),
+                        'tokens_entrada' => $entrada, 'tokens_salida' => $salida,
+                    ]);
+                    return $datos;
                 }
             }
         } catch (\Throwable) {

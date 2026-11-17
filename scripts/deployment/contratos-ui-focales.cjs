@@ -21,6 +21,9 @@ Object.assign(definitions, {
 definitions.depositos_contenido.sources.push('Modules/GestionPrestamosRecepciones/app/Infrastructure/Persistence/Models/SolicitudDepositoEloquentModel.php','Modules/GestionPrestamosRecepciones/resources/views/investigador/mis-depositos/_card.blade.php','Modules/GestionPrestamosRecepciones/resources/views/curador/revisar-deposito.blade.php','Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php','Modules/GestionPrestamosRecepciones/resources/views/receptor/bandeja-recepciones.blade.php','Modules/GestionPrestamosRecepciones/resources/views/components/deposito-status-badge.blade.php');
 definitions.depositos_documento.sources.push('Modules/GestionPrestamosRecepciones/resources/views/pdf/documento-ingreso.blade.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/CodigoQrDisponibleNotification.php');
 const owner = {};
+
+definitions.laboratorio.sources.push('app/Services/PaginaLaboratorio.php');
+definitions.chat.sources.push('app/Support/DisponibilidadChatPortal.php','Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/TablaRespuestaCatalogoChat.php');
 definitions.laboratorio.checks.push('branches','originals');
 definitions.laboratorio.checks.push('uniform','noAnimals','summaries','modal','wrap','modalClose');
 definitions.laboratorio.sources.push('resources/views/components/laboratorio-retrato.blade.php','resources/views/components/laboratorio-perfil-texto.blade.php',...['adrian-retrato.jpg','joseluisroman.jpg'].map(file=>'public/images/laboratorio/equipo/'+file));
@@ -40,6 +43,8 @@ Object.assign(owner, {
     'Modules/CatalogoPublico/resources/views/components/busqueda-universal.blade.php':['tarjetas'],
 });
 const contracts = {
+    'app/Support/DisponibilidadChatPortal.php':['tests/Feature/PortalChatDisponibilidadTest.php'],
+    'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/TablaRespuestaCatalogoChat.php':['tests/Feature/PortalChatTablasConsultasTest.php'],
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EstadisticasCatalogoChat.php':['tests/Feature/PortalChatFilosYBiologiaTest.php'],
     'database/migrations/2026_10_30_000001_completar_perfiles_laboratorio.php':['tests/Feature/PaginaLaboratorioTest.php'],
     'database/migrations/2026_10_30_000002_ampliar_perfil_institucional_adrian.php':['tests/Feature/PaginaLaboratorioTest.php'],

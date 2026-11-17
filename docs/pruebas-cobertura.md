@@ -1,5 +1,14 @@
 # Distribución de cobertura
 
+`PortalChatTablasConsultasTest` comprueba tablas automáticas en búsquedas, conteos
+y comparaciones, la excepción de un registro, las unidades y las celdas escapadas.
+`PortalChatDisponibilidadTest` conserva el chat en PROD y bloquea DEV tanto en
+la página como al montar o hidratar Livewire. El entorno testing solo permite
+loopback para las pruebas aisladas. `AgenteHibridoPresupuestoTest` verifica la
+llamada Responses de OpenAI y el registro de uso sin preguntas ni credenciales;
+la cuenta y conectividad reales de PROD se comprueban en ese entorno cuando hay
+acceso. Estos casos no agregan escenarios Gherkin duplicados.
+
 `PortalChatMatrizDatosTest` reproduce las frases de tabla/matriz del catálogo,
 incluidos los errores «dtaos» y «tabal», sin peticiones a IA. Comprueba filas
 reales, selección aplicada, consulta explícita, contexto previo, permisos de

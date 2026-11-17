@@ -17,6 +17,11 @@ use Modules\CatalogoPublico\Application\UseCases\ConsultarChatBot\AsistentePorta
 
 final class ChatBotWidget extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(\App\Support\DisponibilidadChatPortal::habilitado(), 404);
+    }
+
     #[\Livewire\Attributes\Locked]
     public bool $puedeOcultar = false;
 

@@ -37,21 +37,20 @@ test('la página publica el texto solicitado y conserva la composición y navega
         ->assertSeeInOrder(['>Inicio<', '>El Laboratorio<', 'Explorar la colección', 'Depósitos'], false)
         ->assertSee('data-lab-personal', false)->assertSee('Nuestro')->assertSee('Vladimir Carvajal')
         ->assertSee('mailto:adrian.troya@epn.edu.ec', false);
-    expect(app(PaginaLaboratorio::class)->leer()['fotos'])->toHaveCount(12);
-    $this->get(route('laboratorio'))->assertSeeInOrder(['Entomología ·', 'Mastozoología', 'Ornitología', 'Herpetología', 'Ictiología', 'Ecología'])
-        ->assertSee('Dayana Togán')->assertSee('Michelle Vélez Cárdenas')->assertSee('Selene Báez')
+    expect(app(PaginaLaboratorio::class)->leer()['fotos'])->toHaveCount(3);
+    $this->get(route('laboratorio'))->assertSee('Entomología ·')
+        ->assertSee('href="#rama-entomologia"', false)
         ->assertSee('images/laboratorio/equipo/adrian-retrato.jpg', false)
-        ->assertSee('Paleontología')->assertSee('José Luis Román')
+        ->assertDontSee('Dayana Togán')->assertDontSee('Michelle Vélez Cárdenas')->assertDontSee('Selene Báez')
+        ->assertDontSee('José Luis Román')
         ->assertDontSee('Perfiles institucionales')->assertDontSee('personal-referencia.png');
 });
 
-test('las ramas conservan su personal y los encuadres de retrato respetan los originales', function () {
+test('solo Entomología conserva sus tres retratos y los encuadres respetan los originales', function () {
     $pagina = app(PaginaLaboratorio::class)->leer();
     $ramas = config('pagina-laboratorio.ramas');
-    expect(array_map(fn ($rama) => count($rama['personas']), $ramas))->toBe([
-        'mastozoologia' => 1, 'ornitologia' => 2, 'herpetologia' => 3,
-        'ictiologia' => 1, 'ecologia' => 1, 'paleontologia' => 1,
-    ]);
+    expect($ramas)->toBe([])
+        ->and(array_keys($pagina['fotos']))->toBe(['adrian', 'vladimir', 'david']);
     foreach ($pagina['fotos'] as $foto) {
         [$ancho, $alto] = getimagesize(public_path('images/laboratorio/equipo/'.$foto['archivo']));
         [$w, $h, $x, $y, $cw, $ch] = $foto['retrato'];
@@ -61,16 +60,39 @@ test('las ramas conservan su personal y los encuadres de retrato respetan los or
     }
 });
 
-test('el personal ampliado permite posicionar también los treinta bloques completos', function () {
+test('el personal de Entomología permite posicionar también los treinta bloques completos', function () {
     $pagina = app(PaginaLaboratorio::class)->leer();
     $pagina['bloques'] = array_map(fn ($i) => ['id' => str_pad(dechex($i), 16, '0', STR_PAD_LEFT),
         'titulo' => 'Bloque '.$i, 'texto' => 'Texto del bloque '.$i, 'alt' => 'Foto '.$i,
         'foto' => ['ruta' => 'foto-local.webp', 'alt' => 'Foto '.$i]], range(1, 30));
     $posiciones = array_fill_keys(array_keys(\App\Services\DisenoLaboratorio::elementos($pagina)),
         ['x' => 5, 'y' => 4, 'ancho' => 70, 'alto' => 12, 'fuente' => 2, 'capa' => 1]);
-    expect(count($posiciones))->toBeGreaterThan(120)
+    expect(count(array_filter(array_keys($posiciones), fn ($id) => str_contains($id, 'bloque-'))))->toBe(90)
         ->and(\App\Services\DisenoLaboratorio::validar($posiciones, $pagina))->toHaveCount(count($posiciones));
 });
+
+test('las secciones retiradas no reaparecen por contenido o posiciones guardados', function (bool $libre) {
+    $posicion = ['x' => 5, 'y' => 4990, 'ancho' => 70, 'alto' => 12, 'fuente' => 2, 'capa' => 1];
+    $posiciones = ['texto-rama_mastozoologia_titulo' => $posicion, 'foto-edith_masto' => $posicion];
+    if ($libre) $posiciones['texto-titulo'] = array_replace($posicion, ['y' => 4]);
+    $contenido = ['textos' => ['rama_mastozoologia_titulo' => 'Mastozoología editada', 'edith_masto_bio' => 'Perfil anterior'], 'posiciones' => $posiciones];
+    DB::table('usuarios.textos_portal')->insert(['clave' => PaginaLaboratorio::CLAVE, 'contenido' => json_encode($contenido), 'created_at' => now(), 'updated_at' => now()]);
+    $pagina = app(PaginaLaboratorio::class)->leer();
+    expect(array_keys($pagina['posiciones']))->toBe($libre ? ['texto-titulo'] : [])
+        ->and($pagina['textos'])->not->toHaveKey('rama_mastozoologia_titulo')
+        ->and(DB::table('usuarios.textos_portal')->where('clave', PaginaLaboratorio::CLAVE)->value('contenido'))->toBe(json_encode($contenido));
+    $respuesta = $this->get(route('laboratorio'))->assertOk()->assertSee('Entomología ·')->assertSee('Adrian Troya')
+        ->assertSee('Vladimir Carvajal')->assertSee('David Donoso')->assertDontSee('Perfil anterior');
+    foreach (['mastozoologia', 'ornitologia', 'herpetologia', 'ictiologia', 'ecologia', 'paleontologia'] as $rama) {
+        $respuesta->assertDontSee('href="#rama-'.$rama.'"', false)
+            ->assertDontSee('id="rama-'.$rama.'"', false)
+            ->assertDontSee('data-lab-element="texto-rama_'.$rama.'_titulo"', false);
+    }
+    if ($libre) {
+        $elementos = \App\Services\DisenoLaboratorio::disponer($pagina);
+        expect(max(array_column(array_column($elementos, 'posicion'), 'y')))->toBeLessThan(4990);
+    }
+})->with(['composición original' => false, 'diseño libre' => true]);
 
 test('el resumen del perfil tiene cuarenta palabras y el modal conserva foto y texto completo', function () {
     $pagina = app(PaginaLaboratorio::class)->leer();
