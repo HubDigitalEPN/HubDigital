@@ -17,14 +17,15 @@ function documentoFormularioPortal(string $html): DOMXPath
     }
 }
 
-it('el propósito público usa radios excluyentes y restaura la selección tras un error', function () {
+it('el registro público conserva el único perfil Depositante tras un error', function () {
     $this->skipUnlessFortifyFeature(Features::registration());
-    $respuesta = $this->withSession(['_old_input' => ['rol' => 'DEPOSITANTE']])->get(route('register'))->assertOk();
+    $respuesta = $this->withSession(['_old_input' => ['rol' => 'PASANTE', 'first_name' => 'Ana']])->get(route('register'))->assertOk();
     $dom = documentoFormularioPortal($respuesta->getContent());
-    expect($dom->query('//fieldset[legend[contains(., "propósito")]]//input[@type="radio" and @name="rol"]')->length)->toBe(2)
-        ->and($dom->query('//input[@name="rol" and @checked]')->length)->toBe(1)
-        ->and($dom->query('//input[@name="rol" and @checked]')->item(0)->getAttribute('value'))->toBe('DEPOSITANTE')
-        ->and($dom->query('//input[@name="rol" and @type="hidden"]')->length)->toBe(0);
+    expect($dom->query('//input[@name="rol"]')->length)->toBe(1)
+        ->and($dom->query('//input[@name="rol" and @type="radio"]')->length)->toBe(0)
+        ->and($dom->query('//input[@name="rol" and @type="hidden" and @value="DEPOSITANTE"]')->length)->toBe(1)
+        ->and($dom->query('//p[contains(., "Perfil Depositante")]')->length)->toBe(1)
+        ->and($dom->query('//input[@name="first_name"]')->item(0)->getAttribute('value'))->toBe('Ana');
 });
 
 it('la recuperación tiene un único encabezado principal con nombre identificable', function () {

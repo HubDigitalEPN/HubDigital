@@ -32,6 +32,13 @@ const escape = value => String(value).replaceAll('|', '||').replaceAll("'", "|'"
 const message = (type, attrs = {}) => `##teamcity[${type}${Object.entries(attrs).map(([k, v]) => ` ${k}='${escape(v)}'`).join('')}]`;
 const event = (type, attrs) => observer.parseMessage(message(type, attrs));
 
+test('el bootstrap seleccionado no se excluye y conserva el protocolo oficial', () => {
+    const invocation = observer.pestArguments(2, path.resolve('registro bootstrap'), ['tests/Feature/Auth/AdminBootstrapTest.php']);
+    assert.ok(!invocation.args.some(arg => arg.startsWith('--exclude-group=')));
+    assert.ok(invocation.args.includes('tests/Feature/Auth/AdminBootstrapTest.php'));
+    assert.ok(invocation.args.includes(`--log-teamcity=${invocation.protocolLogPath}`));
+});
+
 test('el argumento del logger sobrevive al filtro real de Pest y activa los archivos oficiales de ParaTest', () => {
     const vendor = relative => readFileSync(new URL(`../../vendor/${relative}`, import.meta.url), 'utf8');
     const pest = vendor('pestphp/pest/bin/pest');

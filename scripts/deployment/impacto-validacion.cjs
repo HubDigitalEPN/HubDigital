@@ -281,9 +281,13 @@ function browserScope({root, files, changes, entries = {}}) {
     return {cases: [...selected], pending};
 }
 
-function assertCoverage(plan) {
-    if (plan.pendientes?.length) throw new Error(`Falta delimitar cobertura del cambio: ${plan.pendientes.join(', ')}. Agregar el contrato o mapeo puntual; no se ejecutara una suite integral como alternativa.`);
-    for (const id of plan.ui_focal?.cases || []) if (!focalUI.status(plan.root,id)) throw Error('La comprobación UI focal '+id+' ya no corresponde a las fuentes y build actuales.');
+function assertCoverage(plan, {agent = false} = {}) {
+    // El 30 % construye los frontends; la UI pertenece al 70 % posterior.
+    // El pendiente se conserva en el plan y solo se satisface con su recibo.
+    const pending = (plan.pendientes || []).filter(item => !item.startsWith('ui-focal:')
+        || (!agent && !focalUI.status(plan.root, item.slice('ui-focal:'.length))));
+    if (pending.length) throw new Error(`Falta delimitar cobertura del cambio: ${pending.join(', ')}. Agregar el contrato o mapeo puntual; no se ejecutara una suite integral como alternativa.`);
+    if (!agent) for (const id of plan.ui_focal?.cases || []) if (!focalUI.status(plan.root,id)) throw Error('La comprobación UI focal '+id+' ya no corresponde a las fuentes y build actuales.');
 }
 
 function approvedBase({plan, previous, files, runtime, environment, root, head, completedAt}) {
@@ -303,6 +307,12 @@ function focalScope(changes) {
         .flatMap(file => focalUI.owner[file] || []))];
 }
 
+function pdfPlanDecision(selected, decision) {
+    return {execute: selected && decision.execute,
+        evidence: decision.execute ? null : decision.previous,
+        pending: !selected && decision.execute};
+}
+
 function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     const force = plan.forced_integral === true;
     let entries = {};
@@ -318,9 +328,10 @@ function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     plan.paquete.navegador = plan.navegador.ejecutar.length > 0;
     try {
         const pdfState = {root, head, ...packageSectors.inputs({sector: 'pdf', sources: files, runtime, environment})};
-        const pdfDecision = plan.paquete.pdf ? packageSectors.select(root, 'pdf', pdfState, {force}) : {execute: false, previous: packageSectors.load(root).sectors.pdf};
+        const pdfDecision = pdfPlanDecision(plan.paquete.pdf, packageSectors.select(root, 'pdf', pdfState, {force}));
         plan.sectores_paquete = {pdf: {execute: pdfDecision.execute, inputs: pdfState,
-            evidence: !pdfDecision.execute ? pdfDecision.previous : null}};
+            evidence: pdfDecision.evidence}};
+        if (pdfDecision.pending) plan.pendientes.push('PDF: falta evidencia compatible; delimitar y renovar su control local sin ampliar suites.');
         plan.paquete.pdf = pdfDecision.execute;
     } catch {
         // Antes de construir puede faltar vendor o el JAR. Preparar la evidencia
@@ -378,7 +389,7 @@ async function main() {
         if (!runtime) { try { runtime = await hashRuntime(root); } catch { runtime = {per_root: {}}; } }
         refreshRuntimePlan({root, head, files, runtime, environment: sectorEnvironment.fingerprint, plan});
         writeJson(planPath, plan);
-        assertCoverage(plan);
+        assertCoverage(plan, {agent: true});
         console.log(`VALIDACION ${plan.integral ? 'INTEGRAL EXPLICITA' : 'SOLO DEL CAMBIO'}: ${plan.reason}`);
         console.log(`Cambios acumulados: ${plan.changes.length}; areas: ${plan.areas.join(', ') || 'documentacion'}.`);
         console.log(`PHP: ejecutar ${plan.cobertura.php.ejecutar.length}, reutilizar ${plan.cobertura.php.reutilizar.length}; Node: ejecutar ${plan.cobertura.node.ejecutar.length}, reutilizar ${plan.cobertura.node.reutilizar.length}.`);
@@ -417,5 +428,5 @@ async function main() {
     }
 }
 
-module.exports = {selectPlan, changedFiles, closure, inventoryHash, policyHash, config, owner, graph, refreshRuntimePlan, browserScope, focalScope, assertCoverage, approvedBase};
+module.exports = {selectPlan, changedFiles, closure, inventoryHash, policyHash, config, owner, graph, refreshRuntimePlan, pdfPlanDecision, browserScope, focalScope, assertCoverage, approvedBase};
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });

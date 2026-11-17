@@ -7,7 +7,7 @@ $cuentas = array_map(fn (Rol $rol): string => $rol->value, Rol::cases());
 
 return [
     'catalogo.completo' => ['nombre' => 'Descargar todo el catálogo', 'grupo' => 'Catálogo', 'roles' => $equipo, 'elegibles' => $equipo],
-    'catalogo.ipt' => ['nombre' => 'Descargar formato IPT (GBIF)', 'grupo' => 'Catálogo', 'roles' => $equipo, 'elegibles' => $cuentas],
+    'catalogo.ipt' => ['nombre' => 'Descargar formato IPT (GBIF)', 'grupo' => 'Catálogo', 'roles' => $equipo, 'elegibles' => $equipo],
     'catalogo.resultados' => ['nombre' => 'Descargar resultados CSV', 'grupo' => 'Catálogo', 'roles' => $cuentas, 'elegibles' => $cuentas],
     'catalogo.analisis' => ['nombre' => 'Descargar análisis CSV', 'grupo' => 'Catálogo', 'roles' => $cuentas, 'elegibles' => $cuentas],
     'catalogo.especies' => ['nombre' => 'Descargar lista de especies', 'grupo' => 'Catálogo', 'roles' => $cuentas, 'elegibles' => $cuentas],

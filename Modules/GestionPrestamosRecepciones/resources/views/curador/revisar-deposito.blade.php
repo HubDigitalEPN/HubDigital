@@ -16,7 +16,7 @@
         </flux:heading>
         <div class="flex items-center gap-3 mt-1.5 flex-wrap">
             <p class="font-mono text-xs text-text-secondary">{{ $deposito->numero }}</p>
-            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$deposito->estado" />
+            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$deposito->estadoPresentacion()" />
             {{-- Trazabilidad: distingue un reenvío (ya fue devuelta antes) de un primer envío. --}}
             @if($deposito->rechazada_en && $deposito->estado === 'Pendiente de Revisión por Curaduría')
                 <flux:badge size="sm" color="amber" icon="arrow-path">Reenviada tras corrección</flux:badge>
@@ -26,6 +26,10 @@
             @endif
         </div>
     </div>
+
+    @if($deposito->estado === 'Aprobada Documentalmente' && !$deposito->contenido_validado_en)
+        <flux:button variant="primary" :href="$deposito->recepcion_qr_en ? route('depositos.ingreso.contenido', $deposito->id) : url(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->urlQr($deposito))">{{ $deposito->recepcion_qr_en ? 'Registrar y validar contenido recibido' : 'Validar documento de ingreso' }}</flux:button>
+    @endif
 
     @if($mensajeEstadoSincronizado)
         <div class="rounded-lg border border-info/30 bg-info/5 px-4 py-3" role="status" aria-live="polite">

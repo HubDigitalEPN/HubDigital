@@ -44,7 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:admin')
         ->name('admin.centro');
     Route::get('/administracion/usuarios', GestionUsuarios::class)
-        ->middleware('role:admin')
+        ->middleware('role:admin,curador')
         ->name('admin.usuarios');
     Route::get('/administracion/botones', \App\Livewire\Administracion\GestionBotones::class)
         ->middleware('role:admin')->name('admin.botones');
@@ -93,3 +93,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 require __DIR__.'/settings.php';
+
+Route::get('/inventario/captura-dwc', \App\Livewire\CapturaDarwinCore::class)
+    ->middleware(['auth', 'verified', 'role:pasante,curador'])->name('inventario.captura-dwc');

@@ -30,6 +30,7 @@ final class DescargasCatalogo
     public static function permitidas(?User $usuario = null, string $boton = 'catalogo.resultados'): bool
     {
         $usuario ??= auth()->user();
+        if (in_array($boton, ['catalogo.resultados', 'catalogo.analisis', 'catalogo.especies'], true)) return true;
         if (!$usuario || !$usuario->hasVerifiedEmail() || $usuario->must_change_password) return false;
         return BotonesSistema::permitido($boton, $usuario)
             && (self::equipoActivo($usuario) || self::publicasHabilitadas());
@@ -42,6 +43,7 @@ final class DescargasCatalogo
 
     public static function visibles(string $boton): bool
     {
+        if (in_array($boton, ['catalogo.resultados', 'catalogo.analisis', 'catalogo.especies'], true)) return true;
         $usuario = auth()->user();
         return BotonesSistema::visible($boton, $usuario) && $usuario
             && (self::equipoActivo($usuario) || self::publicasHabilitadas());

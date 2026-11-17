@@ -9,13 +9,13 @@ use Livewire\Component;
 class Register extends Component
 {
     #[Locked]
-    public string $rolInicial = 'PRESTAMISTA';
+    public string $rolInicial = 'DEPOSITANTE';
 
     public function mount(): void
     {
-        $solicitado = old('rol', request()->query('rol', 'PRESTAMISTA'));
+        $solicitado = old('rol', request()->query('rol', 'DEPOSITANTE'));
         $rol = is_string($solicitado) ? strtoupper(trim($solicitado)) : '';
-        $this->rolInicial = in_array($rol, ['PRESTAMISTA', 'DEPOSITANTE'], true) ? $rol : 'PRESTAMISTA';
+        $this->rolInicial = in_array($rol, ['DEPOSITANTE', 'DEPOSITANTE'], true) ? $rol : 'DEPOSITANTE';
     }
 
     public function render(): View

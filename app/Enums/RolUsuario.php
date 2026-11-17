@@ -4,17 +4,29 @@ namespace App\Enums;
 
 enum RolUsuario: string
 {
-    case PRESTAMISTA = 'PRESTAMISTA';
     case DEPOSITANTE = 'DEPOSITANTE';
     case CURADOR = 'CURADOR';
     case AYUDANTE_CURADOR = 'AYUDANTE_CURADOR';
-    case RECEPTOR = 'RECEPTOR';
+    case PASANTE = 'PASANTE';
     case ADMIN = 'ADMIN';
+
+    // Alias de código para conservar los flujos históricos de préstamos y recepción.
+    public const PRESTAMISTA = self::DEPOSITANTE;
+    public const RECEPTOR = self::AYUDANTE_CURADOR;
+
+    public static function desdeHistorico(string $valor): ?self
+    {
+        return match (strtoupper($valor)) {
+            'PRESTAMISTA' => self::DEPOSITANTE,
+            'RECEPTOR', 'TECNICO' => self::AYUDANTE_CURADOR,
+            default => self::tryFrom(strtoupper($valor)),
+        };
+    }
 
     /** @return list<self> */
     public static function rolesInternos(): array
     {
-        return [self::CURADOR, self::AYUDANTE_CURADOR, self::RECEPTOR, self::ADMIN];
+        return [self::CURADOR, self::AYUDANTE_CURADOR, self::PASANTE, self::ADMIN];
     }
 
     /**
@@ -23,12 +35,11 @@ enum RolUsuario: string
     public function etiqueta(): string
     {
         return match ($this) {
-            self::PRESTAMISTA => 'Solicitante',
             self::DEPOSITANTE => 'Depositante',
-            self::CURADOR => 'Curador',
-            self::AYUDANTE_CURADOR => 'Ayudante de curador',
-            self::RECEPTOR => 'Recepción EPN',
-            self::ADMIN => 'Administración del sistema',
+            self::CURADOR => 'Administrador (Curador)',
+            self::AYUDANTE_CURADOR => 'Técnico',
+            self::PASANTE => 'Pasante',
+            self::ADMIN => 'Administrador-Creador',
         };
     }
 }

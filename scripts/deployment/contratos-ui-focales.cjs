@@ -11,6 +11,15 @@ const definitions = {
     fichas: {sources: ['Modules/CatalogoPublico/resources/views/components/ficha-registro-publico.blade.php','Modules/CatalogoPublico/resources/views/components/registro-mapa.blade.php','Modules/CatalogoPublico/resources/views/components/atribuciones-imagen.blade.php','Modules/CatalogoPublico/resources/views/components/visor-imagen.blade.php','resources/js/portal-image-model.js','resources/js/portal-dashboard.js','resources/css/portal-record-dialog.css','resources/css/portal-estadisticas.css'], checks:['summary','labels','closeRight','recordClose','photoCreditsFit','photoClose']},
     chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css','resources/views/layouts/portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/ChatBotWidget.php'], checks:['install','hide','fresh','catalogOnly','restore','focus']},
 };
+Object.assign(definitions, {
+    depositos_documento: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/documento-ingreso-listo.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DocumentoIngreso.php'], checks:['ready','automatic','fallback','status','responsive']},
+    depositos_firma: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-solicitud.blade.php'], checks:['left','label','signedPreview','frame','responsive']},
+    depositos_ingreso: {sources:['Modules/GestionPrestamosRecepciones/resources/views/curador/validar-ingreso-qr.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ValidarIngresoQr.php'], checks:['authentic','characteristics','reason','received','noDuplicate','responsive']},
+    depositos_contenido: {sources:['Modules/GestionPrestamosRecepciones/resources/views/curador/contenido-recepcion.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ContenidoRecepcion.php'], checks:['tabulated','validated','closed','responsive']},
+    captura_dwc: {sources:['resources/views/livewire/captura-darwin-core.blade.php','app/Livewire/CapturaDarwinCore.php'], checks:['reserved','saved','labels','responsive']},
+});
+definitions.depositos_contenido.sources.push('Modules/GestionPrestamosRecepciones/app/Infrastructure/Persistence/Models/SolicitudDepositoEloquentModel.php','Modules/GestionPrestamosRecepciones/resources/views/investigador/mis-depositos/_card.blade.php','Modules/GestionPrestamosRecepciones/resources/views/curador/revisar-deposito.blade.php','Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php','Modules/GestionPrestamosRecepciones/resources/views/receptor/bandeja-recepciones.blade.php','Modules/GestionPrestamosRecepciones/resources/views/components/deposito-status-badge.blade.php');
+definitions.depositos_documento.sources.push('Modules/GestionPrestamosRecepciones/resources/views/pdf/documento-ingreso.blade.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/CodigoQrDisponibleNotification.php');
 const owner = {};
 definitions.laboratorio.checks.push('branches','originals');
 definitions.laboratorio.checks.push('uniform','noAnimals','summaries','modal','wrap','modalClose');
@@ -45,6 +54,32 @@ const contracts = {
     'config/portal-copy.php':['tests/Feature/PaginaLaboratorioTest.php','tests/Feature/BusquedaUniversalPublicaTest.php'],
     'routes/web.php':['tests/Feature/PaginaLaboratorioTest.php','tests/Feature/GridFormulariosTest.php'],
 };
+Object.assign(contracts, Object.fromEntries([
+    'app/Casts/RolUsuarioCast.php',
+    'app/Enums/RolUsuario.php',
+    'app/Livewire/CapturaDarwinCore.php',
+    'database/migrations/2026_10_30_210000_consolidate_staff_roles.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/RecepcionQrDeposito.php',
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DocumentoIngreso.php',
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ValidarIngresoQr.php',
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ContenidoRecepcion.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/SolicitudEnviadaNotification.php',
+    'Modules/GestionPrestamosRecepciones/database/migrations/2026_10_30_210001_add_ingreso_and_content_validation.php',
+    'config/botones.php',
+].map(source => [source,['tests/Feature/PerfilesRecepcionDepositoTest.php']])));
+Object.assign(contracts, {
+    'Modules/CatalogoPublico/routes/web.php':['tests/Feature/PerfilesRecepcionDepositoTest.php','tests/Feature/PortalAccesoPorPerfilTest.php'],
+    'Modules/GestionPrestamosRecepciones/routes/web.php':['tests/Feature/PerfilesRecepcionDepositoTest.php','tests/Feature/FlujoDepositoPersistenciaE2ETest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Receptor/BandejaRecepciones.php':['tests/Feature/FlujoDepositoPersistenciaE2ETest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/ResolverLoteQr.php':['tests/Feature/FlujoDepositoPersistenciaE2ETest.php'],
+    'app/Actions/Fortify/CreateNewUser.php':['tests/Feature/Auth/RegistrationTest.php'],
+    'app/Livewire/Auth/Register.php':['tests/Feature/Auth/RegistrationTest.php'],
+    'app/Console/Commands/CrearUsuarioInternoCommand.php':['tests/Feature/Auth/InternalUserProvisioningTest.php'],
+    'app/Http/Middleware/CheckRole.php':['tests/Feature/PerfilesRecepcionDepositoTest.php'],
+    'app/Http/Responses/LoginPorPerfilResponse.php':['tests/Feature/PerfilesRecepcionDepositoTest.php'],
+    'app/Livewire/ActivarRol.php':['tests/Feature/PerfilesRecepcionDepositoTest.php'],
+});
 function inputs(root, id) {
     if (!definitions[id]) throw Error('Contrato UI desconocido.');
     const sources=[...new Set([...definitions[id].sources,...Object.keys(owner).filter(file=>owner[file].includes(id))])];

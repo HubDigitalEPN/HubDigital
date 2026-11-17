@@ -283,8 +283,9 @@ test('la matriz de notificaciones delimita destinatarios canales y enlaces de de
     Notification::assertNotSentTo([$depositante, $ajeno], NuevaSolicitudPorRevisarNotification::class);
     Notification::assertSentTo([$otroCurador, $administrador], DecisionDocumentalCuradorNotification::class);
     Notification::assertNotSentTo([$curadorResponsable, $depositante, $ajeno], DecisionDocumentalCuradorNotification::class);
-    Notification::assertSentTo($curadorResponsable, LoteRecibidoParaActaNotification::class);
-    Notification::assertNotSentTo([$otroCurador, $administrador, $depositante, $ajeno], LoteRecibidoParaActaNotification::class);
+    Notification::assertSentTo([$curadorResponsable, $otroCurador, $administrador], LoteRecibidoParaActaNotification::class);
+    Notification::assertNotSentTo([$depositante, $ajeno], LoteRecibidoParaActaNotification::class);
+    Notification::assertSentTo($depositante, \Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudEnviadaNotification::class);
 
     foreach ([
         CodigoQrDisponibleNotification::class,

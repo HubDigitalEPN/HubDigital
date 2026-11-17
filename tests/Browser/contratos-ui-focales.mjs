@@ -6,6 +6,8 @@ export async function comprobarUIFocal(caso) {
     const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     if (!['localhost','127.0.0.1'].includes(location.hostname)) throw Error('Solo localhost.');
     const checks={};let metrics={};
+    const model=(key,tag='input')=>all(tag).find(x=>x.getAttribute('wire:model')===key);
+    const fillModel=(key,value)=>{const el=model(key);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
     if(caso==='laboratorio') {
         await wait(()=>q('[data-lab-personal]'));
         const nav=all('nav[aria-label="Navegación principal"] a').map(x=>x.textContent.trim());
@@ -90,6 +92,54 @@ export async function comprobarUIFocal(caso) {
         checks.bothHidden=all('[data-chat-restore]').every(x=>getComputedStyle(x).display==='none');
         checks.focus=document.activeElement===q('#chat-bot-panel input');
         q('#chat-bot-panel button[aria-label="Cerrar chat"]').click();
+    } else if(caso==='depositos_documento') {
+        await wait(()=>q('[data-documento-ingreso-listo]'));
+        const root=q('[data-documento-ingreso-listo]'),link=root.querySelector('a[download]');
+        checks.ready=!!link && root.textContent.includes('LOTE-');
+        checks.automatic=root.getAttribute('x-init').includes('descargar.click()');
+        checks.fallback=link.textContent.trim()==='Descargar documento de ingreso' && link.href.includes('/documento.pdf');
+        checks.status=!!root.querySelector('[role=status]');
+    } else if(caso==='depositos_firma') {
+        await wait(()=>q('[data-ver-documento-firmado]'));
+        const control=q('[data-ver-documento-firmado]'),group=control.parentElement;
+        checks.left=control.getBoundingClientRect().left<=group.getBoundingClientRect().left+3;
+        checks.label=control.textContent.trim()==='Ver documento firmado';
+        control.click();await wait(()=>all('iframe').some(x=>x.title==='PDF completo de la solicitud de depósito' && x.getClientRects().length));
+        const pdf=all('iframe').find(x=>x.title==='PDF completo de la solicitud de depósito' && x.getClientRects().length);
+        checks.signedPreview=!new URL(pdf.src).searchParams.has('original') && pdf.src.includes('/documento.pdf');
+        checks.frame=pdf.getBoundingClientRect().height>200;
+    } else if(caso==='depositos_ingreso') {
+        await wait(()=>q('[data-validar-ingreso-qr]'));
+        const root=q('[data-validar-ingreso-qr]');
+        checks.authentic=root.textContent.includes('QR auténtico') && root.textContent.includes('LOTE-');
+        checks.characteristics=['Titular','Proyecto','Institución','Lotes','Individuos'].every(t=>all('dt').some(x=>x.textContent===t));
+        [...root.querySelectorAll('button')].find(x=>x.textContent.trim()==='Rechazar solicitud').click();await wait(()=>model('motivo','textarea'));
+        checks.reason=model('motivo','textarea').required && all('label,[data-flux-label]').some(x=>x.textContent.includes('Motivo de rechazo'));
+        [...root.querySelectorAll('button')].find(x=>x.textContent.trim()==='Cancelar').click();await wait(()=>!model('motivo','textarea'));
+        all('button').find(x=>x.textContent.trim()==='Aprobar recepción').click();await wait(()=>root.textContent.includes('pendiente de validar contenido'));
+        checks.received=!!all('a').find(x=>x.textContent.trim()==='Registrar y validar contenido');
+        checks.noDuplicate=!all('button').some(x=>x.textContent.trim()==='Aprobar recepción');
+    } else if(caso==='depositos_contenido') {
+        await wait(()=>q('[data-contenido-recepcion]'));
+        const fill=fillModel;
+        fill('identificador','QA-RECIPIENTE-UI');fill('cantidad','2');fill('scientificName','Neoponera apicalis');fill('recordNumber','QA0001');
+        all('button').find(x=>x.textContent.trim()==='Guardar registro validado').click();await wait(()=>all('tbody tr').some(x=>x.textContent.includes('QA-RECIPIENTE-UI')));
+        checks.tabulated=all('tbody tr').some(x=>x.textContent.includes('Neoponera apicalis') && x.textContent.includes('2'));
+        for(const checkbox of q('[data-contenido-recepcion]').querySelectorAll('[role=checkbox]')) if(checkbox.getAttribute('aria-checked')!=='true') checkbox.click();
+        all('button').find(x=>x.textContent.trim()==='Marcar recibida y validada').click();await wait(()=>q('[data-contenido-recepcion]').textContent.includes('Contenido cerrado.'));
+        checks.validated=q('[data-contenido-recepcion]').textContent.includes('Recibida y validada');
+        checks.closed=!all('button').some(x=>x.textContent.trim()==='Guardar registro validado' || x.textContent.trim()==='Marcar recibida y validada');
+    } else if(caso==='captura_dwc') {
+        await wait(()=>q('[data-captura-dwc]'));
+        all('button').find(x=>x.textContent.trim()==='Nuevo registro').click();await wait(()=>model('datos.taxonNombre'));
+        const models=all('input').map(x=>x.getAttribute('wire:model')).filter(Boolean);
+        checks.reserved=!models.some(x=>/occurrenceId|occurrenceID|recordCreatedBy|iptUpload|estadoRevision|responsibleResearcherExport/.test(x));
+        const fill=(key,value)=>fillModel('datos.'+key,value);
+        fill('taxonNombre','Neoponera apicalis');fill('colector','Colector QA de captura');fill('country','Ecuador');
+        all('button').find(x=>x.textContent.trim()==='Guardar datos').click();await wait(()=>q('[data-captura-dwc] [role=status]')?.textContent.includes('Datos Darwin Core guardados'));
+        checks.saved=true;
+        checks.labels=all('input').filter(x=>x.getAttribute('wire:model')?.startsWith('datos.')).every(x=>x.labels?.length>0 || x.getAttribute('aria-label') || (x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim())));
     } else throw Error('Contrato desconocido.');
+    if(['depositos_documento','depositos_firma','depositos_ingreso','depositos_contenido','captura_dwc'].includes(caso)) checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     return {caso,checks,metrics};
 }

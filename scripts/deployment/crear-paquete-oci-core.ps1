@@ -811,6 +811,7 @@ $requeridos = @(
     'resources/bin/hubdigital-pdf-signature.jar',
     'deploy/oracle/systemd/hubdigital-signature.service', 'deploy/oracle/scripts/verify-signature-worker.php',
     'deploy/oracle/systemd/hubdigital-r2-signatures.service',
+    'deploy/oracle/systemd/hubdigital-r2-transport.service',
     'Modules/GestionPrestamosRecepciones/app/Infrastructure/Storage/ColaFirmasSolicitudR2.php',
     'Modules/GestionPrestamosRecepciones/database/migrations/2026_10_13_000002_extend_r2_outbox_to_uploaded_documents.php',
     'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/ClienteFirmadorPreparado.php',

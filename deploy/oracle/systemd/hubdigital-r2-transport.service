@@ -1,0 +1,36 @@
+[Unit]
+Description=HubDigital isolated private R2 transport
+After=network-online.target nss-lookup.target systemd-tmpfiles-setup.service
+Wants=network-online.target
+RequiresMountsFor=/run/hubdigital
+ConditionPathExists=/etc/hubdigital/r2-transport.conf
+ConditionPathExists=/etc/hubdigital/r2-origin-host
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=forking
+PIDFile=/run/hubdigital/r2-transport/nginx.pid
+# /run desaparece al reiniciar: restaurar solo el host público, nunca claves.
+ExecStartPre=/usr/bin/install -d -m 0750 -o root -g www-data /run/hubdigital/r2-transport
+ExecStartPre=/usr/bin/install -m 0440 -o root -g www-data /etc/hubdigital/r2-origin-host /run/hubdigital/r2-transport/origin-host
+ExecStartPre=/usr/sbin/nginx -t -q -c /etc/hubdigital/r2-transport.conf
+ExecStart=/usr/sbin/nginx -c /etc/hubdigital/r2-transport.conf
+ExecStartPost=/usr/bin/chown www-data:www-data /run/hubdigital/r2-transport/r2.sock
+ExecStartPost=/usr/bin/chmod 0600 /run/hubdigital/r2-transport/r2.sock
+ExecReload=/usr/sbin/nginx -c /etc/hubdigital/r2-transport.conf -s reload
+ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/hubdigital/r2-transport/nginx.pid
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=5s
+KillMode=mixed
+MemoryAccounting=true
+MemoryMax=32M
+CPUAccounting=true
+NoNewPrivileges=true
+PrivateTmp=true
+LimitCORE=0
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

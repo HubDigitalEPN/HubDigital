@@ -24,41 +24,41 @@ test('todas las personas consultan registros y sólo las cuentas habilitadas ven
             ->and(trim($dom->query('.//button[@type="submit"]', $salida)->item(0)->textContent))->toBe('Cerrar sesión');
     }
     $pagina->assertSee('x-on:click="verRegistros(menuNodo)"', false)->assertSee('Ver en el mapa');
-    if (in_array($rol, ['ADMIN', 'CURADOR'], true)) $pagina->assertSee('Ir al panel del curador');
+    if (in_array($rol, ['ADMIN', 'CURADOR', 'AYUDANTE_CURADOR'], true)) $pagina->assertSee('Ir al panel del curador');
     else $pagina->assertDontSee('Ir al panel del curador');
     foreach (['data-catalogo-descarga', 'x-on:click="pdf()"'] as $control) {
-        if ($rol !== null) $pagina->assertSee($control, false);
-        else $pagina->assertDontSee($control, false);
+        $pagina->assertSee($control, false);
     }
     Livewire::withQueryParams(['vista' => 'registros'])->test(PortalCatalogo::class)->assertSet('vista', 'registros');
     Livewire::test(RegistrosTaxonExplorador::class)->assertOk();
-})->with([null, 'ADMIN', 'CURADOR', 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
+})->with([null, 'ADMIN', 'CURADOR', 'AYUDANTE_CURADOR', 'DEPOSITANTE', 'PASANTE']);
 
-test('el flag deshabilitado bloquea todas las descargas externas incluso por HTTP o Livewire', function (?string $rol): void {
+test('el flag administrativo no impide descargas públicas y el catálogo completo sigue protegido', function (?string $rol): void {
     \Illuminate\Support\Facades\DB::table('usuarios.configuracion_catalogo')->where('clave', 'descargas_autoservicio')->update(['habilitado' => false]);
     if ($rol !== null) $this->actingAs(User::factory()->create(['rol' => $rol]));
-    foreach ([['descargarResultados'], ['descargarAnalisis', 'mapa'], ['descargarListaEspecies'], ['descargarDatos']] as $accion) {
-        Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call(...$accion)->assertForbidden();
-    }
+    expect(\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.resultados'))->toBeTrue()
+        ->and(\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.analisis'))->toBeTrue();
+    Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('descargarDatos')->assertForbidden();
     Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('cambiarVista', 'registros')->assertSet('vista', 'registros');
-    $this->getJson(route('portal.lista-especies'))->assertStatus($rol === null ? 401 : 403);
-    foreach (['resultados', 'datos', 'ipt'] as $perfil) $this->getJson(route('portal.descarga', ['exportacion' => $perfil]))->assertStatus($rol === null ? 401 : 403);
-})->with([null, 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
+    $this->getJson(route('portal.lista-especies'))->assertOk();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertOk();
+    foreach (['datos', 'ipt'] as $perfil) $this->getJson(route('portal.descarga', ['exportacion' => $perfil]))->assertForbidden();
+})->with([null, 'PASANTE', 'DEPOSITANTE']);
 
-test('el permiso de descarga se aplica a cuentas verificadas y curaduría conserva su acceso', function (): void {
+test('las descargas públicas y las exportaciones curatoriales conservan sus permisos separados', function (): void {
     $usuario = User::factory()->depositante()->create();
-    expect(\App\Support\DescargasCatalogo::permitidas($usuario))->toBeTrue();
     \Illuminate\Support\Facades\DB::table('usuarios.configuracion_catalogo')->where('clave', 'descargas_autoservicio')->update(['habilitado' => false]);
-    expect(\App\Support\DescargasCatalogo::permitidas($usuario))->toBeFalse()
-        ->and(\App\Support\DescargasCatalogo::permitidas(User::factory()->curador()->create()))->toBeTrue()
-        ->and(\App\Support\DescargasCatalogo::permitidas(User::factory()->depositante()->unverified()->create()))->toBeFalse();
+    expect(\App\Support\DescargasCatalogo::permitidas($usuario))->toBeTrue()
+        ->and(\App\Support\DescargasCatalogo::permitidas($usuario, 'catalogo.completo'))->toBeFalse()
+        ->and(\App\Support\DescargasCatalogo::permitidas(User::factory()->curador()->create(), 'catalogo.completo'))->toBeTrue()
+        ->and(\App\Support\DescargasCatalogo::permitidas(User::factory()->depositante()->unverified()->create()))->toBeTrue();
 });
 
-test('un curador sin verificar tampoco habilita operaciones del catálogo', function (): void {
+test('una cuenta sin verificar conserva la consulta pública pero no operaciones internas', function (): void {
     $this->actingAs(User::factory()->curador()->unverified()->create());
-    Livewire::withQueryParams(['vista' => 'mapa'])->test(PortalCatalogo::class)->call('descargarAnalisis', 'mapa')->assertForbidden();
-    $this->getJson(route('portal.lista-especies'))->assertForbidden();
-    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertForbidden();
+    $this->getJson(route('portal.lista-especies'))->assertOk();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'resultados']))->assertOk();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'datos']))->assertForbidden();
 });
 
 test('login dirige al mapa sólo a curaduría y administración aunque existiera otro destino', function (string $rol): void {
@@ -95,13 +95,13 @@ test('el chat adapta los enlaces de registros al permiso y conserva los filtros 
         return ($parametros['fprov'] ?? null) === 'Pichincha'
             && ($parametros['vista'] ?? null) === 'registros'
             && $opcion['label'] === 'Abrir registros filtrados';
-    })->assertSee('cuenta verificada');
+    })->assertSee('públic');
     $documento = new DOMDocument;
     @$documento->loadHTML('<?xml encoding="UTF-8">'.$chat->html());
     $dom = new DOMXPath($documento);
     expect($dom->query('//a[normalize-space(.)="Abrir registros filtrados"]')->length)->toBe(1)
         ->and($dom->query('//a[normalize-space(.)="Explorar selección en el mapa"]')->length)->toBe(0);
-})->with([null, 'ADMIN', 'CURADOR', 'RECEPTOR', 'DEPOSITANTE', 'PRESTAMISTA']);
+})->with([null, 'ADMIN', 'CURADOR', 'AYUDANTE_CURADOR', 'DEPOSITANTE', 'PASANTE']);
 
 test('las sugerencias del chat ofrecen la consulta de registros a todos los perfiles', function (bool $autorizado): void {
     if ($autorizado) $this->actingAs(User::factory()->curador()->create());

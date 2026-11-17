@@ -70,6 +70,16 @@ final class RecepcionFisicaLote extends Component
         UsuarioNombrePort $usuarios,
     ): void {
         $this->id = $id;
+        $solicitud = \Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel::findOrFail($id);
+        if ($solicitud->recepcion_qr_en) {
+            $this->redirectRoute('depositos.ingreso.contenido', $id, navigate: true);
+            return;
+        }
+
+        if (!\Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel::where('solicitud_deposito_id', $id)->exists()) {
+            $this->redirect(url(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->urlQr($solicitud)));
+            return;
+        }
 
         $recepcion = $detalle->handle(new ConsultarDetalleRecepcionInput($id));
         abort_if($recepcion === null, 404);
@@ -90,6 +100,7 @@ final class RecepcionFisicaLote extends Component
 
     public function aprobar(AprobarRecepcionLoteHandler $handler): void
     {
+        $this->exigirFlujoHistorico();
         if ($this->tieneCriteriosPendientesOInvalidos()) {
             $this->addError('estadoCriterio', 'Comprueba cada criterio antes de confirmar la recepción.');
 
@@ -155,6 +166,7 @@ final class RecepcionFisicaLote extends Component
 
     public function aceptarConObservaciones(AceptarRecepcionConObservacionesHandler $handler): void
     {
+        $this->exigirFlujoHistorico();
         if ($this->tieneCriteriosPendientesOInvalidos()) {
             $this->showObservacionModal = false;
             $this->addError('estadoCriterio', 'Comprueba cada criterio antes de confirmar la recepción.');
@@ -184,6 +196,11 @@ final class RecepcionFisicaLote extends Component
 
         $this->showObservacionModal = false;
         $this->dispatch('toast', message: 'Lote recibido y constatado con observaciones. Curaduría ya puede generar el acta final.');
+    }
+
+    private function exigirFlujoHistorico(): void
+    {
+        abort_if(\Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel::findOrFail($this->id)->recepcion_qr_en, 409, 'Registra y valida el contenido en la nueva pantalla de recepción.');
     }
 
     private function tieneCriteriosPendientesOInvalidos(): bool

@@ -1,0 +1,1 @@
+<div class="p-6 space-y-4"><h1 class="text-2xl font-semibold">Pasante · Captura Darwin Core</h1><p>Ingresa y corrige datos Darwin Core. Los campos de uso interno y occurrenceID están reservados al equipo responsable.</p><flux:button variant="primary" :href="route('inventario.captura-dwc')" wire:navigate>Abrir captura de datos</flux:button></div>

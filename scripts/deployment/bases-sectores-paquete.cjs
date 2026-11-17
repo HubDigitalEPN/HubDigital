@@ -3,7 +3,8 @@ const path = require('node:path');
 const {createHash, randomUUID} = require('node:crypto');
 const {spawnSync} = require('node:child_process');
 const hash = value => createHash('sha256').update(value).digest('hex');
-const MAX_AGE = 7 * 86400000;
+// Reutilizar por insumos, runtime y entorno; conservar la fecha real.
+const MAX_AGE = Infinity;
 const commands = {ete: 'python -m unittest discover -s tests/Python -p test_*.py',
     pdf: 'php deploy/oracle/scripts/verify-deposit-pdf.php --medir-tiempo-local'};
 

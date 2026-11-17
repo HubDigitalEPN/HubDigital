@@ -21,6 +21,10 @@
             };
         @endphp
 
+
+        @if($deposito->recepcion_qr_en)
+            <flux:callout variant="success" :heading="$deposito->contenido_validado_en ? 'Recibida y validada' : 'Recibida · pendiente de validación técnica'">El Técnico registró la entrega del material físico.</flux:callout>
+        @endif
         <div class="hub-deposit-detail-grid">
 
             {{-- Columna principal --}}
@@ -84,12 +88,12 @@
                             <x-gestionprestamosrecepciones::codigo-qr :codigo="$deposito->codigo_qr"
                                 :contenido="route('prestamos.lote.resolver', $deposito->codigo_qr)" :tamanio="150" />
                             <div class="flex w-full flex-col gap-2 sm:w-auto">
-                                <a href="{{ route('prestamos.deposito.qr', $deposito->id) }}" target="_blank" rel="noopener"
+                                <a href="{{ route('depositos.ingreso.documento', $deposito->id) }}" target="_blank" rel="noopener"
                                     class="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-navy px-5 py-2.5 text-sm font-medium text-white! hover:opacity-90 transition-opacity">
                                     <flux:icon name="printer" class="size-4 text-white!" />
-                                    Imprimir QR
+                                    Descargar documento de ingreso
                                 </a>
-                                <p class="max-w-xs text-xs text-text-secondary">Imprima únicamente si usted NO puede presentar el código QR en su celular.</p>
+                                <p class="max-w-xs text-xs text-text-secondary">Documento de ingreso con QR único. Preséntalo junto con el material físico.</p>
 
                                 @if($deposito->tipo_tramite === 'Donación' && $actaTransferenciaDisponible)
                                     <a href="{{ route('prestamos.deposito.acta', $deposito->id) }}"

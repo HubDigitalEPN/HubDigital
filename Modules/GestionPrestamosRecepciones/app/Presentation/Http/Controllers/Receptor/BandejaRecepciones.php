@@ -58,7 +58,7 @@ final class BandejaRecepciones extends Component
 
         $this->codigoQr = '';
 
-        return $this->redirectRoute('prestamos.receptor.deposito.recepcion', $solicitud->id, navigate: true);
+        return $this->redirectRoute('prestamos.lote.resolver', $solicitud->codigo_qr);
     }
 
     public function render(UsuarioNombrePort $usuarios): View

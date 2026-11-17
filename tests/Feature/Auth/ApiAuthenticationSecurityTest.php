@@ -54,7 +54,7 @@ test('api login issues a short lived token limited to the user role', function (
 
     $token = $user->tokens()->sole();
 
-    expect($token->abilities)->toBe(['depositos:gestionar'])
+    expect($token->abilities)->toBe(['depositos:gestionar', 'prestamos:gestionar'])
         ->and($token->abilities)->not->toContain('*')
         ->and($token->expires_at)->not->toBeNull()
         ->and($token->expires_at->betweenIncluded(

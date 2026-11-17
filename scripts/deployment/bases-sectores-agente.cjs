@@ -3,7 +3,8 @@ const path = require('node:path');
 const {createHash, randomUUID} = require('node:crypto');
 const {spawnSync} = require('node:child_process');
 const hash = value => createHash('sha256').update(value).digest('hex');
-const MAX_AGE = 7 * 86400000;
+// La antigüedad no invalida huellas idénticas ni renueva su fecha original.
+const MAX_AGE = Infinity;
 const projects = {'.': 'public/build', 'Modules/CatalogoPublico': 'public/build-catalogopublico',
     'Modules/GestionPrestamosRecepciones': 'public/build-gestionprestamosrecepciones',
     'Modules/InventarioGestionColeccion': 'public/build-inventariogestioncoleccion'};

@@ -20,7 +20,7 @@ final class CheckRole
         }
 
         $esperados = array_map(
-            static fn (string $role): RolUsuario => RolUsuario::from(strtoupper($role)),
+            static fn (string $role): RolUsuario => RolUsuario::desdeHistorico($role) ?? throw new \InvalidArgumentException('Rol desconocido.'),
             $roles,
         );
         if (in_array(RolUsuario::CURADOR, $esperados, true)) {

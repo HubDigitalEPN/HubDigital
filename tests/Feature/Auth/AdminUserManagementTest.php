@@ -208,7 +208,7 @@ test('passwords that resemble hashes are still treated as the entered password',
         ->and($usuario->password)->not->toBe($entrada);
 });
 
-test('administrator assigns both external memberships but only one active primary role', function () {
+test('administrator conserva el autoservicio consolidado sin duplicar la membresía', function () {
     $admin = User::factory()->administrador()->create();
     $usuario = User::factory()->prestamista()->create();
 
@@ -225,7 +225,7 @@ test('administrator assigns both external memberships but only one active primar
     $usuario->refresh()->load('roles');
 
     expect($usuario->rolesAsignados()->all())
-        ->toContain(RolUsuario::PRESTAMISTA, RolUsuario::DEPOSITANTE)
+        ->toBe([RolUsuario::DEPOSITANTE])
         ->and($usuario->rol)->toBe(RolUsuario::DEPOSITANTE)
         ->and($usuario->cargo)->toBe('Investigadora asociada');
 });
@@ -253,7 +253,8 @@ test('long multibyte passwords produce validation instead of a hashing failure',
         ->set('first_name', 'Cuenta')
         ->set('last_name', 'Larga')
         ->set('email', 'larga@example.org')
-        ->set('rol', RolUsuario::PRESTAMISTA->value)
+        ->set('rol', RolUsuario::DEPOSITANTE->value)
+        ->set('cargo', 'Investigadora')->set('institucion', 'Institución de prueba')
         ->call('crear', $clave, $clave)
         ->assertHasErrors('password');
 

@@ -1,3 +1,13 @@
+# Instancia independiente: su DNS no participa en nginx.service ni en nginx -t.
+user www-data;
+worker_processes 1;
+pid /run/hubdigital/r2-transport/nginx.pid;
+error_log stderr warn;
+events { worker_connections 64; }
+http {
+access_log off;
+client_body_temp_path /run/hubdigital/nginx-client;
+proxy_temp_path /run/hubdigital/nginx-fastcgi;
 # Transporte local privado: conserva conexiones TLS, sin cachear objetos.
 upstream hubdigital_r2_origin {
     server __R2_HOST__:443;
@@ -30,4 +40,5 @@ server {
         proxy_buffering off;
         proxy_cache off;
     }
+}
 }

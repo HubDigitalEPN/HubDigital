@@ -98,7 +98,7 @@ La revision visual complementaria utiliza Opera Neon QA al 75 %.
   familias del agente, con fecha real, fuentes propias, comando, ejecutor,
   entorno y artefactos. Se crean al aprobar el 30 %, sin esperar a PHP/PostgreSQL.
   Permiten reutilizar Java y builds aunque todavia falte la primera base integral
-  del 70 %. Vencen a los siete dias y no se renuevan las fechas de sectores
+  del 70 %. No vencen por antigüedad y no se renuevan las fechas de sectores
   reutilizados. Modificar el selector exige sus contratos Node; no obliga a
   recompilar sectores cuyos insumos siguen identicos. Reconstruir el JAR exige
   comprobarlo nuevamente. `-Integral` fuerza tambien estos sectores.

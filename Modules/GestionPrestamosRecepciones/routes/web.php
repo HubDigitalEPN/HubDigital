@@ -139,8 +139,17 @@ Route::middleware(['auth', 'verified'])
         });
 
         // Recepcion EPN: constata el lote fisico, sin atribuciones curatoriales.
-        Route::middleware('role:receptor')->group(function () {
+        Route::middleware('role:curador')->group(function () {
             Route::get('/receptor/depositos', BandejaRecepciones::class)->name('receptor.depositos');
             Route::get('/receptor/deposito/{id}/recepcion', RecepcionFisicaLote::class)->name('receptor.deposito.recepcion');
         });
     });
+
+Route::middleware(['auth', 'verified'])->prefix('depositos/ingreso')->name('depositos.ingreso.')->group(function () {
+    Route::get('/{id}/descargar', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DocumentoIngreso::class)->whereUuid('id')->name('descargar');
+    Route::get('/{id}/documento.pdf', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\DocumentoIngreso::class)->whereUuid('id')->name('documento');
+    Route::get('/{id}/validar/{codigo}', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarIngresoQr::class)
+        ->whereUuid('id')->middleware(['role:curador', 'signed:relative', 'throttle:30,1'])->name('validar');
+    Route::get('/{id}/contenido', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ContenidoRecepcion::class)
+        ->whereUuid('id')->middleware('role:curador')->name('contenido');
+});

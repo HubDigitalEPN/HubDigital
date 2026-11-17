@@ -36,7 +36,10 @@ test('cambiar Java, su JAR o su comando invalida su base sin usar solamente la f
         {...state, runtime: {...state.runtime, per_root: {...state.runtime.per_root, 'resources/bin/hubdigital-pdf-signature.jar': 'jar nuevo'}}},
         {...state, core: state.core.replace("'-Xmx160m'", "'-Xmx161m'")},
     ]) assert.ok(!sectors.compatible(base, sectors.inputs(changed), now)['java-criptografia']);
-    assert.equal(Object.keys(sectors.compatible(base, original, now + 8 * 86400000)).length, 0);
+    const historical = sectors.compatible(base, original, now + 365 * 86400000);
+    assert.equal(Object.keys(historical).length, Object.keys(original).length);
+    assert.equal(historical['java-criptografia'].completed_at, base.sectors['java-criptografia'].completed_at);
+    assert.equal(Object.keys(sectors.compatible(base, original, now - 120000)).length, 0);
     assert.equal(Object.keys(sectors.compatible(base, sectors.inputs({...state, environment: 'otro'}), now)).length, 0);
 });
 

@@ -321,23 +321,26 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     expect($expediente->estado)->toBe(EstadoSolicitudDeposito::AprobadaDocumentalmente->value)
         ->and($expediente->codigo_qr)->toMatch('/^LOTE-[A-Z0-9]{6}$/');
 
+    $urlIngreso = url(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->urlQr($expediente));
     $this->actingAs($receptor)
         ->get(route('prestamos.lote.resolver', $expediente->codigo_qr))
-        ->assertRedirect(route('prestamos.receptor.deposito.recepcion', (string) $solicitud->id()));
+        ->assertRedirect($urlIngreso);
     $this->actingAs($curador)
         ->get(route('prestamos.lote.resolver', $expediente->codigo_qr))
-        ->assertRedirect(route('prestamos.curador.deposito.revisar', (string) $solicitud->id()));
+        ->assertRedirect($urlIngreso);
     $this->actingAs($depositante)
         ->get(route('prestamos.lote.resolver', $expediente->codigo_qr))
         ->assertRedirect(route('prestamos.investigador.deposito.detalle', (string) $solicitud->id()));
 
     $this->actingAs($receptor)
-        ->get(route('prestamos.receptor.deposito.recepcion', (string) $solicitud->id()))
+        ->get($urlIngreso)
         ->assertOk();
-    $this->actingAs($curador)
+    expect(RecepcionLoteEloquentModel::where('solicitud_deposito_id', (string) $solicitud->id())->exists())->toBeFalse();
+    $this->actingAs($depositante)
         ->get(route('prestamos.receptor.deposito.recepcion', (string) $solicitud->id()))
         ->assertForbidden();
 
+    // La recepción histórica ya iniciada conserva su checklist y acta final.
     app(IniciarRecepcionLoteHandler::class)(new IniciarRecepcionLoteInput(
         solicitudId: (string) $solicitud->id(),
         receptorId: (string) $receptor->id,
@@ -347,6 +350,10 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
         ->where('solicitud_deposito_id', (string) $solicitud->id())
         ->sole();
     expect($recepcion->estado)->toBe(EstadoRecepcionLote::EnVerificacion->value);
+    $this->actingAs($receptor)
+        ->get(route('prestamos.receptor.deposito.recepcion', (string) $solicitud->id()))->assertOk();
+    $this->actingAs($curador)
+        ->get(route('prestamos.receptor.deposito.recepcion', (string) $solicitud->id()))->assertOk();
 
     $resultadoRecepcion = app(AprobarRecepcionLoteHandler::class)(new AprobarRecepcionLoteInput(
         solicitudId: (string) $solicitud->id(),

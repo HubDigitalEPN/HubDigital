@@ -21,71 +21,8 @@
             <input type="hidden" name="cf-turnstile-response" value="">
         @endif
 
-        {{-- Selector de rol público. Los roles internos nunca se aceptan aquí. --}}
-        <fieldset class="flex flex-col gap-2">
-        <legend class="text-sm font-medium text-text-primary">¿Cuál es tu propósito?</legend>
-
-        <div class="grid grid-cols-2 gap-3">
-
-            {{-- Prestamista --}}
-            <label
-                x-bind:class="role === 'PRESTAMISTA'
-                    ? 'border-science-blue bg-science-blue/5'
-                    : 'border-border bg-surface hover:border-science-blue/40'"
-                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150 focus-within:ring-2 focus-within:ring-science-blue"
-            >
-                <input type="radio" name="rol" value="PRESTAMISTA" x-model="role" class="sr-only" @checked($rolInicial === 'PRESTAMISTA')>
-                <div
-                    x-bind:class="role === 'PRESTAMISTA' ? 'bg-science-blue/15' : 'bg-bg-main'"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg"
-                >
-                    <flux:icon name="magnifying-glass" variant="outline"
-                        x-bind:class="role === 'PRESTAMISTA' ? 'text-science-blue' : 'text-text-secondary'"
-                        class="size-5" />
-                </div>
-                <div class="text-center">
-                    <p class="text-sm font-semibold leading-tight"
-                       x-bind:class="role === 'PRESTAMISTA' ? 'text-science-blue' : 'text-text-primary'">
-                        Solicitante
-                    </p>
-
-                </div>
-            </label>
-
-            {{-- Depositante --}}
-            <label
-                x-bind:class="role === 'DEPOSITANTE'
-                    ? 'border-science-blue bg-science-blue/5'
-                    : 'border-border bg-surface hover:border-science-blue/40'"
-                class="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 p-3 transition-all duration-150 focus-within:ring-2 focus-within:ring-science-blue"
-            >
-                <input type="radio" name="rol" value="DEPOSITANTE" x-model="role" class="sr-only" @checked($rolInicial === 'DEPOSITANTE')>
-                <div
-                    x-bind:class="role === 'DEPOSITANTE' ? 'bg-science-blue/15' : 'bg-bg-main'"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg"
-                >
-                    <flux:icon name="building-library" variant="outline"
-                        x-bind:class="role === 'DEPOSITANTE' ? 'text-science-blue' : 'text-text-secondary'"
-                        class="size-5" />
-                </div>
-                <div class="text-center">
-                    <p class="text-sm font-semibold leading-tight"
-                       x-bind:class="role === 'DEPOSITANTE' ? 'text-science-blue' : 'text-text-primary'">
-                        Depositante
-                    </p>
-
-                </div>
-            </label>
-
-        </div>
-
-        @error('rol')
-            <p data-hub-feedback="error" class="flex items-center gap-1 text-xs text-error">
-                <flux:icon name="exclamation-circle" variant="outline" class="size-3.5 shrink-0" />
-                {{ $message }}
-            </p>
-        @enderror
-        </fieldset>
+        <input type="hidden" name="rol" value="DEPOSITANTE">
+        <p class="text-sm text-text-secondary">Perfil Depositante. Para explorar, descargar datos seleccionados y realizar análisis puedes usar el catálogo público.</p>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <flux:field>

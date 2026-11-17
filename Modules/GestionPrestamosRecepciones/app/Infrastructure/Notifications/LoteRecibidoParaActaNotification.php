@@ -59,7 +59,7 @@ final class LoteRecibidoParaActaNotification extends Notification implements Sho
             'tipo' => 'lote_recibido_acta_pendiente',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
-            'mensaje' => 'Lote'.$numero.' recibido y constatado'.($this->conObservaciones ? ' con observaciones' : '').'. Genera y firma el acta final.',
+            'mensaje' => 'Solicitud'.$numero.' recibida y validada'.($this->conObservaciones ? ' con observaciones' : '').'. Genera y firma el acta final.',
             'url' => route('prestamos.curador.deposito.acta', $this->solicitudId),
             'icono' => 'bell-alert',
             'prioridad' => 'alta',

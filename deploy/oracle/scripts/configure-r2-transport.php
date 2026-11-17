@@ -18,13 +18,17 @@ if ($endpoint === '' && ($variables['R2_ACCOUNT_ID'] ?? '') !== '') {
 }
 $partes = parse_url($endpoint);
 $host = strtolower((string) ($partes['host'] ?? ''));
-$config = '/etc/nginx/conf.d/hubdigital-r2-transport.conf';
+$legacyConfig = '/etc/nginx/conf.d/hubdigital-r2-transport.conf';
+$config = '/etc/hubdigital/r2-transport.conf';
+$persistentHost = '/etc/hubdigital/r2-origin-host';
 $directorio = '/run/hubdigital/r2-transport';
 $metadatos = $directorio.'/origin-host';
 if (($partes['scheme'] ?? '') !== 'https' || ! preg_match('/\A[a-f0-9]{32}(?:\.eu|\.fedramp)?\.r2\.cloudflarestorage\.com\z/', $host)
     || isset($partes['port']) || isset($partes['user']) || isset($partes['pass']) || isset($partes['query']) || isset($partes['fragment'])
     || ! in_array($partes['path'] ?? '', ['', '/'], true)) {
     if (is_file($config)) unlink($config);
+    if (is_file($legacyConfig)) unlink($legacyConfig);
+    if (is_file($persistentHost)) unlink($persistentHost);
     if (is_file($metadatos)) unlink($metadatos);
     echo "R2 conserva su transporte HTTPS directo.\n";
     exit;
@@ -34,7 +38,11 @@ if (! is_dir($directorio) && ! mkdir($directorio, 0750, true)) throw new Runtime
 chown($directorio, 0); chgrp($directorio, $grupo); chmod($directorio, 0750);
 $plantilla = file_get_contents($release.'/deploy/oracle/nginx/r2-transport.conf.template');
 if ($plantilla === false || file_put_contents($config, str_replace('__R2_HOST__', $host, $plantilla), LOCK_EX) === false
+    || file_put_contents($persistentHost, $host, LOCK_EX) === false
     || file_put_contents($metadatos, $host, LOCK_EX) === false) throw new RuntimeException('No se pudo preparar el transporte privado.');
 chown($config, 0); chmod($config, 0644);
+chown($persistentHost, 0); chgrp($persistentHost, $grupo); chmod($persistentHost, 0440);
 chown($metadatos, 0); chgrp($metadatos, $grupo); chmod($metadatos, 0440);
-echo "Transporte R2 privado preparado con TLS verificado y sin caché documental.\n";
+// Retirar el include solo después de preparar la instancia separada.
+if (is_file($legacyConfig)) unlink($legacyConfig);
+echo "Transporte R2 independiente preparado con TLS verificado y sin caché documental.\n";

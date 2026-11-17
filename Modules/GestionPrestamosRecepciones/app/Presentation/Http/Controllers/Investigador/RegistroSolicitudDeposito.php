@@ -1046,7 +1046,10 @@ final class RegistroSolicitudDeposito extends Component
 
     public function visualizarPdfSolicitud(\Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito $generador): void
     {
-        if ($this->solicitudFirmada) return;
+        if ($this->solicitudFirmada) {
+            $this->mostrarVistaPdfSolicitud = true;
+            return;
+        }
         if ($this->solicitudId !== null && ! $this->solicitudCambiosPendientes) {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())->firstOrFail();

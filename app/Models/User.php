@@ -40,7 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'must_change_password' => 'boolean',
             'password' => 'hashed',
-            'rol' => RolUsuario::class,
+            'rol' => \App\Casts\RolUsuarioCast::class,
         ];
     }
 
@@ -141,7 +141,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
         $enSesion = session('rol_activo');
         if ($enSesion !== null) {
-            $rol = RolUsuario::tryFrom($enSesion);
+            $rol = RolUsuario::desdeHistorico($enSesion);
             if ($rol !== null && $asignados->contains($rol)) {
                 return $rol;
             }
@@ -220,7 +220,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function esReceptor(): bool
     {
-        return $this->tieneRol(RolUsuario::RECEPTOR);
+        return $this->esCurador();
+    }
+
+    public function esPasante(): bool
+    {
+        return $this->tieneRol(RolUsuario::PASANTE);
     }
 
     public function esDepositante(): bool

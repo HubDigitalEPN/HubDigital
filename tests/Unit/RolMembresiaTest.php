@@ -31,7 +31,8 @@ test('tieneAlgunRol es verdadero si posee al menos uno de los roles', function (
     $user = usuarioConRoles(RolUsuario::DEPOSITANTE);
 
     expect($user->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::DEPOSITANTE))->toBeTrue();
-    expect($user->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::PRESTAMISTA))->toBeFalse();
+    expect($user->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::PRESTAMISTA))->toBeTrue();
+    expect($user->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::PASANTE))->toBeFalse();
 });
 
 test('los helpers de rol reflejan la membresía', function () {

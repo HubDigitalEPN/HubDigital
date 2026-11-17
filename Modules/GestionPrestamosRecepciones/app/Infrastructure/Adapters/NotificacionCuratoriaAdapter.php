@@ -38,23 +38,9 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
     ): string {
         $referencia = (string) Str::uuid();
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
-        $curadores = $this->equipoCuratorial()
-            ->when(
-                $deposito?->curador_responsable,
-                fn ($q, string $curadorId) => $q->where('id', $curadorId),
-            )
-            ->get();
-
-        // Los expedientes antiguos pueden no tener responsable o apuntar a una
-        // cuenta ya deshabilitada. En ese caso la alerta no debe perderse.
-        if ($curadores->isEmpty() && $deposito?->curador_responsable) {
-            Log::warning('Curador responsable no disponible; la alerta se reasigna al equipo', [
-                'referencia' => $referencia,
-                'solicitud_id' => $solicitudId,
-                'curador_responsable' => $deposito->curador_responsable,
-            ]);
-            $curadores = $this->equipoCuratorial()->get();
-        }
+        // El cierre técnico debe alertar siempre al curador y al creador, aunque
+        // el Técnico figure como responsable de la aprobación documental.
+        $curadores = User::whereHas('roles', fn ($q) => $q->whereIn('rol', [RolUsuario::CURADOR->value, RolUsuario::ADMIN->value]))->get();
 
         if ($curadores->isEmpty()) {
             Log::warning('Lote recibido sin curadores a quienes asignar el acta', [
@@ -124,6 +110,10 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
         $referencia = (string) Str::uuid();
 
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
+        if ($contexto === 'Nueva solicitud por revisar' && $deposito) {
+            User::find($deposito->investigador_id)?->notify(new \Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudEnviadaNotification($solicitudId, $deposito->numero));
+        }
+
         $curadores = $this->equipoCuratorial()->get();
         $destinoQa = app()->environment('local') && config('hubdigital.qa_deposit_id') === $solicitudId
             ? (string) config('hubdigital.qa_mail_to', '') : '';
@@ -169,6 +159,7 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
             'roles',
             fn ($consulta) => $consulta->whereIn('rol', [
                 RolUsuario::CURADOR->value,
+                RolUsuario::AYUDANTE_CURADOR->value,
                 RolUsuario::ADMIN->value,
             ]),
         );

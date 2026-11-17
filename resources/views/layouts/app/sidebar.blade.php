@@ -66,7 +66,8 @@
                                 Mis préstamos
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif($rolActivo === RolUsuario::DEPOSITANTE)
+                    @endif
+                    @if($rolActivo === RolUsuario::DEPOSITANTE)
                         <flux:sidebar.group heading="Depósitos" icon="archive-box" class="grid" expandable :expanded="request()->routeIs('prestamos.investigador.*')">
                             <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
                                 Mis depósitos
@@ -75,18 +76,13 @@
                                 Nueva solicitud
                             </flux:sidebar.item>
                         </flux:sidebar.group>
-                    @elseif($rolActivo === RolUsuario::RECEPTOR)
-                        <flux:sidebar.group heading="Recepción EPN" icon="clipboard-document-check" class="grid" expandable :expanded="request()->routeIs('prestamos.receptor.*')">
-                            <flux:sidebar.item
-                                icon="clipboard-document-check"
-                                :href="route('prestamos.receptor.depositos')"
-                                :current="request()->routeIs('prestamos.receptor.*')"
-                                wire:navigate
-                            >
-                                Lotes por recibir
-                            </flux:sidebar.item>
-                        </flux:sidebar.group>
+                    @elseif($rolActivo === RolUsuario::PASANTE)
+                        <flux:sidebar.item icon="pencil-square" :href="route('inventario.captura-dwc')" wire:navigate>Captura Darwin Core</flux:sidebar.item>
                     @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN], true))
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('prestamos.receptor.depositos')" wire:navigate>Recepción y validación</flux:sidebar.item>
+                        @if($rolActivo === RolUsuario::CURADOR)
+                            <flux:sidebar.item icon="users" :href="route('admin.usuarios')" wire:navigate>Administrar usuarios</flux:sidebar.item>
+                        @endif
                         <flux:sidebar.group
                             heading="Gestión de préstamos" icon="document-text"
                             class="grid"
@@ -456,7 +452,7 @@
                                         RolUsuario::DEPOSITANTE => ['bg-bio-green/10 text-bio-green', 'archive-box'],
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
                                         RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
-                                        RolUsuario::RECEPTOR => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
+                                        RolUsuario::PASANTE => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
                                         RolUsuario::ADMIN => ['bg-bio-green/10 text-bio-green', 'users'],
                                     };
                                 @endphp

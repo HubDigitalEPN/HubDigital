@@ -142,8 +142,11 @@ function pestArguments(workers, progressDirectory, tests = [], root = process.cw
         fs.writeFileSync(configPath,config,{flag:'wx',mode:0o600});
         selection=['--configuration='+configPath];
     }
+    // El bootstrap seleccionado prepara su instalación vacía dentro de una
+    // transacción en la copia hd_pkg. No excluir un archivo solicitado por el plan.
+    const groups = tests.includes('tests/Feature/Auth/AdminBootstrapTest.php') ? [] : ['--exclude-group=bootstrap-inicial'];
     return {protocolLogPath, args: ['artisan', 'test', '--parallel', `--processes=${workers}`, '--without-databases',
-        '--exclude-group=bootstrap-inicial', `--log-teamcity=${protocolLogPath}`, '--colors=never', `--tmp-dir=${progressDirectory}`, `--cache-directory=${progressDirectory}`, ...selection]};
+        ...groups, `--log-teamcity=${protocolLogPath}`, '--colors=never', `--tmp-dir=${progressDirectory}`, `--cache-directory=${progressDirectory}`, ...selection]};
 }
 
 async function runSuite({program, args, cwd, logPath, progressDirectory, protocolLogPath, write = text => process.stdout.write(text), heartbeatMs = 10000, signal}) {

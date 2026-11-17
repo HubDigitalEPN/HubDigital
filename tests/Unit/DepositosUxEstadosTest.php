@@ -28,7 +28,7 @@ test('la recepción distingue criterios pendientes de resultados comprobados', f
     expect($tienePendientes())->toBeTrue();
 });
 
-test('las vistas conservan estados documentales y la impresión del QR sin ayudas', function (): void {
+test('las vistas conservan estados documentales y el ingreso descargable con QR sin ayudas', function (): void {
     $raiz = dirname(__DIR__, 2);
     $documentos = file_get_contents($raiz.'/Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-documentos.blade.php');
     $detalle = file_get_contents($raiz.'/Modules/GestionPrestamosRecepciones/resources/views/investigador/detalle-deposito.blade.php');
@@ -42,7 +42,7 @@ test('las vistas conservan estados documentales y la impresión del QR sin ayuda
         ->toContain('no necesitas adjuntar archivos');
 
     expect($detalle)
-        ->toContain('Imprimir QR', "route('prestamos.deposito.qr', \$deposito->id)", 'target="_blank" rel="noopener"')
+        ->toContain('Descargar documento de ingreso', "route('depositos.ingreso.documento', \$deposito->id)", 'target="_blank" rel="noopener"', '::codigo-qr')
         ->not->toContain('Imprimir / Guardar QR (PDF)', 'Guardar como PDF');
 
     expect($recepcion)

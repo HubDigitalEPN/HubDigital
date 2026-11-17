@@ -25,7 +25,7 @@ final class ResolverLoteQr
         $user = auth()->user();
 
         if ($user?->esReceptor()) {
-            return redirect()->route('prestamos.receptor.deposito.recepcion', $lote->solicitudId);
+            return redirect()->to(url(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->urlQr(\Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel::findOrFail($lote->solicitudId))));
         }
 
         if ($user?->esCurador()) {

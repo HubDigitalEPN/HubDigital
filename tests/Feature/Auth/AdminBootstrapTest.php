@@ -10,6 +10,16 @@ use Illuminate\Support\Facades\Notification;
 
 beforeEach(function (): void {
     Notification::fake();
+    // Solo la copia efímera creada por el paquete puede preparar usuarios vacíos.
+    // La transacción revierte TRUNCATE/CASCADE y la reserva al finalizar cada caso.
+    $prefijo = (string) getenv('HUBDIGITAL_TEST_DATABASE_PREFIX');
+    $conexion = DB::connection();
+    if (preg_match('/^hd_pkg_[a-f0-9]{12}$/D', $prefijo)
+        && preg_match('/^'.preg_quote($prefijo, '/').'_[1-4](?:_test_[1-4])?$/D', $conexion->getDatabaseName())
+        && $conexion->transactionLevel() > 0) {
+        DB::statement('TRUNCATE TABLE usuarios.users CASCADE');
+        DB::table('usuarios.admin_bootstrap')->delete();
+    }
     // El alta inicial sólo existe antes de crear la primera cuenta. La base
     // local de desarrollo conserva usuarios, así que este flujo requiere una
     // instalación vacía (por ejemplo, la validación de instalación en OCI).

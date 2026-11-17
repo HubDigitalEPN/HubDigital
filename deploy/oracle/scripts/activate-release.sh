@@ -116,9 +116,14 @@ if ! systemctl restart php8.4-fpm nginx; then
     exit 1
 fi
 PHP_BIN=/usr/bin/php8.4 bash "${release_dir}/deploy/oracle/scripts/verify-php-security.sh" --active
-if [[ -S /run/hubdigital/r2-transport/r2.sock ]]; then
-    chown www-data:www-data /run/hubdigital/r2-transport/r2.sock
-    chmod 0600 /run/hubdigital/r2-transport/r2.sock
+# R2 es independiente del frontal. Un fallo de DNS conserva HTTPS directo.
+if [[ -f /etc/hubdigital/r2-transport.conf ]]; then
+    systemctl enable hubdigital-r2-transport.service
+    if ! systemctl restart hubdigital-r2-transport.service; then
+        echo 'Aviso: transporte R2 no disponible; se conserva HTTPS directo y el portal sigue activo.' >&2
+    fi
+else
+    systemctl disable --now hubdigital-r2-transport.service
 fi
 if [[ "${nginx_source}" == *hubdigital.conf ]]; then
     local_check=(curl --fail --silent --show-error --max-time 15 --resolve "${deployment_hostname}:443:127.0.0.1" "https://${deployment_hostname}/depositos")

@@ -19,3 +19,14 @@ test('una aprobación UI exige todos los controles y huellas idénticas sin reno
         assert.throws(()=>ui.approve(root,'laboratorio',checks,before),/Cambió/);
     } finally {assert.equal(path.dirname(root),path.resolve(tmpdir()));assert.ok(path.basename(root).startsWith('hub-ui-contract-'));rmSync(root,{recursive:true,force:true});}
 });
+
+
+test('los contratos de depósitos y Pasante seleccionan exclusivamente sus pantallas propias', async () => {
+    const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
+    const ids=['depositos_documento','depositos_firma','depositos_ingreso','depositos_contenido','captura_dwc'];
+    for(const id of ids) {
+        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),[id]);
+        assert.ok(ui.definitions[id].checks.length>=4);
+    }
+    assert.deepEqual(impact.focalScope(['tests/Browser/contratos-ui-focales.mjs']),[]);
+});

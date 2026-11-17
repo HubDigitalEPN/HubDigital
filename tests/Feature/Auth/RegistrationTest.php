@@ -33,25 +33,14 @@ test('production passwords accept eight characters and preserve the other passwo
     }
 });
 
-test('registration preselects only public purposes and preserves a previous form choice', function (mixed $entrada, string $esperado): void {
-    $response = $this->get(route('register', ['rol' => $entrada]))->assertOk();
+test('el registro público siempre ofrece Depositante y nunca perfiles internos', function (mixed $entrada): void {
+    $response = $this->withSession(['_old_input' => ['rol' => 'ADMIN']])->get(route('register', ['rol' => $entrada]))->assertOk();
     $dom = new DOMDocument;
     @$dom->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
-    $radios = (new DOMXPath($dom))->query('//input[@name="rol" and @checked]');
-    expect($radios->length)->toBe(1)->and($radios->item(0)->getAttribute('value'))->toBe($esperado);
-
-    $response = $this->withSession(['_old_input' => ['rol' => 'PRESTAMISTA']])
-        ->get(route('register', ['rol' => 'DEPOSITANTE']))->assertOk();
-    @$dom->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
-    $radios = (new DOMXPath($dom))->query('//input[@name="rol" and @checked]');
-    expect($radios->length)->toBe(1)->and($radios->item(0)->getAttribute('value'))->toBe('PRESTAMISTA');
-})->with([
-    'generic registration' => [null, 'PRESTAMISTA'],
-    'deposit intent' => ['DEPOSITANTE', 'DEPOSITANTE'],
-    'loan intent' => ['PRESTAMISTA', 'PRESTAMISTA'],
-    'internal role rejected' => ['ADMIN', 'PRESTAMISTA'],
-    'malformed query rejected' => [['DEPOSITANTE'], 'PRESTAMISTA'],
-]);
+    $roles = (new DOMXPath($dom))->query('//input[@name="rol"]');
+    expect($roles->length)->toBe(1)->and($roles->item(0)->getAttribute('value'))->toBe('DEPOSITANTE');
+    $response->assertDontSee('name="rol" value="PASANTE"', false)->assertDontSee('name="rol" value="ADMIN"', false);
+})->with([null, 'DEPOSITANTE', 'PRESTAMISTA', 'ADMIN', ['DEPOSITANTE']]);
 
 test('registration renders turnstile and keeps submit disabled until verification', function () {
     config()->set('services.turnstile.enabled', true);
@@ -84,7 +73,8 @@ test('registration validates the turnstile token before creating the account', f
         'email' => 'captcha@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
-        'rol' => RolUsuario::PRESTAMISTA->value,
+        'rol' => RolUsuario::DEPOSITANTE->value,
+        'cargo' => 'Investigador', 'institucion' => 'Institución de prueba',
         'cf-turnstile-response' => 'valid-token',
     ])->assertSessionHasNoErrors();
 
@@ -102,7 +92,8 @@ test('registration rejects a missing turnstile token without creating an account
         'email' => 'sin-captcha@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
-        'rol' => RolUsuario::PRESTAMISTA->value,
+        'rol' => RolUsuario::DEPOSITANTE->value,
+        'cargo' => 'Investigador', 'institucion' => 'Institución de prueba',
     ])->assertSessionHasErrors('cf-turnstile-response');
 
     expect(User::query()->where('email_normalizado', 'sin-captcha@example.com')->exists())->toBeFalse();
@@ -115,7 +106,8 @@ test('new users can register', function () {
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
-        'rol' => RolUsuario::PRESTAMISTA->value,
+        'rol' => RolUsuario::DEPOSITANTE->value,
+        'cargo' => 'Investigador', 'institucion' => 'Institución de prueba',
     ]);
 
     $response->assertSessionHasNoErrors()
@@ -146,7 +138,8 @@ test('registration canonicalizes email and never stores a plaintext password', f
         'email' => '  ANA.PEREZ@EXAMPLE.COM ',
         'password' => 'password',
         'password_confirmation' => 'password',
-        'rol' => RolUsuario::PRESTAMISTA->value,
+        'rol' => RolUsuario::DEPOSITANTE->value,
+        'cargo' => 'Investigador', 'institucion' => 'Institución de prueba',
     ])->assertSessionHasNoErrors();
 
     $user = User::query()->where('email_normalizado', 'ana.perez@example.com')->sole();
@@ -188,6 +181,6 @@ test('public registration rejects every internal role', function (RolUsuario $ro
 })->with([
     RolUsuario::CURADOR,
     RolUsuario::AYUDANTE_CURADOR,
-    RolUsuario::RECEPTOR,
+    RolUsuario::PASANTE,
     RolUsuario::ADMIN,
 ]);

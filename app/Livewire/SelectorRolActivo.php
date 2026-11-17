@@ -36,14 +36,7 @@ class SelectorRolActivo extends Component
         $user->load('roles');
         $roles = $user->rolesAsignados();
 
-        // Si la cuenta tiene un solo rol auto-servicio (y no es curador),
-        // ofrece activar el rol complementario desde el propio menú.
         $rolActivable = null;
-        if (! $user->esUsuarioInterno() && $roles->count() === 1) {
-            $rolActivable = $user->esDepositante()
-                ? RolUsuario::PRESTAMISTA
-                : RolUsuario::DEPOSITANTE;
-        }
 
         return view('livewire.selector-rol-activo', [
             'roles' => $roles,

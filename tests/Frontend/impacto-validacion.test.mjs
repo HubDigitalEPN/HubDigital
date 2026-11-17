@@ -5,10 +5,41 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import impact from '../../scripts/deployment/impacto-validacion.cjs';
 import browser from '../../scripts/deployment/base-navegador.cjs';
+import focal from '../../scripts/deployment/contratos-ui-focales.cjs';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 
 const now = Date.parse('2026-10-28T20:00:00Z');
+test('PDF fuera del cambio exige evidencia compatible sin ejecutar otra suite automáticamente', () => {
+    const previous = {completed_at: '2026-10-01T12:00:00Z'};
+    const compatible = impact.pdfPlanDecision(false, {execute: false, previous});
+    assert.equal(compatible.execute, false);
+    assert.equal(compatible.evidence, previous);
+    assert.equal(compatible.pending, false);
+    for (const evidence of [previous, null]) {
+        const incompatible = impact.pdfPlanDecision(false, {execute: true, previous: evidence});
+        assert.equal(incompatible.execute, false);
+        assert.equal(incompatible.evidence, null);
+        assert.equal(incompatible.pending, true);
+    }
+    assert.equal(impact.pdfPlanDecision(true, {execute: true, previous}).execute, true);
+});
+test('el agente construye antes de UI; el paquete exige el recibo y rechaza un build posterior', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'hd-ui-phase-')), id = 'depositos_documento';
+    try {
+        const files = [...focal.definitions[id].sources, ...Object.keys(focal.owner).filter(file => focal.owner[file].includes(id)),
+            'tests/Browser/contratos-ui-focales.mjs', 'public/build/manifest.json'];
+        for (const file of new Set(files)) { const target = path.join(root, file); mkdirSync(path.dirname(target), {recursive: true}); writeFileSync(target, 'fixture'); }
+        const p = {root, pendientes: ['ui-focal:'+id], ui_focal: {cases: [id]}};
+        assert.doesNotThrow(() => impact.assertCoverage(p, {agent: true}));
+        assert.throws(() => impact.assertCoverage({...p, pendientes: [...p.pendientes, 'fuente-sin-contrato.php']}, {agent: true}), /fuente-sin-contrato/);
+        assert.throws(() => impact.assertCoverage(p), /ui-focal/);
+        focal.approve(root, id, Object.fromEntries(focal.definitions[id].checks.map(check => [check, true])), focal.inputs(root, id));
+        assert.doesNotThrow(() => impact.assertCoverage(p));
+        writeFileSync(path.join(root, 'public/build/manifest.json'), 'build diferente');
+        assert.throws(() => impact.assertCoverage(p), /ui-focal/);
+    } finally { rmSync(root, {recursive: true, force: true}); }
+});
 const source = 'Modules/CatalogoPublico/app/Servicio.php';
 const inventorySource = 'Modules/InventarioGestionColeccion/app/Servicio.php';
 const js = 'resources/js/portal-map-model.js';
@@ -225,8 +256,9 @@ test('el plan real de UI y PDF no reintroduce suites fuera del cambio de fotogra
         assert.equal(p.paquete.pdf, false);
         assert.equal(p.paquete.python, false);
         assert.deepEqual(p.paquete.pruebas_php, []);
-        assert.deepEqual(p.pendientes, []);
-        // El verificador respeta el mismo alcance y no vuelve al grafo transitivo.
+        assert.deepEqual(p.pendientes, ['PDF: falta evidencia compatible; delimitar y renovar su control local sin ampliar suites.']);
+        // El fixture no aporta un recibo PDF: debe quedar pendiente sin ejecutar
+        // otra suite. El verificador de UI mantiene su alcance propio.
         browser.verify(temporary, p.navegador, {sources: changed, runtime: outputs, environment: 'env',
             dependencies: {'resources/js/portal-photo-model.js': ['resources/js/portal-search.js']}});
     } finally { assert.equal(path.dirname(temporary), path.resolve(tmpdir())); assert.ok(path.basename(temporary).startsWith('hub-impact-ui-')); rmSync(temporary, {recursive: true, force: true}); }

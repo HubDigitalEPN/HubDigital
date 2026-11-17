@@ -210,7 +210,7 @@ return [
         'alcance' => 'Este aviso describe el uso de datos de la plataforma y remite a la normativa institucional; no reemplaza los documentos oficiales de la EPN.',
     ],
     'terminos' => [
-        'acceso' => 'La exploración de los grupos taxonómicos, imágenes autorizadas, mapas y estadísticas agregadas es pública. Consultar registros individuales y descargar o exportar datos requiere una cuenta verificada con perfil de administración o curaduría. Los demás perfiles acceden a las funciones correspondientes a su actividad.',
+        'acceso' => 'La exploración de los grupos taxonómicos, imágenes autorizadas, mapas y estadísticas agregadas es pública. Los registros individuales, la descarga de datos seleccionados, las fotografías una por una y los resultados de análisis también son públicos. Las exportaciones completas y la gestión interna requieren el perfil autorizado.',
         'uso_contenido' => 'Utilice la información de forma responsable, conserve su procedencia y cite la versión consultada. El contenido propio del laboratorio está disponible bajo {licencia}: atribuya la autoría, enlace la licencia e indique los cambios. Los materiales de terceros conservan sus licencias originales. Esta licencia se refiere al contenido publicado, no a credenciales, datos personales ni documentos privados.',
         'actualizacion' => 'Los datos científicos pueden actualizarse con la revisión curatorial. La clasificación publicada no representa por sí misma una filogenia ni una escala temporal.',
         'referencia' => 'Como referencia institucional, consulte las {politicas_epn}, que incluyen la Política de Uso de la Información, Activos de Información Institucional y Seguridad Informática.',

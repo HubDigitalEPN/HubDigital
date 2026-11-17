@@ -20,7 +20,10 @@ const approved = sector => ({version: 1, ...current(sector), completed_at: new D
 test('las bases ETE/PDF omiten el sector sin cambios, no una fecha o un nombre de familia', () => {
     for (const sector of ['ete', 'pdf']) {
         assert.equal(sectors.compatible(approved(sector), current(sector), now), true);
-        assert.equal(sectors.compatible(approved(sector), current(sector), now + 8 * 86400000), false);
+        const historical = approved(sector);
+        assert.equal(sectors.compatible(historical, current(sector), now + 365 * 86400000), true);
+        assert.equal(historical.completed_at, new Date(now - 1000).toISOString());
+        assert.equal(sectors.compatible(historical, current(sector), now - 120000), false);
         assert.equal(sectors.compatible({...approved(sector), completed_at: 'fecha-falsa'}, current(sector), now), false);
         assert.equal(sectors.compatible(null, current(sector), now), false);
     }

@@ -14,6 +14,7 @@ function avisosCampana(): array
 {
     $id = '00000000-0000-0000-0000-000000000001';
     return [
+        new Avisos\SolicitudEnviadaNotification($id, 'DEP-001'),
         new Avisos\ActaRecepcionFirmadaNotification($id, 'DEP-001'),
         new Avisos\AvisoPrestamoCuradorNotification('prestamo', 'Aviso de prueba', 'https://example.test/tramite', 'bell'),
         new Avisos\CodigoQrDisponibleNotification($id, 'DEP-001', 'QR-001', 'Depósito'),
@@ -45,6 +46,9 @@ function destinatarioCampana(bool $suscrito = true): object
 }
 
 beforeEach(function (): void {
+    app()->instance(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class, new class {
+        public function contenido(string $id): string { return '%PDF-adjunto-sintético-para-contrato-de-canales'; }
+    });
     config(['webpush.vapid.subject' => 'mailto:qa@example.test', 'webpush.vapid.public_key' => 'publica-ficticia',
         'webpush.vapid.private_key' => 'privada-ficticia']);
 });

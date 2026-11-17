@@ -8,9 +8,8 @@
     $enSidebar = $context === 'sidebar';
     $iconoRol = match ($rolActivoMenu) {
         RolUsuario::DEPOSITANTE => 'archive-box',
-        RolUsuario::PRESTAMISTA => 'document-text',
         RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => 'shield-check',
-        RolUsuario::RECEPTOR => 'clipboard-document-check',
+        RolUsuario::PASANTE => 'pencil-square',
         RolUsuario::ADMIN => 'users',
     };
 @endphp

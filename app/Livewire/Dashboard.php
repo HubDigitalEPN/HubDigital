@@ -116,19 +116,7 @@ class Dashboard extends Component
                 ...$this->analiticaDepositos(),
                 ...$this->archivoCuratorial(),
             ]),
-            RolUsuario::RECEPTOR => view('livewire.dashboard.receptor-panel', [
-                'pendientesRecepcion' => SolicitudDepositoEloquentModel::query()
-                    ->whereNotNull('codigo_qr')
-                    ->whereNotIn('id', RecepcionLoteEloquentModel::query()->select('solicitud_deposito_id'))
-                    ->count(),
-                'lotesRecibidos' => RecepcionLoteEloquentModel::query()
-                    ->whereIn('estado', ['Verificado Físicamente', 'Verificado con Observaciones'])
-                    ->count(),
-            ]),
-            RolUsuario::PRESTAMISTA => view(
-                'livewire.dashboard.prestamista-panel',
-                $this->estadisticasPrestamista((string) $user->id),
-            ),
+            RolUsuario::PASANTE => view('livewire.dashboard.pasante-panel'),
             RolUsuario::DEPOSITANTE => view(
                 'livewire.dashboard.depositante-panel',
                 $this->estadisticasDepositante((string) $user->id),
@@ -667,7 +655,7 @@ class Dashboard extends Component
                 ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
                 ->orderByDesc('updated_at')->first(['numero', 'paso_actual']),
             'donacionesRealizadas' => $donacionesRealizadas,
-            'depositosRecientes' => (clone $base)->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at']),
+            'depositosRecientes' => (clone $base)->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at', 'recepcion_qr_en', 'contenido_validado_en']),
         ];
     }
 }

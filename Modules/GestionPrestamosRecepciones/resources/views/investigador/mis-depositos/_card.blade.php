@@ -4,8 +4,8 @@
     <div class="min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
             <span class="font-mono text-xs text-text-secondary">{{ $deposito->numero }}</span>
-            <flux:badge :variant="$badgeVariant($deposito->estado)" size="sm">{{ $deposito->estado }}</flux:badge>
-            @if(($estadoRecepcion ?? null) !== null)
+            <flux:badge :variant="$badgeVariant($deposito->estado)" size="sm">{{ $deposito->estadoPresentacion() }}</flux:badge>
+            @if(($estadoRecepcion ?? null) !== null && !$deposito->recepcion_qr_en)
                 @php
                     $recepcionBadge = match($estadoRecepcion) {
                         'Verificado Físicamente' => ['green', 'Recibido físicamente'],

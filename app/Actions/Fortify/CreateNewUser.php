@@ -27,6 +27,7 @@ class CreateNewUser implements CreatesNewUsers
     {
         app(TurnstileVerifier::class)->validateRegistration(request());
 
+        if (($input['rol'] ?? '') === 'PRESTAMISTA') $input['rol'] = RolUsuario::DEPOSITANTE->value;
         $input['email'] = User::normalizarEmail($input['email'] ?? '');
         $input['first_name'] = trim($input['first_name'] ?? '');
         $input['last_name'] = trim($input['last_name'] ?? '');

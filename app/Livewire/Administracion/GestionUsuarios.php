@@ -118,6 +118,7 @@ final class GestionUsuarios extends Component
             'institucion' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
         ])->validate();
 
+        abort_if($this->rol === RolUsuario::ADMIN->value && !auth()->user()->esAdministrador(), 403);
         $creador->crear($datos, RolUsuario::from($datos['rol']), creadoPorAdministrador: true);
 
         $this->reset([
@@ -138,6 +139,7 @@ final class GestionUsuarios extends Component
         $this->autorizarAdministracion();
 
         $usuario = User::query()->with('roles')->findOrFail($usuarioId);
+        abort_if($usuario->esAdministrador() && !auth()->user()->esAdministrador(), 403);
 
         $this->usuarioEnEdicion = $usuario->getKey();
         $this->edicionFirstName = $usuario->first_name;
@@ -163,6 +165,7 @@ final class GestionUsuarios extends Component
         $this->autorizarAdministracion();
 
         $usuario = User::query()->with('roles')->findOrFail($this->usuarioEnEdicion);
+        abort_if(($usuario->esAdministrador() || in_array(RolUsuario::ADMIN->value, $this->edicionRoles, true)) && !auth()->user()->esAdministrador(), 403);
         $rol = RolUsuario::tryFrom($this->edicionRol);
         $rolesSeleccionados = collect($this->edicionRoles)
             ->map(static fn (mixed $valor): ?RolUsuario => is_string($valor) ? RolUsuario::tryFrom($valor) : null)
@@ -201,14 +204,14 @@ final class GestionUsuarios extends Component
             return;
         }
 
-        if ($internos->contains(fn (RolUsuario $asignado): bool => $asignado !== RolUsuario::ADMIN)
+        if ($internos->contains(fn (RolUsuario $asignado): bool => ! in_array($asignado, [RolUsuario::ADMIN, RolUsuario::PASANTE], true))
             && ! $this->esCorreoInstitucional($datos['email'])) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);
         }
 
-        if ($usuario->is(auth()->user()) && ! $rolesSeleccionados->contains(RolUsuario::ADMIN)) {
+        if ($usuario->is(auth()->user()) && ! $rolesSeleccionados->contains($usuario->rol)) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'No puedes retirar tu propio rol de administración.',
             ]);
@@ -234,7 +237,7 @@ final class GestionUsuarios extends Component
     {
         $this->autorizarAdministracion();
         $usuario = User::query()->findOrFail($usuarioId);
-        abort_if($usuario->is(auth()->user()), 403);
+        abort_if($usuario->is(auth()->user()) || ($usuario->esAdministrador() && !auth()->user()->esAdministrador()), 403);
         $this->usuarioPorEliminar = $usuario->id;
     }
 
@@ -247,7 +250,7 @@ final class GestionUsuarios extends Component
     {
         $this->autorizarAdministracion();
         $usuario = User::query()->findOrFail($this->usuarioPorEliminar);
-        abort_if($usuario->is(auth()->user()), 403);
+        abort_if($usuario->is(auth()->user()) || ($usuario->esAdministrador() && !auth()->user()->esAdministrador()), 403);
 
         if ($usuario->esAdministrador() && User::query()
             ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::ADMIN->value))
@@ -320,7 +323,7 @@ final class GestionUsuarios extends Component
             auth()->check() && User::query()
                 ->whereKey(auth()->id())
                 ->whereNotNull('email_verified_at')
-                ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::ADMIN->value))
+                ->whereHas('roles', fn ($roles) => $roles->whereIn('rol', [RolUsuario::ADMIN->value, RolUsuario::CURADOR->value]))
                 ->exists(),
             403,
         );

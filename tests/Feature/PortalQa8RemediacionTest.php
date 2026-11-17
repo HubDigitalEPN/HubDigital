@@ -106,7 +106,7 @@ test('QA8 002 intención científica, coordenada singular y préstamo no se conv
     ['¿Qué significa cf en un nombre científico?', 'portal.calificador', 'identificationQualifier'],
     ['¿Quién escribió El origen de las especies?', 'general.autoria', 'Charles Darwin'],
     ['¿Qué significa una coordenada recuperada del Excel? ¿Es una ubicación exacta?', 'portal.glosario', 'nunca cero'],
-    ['¿Me prestan material? Explícame el trámite paso a paso', 'portal.prestamo_pasos', 'rol autorizado Prestamista'],
+    ['¿Me prestan material? Explícame el trámite paso a paso', 'portal.prestamo_pasos', 'perfil Depositante'],
 ]);
 
 test('QA8 RQ30 la función de las hormigas se responde antes de buscar Formicidae', function (): void {
@@ -189,8 +189,8 @@ test('QA8 cada descarga compuesta conserva su formato aunque otra parte mencione
     $respuesta = app(AsistentePortal::class)->responder('Primero descarga los registros CSV. Después descarga XLSX. Explica la precisión de la coordenada recuperada del Excel.', app(ConsultarChatBotHandler::class), seleccionPortal: $seleccion);
     expect(array_column($respuesta['partes'], 'accion'))->toBe(['descarga', 'descarga', 'precision'])
         ->and($respuesta['texto'])->toContain(
-            '1. Las visualizaciones y los registros individuales son públicos. Las descargas requieren iniciar sesión con una cuenta verificada y estar habilitadas por administración. Cambia a Registros',
-            '2. Las visualizaciones y los registros individuales son públicos. Las descargas requieren iniciar sesión con una cuenta verificada y estar habilitadas por administración. Para descargar XLSX',
+            '1. Las visualizaciones y los registros individuales son públicos. Puedes descargar los datos seleccionados y los resultados de análisis sin crear una cuenta. Las exportaciones completas del catálogo están reservadas al equipo autorizado. Cambia a Registros',
+            '2. Las visualizaciones y los registros individuales son públicos. Puedes descargar los datos seleccionados y los resultados de análisis sin crear una cuenta. Las exportaciones completas del catálogo están reservadas al equipo autorizado. Para descargar XLSX',
             'nunca cero',
         )
         ->and(qa8Enlace($respuesta, 'registros'))->toEqual($seleccion + ['vista' => 'registros'])

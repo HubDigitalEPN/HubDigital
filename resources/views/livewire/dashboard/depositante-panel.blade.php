@@ -34,7 +34,7 @@
                     <a href="{{ route('prestamos.investigador.mis-depositos', ['estado' => \Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito::RequiereCorreccion->value]) }}" wire:navigate><span><strong>{{ $requierenCorreccion }} {{ $requierenCorreccion === 1 ? 'solicitud requiere' : 'solicitudes requieren' }} corrección</strong></span><flux:icon name="arrow-right" class="size-4" /></a>
                 @endif
                 @forelse($depositosRecientes as $deposito)
-                    <a href="{{ route('prestamos.investigador.deposito.detalle', $deposito->id) }}" wire:navigate><span class="hub-curator-activity__dot"></span><span><strong>{{ $deposito->numero }}</strong> · {{ $deposito->tipo_tramite }}<small>{{ $deposito->estado }} · {{ $deposito->created_at?->format('d/m/Y') }}</small></span><flux:icon name="arrow-right" class="size-4" /></a>
+                    <a href="{{ route('prestamos.investigador.deposito.detalle', $deposito->id) }}" wire:navigate><span class="hub-curator-activity__dot"></span><span><strong>{{ $deposito->numero }}</strong> · {{ $deposito->tipo_tramite }}<small>{{ $deposito->estadoPresentacion() }} · {{ $deposito->created_at?->format('d/m/Y') }}</small></span><flux:icon name="arrow-right" class="size-4" /></a>
                 @empty
                     <p>Aún no tienes solicitudes enviadas.<small>Cuando envíes tu primer expediente, podrás seguirlo aquí.</small></p>
                 @endforelse

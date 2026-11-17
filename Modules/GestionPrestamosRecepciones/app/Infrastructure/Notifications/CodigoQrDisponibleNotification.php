@@ -32,13 +32,15 @@ final class CodigoQrDisponibleNotification extends Notification implements \Illu
 
     public function toMail(object $notifiable): MailMessage
     {
+        $pdf = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->contenido($this->solicitudId);
         return (new MailMessage)
+            ->attachData($pdf, 'Ingreso-'.($this->numero ?? $this->solicitudId).'.pdf', ['mime' => 'application/pdf'])
             ->subject('Tu solicitud de '.mb_strtolower($this->tipoTramite).' fue aprobada')
             ->view('gestionprestamosrecepciones::mails.deposito-aprobado', [
                 'numero' => $this->numero,
                 'codigoQR' => $this->codigoQR,
                 'tipoTramite' => $this->tipoTramite,
-                'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
+                'url' => route('depositos.ingreso.descargar', $this->solicitudId),
             ]);
     }
 
@@ -51,8 +53,8 @@ final class CodigoQrDisponibleNotification extends Notification implements \Illu
             'tipo' => 'deposito_aprobado',
             'solicitudId' => $this->solicitudId,
             'numero' => $this->numero,
-            'mensaje' => 'Tu solicitud '.($this->numero ?? '').' fue aprobada. Lote '.$this->codigoQR.' listo.',
-            'url' => route('prestamos.investigador.deposito.detalle', $this->solicitudId),
+            'mensaje' => 'Tu solicitud '.($this->numero ?? '').' fue aprobada. Descarga el documento de ingreso con QR y preséntalo con el material físico.',
+            'url' => route('depositos.ingreso.descargar', $this->solicitudId),
             'icono' => 'check-badge',
         ];
     }

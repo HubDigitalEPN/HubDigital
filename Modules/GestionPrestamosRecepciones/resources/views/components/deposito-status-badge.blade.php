@@ -2,6 +2,8 @@
 
 @php
 $config = [
+    'Recibida y validada' => ['color' => 'green', 'label' => 'Recibida y validada'],
+    'Recibida · pendiente de validar contenido' => ['color' => 'blue', 'label' => 'Recibida · pendiente de validar contenido'],
     'En Borrador' => ['color' => 'blue', 'label' => 'En borrador'],
     'Rechazada' => ['color' => 'red', 'label' => 'Rechazada'],
     'Pausada para Asesoría' => ['color' => 'orange', 'label' => 'Pausada'],

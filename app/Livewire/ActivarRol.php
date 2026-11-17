@@ -27,7 +27,7 @@ class ActivarRol extends Component
     public function mount(string $rol): void
     {
         $user = Auth::user();
-        $destino = RolUsuario::tryFrom(strtoupper($rol));
+        $destino = RolUsuario::desdeHistorico($rol);
 
         // Solo roles auto-servicio; CURADOR nunca es auto-activable.
         if (! in_array($destino, [RolUsuario::PRESTAMISTA, RolUsuario::DEPOSITANTE], true)) {
@@ -47,12 +47,6 @@ class ActivarRol extends Component
         // Un perfil interno solo cambia a membresías ya asignadas por administración.
         if ($user->esUsuarioInterno()) abort(403);
 
-        // El rol de solicitante no requiere datos adicionales: se activa directo.
-        if ($destino === RolUsuario::PRESTAMISTA) {
-            $this->confirmar();
-
-            return;
-        }
 
         // Depositante: prellena cargo/institución si la cuenta ya los tiene.
         $this->cargo = $user->cargo ?? '';

@@ -63,5 +63,5 @@ test('el perfil configurable no permite extraer campos privados mediante otro no
     expect($filas)->toBe([['', '']]);
     $this->getJson(route('portal.descarga', ['exportacion' => 'ipt', 'fc' => '00045']))->assertOk();
     auth()->logout();
-    $this->getJson(route('portal.descarga', ['exportacion' => 'ipt', 'fc' => '00045']))->assertUnauthorized();
+    $this->getJson(route('portal.descarga', ['exportacion' => 'ipt', 'fc' => '00045']))->assertForbidden();
 });

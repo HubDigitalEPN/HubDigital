@@ -23,7 +23,7 @@ class UserRole extends Model
     {
         return [
             'id' => 'string',
-            'rol' => RolUsuario::class,
+            'rol' => \App\Casts\RolUsuarioCast::class,
         ];
     }
 

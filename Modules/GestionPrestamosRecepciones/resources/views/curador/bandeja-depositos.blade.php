@@ -155,7 +155,7 @@
                                     @if($recepcionesFirmadas->has($solicitud->id))
                             <flux:badge size="sm" color="green">Cerrado</flux:badge>
                         @else
-                            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estado" />
+                            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estadoPresentacion()" />
                         @endif
                                     @if($actaPendiente)
                                         <flux:badge size="sm" color="amber" icon="bell-alert" class="mt-1">Acta pendiente</flux:badge>
@@ -227,7 +227,7 @@
                         @if($recepcionesFirmadas->has($solicitud->id))
                             <flux:badge size="sm" color="green">Cerrado</flux:badge>
                         @else
-                            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estado" />
+                            <x-gestionprestamosrecepciones::deposito-status-badge :estado="$solicitud->estadoPresentacion()" />
                         @endif
                     </div>
 

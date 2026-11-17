@@ -24,6 +24,8 @@ final class SolicitudDepositoEloquentModel extends Model
 
     protected $fillable = [
         'id',
+        'documento_ingreso_ruta', 'documento_ingreso_sha256', 'recepcion_qr_en', 'recepcion_qr_por',
+        'recepcion_qr_rechazada_en', 'recepcion_qr_motivo', 'contenido_validado_en', 'contenido_validado_por',
         'numero',
         'investigador_id',
         'tipo_tramite',
@@ -85,6 +87,7 @@ final class SolicitudDepositoEloquentModel extends Model
     ];
 
     protected $casts = [
+        'recepcion_qr_en' => 'datetime', 'recepcion_qr_rechazada_en' => 'datetime', 'contenido_validado_en' => 'datetime',
         'sin_documentacion' => 'boolean',
         'documentos_adjuntos' => 'array',
         'datos_faltantes' => 'array',
@@ -110,6 +113,15 @@ final class SolicitudDepositoEloquentModel extends Model
         'solicitud_firma_metadata' => 'array',
         'solicitud_documento_version' => 'integer',
     ];
+
+    /** La etapa física se muestra sin alterar el estado documental ni el flujo del acta. */
+    public function estadoPresentacion(): string
+    {
+        if ($this->estado !== 'Aprobada Documentalmente') return $this->estado;
+        if ($this->contenido_validado_en) return 'Recibida y validada';
+        if ($this->recepcion_qr_en) return 'Recibida · pendiente de validar contenido';
+        return $this->estado;
+    }
 
     public function alertas(): HasMany
     {

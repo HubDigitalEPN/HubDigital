@@ -47,11 +47,12 @@ trait CanalesCampana
         $datos = $this->toArray($destinatario);
         $tipo = $datos['tipo'] ?? '';
         [$titulo, $resumen] = match ($tipo) {
+            'solicitud_enviada' => ['Solicitud enviada', 'Tu solicitud está pendiente de revisión por el Técnico.'],
             'nueva_solicitud_revisar' => ['Nueva solicitud', 'Hay una solicitud pendiente de revisión documental.'],
             'solicitud_corregida_reenviada' => ['Solicitud corregida', 'Se recibió una corrección para revisión documental.'],
             'lote_recibido_acta_pendiente' => ['Acta pendiente', 'Un depósito recibido requiere revisión y firma del acta.'],
             'entrega_fisica_anunciada' => ['Entrega programada', 'Se anunció una entrega física. Consulta la fecha en el expediente.'],
-            'deposito_aprobado' => ['Solicitud aprobada', 'Tu solicitud fue aprobada. Consulta las instrucciones de entrega en HubDigital.'],
+            'deposito_aprobado' => ['Solicitud aprobada', 'Tu solicitud fue aprobada. Descarga el documento de ingreso con QR para entregar el material.'],
             'deposito_rechazado', 'solicitud_rechazada_por_curador' => ['Revisión requerida', 'Tu solicitud tiene una decisión documental. Consulta el detalle en HubDigital.'],
             'solicitud_aprobada_por_curador' => ['Revisión completada', 'Se completó la revisión documental de una solicitud.'],
             'acta_recepcion_firmada' => ['Acta firmada', 'El acta de recepción firmada está disponible en tu expediente.'],

@@ -50,6 +50,9 @@
     <div class="hub-request-document-actions flex justify-end gap-3"
         @if($solicitudFirmada && !$guardadoR2Confirmado) wire:poll.2s="confirmarSolicitudFirmada" @endif
         wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}">
+        @if($solicitudFirmada)
+            <button type="button" data-ver-documento-firmado class="mr-auto text-sm font-semibold text-science-blue underline focus-visible:outline-2" wire:click="visualizarPdfSolicitud" wire:loading.attr="disabled">Ver documento firmado</button>
+        @endif
         @if($oficioCompleto && $pdfGenerado && !$solicitudFirmada)
                 <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentId: @js($solicitudId), documentVersion: {{ $solicitudDocumentoVersion }}, originalPrepared: true, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
                     <button type="button" class="hub-request-primary cursor-pointer rounded border border-science-blue bg-science-blue px-4 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-50" x-ref="abrirFirma" x-on:click="abrirDialogo()" x-show="estado !== 'completado'" wire:loading.attr="disabled">Firmar PDF</button>
