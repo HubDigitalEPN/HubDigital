@@ -44,20 +44,18 @@ final class AprobarDonacionConTransferenciaHandler
         // El dominio genera el Acta de Transferencia de Dominio cuando el trámite es Donación.
         $solicitud->aprobarDocumentalmente($input->curadorId);
 
-        $this->transactionManager->executeTransactional(function () use ($solicitud): void {
+        $notifRef = '';
+        $this->transactionManager->executeTransactional(function () use ($solicitud, &$notifRef): void {
             $this->repo->guardar($solicitud);
+            $notifRef = $this->notificacionInvestigador->notificarCodigoQrDisponible(
+                (string) $solicitud->id(), $solicitud->investigadorId(), (string) $solicitud->codigoQR(),
+            );
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);
             }
         });
 
         $codigoQR = (string) $solicitud->codigoQR();
-
-        $notifRef = $this->notificacionInvestigador->notificarCodigoQrDisponible(
-            solicitudId: (string) $solicitud->id(),
-            investigadorId: $solicitud->investigadorId(),
-            codigoQR: $codigoQR,
-        );
 
         // Aviso agrupado: si curaduría sanó celdas de la matriz, el depositante se
         // entera aquí en un solo mensaje y no en uno por celda tocada.
@@ -77,7 +75,8 @@ final class AprobarDonacionConTransferenciaHandler
             codigoQR: $codigoQR,
             codigoQRDisponible: $codigoQR !== '',
             actaTransferenciaDominioRuta: $solicitud->actaTransferenciaDominio()?->ruta() ?? '',
-            notificacionInvestigadorEnviada: $notifRef !== '',
+            notificacionInvestigadorEnviada: false,
+            notificacionInvestigadorProgramada: $notifRef !== '',
         );
     }
 }

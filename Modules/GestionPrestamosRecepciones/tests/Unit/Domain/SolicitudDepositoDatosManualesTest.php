@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\NumeroSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
@@ -23,7 +24,7 @@ test('rechaza cantidades vacías de material aunque se complete directamente el 
     $solicitud->declararSituacionRegulatoria('Sin permisos del MAE');
     $solicitud->integrarDatosDeDocumentos(new DatosIntegradosDocumento(null, null, null, null, null, null), []);
     foreach (['0', '-1', '1.5', '2147483648'] as $valor) {
-        expect(fn () => $solicitud->completarDatoFaltante($campo, $valor))->toThrow(\DomainException::class);
+        expect(fn () => $solicitud->completarDatoFaltante($campo, $valor))->toThrow(DomainException::class);
         expect($solicitud->datosFaltantesParaPersistir())->toContain($campo);
     }
     $solicitud->completarDatoFaltante($campo, '1');
@@ -43,6 +44,30 @@ test('mantiene pendientes las cantidades cero extraídas del documento', functio
         ->and($solicitud->nroMorfoespecies())->toBeNull()
         ->and($solicitud->nroLotes())->toBeNull()
         ->and($solicitud->datosFaltantesParaPersistir())->toContain('N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes');
+});
+
+test('las cantidades del permiso son sugerencias y una nueva extracción conserva las declaradas', function (): void {
+    $s = SolicitudDeposito::crear(SolicitudDepositoId::generate(), NumeroSolicitudDeposito::fromSecuencia(9), 'depositante-qa', 'Depósito');
+    $datos = new DatosIntegradosDocumento(null, null, null, null, null, null, nroIndividuos: '999', nroMorfoespecies: '99', nroLotes: '20');
+    $s->integrarDatosDeDocumentos($datos, []);
+    expect($s->nroIndividuos())->toBeNull()->and($s->nroMorfoespecies())->toBeNull()->and($s->nroLotes())->toBeNull();
+    $s->completarDatoFaltante('N.º Individuos', '8');
+    $s->completarDatoFaltante('N.º Morfoespecies', '2');
+    $s->completarDatoFaltante('N.º Lotes', '1');
+    $s->integrarDatosDeDocumentos($datos, []);
+    expect($s->nroIndividuos())->toBe('8')->and($s->nroMorfoespecies())->toBe('2')->and($s->nroLotes())->toBe('1')
+        ->and($s->datosFaltantesParaPersistir())->not->toContain('N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes');
+});
+
+test('finalidad de actividad no cambia el tipo de trámite y la consultoría no admite la vía sin permisos', function (): void {
+    $s = SolicitudDeposito::crear(SolicitudDepositoId::generate(), NumeroSolicitudDeposito::fromSecuencia(10), 'depositante-qa', 'Depósito');
+    $s->declararFinalidadActividad('Consultoría');
+    expect($s->tipoTramite())->toBe('Depósito')->and($s->finalidadActividad())->toBe('Consultoría');
+    $regla = new ReglaDocumentacionRequerida;
+    expect(fn () => $regla->determinar('Depósito', 'Nacional (Ecuador)', 'Sin permisos del MAE', 'Pichincha', 'Consultoría'))->toThrow(DomainException::class);
+    expect($regla->determinar('Depósito', 'Nacional (Ecuador)', 'Posee permisos del MAE', 'Pichincha', 'Consultoría'))->toContain('Copia de la autorización de recolección (MAE)', 'Copia del permiso de movilización')
+        ->and($regla->determinar('Depósito', 'Nacional (Ecuador)', 'Sin permisos del MAE', 'Pichincha', 'Investigación'))->toContain('Documento de explicación de motivos y/o carta de justificación (institucional o personal)');
+    expect(fn () => $s->completarDatoFaltante('Localidad', 'Lugar libre'))->toThrow(DomainException::class);
 });
 
 test('permite registrar manualmente el origen de una donación', function (): void {

@@ -6,7 +6,20 @@
     "seleccion_paquete": "solo-cambio",
     "base_caduca_por_fecha": false,
     "integral_solo_explicito": true,
-    "modulos": {"portal": "CatalogoPublico", "inventario": "InventarioGestionColeccion", "depositos": "GestionPrestamosRecepciones"}
+    "modulos": {"portal": "CatalogoPublico", "inventario": "InventarioGestionColeccion", "depositos": "GestionPrestamosRecepciones"},
+    "controles_pdf": ["Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/CodigoQrDisponibleNotification.php"],
+    "contratos_propios": {
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AceptarJustificacionesAlertas/AceptarJustificacionesAlertasHandler.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"],
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AceptarJustificacionesAlertas/AceptarJustificacionesAlertasOutput.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"],
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AprobarDocumentalmenteSolicitud/AprobarDocumentalmenteSolicitudOutput.php": ["tests/Feature/DepositosArquitecturaTest.php"],
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AprobarDonacionConTransferencia/AprobarDonacionConTransferenciaHandler.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"],
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AprobarDonacionConTransferencia/AprobarDonacionConTransferenciaOutput.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"],
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/DeterminarDocumentacionRequerida/DeterminarDocumentacionRequeridaHandler.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/registro_solicitud_deposito.feature"],
+      "Modules/GestionPrestamosRecepciones/app/Application/UseCases/DeterminarDocumentacionRequerida/DeterminarDocumentacionRequeridaInput.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/registro_solicitud_deposito.feature"],
+      "Modules/GestionPrestamosRecepciones/app/Infrastructure/Persistence/Repositories/EloquentSolicitudDepositoRepository.php": ["tests/Feature/DepositosArquitecturaTest.php"],
+      "Modules/GestionPrestamosRecepciones/app/Infrastructure/Providers/GestionPrestamosRecepcionesServiceProvider.php": ["tests/Feature/DepositosArquitecturaTest.php"],
+      "Modules/GestionPrestamosRecepciones/tests/Behat/Contexts/RecepcionValidacionLotesEspecimenesYDatos/AprobacionDocumentalSolicitudContext.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"]
+    }
   },
   "controles": [
     {"id": "php-dependencias", "responsable": "agente", "descripcion": "Instalacion PHP exacta desde composer.lock"},

@@ -65,7 +65,7 @@ function selectPlan({files, baseline, runtime, root, head, environment, dependen
     const frontend = integral ? frontendProjects : [...new Set(changes.filter(f =>
         /(^|\/)resources\/.*\.(js|mjs|css|scss|blade\.php)$|(^|\/)(package(-lock)?\.json|(vite|postcss|tailwind)\.config\.[^/]+)$/.test(f)).map(projectOf))];
     const java = integral || changes.some(f => f.startsWith('tools/pdf-signature/'));
-    const pdf = integral || changes.includes('deploy/oracle/scripts/verify-deposit-pdf.php');
+    const pdf = integral || changes.includes('deploy/oracle/scripts/verify-deposit-pdf.php') || changes.some(file => (config.controles_pdf || []).includes(file));
     const ete = integral || changes.some(f => /^(resources\/python\/portal_ete\/|tests\/Python\/)|^scripts\/development\/instalar-ete\.ps1$/.test(f));
     const pythonTests = integral ? allFiles.filter(f => /^tests\/Python\/test_.*\.py$/.test(f)) :
         allFiles.filter(f => /^tests\/Python\/test_.*\.py$/.test(f) && (changes.includes(f) || direct.has(f)));
@@ -245,6 +245,7 @@ function graph(root, files) {
         if (dependency !== record.area) add(dependencies, dependency, record.area);
     }
     for (const [source, tests] of Object.entries(focalUI.contracts)) if (all.has(source)) for (const test of tests) if (all.has(test)) add(fileDependencies, source, test);
+    for (const [source, tests] of Object.entries(config.contratos_propios || {})) if (all.has(source)) for (const test of tests) if (all.has(test)) add(fileDependencies, source, test);
     return {dependencies, nodeDependencies, fileDependencies, uncertain: [...new Set(uncertain)]};
 }
 

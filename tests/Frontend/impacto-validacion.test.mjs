@@ -10,6 +10,26 @@ import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 
 const now = Date.parse('2026-10-28T20:00:00Z');
+test('los contratos propios de depósitos seleccionan sus escenarios sin invalidar recibos DOM', () => {
+    const root = path.resolve(import.meta.dirname, '../..');
+    const entries = impact.config.contratos_propios;
+    assert.equal(Object.keys(entries).length, 10);
+    const files = Object.fromEntries([...Object.keys(entries), ...Object.values(entries).flat()].map(file => [file, 'fuente']));
+    const graph = impact.graph(root, files);
+    for (const [source, contracts] of Object.entries(entries)) {
+        for (const contract of contracts) {
+            assert.ok(readFileSync(path.join(root, contract)).length > 0);
+            assert.ok(graph.fileDependencies[source].includes(contract));
+        }
+    }
+    for (const source of impact.config.controles_pdf) {
+        const files = {...original, [source]: 'cambio'};
+        const selected = plan(files);
+        assert.equal(selected.paquete.pdf, true);
+        assert.equal(selected.integral, false);
+        assert.equal(selected.paquete.navegador, false);
+    }
+});
 test('PDF fuera del cambio exige evidencia compatible sin ejecutar otra suite automáticamente', () => {
     const previous = {completed_at: '2026-10-01T12:00:00Z'};
     const compatible = impact.pdfPlanDecision(false, {execute: false, previous});

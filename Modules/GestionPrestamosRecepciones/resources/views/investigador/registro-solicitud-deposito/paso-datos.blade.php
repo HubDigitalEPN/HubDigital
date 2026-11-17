@@ -60,6 +60,7 @@
 
     <div id="datos-manuales" class="space-y-3 scroll-mt-6">
         <h3 class="text-sm font-semibold text-blue-navy">Material</h3>
+        <p class="text-sm text-text-secondary">Declara las cantidades de individuos, morfoespecies y lotes que entregarás. Los totales de los permisos pueden incluir otros grupos y no se copian como cantidades del depósito.</p>
         @php
             $fuentesPorCampo = [
                 'N.º Permiso Recolección' => 'Copia de la autorización de recolección (MAE)',
@@ -111,7 +112,9 @@
                     :manual="$esManual && !$esFaltante"
                     :ayuda="$tooltipsPorCampo[$campo] ?? null"
                 >
-                    @if($esFaltante)
+                    @if($campo === 'Localidad' && $finalidadActividad !== '')
+                        <button type="button" wire:click="volverAPasoCompletado(3)" class="mt-2 text-xs text-science-blue">Cambiar en Origen</button>
+                    @elseif($esFaltante)
                         <button
                             type="button" wire:click="abrirEditorManual('{{ $campo }}')"
                             class="mt-2 flex items-center gap-1 text-xs font-medium text-science-blue hover:text-science-blue/70 transition-colors cursor-pointer"

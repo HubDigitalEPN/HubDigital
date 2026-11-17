@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\MatrizEspeciesRequerid
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 
@@ -66,6 +67,22 @@ final class EnviarSolicitudDepositoHandler
 
             if ($solicitud->estado() === EstadoSolicitudDeposito::PendienteDeRevisionPorCuraduria) {
                 throw SolicitudDepositoYaProcesada::enviada();
+            }
+
+            if ($solicitud->finalidadActividad() !== null) {
+                (new ReglaDocumentacionRequerida)->determinar(
+                    $solicitud->tipoTramite(), $solicitud->origenRecoleccion() ?? '', $solicitud->situacionRegulatoria() ?? '',
+                    $solicitud->provinciaOrigen(), $solicitud->finalidadActividad(),
+                );
+                if ($solicitud->origenRecoleccion() === 'Nacional (Ecuador)'
+                    && (! filled($solicitud->localidadOrigenCodigo()) || ! filled($solicitud->localidad()))) {
+                    throw new \DomainException('Selecciona la localidad de recolección del catálogo INEC.');
+                }
+                foreach (['N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes'] as $campo) {
+                    if (! in_array($campo, $solicitud->datosIngresadosManualmenterParaPersistir(), true)) {
+                        throw new \DomainException('Declara las cantidades del material antes de enviar la solicitud.');
+                    }
+                }
             }
 
             $matriz = $this->matrizRepo->buscarPorSolicitudId($input->solicitudId);

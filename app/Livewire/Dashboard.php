@@ -655,7 +655,8 @@ class Dashboard extends Component
                 ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
                 ->orderByDesc('updated_at')->first(['numero', 'paso_actual']),
             'donacionesRealizadas' => $donacionesRealizadas,
-            'depositosRecientes' => (clone $base)->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at', 'recepcion_qr_en', 'contenido_validado_en']),
+            'depositosRecientes' => (clone $base)->with('recepcionLote:id,solicitud_deposito_id,firmada_en,acta_firmada_ruta')
+                ->orderByDesc('created_at')->limit(4)->get(['id', 'numero', 'estado', 'tipo_tramite', 'created_at', 'recepcion_qr_en', 'recepcion_qr_rechazada_en', 'contenido_validado_en']),
         ];
     }
 }

@@ -20,8 +20,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRechazadaDocument
 use Modules\GestionPrestamosRecepciones\Domain\Events\SolicitudRequiereCorreccion;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\DocumentacionInsuficiente;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\TransicionEstadoInvalida;
-use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\AlertaSolicitudId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\CodigoQRLote;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\DatosIntegradosDocumento;
@@ -69,6 +69,38 @@ final class SolicitudDeposito
     private ?string $origenRecoleccion = null;
 
     private ?string $situacionRegulatoria = null;
+
+    private ?string $finalidadActividad = null;
+
+    private bool $recepcionPorQr = false;
+
+    private bool $contenidoRecepcionValidado = false;
+
+    public function asegurarContenidoRecepcionValidado(): void
+    {
+        if (($this->recepcionPorQr || $this->finalidadActividad !== null) && ! $this->contenidoRecepcionValidado) {
+            throw new \DomainException('Recibe el material y registra y valida su contenido antes de finalizar la recepción.');
+        }
+    }
+
+    public function finalidadActividad(): ?string
+    {
+        return $this->finalidadActividad;
+    }
+
+    public function declararFinalidadActividad(string $finalidad): void
+    {
+        if (! in_array($finalidad, ['Investigación', 'Consultoría'], true)) {
+            throw new \DomainException('Selecciona investigación o consultoría.');
+        }
+        $this->finalidadActividad = $finalidad;
+        foreach (['N.º Individuos' => 'nroIndividuos', 'N.º Morfoespecies' => 'nroMorfoespecies', 'N.º Lotes' => 'nroLotes'] as $campo => $propiedad) {
+            if (! in_array($campo, $this->datosIngresadosManualmente, true)) {
+                $this->{$propiedad} = null;
+                $this->marcarDatoComoFaltante($campo);
+            }
+        }
+    }
 
     private ?string $provinciaOrigen = null;
 
@@ -298,14 +330,16 @@ final class SolicitudDeposito
             $this->nombreInvestigadorDocumento = $datos->nombreInvestigador;
         }
 
-        if ($datos->nroIndividuos !== null) {
-            $this->nroIndividuos = ReglaCantidadesMaterial::esValida($datos->nroIndividuos) ? $datos->nroIndividuos : null;
+        // Los permisos pueden incluir otros grupos y entregas. Sus totales son
+        // sugerencias del extractor, nunca cantidades declaradas de este depósito.
+        if (! in_array('N.º Individuos', $this->datosIngresadosManualmente, true)) {
+            $this->nroIndividuos = null;
         }
-        if ($datos->nroMorfoespecies !== null) {
-            $this->nroMorfoespecies = ReglaCantidadesMaterial::esValida($datos->nroMorfoespecies) ? $datos->nroMorfoespecies : null;
+        if (! in_array('N.º Morfoespecies', $this->datosIngresadosManualmente, true)) {
+            $this->nroMorfoespecies = null;
         }
-        if ($datos->nroLotes !== null) {
-            $this->nroLotes = ReglaCantidadesMaterial::esValida($datos->nroLotes) ? $datos->nroLotes : null;
+        if (! in_array('N.º Lotes', $this->datosIngresadosManualmente, true)) {
+            $this->nroLotes = null;
         }
 
         if (! ReglaCantidadesMaterial::esValida($this->nroIndividuos)) {
@@ -330,6 +364,12 @@ final class SolicitudDeposito
 
     public function completarDatoFaltante(string $campo, string $valor): void
     {
+        if ($this->finalidadActividad !== null && ! in_array($this->estado, [EstadoSolicitudDeposito::EnBorrador, EstadoSolicitudDeposito::RequiereCorreccion], true)) {
+            throw new \DomainException('La declaración del material ya está enviada. Se requiere devolución para corrección.');
+        }
+        if ($campo === 'Localidad' && $this->finalidadActividad !== null) {
+            throw new \DomainException('Cambia la localidad desde el paso Origen para conservar su código INEC.');
+        }
         if (trim($valor) === '' && $campo !== 'Localidad') {
             throw new \DomainException(
                 sprintf('El valor para el campo "%s" no puede estar vacío', $campo)
@@ -341,7 +381,9 @@ final class SolicitudDeposito
             throw new \DomainException('Ingresa una cantidad entera entre 1 y 2.147.483.647.');
         }
         $this->asignarCampoPorNombre($campo, $valor);
-        if ($campo === 'Localidad') $this->localidadOrigenCodigo = null;
+        if ($campo === 'Localidad') {
+            $this->localidadOrigenCodigo = null;
+        }
 
         $this->datosFaltantes = array_values(
             array_filter($this->datosFaltantes, fn ($c) => $c !== $campo)
@@ -973,6 +1015,9 @@ final class SolicitudDeposito
         array $alertas = [],
         ?string $cantonOrigen = null,
         ?string $localidadOrigenCodigo = null,
+        ?string $finalidadActividad = null,
+        bool $recepcionPorQr = false,
+        bool $contenidoRecepcionValidado = false,
     ): self {
         $solicitud = new self;
 
@@ -983,6 +1028,9 @@ final class SolicitudDeposito
         $solicitud->estado = $estado;
         $solicitud->origenRecoleccion = $origenRecoleccion;
         $solicitud->situacionRegulatoria = $situacionRegulatoria;
+        $solicitud->finalidadActividad = $finalidadActividad;
+        $solicitud->recepcionPorQr = $recepcionPorQr;
+        $solicitud->contenidoRecepcionValidado = $contenidoRecepcionValidado;
         $solicitud->provinciaOrigen = $provinciaOrigen;
         $solicitud->cantonOrigen = $cantonOrigen;
         $solicitud->localidadOrigenCodigo = $localidadOrigenCodigo;

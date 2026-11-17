@@ -11,10 +11,11 @@ final readonly class ActualizarOrigenSolicitudDepositoInput
 {
     /**
      * Crea una nueva instancia de ActualizarOrigenSolicitudDepositoInput.
-     * @param string $solicitudId ID de la solicitud de depósito.
-     * @param string $origenRecoleccion Descripción del origen de recolección.
-     * @param string $situacionRegulatoria Descripción de la situación regulatoria.
-     * @param string|null $provinciaOrigen Provincia de origen (opcional).
+     *
+     * @param  string  $solicitudId  ID de la solicitud de depósito.
+     * @param  string  $origenRecoleccion  Descripción del origen de recolección.
+     * @param  string  $situacionRegulatoria  Descripción de la situación regulatoria.
+     * @param  string|null  $provinciaOrigen  Provincia de origen (opcional).
      */
     public function __construct(
         public string $solicitudId,
@@ -23,5 +24,6 @@ final readonly class ActualizarOrigenSolicitudDepositoInput
         public ?string $provinciaOrigen = null,
         public ?string $localidadOrigenCodigo = null,
         public ?string $localidad = null,
+        public ?string $finalidadActividad = null,
     ) {}
 }

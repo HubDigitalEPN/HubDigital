@@ -17,7 +17,10 @@ interface NotificacionInvestigadorPort
      * Notifica al investigador que el Código QR de su lote ya está disponible para
      * descargar de cara a la entrega física.
      *
-     * @return string Referencia/identificador de la notificación generada.
+     * Debe registrarse dentro de la transacción de aprobación. La referencia
+     * identifica el trabajo durable pendiente; no acredita entrega de correo.
+     *
+     * @return string Referencia del aviso programado.
      */
     public function notificarCodigoQrDisponible(string $solicitudId, string $investigadorId, string $codigoQR): string;
 

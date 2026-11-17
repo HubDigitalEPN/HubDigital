@@ -40,7 +40,8 @@ final class AprobarDocumentalmenteSolicitudHandler
     {
         $id = SolicitudDepositoId::from($input->solicitudId);
         $solicitud = null;
-        $this->transactionManager->executeTransactional(function () use ($id, $input, &$solicitud): void {
+        $notifRef = '';
+        $this->transactionManager->executeTransactional(function () use ($id, $input, &$solicitud, &$notifRef): void {
             $solicitud = $this->repo->buscarPorIdParaActualizar($id);
             if ($solicitud === null) {
                 throw SolicitudNoEncontradaException::conId($input->solicitudId);
@@ -52,18 +53,15 @@ final class AprobarDocumentalmenteSolicitudHandler
 
             $solicitud->aprobarDocumentalmente($input->curadorId);
             $this->repo->guardar($solicitud);
+            $notifRef = $this->notificacionInvestigador->notificarCodigoQrDisponible(
+                (string) $solicitud->id(), $solicitud->investigadorId(), (string) $solicitud->codigoQR(),
+            );
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);
             }
         });
 
         $codigoQR = (string) $solicitud->codigoQR();
-
-        $notifRef = $this->notificacionInvestigador->notificarCodigoQrDisponible(
-            solicitudId: (string) $solicitud->id(),
-            investigadorId: $solicitud->investigadorId(),
-            codigoQR: $codigoQR,
-        );
 
         $this->notificacionCuratoria->notificarDecisionDocumentalAOtrosCuradores(
             solicitudId: (string) $solicitud->id(),
@@ -88,7 +86,8 @@ final class AprobarDocumentalmenteSolicitudHandler
             curadorResponsable: $solicitud->curadorResponsable(),
             codigoQR: $codigoQR,
             codigoQRDisponible: $codigoQR !== '',
-            notificacionInvestigadorEnviada: $notifRef !== '',
+            notificacionInvestigadorEnviada: false,
+            notificacionInvestigadorProgramada: $notifRef !== '',
         );
     }
 }

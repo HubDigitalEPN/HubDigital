@@ -12,6 +12,10 @@ const definitions = {
     chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css','resources/views/layouts/portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/ChatBotWidget.php'], checks:['install','hide','fresh','catalogOnly','restore','focus']},
 };
 Object.assign(definitions, {
+    depositos_origen: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-origen.blade.php','Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Investigador/RegistroSolicitudDeposito.php'], checks:['purpose','required','policy','inec','focus','saved','responsive']},
+    depositos_rechazo: {sources:['Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/RecepcionQrDeposito.php'], checks:['reason','refused','blocked','history','technicalCannotRetry','responsive']},
+    depositos_reintento: {sources:['Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/EstadoEntregaNotification.php'], checks:['curator','authorized','history','receiveEnabled','responsive']},
+    depositos_cerrado: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/detalle-deposito.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Investigador/DetalleDeposito.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/FlujoIngresoDeposito.php'], checks:['closed','noIntake','documents','status','responsive']},
     depositos_documento: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/documento-ingreso-listo.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DocumentoIngreso.php'], checks:['ready','automatic','fallback','status','responsive']},
     depositos_firma: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-solicitud.blade.php'], checks:['left','label','signedPreview','frame','responsive']},
     depositos_ingreso: {sources:['Modules/GestionPrestamosRecepciones/resources/views/curador/validar-ingreso-qr.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ValidarIngresoQr.php'], checks:['authentic','characteristics','reason','received','noDuplicate','responsive']},
@@ -20,6 +24,12 @@ Object.assign(definitions, {
 });
 definitions.depositos_contenido.sources.push('Modules/GestionPrestamosRecepciones/app/Infrastructure/Persistence/Models/SolicitudDepositoEloquentModel.php','Modules/GestionPrestamosRecepciones/resources/views/investigador/mis-depositos/_card.blade.php','Modules/GestionPrestamosRecepciones/resources/views/curador/revisar-deposito.blade.php','Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php','Modules/GestionPrestamosRecepciones/resources/views/receptor/bandeja-recepciones.blade.php','Modules/GestionPrestamosRecepciones/resources/views/components/deposito-status-badge.blade.php');
 definitions.depositos_documento.sources.push('Modules/GestionPrestamosRecepciones/resources/views/pdf/documento-ingreso.blade.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/CodigoQrDisponibleNotification.php');
+for (const id of ['depositos_ingreso','depositos_rechazo','depositos_reintento']) definitions[id].sources.push(
+    'Modules/GestionPrestamosRecepciones/resources/views/curador/validar-ingreso-qr.blade.php',
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ValidarIngresoQr.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/RecepcionQrDeposito.php',
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/FlujoIngresoDeposito.php',
+);
 const owner = {};
 
 definitions.laboratorio.sources.push('app/Services/PaginaLaboratorio.php');
@@ -43,6 +53,12 @@ Object.assign(owner, {
     'Modules/CatalogoPublico/resources/views/components/busqueda-universal.blade.php':['tarjetas'],
 });
 const contracts = {
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/IngresoPendienteDeposito.php':['tests/Feature/DepositosArquitecturaTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/FlujoIngresoDeposito.php':['tests/Feature/DepositosArquitecturaTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Jobs/ProcesarIngresoDeposito.php':['tests/Feature/DepositosArquitecturaTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Console/Commands/ProcesarIngresosPendientesCommand.php':['tests/Feature/DepositosArquitecturaTest.php'],
+    'Modules/GestionPrestamosRecepciones/database/migrations/2026_11_17_200000_add_deposito_entrega_y_outbox.php':['tests/Feature/DepositosArquitecturaTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/EstadoEntregaNotification.php':['tests/Feature/PerfilesRecepcionDepositoTest.php'],
     'app/Support/DisponibilidadChatPortal.php':['tests/Feature/PortalChatDisponibilidadTest.php'],
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/TablaRespuestaCatalogoChat.php':['tests/Feature/PortalChatTablasConsultasTest.php'],
     'Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/EstadisticasCatalogoChat.php':['tests/Feature/PortalChatFilosYBiologiaTest.php'],

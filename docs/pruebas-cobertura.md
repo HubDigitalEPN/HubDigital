@@ -1,5 +1,25 @@
 # Distribución de cobertura
 
+`DepositosArquitecturaTest` cubre las transacciones y efectos diferidos de la
+aprobación: aviso durable, snapshot del PDF, despacho recuperable, tres intentos,
+correo con resultado incierto y confirmación efectiva del transporte. El envío
+completo usa el transporte `array` local y comprueba el adjunto; no acredita SMTP
+remoto ni llegada a una bandeja. También cubre localidad INEC y finalidad,
+documentos de expedientes cerrados y bloqueo del cierre por endpoints históricos
+sin validar el contenido. `SolicitudDepositoDatosManualesTest` comprueba que los
+totales de los permisos no sustituyan cantidades declaradas y conserva sus
+límites. `PerfilesRecepcionDepositoTest` conserva el QR firmado y la recepción
+idempotente y añade rechazo de entrega con reintento autorizado solo por Curaduría.
+El caso focal del Dashboard verifica las etiquetas de cierre y entrega no recibida
+y que las cuatro filas recientes resuelvan sus recepciones en una sola consulta.
+
+Los escenarios Gherkin existentes de aprobación mantienen sus antecedentes,
+auditoría, alertas y transferencia de dominio, y distinguen un aviso programado
+de un correo entregado. No se agregan escenarios que dupliquen los nuevos casos
+Pest. Los contratos focales de Opera Neon añaden los comportamientos de interfaz
+de origen, entrega no recibida, autorización del Curador y expediente cerrado,
+con evidencia local independiente de los nueve recorridos históricos.
+
 `PortalChatConsultasComplejasTest` reproduce las instrucciones «Genera/Crea/Prepara
 una matriz», los periodos expresados con años, la distinción entre listar y contar
 en una tabla y los seguimientos de dos y tres unidades sin perder la consulta

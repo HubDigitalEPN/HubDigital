@@ -41,6 +41,9 @@ final class IniciarRecepcionLoteHandler
         if ($solicitud === null) {
             throw SolicitudNoEncontradaException::conId($input->solicitudId);
         }
+        if ($solicitud->finalidadActividad() !== null && ! $input->desdeQr) {
+            throw new \DomainException('Registra la entrega desde el documento de ingreso con QR.');
+        }
 
         $existente = $this->recepcionRepo->buscarPorSolicitudId($solicitudId);
         if ($existente !== null) {

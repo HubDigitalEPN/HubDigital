@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito;
 
-use App\Support\CatalogoLocalidadesEcuador;
 use App\Support\CatalogoLocalidadesDeposito;
+use App\Support\CatalogoLocalidadesEcuador;
 use App\Support\CatalogoTerritorialEcuador;
 use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncontradaException;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\TransactionManagerPort;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudDepositoRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\SolicitudDepositoId;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 
@@ -33,8 +34,20 @@ final class ActualizarOrigenSolicitudDepositoHandler
             if ($solicitud === null) {
                 throw SolicitudNoEncontradaException::conId($input->solicitudId);
             }
+            if (! in_array($solicitud->estado()->value, ['En Borrador', 'Requiere Corrección'], true)) {
+                throw new \DomainException('El origen solo puede cambiarse durante la preparación o corrección de la solicitud.');
+            }
 
             $nombreLocalidad = trim($input->localidad ?? '') ?: null;
+            if ($input->finalidadActividad !== null) {
+                $solicitud->declararFinalidadActividad($input->finalidadActividad);
+            }
+            (new ReglaDocumentacionRequerida)->determinar(
+                $solicitud->tipoTramite(), $input->origenRecoleccion, $input->situacionRegulatoria, $input->provinciaOrigen, $solicitud->finalidadActividad(),
+            );
+            if ($solicitud->finalidadActividad() !== null && $input->origenRecoleccion === 'Nacional (Ecuador)' && ! filled($input->localidadOrigenCodigo)) {
+                throw new \DomainException('Selecciona una localidad activa del catálogo INEC. Si falta, solicita su alta al administrador.');
+            }
             if ($input->origenRecoleccion === 'Nacional (Ecuador)'
                 && ! in_array($input->provinciaOrigen, array_column(CatalogoTerritorialEcuador::provincias(), 'nombre'), true)) {
                 throw new \DomainException('Selecciona una provincia del catálogo de Ecuador.');
@@ -54,6 +67,7 @@ final class ActualizarOrigenSolicitudDepositoHandler
                 throw new \DomainException('Selecciona una localidad del catálogo público de la provincia indicada.');
             }
             $cambio = $solicitud->provinciaOrigen() !== $input->provinciaOrigen
+                || ($input->finalidadActividad !== null && SolicitudDepositoEloquentModel::findOrFail($input->solicitudId)->finalidad_actividad !== $input->finalidadActividad)
                 || $solicitud->localidadOrigenCodigo() !== $input->localidadOrigenCodigo
                 || $solicitud->localidad() !== $nombreLocalidad
                 || $solicitud->situacionRegulatoria() !== $input->situacionRegulatoria;
@@ -73,7 +87,9 @@ final class ActualizarOrigenSolicitudDepositoHandler
                 $cambios += ['extraccion_metadatos' => $metadata,
                     'extraccion_estado' => 'pendiente', 'documentos_procesados' => []];
             }
-            if ($cambios !== []) $modelo->forceFill($cambios)->save();
+            if ($cambios !== []) {
+                $modelo->forceFill($cambios)->save();
+            }
             $eventos = $solicitud->pullEvents();
             $output = ActualizarOrigenSolicitudDepositoOutput::fromEntity($solicitud);
         });

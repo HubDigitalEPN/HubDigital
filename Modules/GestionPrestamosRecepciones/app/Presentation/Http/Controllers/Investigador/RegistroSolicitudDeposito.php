@@ -5,29 +5,30 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador;
 
 use App\Concerns\HandlesDomainExceptions;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\ReglasSolicitudDeposito;
-use Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito;
-use Illuminate\Support\Facades\Validator;
-use App\Support\CatalogoTerritorialEcuador;
+use App\Services\ConsultaRucSri;
 use App\Support\CatalogoLocalidadesDeposito;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidacionPreviaDocumentoDeposito;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DocumentoDepositoRechazado;
+use App\Support\CatalogoLocalidadesEcuador;
+use App\Support\CatalogoTerritorialEcuador;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
-use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionFirmaElectronicaPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\ValidacionTaxonomicaPort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AceptarSugerenciaTaxonomica\AceptarSugerenciaTaxonomicaInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ActualizarOrigenSolicitudDeposito\ActualizarOrigenSolicitudDepositoHandler;
@@ -59,21 +60,34 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesExce
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial;
+use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Files\LectorMatrizDeposito;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ClasificarDocumentoCargadoJob;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\ExtraccionDatosDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Jobs\VerificarFirmaDocumentoJob;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\MatrizEspeciesEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Services\InvalidarFirmaSolicitud;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\AsistenteDocumentalDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\EliminarBorradorConArchivos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\InvalidarFirmaSolicitud;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\DocumentoDepositoRechazado;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ValidacionPreviaDocumentoDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\ReglasSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Componente Livewire para el registro de una solicitud de depósito o donación.
@@ -114,33 +128,48 @@ final class RegistroSolicitudDeposito extends Component
     public string $numeroSolicitud = '';
 
     public string $solicitudNombrePermiso = '';
+
     public string $solicitudCedula = '';
+
     public string $solicitudTipoIdentificacion = 'cedula';
+
     #[Locked]
     public string $solicitudTexto = '';
+
     #[Locked]
     public bool $solicitudCambiosPendientes = false;
 
     #[Locked]
     public array $solicitudCamposPendientes = [];
+
     #[Locked]
     public bool $solicitudOficioAnteriorFirmado = false;
+
     #[Locked]
     public int $solicitudDocumentoVersion = 1;
+
     #[Locked]
     public bool $firmaInvalidadaPorEdicion = false;
+
     #[Locked]
     public array $solicitudIdentificacionConsulta = [];
+
     #[Locked]
     public string $solicitudIdentificacionConsultada = '';
-    public string $solicitudCargo = '';
-    public string $solicitudGrupo = '';
-    public string $solicitudProyecto = '';
-    public string $solicitudInstitucion = '';
-    public string $solicitudCorreo = '';
-    public string $solicitudOficio = '';
-    public bool $mostrarVistaPdfSolicitud = false;
 
+    public string $solicitudCargo = '';
+
+    public string $solicitudGrupo = '';
+
+    public string $solicitudProyecto = '';
+
+    public string $solicitudInstitucion = '';
+
+    public string $solicitudCorreo = '';
+
+    public string $solicitudOficio = '';
+
+    public bool $mostrarVistaPdfSolicitud = false;
 
     // ── Paso 2 – Origen ───────────────────────────────────────────────────────────
 
@@ -151,6 +180,8 @@ final class RegistroSolicitudDeposito extends Component
     public string $provincia = '';
 
     public string $localidadOrigenCodigo = '';
+
+    public string $finalidadActividad = '';
 
     public string $busquedaLocalidadOrigen = '';
 
@@ -510,7 +541,6 @@ final class RegistroSolicitudDeposito extends Component
         $this->restaurarDesdeBorrador($model);
     }
 
-
     public function updatedProvincia(): void
     {
         $this->localidadOrigenCodigo = '';
@@ -522,7 +552,9 @@ final class RegistroSolicitudDeposito extends Component
     {
         $permitidas = array_column(CatalogoTerritorialEcuador::provincias(), 'nombre');
         $seleccion = in_array($provincia, $permitidas, true) ? $provincia : '';
-        if ($seleccion === $this->provincia) return;
+        if ($seleccion === $this->provincia) {
+            return;
+        }
         $this->provincia = $seleccion;
         $this->localidadOrigenCodigo = '';
         $this->localidad = '';
@@ -530,14 +562,22 @@ final class RegistroSolicitudDeposito extends Component
         $this->invalidarProgresoOrigen();
     }
 
-    public function seleccionarLocalidadOrigen(string $nombre): void
+    public function seleccionarLocalidadOrigen(string $codigo): void
     {
-        if ($nombre !== '' && ! CatalogoLocalidadesDeposito::contiene($this->provincia, $nombre)) {
-            throw ValidationException::withMessages(['localidad' => 'Selecciona una localidad del catálogo público.']);
+        $fila = CatalogoLocalidadesEcuador::buscar($this->provincia, $codigo);
+        if ($fila === null) {
+            throw ValidationException::withMessages(['localidad' => 'Selecciona una localidad activa del catálogo INEC.']);
         }
-        if ($nombre === $this->localidad) return;
-        $this->localidad = $nombre;
-        $this->localidadOrigenCodigo = '';
+        if ($codigo === $this->localidadOrigenCodigo) {
+            return;
+        }
+        $this->localidad = $fila->nombre;
+        $this->localidadOrigenCodigo = $codigo;
+        $this->invalidarProgresoOrigen();
+    }
+
+    public function updatedFinalidadActividad(): void
+    {
         $this->invalidarProgresoOrigen();
     }
 
@@ -558,7 +598,7 @@ final class RegistroSolicitudDeposito extends Component
         // El popup consulta sólo el catálogo de esta provincia, sin guardar ni revalidar el formulario.
         $this->skipRender();
 
-        return CatalogoLocalidadesDeposito::paginaLov($this->provincia, $busqueda, $pagina);
+        return CatalogoLocalidadesEcuador::paginaLov($this->provincia, $busqueda, $pagina);
     }
 
     public function buscarLocalidadesDatoLov(string $busqueda = '', int $pagina = 0): array
@@ -568,12 +608,13 @@ final class RegistroSolicitudDeposito extends Component
         return CatalogoLocalidadesDeposito::paginaLov($this->provincia, $busqueda, $pagina);
     }
 
-    public function guardarOrigenDesdeFormulario(string $provincia, string $localidad, string $situacion): void
+    public function guardarOrigenDesdeFormulario(string $provincia, string $localidad, string $situacion, string $finalidad = ''): void
     {
         $this->origenRecoleccion = 'Nacional (Ecuador)';
         $this->provincia = $provincia;
-        $this->localidad = $localidad;
-        $this->localidadOrigenCodigo = '';
+        $this->localidadOrigenCodigo = $localidad;
+        $this->localidad = CatalogoLocalidadesEcuador::buscar($provincia, $localidad)?->nombre ?? '';
+        $this->finalidadActividad = $finalidad;
         $this->situacionRegulatoria = $situacion;
         $this->guardarPasoDos(
             app(DeterminarDocumentacionRequeridaHandler::class),
@@ -612,7 +653,9 @@ final class RegistroSolicitudDeposito extends Component
         if ($oficioCompleto) {
             $reglas = $this->reglasSolicitud();
             $valores = [];
-            foreach (array_keys($reglas) as $campo) $valores[$campo] = $this->{$campo};
+            foreach (array_keys($reglas) as $campo) {
+                $valores[$campo] = $this->{$campo};
+            }
             $validacion = Validator::make($valores, $reglas);
             if ($validacion->fails()) {
                 // Reabrir no modifica el oficio ni elimina su PDF en R2.
@@ -630,6 +673,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->situacionRegulatoria = $model->situacion_regulatoria ?? '';
         $this->provincia = $model->provincia_origen ?? '';
         $this->localidadOrigenCodigo = $model->localidad_origen_codigo ?? '';
+        $this->finalidadActividad = $model->finalidad_actividad ?? '';
         $this->localidad = (string) ($model->localidad ?? '');
 
         // Paso 3 data
@@ -644,7 +688,7 @@ final class RegistroSolicitudDeposito extends Component
         // Si hay archivos cargados, verificar que aún existen en storage
         $this->documentosCargados = array_filter(
             $this->documentosCargados,
-            fn (string $ruta) => app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)->documentoPendienteVigente($ruta)
+            fn (string $ruta) => app(ColaFirmasSolicitudR2::class)->documentoPendienteVigente($ruta)
                 || app(AlmacenamientoDepositos::class)->existe($ruta)
         );
 
@@ -860,20 +904,27 @@ final class RegistroSolicitudDeposito extends Component
     public function volverAPasoCompletado(int $numeroVisible): void
     {
         $destino = self::PASOS_VISIBLES[$numeroVisible] ?? null;
-        if ($destino === null || $this->solicitudId === null || $this->paso >= 9) return;
+        if ($destino === null || $this->solicitudId === null || $this->paso >= 9) {
+            return;
+        }
         if ($destino === 8 && ($this->errorMatriz !== '' || array_filter($this->estadosRegistros, static fn (array $r): bool => ($r['advertencias'] ?? []) !== []) !== [])) {
             $this->mostrarToast('Corrige los errores de la matriz antes de continuar al envío.', 'error');
+
             return;
         }
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->firstOrFail();
-        if (! in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true)) return;
+        if (! in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true)) {
+            return;
+        }
         if (! $this->solicitudInicialFirmada() || ($destino !== 0 && ! in_array($destino, $this->pasosCompletados, true))) {
             $this->mostrarToast('Ese paso todavía no está completado.', 'warning');
+
             return;
         }
         if ($this->extraccionProcesando) {
             $this->mostrarToast('Espera a que termine el análisis de los documentos.', 'warning');
+
             return;
         }
         $this->paso = $destino;
@@ -914,7 +965,7 @@ final class RegistroSolicitudDeposito extends Component
                 ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
                 ->firstOrFail();
 
-            app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\EliminarBorradorConArchivos::class)($borrador);
+            app(EliminarBorradorConArchivos::class)($borrador);
         }
 
         $this->reset();
@@ -946,7 +997,9 @@ final class RegistroSolicitudDeposito extends Component
             'solicitudNombrePermiso', 'solicitudTipoIdentificacion', 'solicitudCedula',
             'solicitudCargo', 'solicitudGrupo', 'solicitudProyecto', 'solicitudInstitucion',
             'solicitudCorreo', 'solicitudOficio',
-        ], true)) return;
+        ], true)) {
+            return;
+        }
         if ($this->solicitudId !== null) {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())->firstOrFail();
@@ -954,9 +1007,12 @@ final class RegistroSolicitudDeposito extends Component
             if ($modelo->solicitud_firmada_en !== null) {
                 $this->{$propiedad} = (string) $modelo->{Str::snake($propiedad)};
                 $this->addError($propiedad, 'El PDF ya está firmado. Elimina el borrador para cambiar sus datos.');
+
                 return;
             }
-            if (! $this->solicitudCambiosPendientes && trim((string) $modelo->{Str::snake($propiedad)}) === trim($this->{$propiedad})) return;
+            if (! $this->solicitudCambiosPendientes && trim((string) $modelo->{Str::snake($propiedad)}) === trim($this->{$propiedad})) {
+                return;
+            }
         }
         $reglas = $this->reglasSolicitud();
         $this->solicitudCambiosPendientes = true;
@@ -969,17 +1025,23 @@ final class RegistroSolicitudDeposito extends Component
         // Una edición sólo informa del campo que acaba de cambiar. Los errores
         // del formulario completo se calculan al generar o continuar.
         $this->solicitudCamposPendientes[$propiedad] = true;
-        if ($propiedad === 'solicitudTipoIdentificacion') $this->solicitudCamposPendientes['solicitudCedula'] = true;
+        if ($propiedad === 'solicitudTipoIdentificacion') {
+            $this->solicitudCamposPendientes['solicitudCedula'] = true;
+        }
         $this->resetValidation();
         $this->validateOnly($propiedad, $reglas);
         unset($this->solicitudCamposPendientes[$propiedad]);
         if ($this->solicitudTipoIdentificacion === 'ruc'
             && ($this->solicitudIdentificacionConsulta['estado'] ?? null) === 'no_encontrado'
-            && $this->solicitudIdentificacionConsultada === ('ruc:'.trim($this->solicitudCedula))) return;
+            && $this->solicitudIdentificacionConsultada === ('ruc:'.trim($this->solicitudCedula))) {
+            return;
+        }
         $valores = [];
-        foreach (array_keys($reglas) as $campo) $valores[$campo] = $this->{$campo};
+        foreach (array_keys($reglas) as $campo) {
+            $valores[$campo] = $this->{$campo};
+        }
         $camposObligatorios = array_diff(array_keys($reglas), ['solicitudTexto']);
-        if ($this->solicitudCamposPendientes === [] && !$this->getErrorBag()->any() && collect($camposObligatorios)->every(fn ($campo): bool => filled($valores[$campo]))) {
+        if ($this->solicitudCamposPendientes === [] && ! $this->getErrorBag()->any() && collect($camposObligatorios)->every(fn ($campo): bool => filled($valores[$campo]))) {
             $this->persistirDatosSolicitudInicial(app(RegistrarSolicitudDepositoHandler::class), $valores);
         }
     }
@@ -989,9 +1051,11 @@ final class RegistroSolicitudDeposito extends Component
         $numero = trim($this->solicitudCedula);
         $this->validateOnly('solicitudCedula', $this->reglasSolicitud());
         $clave = $this->solicitudTipoIdentificacion.':'.$numero;
-        if ($this->solicitudIdentificacionConsultada === $clave) return;
+        if ($this->solicitudIdentificacionConsultada === $clave) {
+            return;
+        }
         $this->solicitudIdentificacionConsulta = $this->solicitudTipoIdentificacion === 'ruc'
-            ? app(\App\Services\ConsultaRucSri::class)->consultar($numero)
+            ? app(ConsultaRucSri::class)->consultar($numero)
             : ['estado' => $this->solicitudTipoIdentificacion === 'cedula' ? 'cedula_local_valida' : 'pasaporte_formato_valido'];
         $this->solicitudIdentificacionConsultada = $clave;
         if (($this->solicitudIdentificacionConsulta['estado'] ?? null) === 'no_encontrado') {
@@ -1005,12 +1069,14 @@ final class RegistroSolicitudDeposito extends Component
             'pasaporte_formato_valido' => 'Formato de pasaporte correcto.',
             default => '',
         };
-        if ($avisoConsulta !== '') $this->mostrarToast($avisoConsulta, $estadoConsulta === 'no_disponible' ? 'warning' : 'success');
+        if ($avisoConsulta !== '') {
+            $this->mostrarToast($avisoConsulta, $estadoConsulta === 'no_disponible' ? 'warning' : 'success');
+        }
     }
 
     public function textoSolicitudSugerido(): string
     {
-        return \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar(
+        return TextoSolicitudDeposito::redactar(
             new SolicitudDepositoEloquentModel([
                 'solicitud_nombre_permiso' => $this->solicitudNombrePermiso,
                 'solicitud_texto' => $this->solicitudTexto,
@@ -1037,17 +1103,23 @@ final class RegistroSolicitudDeposito extends Component
 
     public function pdfSolicitudGenerado(): bool
     {
-        if ($this->solicitudFirmada) return true;
-        if ($this->solicitudId === null || $this->solicitudCambiosPendientes) return false;
+        if ($this->solicitudFirmada) {
+            return true;
+        }
+        if ($this->solicitudId === null || $this->solicitudCambiosPendientes) {
+            return false;
+        }
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->firstOrFail();
-        return app(\Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito::class)->estaGenerado($modelo);
+
+        return app(GeneradorPdfSolicitudDeposito::class)->estaGenerado($modelo);
     }
 
-    public function visualizarPdfSolicitud(\Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito $generador): void
+    public function visualizarPdfSolicitud(GeneradorPdfSolicitudDeposito $generador): void
     {
         if ($this->solicitudFirmada) {
             $this->mostrarVistaPdfSolicitud = true;
+
             return;
         }
         if ($this->solicitudId !== null && ! $this->solicitudCambiosPendientes) {
@@ -1058,9 +1130,11 @@ final class RegistroSolicitudDeposito extends Component
         $this->mostrarVistaPdfSolicitud = true;
     }
 
-    public function generarPdfSolicitud(RegistrarSolicitudDepositoHandler $registrar, \Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito $generador): void
+    public function generarPdfSolicitud(RegistrarSolicitudDepositoHandler $registrar, GeneradorPdfSolicitudDeposito $generador): void
     {
-        if ($this->solicitudFirmada) return;
+        if ($this->solicitudFirmada) {
+            return;
+        }
         $this->guardarSolicitudInicial($registrar);
         $this->visualizarPdfSolicitud($generador);
     }
@@ -1163,6 +1237,7 @@ final class RegistroSolicitudDeposito extends Component
             ->whereKey($this->solicitudId)->where('investigador_id', (string) auth()->id())->first();
         if (! $this->solicitudInicialFirmada()) {
             $this->addError('solicitudFirmada', 'Genera y firma electrónicamente la solicitud antes de continuar.');
+
             return;
         }
         foreach ([
@@ -1179,6 +1254,7 @@ final class RegistroSolicitudDeposito extends Component
         ] as $campo => $valor) {
             if (trim((string) $modelo->{$campo}) !== trim($valor)) {
                 $this->addError('solicitudFirmada', 'Espera el autoguardado y firma la versión actual del oficio para continuar.');
+
                 return;
             }
         }
@@ -1190,16 +1266,23 @@ final class RegistroSolicitudDeposito extends Component
     public function confirmarSolicitudFirmada(): void
     {
         $this->solicitudFirmada = ! $this->solicitudCambiosPendientes && $this->solicitudInicialFirmada();
-        if ($this->solicitudFirmada) $this->resetValidation('solicitudFirmada');
+        if ($this->solicitudFirmada) {
+            $this->resetValidation('solicitudFirmada');
+        }
     }
 
     public function solicitudR2Confirmada(): bool
     {
-        if (!$this->solicitudFirmada || $this->solicitudId === null) return false;
+        if (! $this->solicitudFirmada || $this->solicitudId === null) {
+            return false;
+        }
         $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->first();
-        if ($modelo?->solicitud_firmada_en === null) return false;
-        $registro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)->registro($modelo);
+        if ($modelo?->solicitud_firmada_en === null) {
+            return false;
+        }
+        $registro = app(ColaFirmasSolicitudR2::class)->registro($modelo);
+
         return $registro === null || $registro->estado === 'confirmado';
     }
 
@@ -1209,6 +1292,7 @@ final class RegistroSolicitudDeposito extends Component
         if (! $firmada) {
             $this->paso = 0;
             $this->addError('solicitudFirmada', 'Firma la solicitud antes de elegir la modalidad del trámite.');
+
             return;
         }
         if (empty($this->tipoTramite)) {
@@ -1217,15 +1301,14 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-
         // Crear registro en BD si aún no existe
         if ($this->solicitudId === null) {
             $output = ($registrar)(new RegistrarSolicitudDepositoInput(
-                    investigadorId: (string) auth()->id(),
-                    tipoTramite: $this->tipoTramite,
-                ));
-                $this->solicitudId = $output->id;
-                $this->numeroSolicitud = $output->numero;
+                investigadorId: (string) auth()->id(),
+                tipoTramite: $this->tipoTramite,
+            ));
+            $this->solicitudId = $output->id;
+            $this->numeroSolicitud = $output->numero;
         } else {
             // El usuario regresó al paso 1 y puede haber cambiado el tipo: sincronizar en BD.
             $tipoAnterior = SolicitudDepositoEloquentModel::whereKey($this->solicitudId)
@@ -1278,6 +1361,7 @@ final class RegistroSolicitudDeposito extends Component
         $rules = [
             'origenRecoleccion' => 'required|string',
             'situacionRegulatoria' => 'required|string',
+            'finalidadActividad' => ['required', Rule::in(['Investigación', 'Consultoría'])],
         ];
 
         $messages = [
@@ -1286,18 +1370,30 @@ final class RegistroSolicitudDeposito extends Component
         ];
 
         if ($this->origenRecoleccion === 'Nacional (Ecuador)') {
-            $rules['provincia'] = ['required', 'string', \Illuminate\Validation\Rule::in(array_column(CatalogoTerritorialEcuador::provincias(), 'nombre'))];
-            $rules['localidad'] = 'nullable|string|max:'.CatalogoLocalidadesDeposito::MAXIMO_CARACTERES;
+            $rules['provincia'] = ['required', 'string', Rule::in(array_column(CatalogoTerritorialEcuador::provincias(), 'nombre'))];
+            $rules['localidad'] = 'required|string|max:'.CatalogoLocalidadesDeposito::MAXIMO_CARACTERES;
+            $rules['localidadOrigenCodigo'] = 'required|string|max:100';
+            $messages['localidad.required'] = 'Selecciona una localidad del catálogo INEC. Si falta, solicita su alta al administrador.';
             $messages['provincia.required'] = 'Selecciona la provincia de recolección.';
         }
 
         $this->validate($rules, $messages);
+
+        if ($this->finalidadActividad === 'Consultoría' && $this->situacionRegulatoria === 'Sin permisos del MAE') {
+            throw ValidationException::withMessages(['situacionRegulatoria' => 'La consultoría requiere permisos de recolección y movilización.']);
+        }
+        $localidadInec = CatalogoLocalidadesEcuador::buscar($this->provincia, $this->localidadOrigenCodigo);
+        if ($localidadInec === null) {
+            throw ValidationException::withMessages(['localidad' => 'Selecciona una localidad activa de esta provincia.']);
+        }
+        $this->localidad = $localidadInec->nombre;
 
         $output = ($determinar)(new DeterminarDocumentacionRequeridaInput(
             tipoTramite: $this->tipoTramite,
             origenRecoleccion: $this->origenRecoleccion,
             situacionRegulatoria: $this->situacionRegulatoria,
             provinciaOrigen: $this->provincia ?: null,
+            finalidadActividad: $this->finalidadActividad,
         ));
 
         $this->documentosRequeridos = $output->documentosRequeridos;
@@ -1307,7 +1403,8 @@ final class RegistroSolicitudDeposito extends Component
         if ($anterior->provincia_origen !== ($this->provincia ?: null)
             || $anterior->localidad_origen_codigo !== ($this->localidadOrigenCodigo ?: null)
             || ($anterior->localidad ?? '') !== $this->localidad
-            || $anterior->situacion_regulatoria !== $this->situacionRegulatoria) {
+            || $anterior->situacion_regulatoria !== $this->situacionRegulatoria
+            || $anterior->finalidad_actividad !== $this->finalidadActividad) {
             $this->pasosCompletados = array_values(array_filter($this->pasosCompletados, fn ($p) => $p < 3));
             $this->analisisDocumentalCompletado = false;
         }
@@ -1320,6 +1417,7 @@ final class RegistroSolicitudDeposito extends Component
             provinciaOrigen: $this->provincia ?: null,
             localidadOrigenCodigo: $this->localidadOrigenCodigo ?: null,
             localidad: $this->localidad ?: null,
+            finalidadActividad: $this->finalidadActividad,
         ));
 
         $this->pasosCompletados = array_values(array_unique([...$this->pasosCompletados, 2]));
@@ -1419,7 +1517,9 @@ final class RegistroSolicitudDeposito extends Component
                 : app(AlmacenamientoDepositos::class)->guardarArchivoConHuella($archivo, 'depositos/'.$this->solicitudId);
             $ruta = $guardado['ruta'];
             if (! hash_equals($comprobacion['sha256'], $guardado['sha256'])) {
-                if (!$encolarR2) app(AlmacenamientoDepositos::class)->eliminar($ruta);
+                if (! $encolarR2) {
+                    app(AlmacenamientoDepositos::class)->eliminar($ruta);
+                }
                 throw new DocumentoDepositoRechazado('pdf_inseguro', 'El archivo cambió después de comprobarlo.');
             }
         } catch (ValidationException $error) {
@@ -1429,6 +1529,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->addError($propiedad, $mensaje);
             $this->dispatch('documento-rechazado', propiedad: $propiedad, estado: 'formato_invalido', mensaje: $mensaje);
             $this->mostrarToast($mensaje, 'warning');
+
             return;
         } catch (\InvalidArgumentException $error) {
             $incierto = $error instanceof DocumentoDepositoRechazado && $error->estado === 'contenido_incierto';
@@ -1447,7 +1548,9 @@ final class RegistroSolicitudDeposito extends Component
             $this->addError($propiedad, $error->getMessage());
             $this->dispatch('documento-rechazado', propiedad: $propiedad,
                 estado: $this->rechazosDocumentos[$nombre]['estado'], mensaje: $error->getMessage());
-            if (! $incierto) $this->mostrarToast($error->getMessage(), 'warning');
+            if (! $incierto) {
+                $this->mostrarToast($error->getMessage(), 'warning');
+            }
 
             return;
         }
@@ -1508,22 +1611,26 @@ final class RegistroSolicitudDeposito extends Component
                     'validacion_previa_documentos' => $previas,
                 ])->save();
                 if ($encolarR2) {
-                    $idR2 = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)
+                    $idR2 = app(ColaFirmasSolicitudR2::class)
                         ->encolarDocumento($archivo->getRealPath(), $modelo, $nombre, $rutaAnterior);
                     $previas[$nombre]['r2_pendiente_id'] = $idR2;
                     $previas[$nombre]['r2_verificacion_id'] = $verificacionId;
                     $modelo->forceFill(['validacion_previa_documentos' => $previas])->save();
                 }
+
                 return [$documentosActualizados, $nombresActualizados, $rutaAnterior, $firmas, $validaciones, $verificacionId];
             });
         } catch (\Throwable $error) {
-            if (!$encolarR2) app(AlmacenamientoDepositos::class)->eliminar($ruta);
+            if (! $encolarR2) {
+                app(AlmacenamientoDepositos::class)->eliminar($ruta);
+            }
             report($error);
             $this->reset($propiedad);
             $mensaje = 'No se pudo conservar el documento. Vuelve a seleccionarlo; no se ha aceptado la carga.';
             $this->rechazosDocumentos[$nombre] = ['estado' => 'guardado_no_disponible', 'mensaje' => $mensaje];
             $this->dispatch('documento-rechazado', propiedad: $propiedad, estado: 'guardado_no_disponible', mensaje: $mensaje);
             $this->mostrarToast($mensaje, 'error');
+
             return;
         }
         $this->documentosCargados = $documentosActualizados;
@@ -1531,12 +1638,17 @@ final class RegistroSolicitudDeposito extends Component
         $this->firmasElectronicas = $firmas;
         $this->validacionArchivos = $validaciones;
         $this->documentosContenidoIncierto = array_values(array_diff($this->documentosContenidoIncierto, [$nombre]));
-        if (isset($comprobacion['revision_contenido'])) $this->documentosContenidoIncierto[] = $nombre;
+        if (isset($comprobacion['revision_contenido'])) {
+            $this->documentosContenidoIncierto[] = $nombre;
+        }
         unset($this->rechazosDocumentos[$nombre]);
         $this->resetErrorBag($propiedad);
-        if (!$encolarR2 && is_string($rutaAnterior) && $rutaAnterior !== '') {
-            try { app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior); }
-            catch (\Throwable $error) { report($error); }
+        if (! $encolarR2 && is_string($rutaAnterior) && $rutaAnterior !== '') {
+            try {
+                app(AlmacenamientoDepositos::class)->eliminar($rutaAnterior);
+            } catch (\Throwable $error) {
+                report($error);
+            }
         }
         $this->dispatch('documento-aceptado', propiedad: $propiedad, contenidoIncierto: isset($comprobacion['revision_contenido']));
         $this->dispatch('firma-actualizada', nombre: $nombre, estado: $firmas[$nombre], duracionMs: $comprobacion['firma_duracion_ms']);
@@ -1553,7 +1665,7 @@ final class RegistroSolicitudDeposito extends Component
             && (int) ($pendiente['creada_en'] ?? 0) >= time() - 600, 409, 'La confirmación caducó. Selecciona nuevamente el PDF.');
         $propiedad = $this->propiedadParaDocumento($pendiente['nombre']);
         $archivo = $this->{$propiedad};
-        abort_unless($propiedad === $pendiente['propiedad'] && $archivo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile
+        abort_unless($propiedad === $pendiente['propiedad'] && $archivo instanceof TemporaryUploadedFile
             && $archivo->getFilename() === $pendiente['archivo_temporal']
             && hash_equals((string) $pendiente['sha256'], (string) hash_file('sha256', $archivo->getRealPath())),
             409, 'El archivo cambió. Selecciona nuevamente el PDF.');
@@ -1585,9 +1697,10 @@ final class RegistroSolicitudDeposito extends Component
             // así una caída de almacenamiento nunca deja a la base apuntando a una
             // revisión de archivos que ya no representa el expediente.
             foreach ($rutas as $ruta) {
-                try { app(AlmacenamientoDepositos::class)->eliminar($ruta); }
-                catch (\Throwable $error) {
-                    if (!DB::table(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::TABLA)
+                try {
+                    app(AlmacenamientoDepositos::class)->eliminar($ruta);
+                } catch (\Throwable $error) {
+                    if (! DB::table(ColaFirmasSolicitudR2::TABLA)
                         ->where('solicitud_id', $this->solicitudId)->where('ruta', $ruta)->where('estado', 'cancelado')->exists()) {
                         throw $error;
                     }
@@ -1692,6 +1805,7 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->rechazosDocumentos !== []) {
             $this->addError('documentos', 'Reemplaza los documentos rechazados antes de continuar.');
             $this->mostrarToast('Reemplaza los documentos rechazados antes de continuar.', 'warning');
+
             return;
         }
         $actual = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
@@ -1708,6 +1822,7 @@ final class RegistroSolicitudDeposito extends Component
                 || ($previa['firma_verificada'] ?? false) !== true) {
                 $this->addError('documentos', 'Cada PDF debe completar su propia comprobación de contenido y firma.');
                 $this->mostrarToast('Cada PDF debe completar su propia comprobación de contenido y firma.', 'warning');
+
                 return;
             }
         }
@@ -1823,7 +1938,7 @@ final class RegistroSolicitudDeposito extends Component
                 }
                 $fecha = $previas[$nombre]['comprobado_en'] ?? null;
                 if (($firmas[$nombre] ?? null) === 'validando' && is_string($fecha)
-                    && \Illuminate\Support\Carbon::parse($fecha)->diffInSeconds(now(), true) < 180) {
+                    && Carbon::parse($fecha)->diffInSeconds(now(), true) < 180) {
                     continue;
                 }
                 $token = (string) Str::uuid();
@@ -1836,6 +1951,7 @@ final class RegistroSolicitudDeposito extends Component
             }
             $modelo->forceFill(['firmas_electronicas' => $firmas])->save();
             $this->firmasElectronicas = $firmas;
+
             return $pendientes;
         });
         foreach ($pendientes as $nombre => $pendiente) {
@@ -1871,7 +1987,9 @@ final class RegistroSolicitudDeposito extends Component
                     : 'El PDF no supera la comprobación de contenido.');
             if (($this->validacionArchivos[$nombre] ?? null) !== $estado) {
                 $this->dispatch('archivo-validado', nombre: $nombre, estado: $estado, mensaje: $mensaje);
-                if ($estado === 'valido') unset($this->rechazosDocumentos[$nombre]);
+                if ($estado === 'valido') {
+                    unset($this->rechazosDocumentos[$nombre]);
+                }
             }
             if (! in_array($estado, ['valido', 'analizando'], true)) {
                 $this->rechazosDocumentos[$nombre] = ['estado' => $estado, 'mensaje' => $mensaje];
@@ -1891,14 +2009,18 @@ final class RegistroSolicitudDeposito extends Component
         $pendientes = DB::transaction(function (): array {
             $modelo = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
                 ->where('investigador_id', (string) auth()->id())->lockForUpdate()->first();
-            if ($modelo === null) return [];
+            if ($modelo === null) {
+                return [];
+            }
             $previas = $modelo->validacion_previa_documentos ?? [];
             $estados = $modelo->validacion_archivos ?? [];
             $firmas = $modelo->firmas_electronicas ?? [];
             $pendientes = [];
             foreach (($modelo->documentos_cargados ?? []) as $nombre => $ruta) {
                 if (! in_array($nombre, $modelo->documentos_requeridos ?? [], true)
-                    || ($previas[$nombre]['ruta'] ?? null) === $ruta) continue;
+                    || ($previas[$nombre]['ruta'] ?? null) === $ruta) {
+                    continue;
+                }
                 $previas[$nombre] = ['ruta' => $ruta, 'firma_verificada' => false];
                 $estados[$nombre] = 'analizando';
                 unset($firmas[$nombre]);
@@ -1912,11 +2034,13 @@ final class RegistroSolicitudDeposito extends Component
                     'extraccion_estado' => 'pendiente', 'extraccion_metadatos' => $metadata])->save();
                 $this->extraccionProcesando = false;
             }
+
             return $pendientes;
         });
         foreach ($pendientes as $nombre => $ruta) {
-            try { ClasificarDocumentoCargadoJob::dispatch($this->solicitudId, $nombre, $ruta); }
-            catch (\Throwable $error) {
+            try {
+                ClasificarDocumentoCargadoJob::dispatch($this->solicitudId, $nombre, $ruta);
+            } catch (\Throwable $error) {
                 (new ClasificarDocumentoCargadoJob($this->solicitudId, $nombre, $ruta))->failed($error);
             }
         }
@@ -2133,7 +2257,9 @@ final class RegistroSolicitudDeposito extends Component
         }
 
         $erroresEditor = ['valorEditorManual', 'localidadEspecifica', 'datosEnEdicion.'.$this->claveSegura($campo)];
-        if ($this->campoEditorManual !== '') $erroresEditor[] = 'datosEnEdicion.'.$this->claveSegura($this->campoEditorManual);
+        if ($this->campoEditorManual !== '') {
+            $erroresEditor[] = 'datosEnEdicion.'.$this->claveSegura($this->campoEditorManual);
+        }
         $this->resetValidation($erroresEditor);
         $this->campoEditorManual = $campo;
         $this->localidadEspecifica = '';
@@ -2170,6 +2296,7 @@ final class RegistroSolicitudDeposito extends Component
         if ($campo === 'Cargo' && ! DB::table('usuarios.cargos_catalogo')
             ->where('nombre', $valor)->where('activo', true)->exists()) {
             $this->addError('valorEditorManual', 'Selecciona un cargo de la lista.');
+
             return;
         }
 
@@ -2323,6 +2450,7 @@ final class RegistroSolicitudDeposito extends Component
             if (! ReglaCantidadesMaterial::esValida($modeloCantidades->{$columnaCantidad} === null ? null : (string) $modeloCantidades->{$columnaCantidad})) {
                 $this->datosFaltantes = array_values(array_unique([...$this->datosFaltantes, $campoCantidad]));
                 $this->mostrarToast("{$campoCantidad} debe ser un número entero mayor que cero.", 'warning');
+
                 return;
             }
         }
@@ -2375,15 +2503,19 @@ final class RegistroSolicitudDeposito extends Component
 
     private function prepararRegistroNativoDesdeExpediente(): void
     {
-        if ($this->fuenteMatriz === 'excel') return;
+        if ($this->fuenteMatriz === 'excel') {
+            return;
+        }
         // Un detalle ya guardado se revisa con sus valores, incluso al retroceder.
         if ($this->matrizCargada && count($this->registrosNativos) === 1
-            && $this->registroNativo['scientificName'] !== '') return;
+            && $this->registroNativo['scientificName'] !== '') {
+            return;
+        }
 
         $this->registroNativo = array_replace($this->registroNativo, [
             'identifiedBy' => auth()->user()->name,
             'recordedBy' => auth()->user()->name,
-            'dateIdentified' => now(\Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::ZONA)->toDateString(),
+            'dateIdentified' => now(FechaEcuador::ZONA)->toDateString(),
             'individualCount' => (int) ($this->datosExtraidos['N.º Individuos'] ?? 1),
             'verbatimLocality' => (string) ($this->datosExtraidos['Localidad'] ?? $this->localidad),
             'researchPermit' => (string) ($this->datosExtraidos['N.º Permiso Recolección'] ?? 'No aplica — expediente justificado'),
@@ -2395,14 +2527,15 @@ final class RegistroSolicitudDeposito extends Component
 
     // ── Paso 6 – Detalle y matriz de especies ──────────────────────────────────────
 
-    public function descargarPlantillaMatriz(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function descargarPlantillaMatriz(): StreamedResponse
     {
         abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->exists(), 403);
+
         return response()->streamDownload(static function (): void {
-            $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
+            $libro = app(PlantillaMatrizDepositante::class)->crear();
             try {
-                (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
+                (new Xlsx($libro))->save('php://output');
             } finally {
                 $libro->disconnectWorksheets();
             }
@@ -2425,9 +2558,10 @@ final class RegistroSolicitudDeposito extends Component
                     'archivoMatriz.max' => 'El archivo no debe superar los 10 MB.',
                 ]
             );
-        } catch (\Illuminate\Validation\ValidationException $error) {
+        } catch (ValidationException $error) {
             $this->rechazarMatriz($error->validator->errors()->first());
             $this->resetErrorBag('archivoMatriz');
+
             return;
         }
 
@@ -2440,21 +2574,25 @@ final class RegistroSolicitudDeposito extends Component
             $parseado = $this->parsearXlsx($this->archivoMatriz);
         } catch (\DomainException $error) {
             $this->rechazarMatriz($error->getMessage());
+
             return;
         } catch (\Throwable $error) {
             report($error);
             $this->rechazarMatriz('No se pudo leer el Excel. Comprueba que sea un archivo .xlsx válido.');
+
             return;
         }
         $campos = $parseado['campos'];
         $registros = $parseado['registros'];
         if ($registros === []) {
             $this->rechazarMatriz('El Excel debe incluir las cabeceras de la matriz y al menos una fila de datos.');
+
             return;
         }
         foreach ($registros as $numeroRegistro => $registro) {
             if (trim((string) ($registro['scientificName'] ?? '')) === '') {
                 $this->rechazarMatriz('El registro '.($numeroRegistro + 1).' no contiene un nombre científico. Completa su clasificación y vuelve a subir el Excel.');
+
                 return;
             }
         }
@@ -2480,6 +2618,7 @@ final class RegistroSolicitudDeposito extends Component
                 $this->camposDwCRecomendados,
                 fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
             ));
+
             return;
         } catch (CamposObligatoriosVaciosException $e) {
             // Campos obligatorios (críticos) con celdas vacías: se bloquea la carga
@@ -2879,7 +3018,7 @@ final class RegistroSolicitudDeposito extends Component
      */
     private function parsearXlsx(mixed $archivo): array
     {
-        return app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\LectorMatrizDeposito::class)->leer($archivo->getRealPath());
+        return app(LectorMatrizDeposito::class)->leer($archivo->getRealPath());
     }
 
     private function rechazarMatriz(string $mensaje): void
@@ -3087,10 +3226,12 @@ final class RegistroSolicitudDeposito extends Component
     {
         if (! $this->matrizCargada && $this->registroNativo['scientificName'] === '') {
             $this->mostrarToast('Sube la tabla Excel Darwin Core del material para continuar.', 'error');
+
             return;
         }
         if ($this->archivoMatriz !== null && $this->errorMatriz !== '') {
             $this->mostrarToast('Corrige el archivo Excel y vuelve a subirlo antes de continuar.', 'error');
+
             return;
         }
         // Un registro se guarda con la acción de avance, sin un segundo botón "Agregar".
@@ -3118,6 +3259,7 @@ final class RegistroSolicitudDeposito extends Component
             }
             if ($this->registrosNativos === []) {
                 $this->registrosNativos = $registrosAnteriores;
+
                 return;
             }
             $this->guardarMatrizNativa();
@@ -3154,6 +3296,7 @@ final class RegistroSolicitudDeposito extends Component
         ));
         if ($erroresFormato > 0) {
             $this->mostrarToast('Corrige los errores de formato indicados en la matriz y vuelve a subir el Excel antes de continuar.', 'error');
+
             return;
         }
 
@@ -3181,9 +3324,10 @@ final class RegistroSolicitudDeposito extends Component
             return;
         }
 
-        $guardadoFirma = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class)->registro($documento);
+        $guardadoFirma = app(ColaFirmasSolicitudR2::class)->registro($documento);
         if ($guardadoFirma !== null && $guardadoFirma->estado !== 'confirmado') {
             $this->mostrarToast('El guardado seguro del PDF firmado sigue pendiente. Se reintentará automáticamente; podrás enviar la solicitud cuando termine.', 'warning');
+
             return;
         }
 
@@ -3218,6 +3362,7 @@ final class RegistroSolicitudDeposito extends Component
         $this->situacionRegulatoria = (string) ($model->situacion_regulatoria ?? '');
         $this->provincia = (string) ($model->provincia_origen ?? '');
         $this->localidadOrigenCodigo = (string) ($model->localidad_origen_codigo ?? '');
+        $this->finalidadActividad = $model->finalidad_actividad ?? '';
         $this->localidad = (string) ($model->localidad ?? '');
         $this->matrizCargada = $model->matriz_id !== null;
         $this->solicitudFirmada = $model->solicitud_firmada_en !== null;
@@ -3239,8 +3384,8 @@ final class RegistroSolicitudDeposito extends Component
 
     private function cargarFechasExpediente(SolicitudDepositoEloquentModel $model): void
     {
-        $this->fechaRegistroExpediente = \Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($model->created_at);
-        $this->fechaActualizacionExpediente = \Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($model->updated_at);
+        $this->fechaRegistroExpediente = FechaEcuador::formatear($model->created_at);
+        $this->fechaActualizacionExpediente = FechaEcuador::formatear($model->updated_at);
     }
 
     /**
@@ -3282,7 +3427,9 @@ final class RegistroSolicitudDeposito extends Component
 
     private function mostrarToast(string $message, string $variant = 'warning'): void
     {
-        if ($variant === 'success') return;
+        if ($variant === 'success') {
+            return;
+        }
         $this->dispatch('show-toast', message: $message, variant: $variant);
     }
 
@@ -3400,7 +3547,7 @@ final class RegistroSolicitudDeposito extends Component
             abort_unless(in_array($modelo->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409);
             abort_unless(($modelo->documentos_cargados[$nombre] ?? null) === ($this->documentosCargados[$nombre] ?? null),
                 409, 'El documento cambió en otra ventana. Actualiza el expediente antes de retirarlo.');
-            $cola = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\ColaFirmasSolicitudR2::class);
+            $cola = app(ColaFirmasSolicitudR2::class);
             $retiradaEnCola = (bool) config('deposit-storage.signature_async', false);
             if ($retiradaEnCola) {
                 $cola->encolarRetiroDocumento($modelo, $nombre);
@@ -3439,6 +3586,7 @@ final class RegistroSolicitudDeposito extends Component
             $this->nombresArchivosOriginales = $nombres;
             $this->firmasElectronicas = $firmas;
             $this->validacionArchivos = $validaciones;
+
             return $retiradaEnCola ? [] : array_values(array_unique([...$rutas, ...(is_string($ruta) && $ruta !== '' ? [$ruta] : [])]));
         });
     }
@@ -3727,16 +3875,19 @@ final class RegistroSolicitudDeposito extends Component
     public function render(): View
     {
         if ($this->getErrorBag()->any()) {
-            if ($this->paso === 0) $this->dispatch('solicitud-validation-errors');
+            if ($this->paso === 0) {
+                $this->dispatch('solicitud-validation-errors');
+            }
             $this->mostrarToast(implode(' ', array_unique($this->getErrorBag()->all())), 'warning');
         }
         if ($this->solicitudId !== null && $this->paso > 0 && $this->paso < 9
             && ! $this->solicitudInicialFirmada()) {
             $this->paso = 0;
         }
+
         return view('gestionprestamosrecepciones::investigador.registro-solicitud-deposito', [
             'provinciasCatalogo' => CatalogoTerritorialEcuador::provincias(),
-            'localidadesOrigenCatalogo' => $this->localidad !== '' ? [$this->localidad => $this->localidad] : [],
+            'localidadesOrigenCatalogo' => $this->localidadOrigenCodigo !== '' ? [$this->localidadOrigenCodigo => $this->localidad] : [],
             'localidadesCatalogo' => $this->valorEditorManual !== '' ? [$this->valorEditorManual => $this->valorEditorManual] : [],
             'institucionesCatalogo' => DB::table('usuarios.instituciones_catalogo')
                 ->where('activo', true)->orderBy('nombre')->pluck('nombre')->all(),
@@ -3744,5 +3895,4 @@ final class RegistroSolicitudDeposito extends Component
                 ->where('activo', true)->orderBy('nombre')->pluck('nombre')->all(),
         ]);
     }
-
 }

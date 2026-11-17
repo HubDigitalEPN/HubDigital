@@ -8,6 +8,8 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
+use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -24,9 +26,11 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolici
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\OrdenAccionCorrectivaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionConObservacionesNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionFinalizadaNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudEnviadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudRechazadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\IngresoPendienteDeposito;
 use NotificationChannels\WebPush\WebPushChannel;
 
 beforeAll(function (): void {
@@ -213,7 +217,7 @@ test('la notificación del portal queda disponible y SMTP se entrega por la cola
     app(NotificacionCuratoriaAdapter::class)->notificarNuevaSolicitudPorRevisar((string) $solicitud->id);
 
     expect($curador->notifications()->where('type', NuevaSolicitudPorRevisarNotification::class)->count())->toBe(1);
-    Queue::assertPushed(\Illuminate\Notifications\SendQueuedNotifications::class,
+    Queue::assertPushed(SendQueuedNotifications::class,
         fn ($trabajo) => $trabajo->channels === ['mail'] && $trabajo->queue === 'default'
             && $trabajo->notification->solicitudId === (string) $solicitud->id
             && $trabajo->notifiables->contains(fn ($destinatario) => $destinatario->id === $curador->id));
@@ -237,7 +241,7 @@ test('el destino de correo QA se limita al expediente local expresamente configu
             fn ($notificacion, array $canales, $destino) => ($destino->routes['mail'] ?? null) === 'qa@example.test'
                 && $notificacion->solicitudId === (string) $solicitud->id && $canales === ['mail']);
     } else {
-        Notification::assertNothingSentTo(new \Illuminate\Notifications\AnonymousNotifiable);
+        Notification::assertNothingSentTo(new AnonymousNotifiable);
         Notification::assertSentTo($curador, NuevaSolicitudPorRevisarNotification::class,
             fn ($notificacion, array $canales) => $canales === ['mail']);
     }
@@ -271,7 +275,11 @@ test('la matriz de notificaciones delimita destinatarios canales y enlaces de de
     $curaduria->notificarNuevaSolicitudPorRevisar((string) $solicitud->id);
     $curaduria->notificarDecisionDocumentalAOtrosCuradores((string) $solicitud->id, (string) $curadorResponsable->id, 'aprobada');
     $curaduria->notificarLoteRecibidoParaActa((string) $solicitud->id, (string) $administrador->id, true);
+    $solicitud->update(['estado' => EstadoSolicitudDeposito::AprobadaDocumentalmente->value, 'codigo_qr' => 'LOTE-QANOTI', 'aprobada_en' => now()]);
     $investigador->notificarCodigoQrDisponible((string) $solicitud->id, (string) $depositante->id, 'LOTE-QANOTI');
+    Storage::fake('local');
+    config(['deposit-storage.driver' => 'local', 'deposit-storage.require_remote' => false]);
+    app(IngresoPendienteDeposito::class)->procesar($solicitud->id);
     $investigador->notificarCorreccionesCuratoriales((string) $solicitud->id, (string) $depositante->id, [['campo' => 'localidad', 'anterior' => 'A', 'nuevo' => 'B', 'especie' => 'QA']]);
     $investigador->notificarRechazoSolicitud((string) $solicitud->id, (string) $depositante->id, 'Motivo sintético');
     $investigador->notificarRecepcionFinalizada((string) $solicitud->id, (string) $depositante->id, 'Pendiente de ingreso');
@@ -285,7 +293,7 @@ test('la matriz de notificaciones delimita destinatarios canales y enlaces de de
     Notification::assertNotSentTo([$curadorResponsable, $depositante, $ajeno], DecisionDocumentalCuradorNotification::class);
     Notification::assertSentTo([$curadorResponsable, $otroCurador, $administrador], LoteRecibidoParaActaNotification::class);
     Notification::assertNotSentTo([$depositante, $ajeno], LoteRecibidoParaActaNotification::class);
-    Notification::assertSentTo($depositante, \Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudEnviadaNotification::class);
+    Notification::assertSentTo($depositante, SolicitudEnviadaNotification::class);
 
     foreach ([
         CodigoQrDisponibleNotification::class,

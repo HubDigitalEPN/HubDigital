@@ -27,7 +27,7 @@
         </div>
     </div>
 
-    @if($deposito->estado === 'Aprobada Documentalmente' && !$deposito->contenido_validado_en)
+    @if($deposito->estado === 'Aprobada Documentalmente' && !$deposito->contenido_validado_en && !$procesoCerrado)
         <flux:button variant="primary" :href="$deposito->recepcion_qr_en ? route('depositos.ingreso.contenido', $deposito->id) : url(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->urlQr($deposito))">{{ $deposito->recepcion_qr_en ? 'Registrar y validar contenido recibido' : 'Validar documento de ingreso' }}</flux:button>
     @endif
 
@@ -250,6 +250,10 @@
                             <flux:badge color="green">Cerrado</flux:badge>
                             <flux:button icon="arrow-down-tray" href="{{ route('prestamos.deposito.acta-recepcion', ['id' => $deposito->id, 'descargar' => 1]) }}">Acta firmada</flux:button>
                         @else
+                        <flux:button icon="qr-code" class="w-full sm:w-auto" wire:navigate
+                            href="{{ url(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito::class)->urlQr($deposito)) }}">
+                            Documento de ingreso y entregas
+                        </flux:button>
                         <flux:button variant="primary" icon="document-check" class="w-full sm:w-auto" wire:navigate
                             href="{{ route('prestamos.curador.deposito.acta', $deposito->id) }}">
                             Seguimiento de recepción y acta final

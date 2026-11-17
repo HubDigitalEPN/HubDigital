@@ -43,13 +43,14 @@ final class AceptarRecepcionConObservacionesHandler
             throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
         }
 
+        $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
+        $solicitud?->asegurarContenidoRecepcionValidado();
+
         $itemsNoConformes = array_map(
             static fn (string $item): ItemChecklistRecepcion => ItemChecklistRecepcion::from($item),
             array_values($input->itemsNoConformes),
         );
         $lote->aceptarConObservaciones($itemsNoConformes, $input->comentario, $input->receptorId);
-
-        $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 
         $this->transactionManager->executeTransactional(function () use ($lote): void {
             $this->recepcionRepo->guardar($lote);

@@ -12,8 +12,8 @@ use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\Ports\UsuarioNombrePort;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\PriorizarSolicitudEnCola\PriorizarSolicitudEnColaHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\PriorizarSolicitudEnCola\PriorizarSolicitudEnColaInput;
-use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRecepcionLote;
+use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\PrioridadSolicitud;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\RecepcionLoteEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
@@ -120,6 +120,7 @@ final class BandejaDepositos extends Component
         $idsPorNombre = $this->busqueda !== '' ? $usuarios->buscarIdsPorNombre($this->busqueda) : [];
 
         $query = SolicitudDepositoEloquentModel::query()
+            ->with('recepcionLote:id,solicitud_deposito_id,firmada_en,acta_firmada_ruta')
             ->when($this->tipoTramite !== '', fn ($q) => $q->where('tipo_tramite', $this->tipoTramite))
             ->when($this->busqueda !== '', function ($q) use ($idsPorNombre): void {
                 $q->where(function ($sub) use ($idsPorNombre): void {

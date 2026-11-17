@@ -16,6 +16,7 @@ final readonly class AprobarDocumentalmenteSolicitudOutput
         public string $codigoQR,
         public bool $codigoQRDisponible,
         public bool $notificacionInvestigadorEnviada,
+        public bool $notificacionInvestigadorProgramada = false,
     ) {}
 
     public static function fromPrimitives(
@@ -24,6 +25,7 @@ final readonly class AprobarDocumentalmenteSolicitudOutput
         string $codigoQR,
         bool $codigoQRDisponible,
         bool $notificacionInvestigadorEnviada,
+        bool $notificacionInvestigadorProgramada = false,
     ): self {
         return new self(
             estado: $estado,
@@ -31,6 +33,7 @@ final readonly class AprobarDocumentalmenteSolicitudOutput
             codigoQR: $codigoQR,
             codigoQRDisponible: $codigoQRDisponible,
             notificacionInvestigadorEnviada: $notificacionInvestigadorEnviada,
+            notificacionInvestigadorProgramada: $notificacionInvestigadorProgramada,
         );
     }
 }

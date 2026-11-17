@@ -6,6 +6,8 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\FlujoIngresoDeposito;
 
 /**
  * Modelo Eloquent para la tabla 'recepciones.solicitudes_deposito'.
@@ -23,7 +25,7 @@ final class SolicitudDepositoEloquentModel extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id',
+        'id', 'finalidad_actividad', 'historial_entregas',
         'documento_ingreso_ruta', 'documento_ingreso_sha256', 'recepcion_qr_en', 'recepcion_qr_por',
         'recepcion_qr_rechazada_en', 'recepcion_qr_motivo', 'contenido_validado_en', 'contenido_validado_por',
         'numero',
@@ -87,6 +89,7 @@ final class SolicitudDepositoEloquentModel extends Model
     ];
 
     protected $casts = [
+        'historial_entregas' => 'array',
         'recepcion_qr_en' => 'datetime', 'recepcion_qr_rechazada_en' => 'datetime', 'contenido_validado_en' => 'datetime',
         'sin_documentacion' => 'boolean',
         'documentos_adjuntos' => 'array',
@@ -117,10 +120,17 @@ final class SolicitudDepositoEloquentModel extends Model
     /** La etapa física se muestra sin alterar el estado documental ni el flujo del acta. */
     public function estadoPresentacion(): string
     {
-        if ($this->estado !== 'Aprobada Documentalmente') return $this->estado;
-        if ($this->contenido_validado_en) return 'Recibida y validada';
-        if ($this->recepcion_qr_en) return 'Recibida · pendiente de validar contenido';
-        return $this->estado;
+        return $this->flujoIngreso()->etiqueta();
+    }
+
+    public function flujoIngreso(): FlujoIngresoDeposito
+    {
+        return new FlujoIngresoDeposito($this);
+    }
+
+    public function recepcionLote(): HasOne
+    {
+        return $this->hasOne(RecepcionLoteEloquentModel::class, 'solicitud_deposito_id');
     }
 
     public function alertas(): HasMany

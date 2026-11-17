@@ -64,6 +64,7 @@ final class BandejaRecepciones extends Component
     public function render(UsuarioNombrePort $usuarios): View
     {
         $solicitudesBase = SolicitudDepositoEloquentModel::query()
+            ->with('recepcionLote:id,solicitud_deposito_id,firmada_en,acta_firmada_ruta')
             ->where('estado', EstadoSolicitudDeposito::AprobadaDocumentalmente->value)
             ->whereNotNull('codigo_qr')
             ->when(trim($this->busqueda) !== '', function ($query): void {

@@ -7,15 +7,18 @@ namespace Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Inve
 use App\Enums\RolUsuario;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\ConsultarDetalleRecepcion\ConsultarDetalleRecepcionInput;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\EntregaFisicaAnunciadaNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\IngresoPendienteDeposito;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
 
@@ -25,6 +28,7 @@ use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
 #[Layout('layouts.app', params: ['title' => 'Detalle de Depósito'])]
 final class DetalleDeposito extends Component
 {
+    #[Locked]
     public string $id;
 
     public bool $mostrarEntrega = false;
@@ -59,6 +63,8 @@ final class DetalleDeposito extends Component
             ->where('investigador_id', (string) auth()->id())
             ->where('estado', 'Aprobada Documentalmente')
             ->firstOrFail();
+
+        abort_unless($deposito->flujoIngreso()->puedeRecibir(), 409, 'Este expediente ya no admite un aviso de entrega.');
 
         $datos = $this->validate([
             'entregaProgramadaPara' => ['required', 'date_format:Y-m-d\\TH:i', 'after_or_equal:'.now(FechaEcuador::ZONA)->format('Y-m-d\\TH:i')],
@@ -98,6 +104,7 @@ final class DetalleDeposito extends Component
         AlmacenamientoDepositos $almacenamiento,
     ): View {
         $deposito = SolicitudDepositoEloquentModel::find($this->id);
+        $ingresoPendiente = DB::table(IngresoPendienteDeposito::TABLA)->where('solicitud_id', $this->id)->first();
         $matriz = $deposito ? $matrizRepo->buscarPorSolicitudId($this->id) : null;
         // Estado de la recepción física (para exponer la descarga del Acta de Recepción).
         $recepcion = $deposito ? $recepcionHandler->handle(new ConsultarDetalleRecepcionInput($this->id)) : null;
@@ -108,6 +115,7 @@ final class DetalleDeposito extends Component
 
         return view('gestionprestamosrecepciones::investigador.detalle-deposito', compact(
             'deposito',
+            'ingresoPendiente',
             'matriz',
             'recepcion',
             'actaTransferenciaDisponible',

@@ -10,5 +10,6 @@ final readonly class IniciarRecepcionLoteInput
     public function __construct(
         public string $solicitudId,
         public string $receptorId,
+        public bool $desdeQr = false,
     ) {}
 }

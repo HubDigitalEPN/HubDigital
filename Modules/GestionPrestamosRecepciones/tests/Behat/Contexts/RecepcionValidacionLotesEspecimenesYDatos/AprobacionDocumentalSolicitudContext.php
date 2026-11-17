@@ -407,13 +407,13 @@ final class AprobacionDocumentalSolicitudContext extends BaseContext
         );
     }
 
-    #[Then('se notifica al investigador que ya puede descargar el Código QR para la entrega física')]
+    #[Then('se programa el aviso al investigador para descargar el documento de ingreso con QR')]
     public function seNotificaAlInvestigadorQueYaPuedeDescargarElCodigoQr(): void
     {
         Assert::assertNotNull($this->ultimaRespuesta, 'El handler no retornó ninguna respuesta');
         Assert::assertTrue(
-            $this->ultimaRespuesta->notificacionInvestigadorEnviada,
-            'Se esperaba que el investigador fuera notificado para descargar el Código QR'
+            $this->ultimaRespuesta->notificacionInvestigadorProgramada,
+            'Se esperaba registrar el aviso durable para descargar el documento de ingreso con QR'
         );
     }
 

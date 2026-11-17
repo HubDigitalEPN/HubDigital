@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\GestionPrestamosRecepciones\Application\Ports\NotificacionInvestigadorPort;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\ActaRecepcionFirmadaNotification;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CodigoQrDisponibleNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CorreccionCuratorialNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\OrdenAccionCorrectivaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionConObservacionesNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\RecepcionFinalizadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudRechazadaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\IngresoPendienteDeposito;
 
 /**
  * Adaptador de notificaciones al depositante. Entrega por correo y por el portal
@@ -25,14 +25,7 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
 {
     public function notificarCodigoQrDisponible(string $solicitudId, string $investigadorId, string $codigoQR): string
     {
-        $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
-
-        return $this->notificar($investigadorId, new CodigoQrDisponibleNotification(
-            solicitudId: $solicitudId,
-            numero: $deposito?->numero,
-            codigoQR: $codigoQR,
-            tipoTramite: $deposito?->tipo_tramite ?? 'Depósito',
-        ), 'Código QR disponible', $solicitudId);
+        return app(IngresoPendienteDeposito::class)->registrar($solicitudId);
     }
 
     public function notificarRechazoSolicitud(string $solicitudId, string $investigadorId, string $comentario): string
@@ -113,8 +106,7 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
 
     /**
      * Entrega la notificación al depositante de forma defensiva: si el usuario no
-     * existe (p. ej. en pruebas), registra el evento y devuelve igualmente una
-     * referencia no vacía para preservar el contrato del puerto.
+     * existe, registra la omisión sin acreditar un envío inexistente.
      */
     private function notificar(string $investigadorId, object $notificacion, string $contexto, string $solicitudId): string
     {
@@ -127,7 +119,7 @@ final class NotificacionInvestigadorAdapter implements NotificacionInvestigadorP
                 'solicitud_id' => $solicitudId, 'investigador_id' => $investigadorId,
             ]);
 
-            return $referencia;
+            return '';
         }
 
         $usuario->notify($notificacion);

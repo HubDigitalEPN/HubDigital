@@ -60,8 +60,14 @@ final class ReglaDocumentacionRequerida
      *
      * @throws \DomainException Si no existe regla para la combinación origen/situación regulatoria.
      */
-    public function determinar(string $tipoTramite, string $origenRecoleccion, string $situacionRegulatoria, ?string $provinciaOrigen = null): array
+    public function determinar(string $tipoTramite, string $origenRecoleccion, string $situacionRegulatoria, ?string $provinciaOrigen = null, ?string $finalidadActividad = null): array
     {
+        if ($finalidadActividad !== null && ! in_array($finalidadActividad, ['Investigación', 'Consultoría'], true)) {
+            throw new \DomainException('Selecciona investigación o consultoría.');
+        }
+        if ($finalidadActividad === 'Consultoría' && self::sinPermisosNacionales($tipoTramite, $origenRecoleccion, $situacionRegulatoria)) {
+            throw new \DomainException('La consultoría requiere los permisos de recolección y movilización. No puede tramitarse con la opción sin permisos.');
+        }
         $base = self::FORMATO_BASE[$tipoTramite] ?? [];
 
         // Los documentos suplementarios (MAE, Movilización, etc.) solo aplican a Depósito

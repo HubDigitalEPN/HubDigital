@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Repositories;
 
-use DateTimeImmutable;
 use App\Support\ConfiguracionExpediente;
+use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\AlertaSolicitud;
 use Modules\GestionPrestamosRecepciones\Domain\Entities\SolicitudDeposito;
@@ -22,6 +22,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoAlerta;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\TipoTramite;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\AlertaSolicitudEloquentModel;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\SolicitudDepositoEloquentModel;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Services\EliminarBorradorConArchivos;
 
 /**
  * Implementación Eloquent del repositorio de solicitudes de depósito.
@@ -73,6 +74,7 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
                 'estado' => $solicitud->estado()->value,
                 'origen_recoleccion' => $solicitud->origenRecoleccion(),
                 'situacion_regulatoria' => $solicitud->situacionRegulatoria(),
+                'finalidad_actividad' => $solicitud->finalidadActividad(),
                 'provincia_origen' => $solicitud->provinciaOrigen(),
                 'canton_origen' => $solicitud->cantonOrigen(),
                 'localidad_origen_codigo' => $solicitud->localidadOrigenCodigo(),
@@ -180,7 +182,7 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
             ->get();
         foreach ($borradores as $borrador) {
-            app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\EliminarBorradorConArchivos::class)($borrador);
+            app(EliminarBorradorConArchivos::class)($borrador);
         }
     }
 
@@ -220,6 +222,9 @@ final class EloquentSolicitudDepositoRepository implements SolicitudDepositoRepo
             estado: EstadoSolicitudDeposito::from($model->estado),
             origenRecoleccion: $model->origen_recoleccion,
             situacionRegulatoria: $model->situacion_regulatoria,
+            finalidadActividad: $model->finalidad_actividad,
+            recepcionPorQr: $model->recepcion_qr_en !== null,
+            contenidoRecepcionValidado: $model->contenido_validado_en !== null,
             provinciaOrigen: $model->provincia_origen,
             cantonOrigen: $model->canton_origen,
             localidadOrigenCodigo: $model->localidad_origen_codigo,

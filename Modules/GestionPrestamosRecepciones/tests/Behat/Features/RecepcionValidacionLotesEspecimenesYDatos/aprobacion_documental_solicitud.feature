@@ -23,7 +23,7 @@ Característica: Aprobación documental de la solicitud
         Y la aprobación queda registrada en la auditoría con el curador responsable
         Y se asigna un Código QR único para identificar el lote de muestras
         Y el Código QR queda disponible para el investigador
-        Y se notifica al investigador que ya puede descargar el Código QR para la entrega física
+        Y se programa el aviso al investigador para descargar el documento de ingreso con QR
 
         Ejemplos:
             | tipo_alerta                         |
@@ -66,7 +66,7 @@ Característica: Aprobación documental de la solicitud
         Y se genera el "Acta de Transferencia de Dominio"
         Y se asigna un Código QR único para identificar el lote de muestras
         Y el Código QR queda disponible para el investigador
-        Y se notifica al investigador que ya puede descargar el Código QR para la entrega física
+        Y se programa el aviso al investigador para descargar el documento de ingreso con QR
 
     @donacion
     Esquema del escenario: El curador rechaza una donación cuya Carta de Cesión no corresponde

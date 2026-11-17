@@ -10,11 +10,11 @@ namespace Modules\GestionPrestamosRecepciones\Application\UseCases\DeterminarDoc
 final readonly class DeterminarDocumentacionRequeridaInput
 {
     /**
-     * @param string|null $solicitudId ID de la solicitud (opcional).
-     * @param string|null $tipoTramite Tipo de trámite (opcional).
-     * @param string|null $origenRecoleccion Origen de recolección (opcional).
-     * @param string|null $situacionRegulatoria Situación regulatoria (opcional).
-     * @param string|null $provinciaOrigen Provincia de origen (opcional).
+     * @param  string|null  $solicitudId  ID de la solicitud (opcional).
+     * @param  string|null  $tipoTramite  Tipo de trámite (opcional).
+     * @param  string|null  $origenRecoleccion  Origen de recolección (opcional).
+     * @param  string|null  $situacionRegulatoria  Situación regulatoria (opcional).
+     * @param  string|null  $provinciaOrigen  Provincia de origen (opcional).
      */
     public function __construct(
         public ?string $solicitudId = null,
@@ -22,5 +22,6 @@ final readonly class DeterminarDocumentacionRequeridaInput
         public ?string $origenRecoleccion = null,
         public ?string $situacionRegulatoria = null,
         public ?string $provinciaOrigen = null,
+        public ?string $finalidadActividad = null,
     ) {}
 }

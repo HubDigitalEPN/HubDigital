@@ -21,6 +21,26 @@
             };
         @endphp
 
+        <p role="status" class="font-semibold">{{ $deposito->estadoPresentacion() }}</p>
+        @if($ingresoPendiente)
+            <p class="text-sm text-text-secondary" data-estado-aviso-ingreso>
+                Aviso del documento de ingreso:
+                {{ match($ingresoPendiente->estado) {
+                    'completado' => 'Aceptado por el transporte de correo; esto no confirma la llegada a la bandeja del destinatario.',
+                    'fallido' => 'No se pudo completar. Curaduría debe revisar y reintentar.',
+                    'revision_necesaria' => 'Resultado del correo incierto. Curaduría debe verificarlo antes de reenviar.',
+                    'cancelado' => 'Cancelado: la aprobación ya no está vigente.',
+                    default => 'Pendiente de preparar o enviar. Puedes descargar el documento desde este expediente.',
+                } }}
+            </p>
+        @endif
+        @if($deposito->documento_ingreso_ruta && !$deposito->flujoIngreso()->puedeRecibir())
+            <a href="{{ route('depositos.ingreso.documento', $deposito->id) }}" class="text-science-blue underline" target="_blank" rel="noopener">Consultar documento de ingreso del expediente</a>
+        @endif
+        @if($deposito->recepcion_qr_rechazada_en)
+            <flux:callout variant="warning" heading="Entrega no recibida">{{ $deposito->recepcion_qr_motivo }}. El Curador debe autorizar un nuevo intento.</flux:callout>
+        @endif
+
 
         @if($deposito->recepcion_qr_en)
             <flux:callout variant="success" :heading="$deposito->contenido_validado_en ? 'Recibida y validada' : 'Recibida · pendiente de validación técnica'">El Técnico registró la entrega del material físico.</flux:callout>
@@ -73,7 +93,7 @@
                 @endif
 
                 {{-- Código QR del lote (solicitud aprobada) --}}
-                @if($deposito->estado === 'Aprobada Documentalmente' && $deposito->codigo_qr)
+                @if($deposito->flujoIngreso()->puedeRecibir())
                     <div class="rounded-lg border border-success/40 bg-success/5 shadow-sm overflow-visible">
                         <div class="px-5 py-4 border-b border-success/30 flex items-center gap-3">
                             <div class="flex h-8 w-8 items-center justify-center rounded-full bg-success text-white shrink-0">
@@ -116,7 +136,7 @@
                         true,
                     );
                 @endphp
-                @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
+                @if($deposito->flujoIngreso()->puedeRecibir())
                     <section class="rounded-lg border border-science-blue/30 bg-science-blue/5 p-5 shadow-sm" aria-labelledby="entrega-fisica">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div class="flex gap-3">
@@ -142,7 +162,7 @@
                         @endif
                     </section>
                 @endif
-                @if($deposito->estado === 'Aprobada Documentalmente' && !$recepcionFinalizada)
+                @if($deposito->flujoIngreso()->puedeRecibir())
                     <div class="rounded-lg border-2 border-warning/40 bg-surface shadow-sm overflow-visible">
                         <div class="px-5 py-4 border-b border-warning/20 bg-warning/5 flex items-start gap-3">
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">

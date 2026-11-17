@@ -18,6 +18,8 @@ use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarDocumentalme
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\AprobarRecepcionLote\AprobarRecepcionLoteOutput;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesHandler;
+use Modules\GestionPrestamosRecepciones\Application\UseCases\CompletarDatosManualmente\CompletarDatosManualesInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoHandler;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\EnviarSolicitudDeposito\EnviarSolicitudDepositoInput;
 use Modules\GestionPrestamosRecepciones\Application\UseCases\IniciarRecepcionLote\IniciarRecepcionLoteHandler;
@@ -205,6 +207,17 @@ test('el depósito completo persiste actores, documentos, taxonomía, recepción
     foreach ($expediente->documentos_adjuntos as $documento) {
         expect(app(\Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos::class)->existe($documento['ruta']))->toBeTrue();
     }
+
+    // Las cantidades del permiso son sugerencias; el depositante declara su entrega.
+    expect($expediente->nro_individuos)->toBeNull()
+        ->and($expediente->datos_faltantes)->toContain('N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes');
+    foreach (['N.º Individuos' => '12', 'N.º Morfoespecies' => '1', 'N.º Lotes' => '1'] as $campo => $valor) {
+        app(CompletarDatosManualesHandler::class)(new CompletarDatosManualesInput(
+            solicitudId: (string) $solicitud->id(), campo: $campo, valor: $valor,
+        ));
+    }
+    expect($expediente->fresh()->datos_ingresados_manualmente)
+        ->toContain('N.º Individuos', 'N.º Morfoespecies', 'N.º Lotes');
 
     $matrices = app(MatrizEspeciesRepositoryInterface::class);
     $matriz = MatrizEspecies::crear(

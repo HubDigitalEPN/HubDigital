@@ -69,6 +69,7 @@ final class MisDepositos extends Component
             ->where('estado', EstadoSolicitudDeposito::EnBorrador->value)
             ->orderByDesc('updated_at')->first(['id', 'numero', 'paso_actual', 'updated_at']);
         $query = SolicitudDepositoEloquentModel::where('investigador_id', (string) auth()->id())
+            ->with('recepcionLote:id,solicitud_deposito_id,firmada_en,acta_firmada_ruta')
             ->where('estado', '!=', EstadoSolicitudDeposito::EnBorrador->value);
 
         if ($this->filtroTipo !== '') {
@@ -82,7 +83,9 @@ final class MisDepositos extends Component
         } elseif ($this->filtroEstado !== '') {
             $query->where('estado', $this->filtroEstado);
         }
-        if ($this->soloEnProceso) $query->whereIn('estado', $estadosActivos);
+        if ($this->soloEnProceso) {
+            $query->whereIn('estado', $estadosActivos);
+        }
 
         if ($this->filtroDesde !== '' && ! $erroresFechas->has('filtroDesde')) {
             $query->whereDate('created_at', '>=', $this->filtroDesde);

@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\RolUsuario;
+use App\Livewire\Administracion\GestionUsuarios;
 use App\Livewire\CapturaDarwinCore;
 use App\Models\User;
+use App\Support\DescargasCatalogo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +14,7 @@ use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\CodigoQrDisponibleNotification;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\EstadoEntregaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\LoteRecibidoParaActaNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\NuevaSolicitudPorRevisarNotification;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Notifications\SolicitudEnviadaNotification;
@@ -21,8 +24,13 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngreso
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\RecepcionQrDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ContenidoRecepcion;
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ValidarIngresoQr;
+use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito;
+use Smalot\PdfParser\Parser;
+use Tests\DatabaseFeatureTestCase;
 
-uses(Tests\DatabaseFeatureTestCase::class);
+uses(DatabaseFeatureTestCase::class);
 
 function solicitudIngresoQa(User $dueno, array $datos = []): Solicitud
 {
@@ -57,16 +65,16 @@ test('hay cinco perfiles operativos y los alias conservan préstamos y recepció
 });
 
 test('el público puede descargar selección y análisis y no el catálogo completo', function (): void {
-    expect(\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.resultados'))->toBeTrue()
-        ->and(\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.analisis'))->toBeTrue()
-        ->and(\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.completo'))->toBeFalse()
-        ->and(\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.ipt'))->toBeFalse();
+    expect(DescargasCatalogo::permitidas(boton: 'catalogo.resultados'))->toBeTrue()
+        ->and(DescargasCatalogo::permitidas(boton: 'catalogo.analisis'))->toBeTrue()
+        ->and(DescargasCatalogo::permitidas(boton: 'catalogo.completo'))->toBeFalse()
+        ->and(DescargasCatalogo::permitidas(boton: 'catalogo.ipt'))->toBeFalse();
     $this->get(route('portal.descarga', ['exportacion' => 'datos']))->assertForbidden();
     $this->get(route('portal.descarga', ['exportacion' => 'riqueza']))->assertOk();
     $externo = User::factory()->depositante()->create();
     DB::table('usuarios.configuracion_catalogo')->where('clave', 'descargas_autoservicio')->update(['habilitado' => true]);
     DB::table('usuarios.permisos_botones')->updateOrInsert(['boton' => 'catalogo.ipt', 'rol' => 'DEPOSITANTE'], ['ver' => true, 'usar' => true]);
-    expect(\App\Support\DescargasCatalogo::permitidas($externo, 'catalogo.ipt'))->toBeFalse();
+    expect(DescargasCatalogo::permitidas($externo, 'catalogo.ipt'))->toBeFalse();
 
 });
 
@@ -122,7 +130,9 @@ test('envío avisa al dueño curador Técnico y creador sin incluir Pasantes', f
     $s = solicitudIngresoQa($dueno, ['estado' => 'Pendiente de Revisión por Curaduría']);
     app(NotificacionCuratoriaAdapter::class)->notificarNuevaSolicitudPorRevisar($s->id);
     Notification::assertSentTo($dueno, SolicitudEnviadaNotification::class);
-    foreach ([$curador, $tecnico, $creador] as $usuario) Notification::assertSentTo($usuario, NuevaSolicitudPorRevisarNotification::class);
+    foreach ([$curador, $tecnico, $creador] as $usuario) {
+        Notification::assertSentTo($usuario, NuevaSolicitudPorRevisarNotification::class);
+    }
     Notification::assertNotSentTo($pasante, NuevaSolicitudPorRevisarNotification::class);
 });
 
@@ -134,8 +144,8 @@ test('el ingreso es un único PDF íntegro adjunto al correo y privado por solic
     expect(str_starts_with($pdf, '%PDF-'))->toBeTrue()->and($documentos->contenido($s->id))->toBe($pdf);
     $s->refresh();
     expect($s->documento_ingreso_sha256)->toBe(hash('sha256', $pdf));
-    $texto = (new \Smalot\PdfParser\Parser)->parseContent($pdf)->getText();
-    expect($texto)->toContain($s->numero, $s->codigo_qr, 'Documento de ingreso', \Modules\GestionPrestamosRecepciones\Presentation\Support\FechaEcuador::formatear($s->aprobada_en));
+    $texto = (new Parser)->parseContent($pdf)->getText();
+    expect($texto)->toContain($s->numero, $s->codigo_qr, 'Documento de ingreso', FechaEcuador::formatear($s->aprobada_en));
     $correo = (new CodigoQrDisponibleNotification($s->id, $s->numero, $s->codigo_qr, $s->tipo_tramite))->toMail($dueno);
     expect($correo->rawAttachments)->toHaveCount(1)->and($correo->rawAttachments[0]['data'])->toBe($pdf);
     $this->actingAs($dueno)->get(route('depositos.ingreso.documento', $s->id))->assertOk()->assertHeader('Content-Type', 'application/pdf');
@@ -146,14 +156,14 @@ test('el ingreso es un único PDF íntegro adjunto al correo y privado por solic
     $this->actingAs(User::factory()->depositante()->create())->get(route('depositos.ingreso.documento', $s->id))->assertForbidden();
     $this->get(route('prestamos.deposito.qr', $s->id))->assertForbidden();
     Storage::disk('local')->put($s->documento_ingreso_ruta, 'alterado');
-    expect(fn () => $documentos->contenido($s->id))->toThrow(\RuntimeException::class);
+    expect(fn () => $documentos->contenido($s->id))->toThrow(RuntimeException::class);
 });
 
 test('el QR exige firma y Técnico autenticado y abrirlo no recibe el material', function (): void {
     $s = solicitudIngresoQa(User::factory()->depositante()->create());
     $tecnico = User::factory()->receptor()->create();
     $url = url(app(DocumentoIngresoDeposito::class)->urlQr($s));
-    $this->actingAs($tecnico)->get($url)->assertOk()->assertSee('Aprobar recepción')->assertSee($s->codigo_qr);
+    $this->actingAs($tecnico)->get($url)->assertOk()->assertSee('Recibir material')->assertSee($s->codigo_qr);
     expect($s->refresh()->recepcion_qr_en)->toBeNull();
     $this->get(str_replace('signature=', 'signature=x', $url))->assertForbidden();
     $this->actingAs(User::factory()->depositante()->create())->get($url)->assertForbidden();
@@ -188,28 +198,39 @@ test('el Técnico recibe por QR una sola vez y solo cierra tras tabular y verifi
     expect(DB::table('recepciones.contenido_recepcion')->where('solicitud_id', $s->id)->count())->toBe(1);
 });
 
-test('rechazar por QR exige motivo y bloquea recepción posterior conservando el historial', function (): void {
+test('no recibir una entrega por QR exige motivo y solo el Curador autoriza otro intento con historial', function (): void {
     $dueno = User::factory()->depositante()->create();
     $s = solicitudIngresoQa($dueno);
     $tecnico = User::factory()->receptor()->create();
     $pantalla = Livewire::actingAs($tecnico)->test(ValidarIngresoQr::class, ['id' => $s->id, 'codigo' => $s->codigo_qr]);
     $pantalla->call('rechazar')->assertHasErrors('motivo');
     $pantalla->set('motivo', 'El material no corresponde al documento presentado.')->call('rechazar')->assertHasNoErrors();
-    expect($s->refresh()->estado)->toBe('Rechazo Permanente')->and($s->recepcion_qr_motivo)->toContain('no corresponde');
-    Notification::assertSentTo($dueno, SolicitudRechazadaNotification::class);
+    expect($s->refresh()->estado)->toBe('Aprobada Documentalmente')->and($s->recepcion_qr_motivo)->toContain('no corresponde')
+        ->and($s->historial_entregas)->toHaveCount(1)->and($s->rechazada_en)->toBeNull();
+    Notification::assertSentTo($dueno, EstadoEntregaNotification::class);
+    Notification::assertNotSentTo($dueno, SolicitudRechazadaNotification::class);
     $pantalla->call('aprobar')->assertStatus(409);
+    Livewire::actingAs($tecnico)->test(ValidarIngresoQr::class, ['id' => $s->id, 'codigo' => $s->codigo_qr])
+        ->set('motivo', 'Lo autorizo yo')->call('autorizarNuevoIntento')->assertForbidden();
     expect(DB::table('recepciones.recepcion_lotes')->where('solicitud_deposito_id', $s->id)->exists())->toBeFalse();
+    $curador = User::factory()->curador()->create();
+    Livewire::actingAs($curador)->test(ValidarIngresoQr::class, ['id' => $s->id, 'codigo' => $s->codigo_qr])
+        ->call('autorizarNuevoIntento')->assertHasErrors('motivo')
+        ->set('motivo', 'Se coordina la entrega corregida.')->call('autorizarNuevoIntento')->assertHasNoErrors();
+    expect($s->refresh()->recepcion_qr_rechazada_en)->toBeNull()->and($s->historial_entregas)->toHaveCount(2)
+        ->and($s->historial_entregas[0]['motivo'])->toContain('no corresponde');
+    app(RecepcionQrDeposito::class)->decidir($s->id, $s->codigo_qr, $tecnico, true);
+    expect($s->refresh()->recepcion_qr_en)->not->toBeNull()->and($s->historial_entregas)->toHaveCount(3);
 });
-
 
 test('el paso uno abre en pantalla el PDF firmado íntegro sin alterar el documento', function (): void {
     $s = solicitudColaR2ParaPruebas();
     $dueno = User::findOrFail($s->investigador_id);
-    $pdf = app(\Modules\GestionPrestamosRecepciones\Presentation\Support\GeneradorPdfSolicitudDeposito::class)->generar($s);
+    $pdf = app(GeneradorPdfSolicitudDeposito::class)->generar($s);
     $ruta = 'prueba-preview/'.$s->id.'.pdf';
     Storage::disk('local')->put($ruta, $pdf);
     $s->forceFill(['solicitud_firmada_ruta' => $ruta, 'solicitud_firmada_sha256' => hash('sha256', $pdf), 'solicitud_firmada_en' => now()])->save();
-    Livewire::actingAs($dueno)->test(\Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito::class)
+    Livewire::actingAs($dueno)->test(RegistroSolicitudDeposito::class)
         ->assertSee('Ver documento firmado')->call('visualizarPdfSolicitud')->assertSet('mostrarVistaPdfSolicitud', true)
         ->assertSee('PDF completo de la solicitud de depósito');
     $this->get(route('depositos.solicitud.documento', $s->id))->assertOk()->assertContent($pdf);
@@ -230,10 +251,10 @@ test('el Curador asigna un Pasante de confianza y no modifica ni crea cuentas Cr
     $curador = User::factory()->curador()->create();
     $dueno = User::factory()->depositante()->create();
     $creador = User::factory()->administrador()->create();
-    Livewire::actingAs($curador)->test(\App\Livewire\Administracion\GestionUsuarios::class)->call('editar', $dueno->id)
+    Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $dueno->id)
         ->set('edicionRoles', [RolUsuario::PASANTE->value])->set('edicionRol', RolUsuario::PASANTE->value)->call('actualizar')->assertHasNoErrors();
     expect($dueno->fresh()->esPasante())->toBeTrue();
-    Livewire::actingAs($curador)->test(\App\Livewire\Administracion\GestionUsuarios::class)->call('editar', $creador->id)->assertForbidden();
-    Livewire::actingAs($curador)->test(\App\Livewire\Administracion\GestionUsuarios::class)->call('editar', $dueno->id)
+    Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $creador->id)->assertForbidden();
+    Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $dueno->id)
         ->set('edicionRoles', ['ADMIN'])->set('edicionRol', 'ADMIN')->call('actualizar')->assertForbidden();
 });

@@ -17,6 +17,7 @@ final readonly class AprobarDonacionConTransferenciaOutput
         public bool $codigoQRDisponible,
         public string $actaTransferenciaDominioRuta,
         public bool $notificacionInvestigadorEnviada,
+        public bool $notificacionInvestigadorProgramada = false,
     ) {}
 
     public static function fromPrimitives(
@@ -26,6 +27,7 @@ final readonly class AprobarDonacionConTransferenciaOutput
         bool $codigoQRDisponible,
         string $actaTransferenciaDominioRuta,
         bool $notificacionInvestigadorEnviada,
+        bool $notificacionInvestigadorProgramada = false,
     ): self {
         return new self(
             estado: $estado,
@@ -34,6 +36,7 @@ final readonly class AprobarDonacionConTransferenciaOutput
             codigoQRDisponible: $codigoQRDisponible,
             actaTransferenciaDominioRuta: $actaTransferenciaDominioRuta,
             notificacionInvestigadorEnviada: $notificacionInvestigadorEnviada,
+            notificacionInvestigadorProgramada: $notificacionInvestigadorProgramada,
         );
     }
 }

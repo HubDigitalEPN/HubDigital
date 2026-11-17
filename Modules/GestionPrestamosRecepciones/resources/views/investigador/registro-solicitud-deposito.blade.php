@@ -157,9 +157,10 @@
                         </flux:button>
                     @elseif($paso === 2)
                         <flux:button
+                            data-origen-continuar
                             variant="primary"
                             icon-trailing="arrow-right"
-                            x-on:click.prevent="$wire.guardarOrigenDesdeFormulario(document.getElementById('provincia-recoleccion')?.value ?? '', document.getElementById('localidad-recoleccion')?.value ?? '', document.querySelector('[data-situacion][aria-pressed=true]')?.dataset.situacion ?? '')"
+                            x-on:click.prevent="$wire.guardarOrigenDesdeFormulario(document.getElementById('provincia-recoleccion')?.value ?? '', document.getElementById('localidad-recoleccion')?.value ?? '', document.querySelector('[data-situacion][aria-pressed=true]')?.dataset.situacion ?? '', document.getElementById('finalidad-actividad')?.value ?? '')"
                             wire:loading.attr="disabled"
                             wire:target="guardarOrigenDesdeFormulario"
                         >

@@ -43,6 +43,9 @@ final class AprobarRecepcionLoteHandler
             throw RecepcionLoteNoEncontradaException::conSolicitud($input->solicitudId);
         }
 
+        $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
+        $solicitud?->asegurarContenidoRecepcionValidado();
+
         $items = array_map(
             fn (array $datosItem): ItemVerificacionRecepcion => new ItemVerificacionRecepcion(
                 item: $datosItem['item'],
@@ -52,8 +55,6 @@ final class AprobarRecepcionLoteHandler
         );
 
         $lote->verificarConforme($items, $input->receptorId);
-
-        $solicitud = $this->solicitudRepo->buscarPorId($solicitudId);
 
         $this->transactionManager->executeTransactional(function () use ($lote): void {
             $this->recepcionRepo->guardar($lote);

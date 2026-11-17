@@ -7,7 +7,7 @@ export async function comprobarUIFocal(caso) {
     if (!['localhost','127.0.0.1'].includes(location.hostname)) throw Error('Solo localhost.');
     const checks={};let metrics={};
     const model=(key,tag='input')=>all(tag).find(x=>x.getAttribute('wire:model')===key);
-    const fillModel=(key,value)=>{const el=model(key);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
+    const fillModel=(key,value)=>{const el=model(key)||model(key,'textarea');if(!el)throw Error('No existe el campo '+key);const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
     if(caso==='laboratorio') {
         await wait(()=>q('[data-lab-personal]'));
         const nav=all('nav[aria-label="Navegación principal"] a').map(x=>x.textContent.trim());
@@ -108,17 +108,61 @@ export async function comprobarUIFocal(caso) {
         const pdf=all('iframe').find(x=>x.title==='PDF completo de la solicitud de depósito' && x.getClientRects().length);
         checks.signedPreview=!new URL(pdf.src).searchParams.has('original') && pdf.src.includes('/documento.pdf');
         checks.frame=pdf.getBoundingClientRect().height>200;
+    } else if(caso==='depositos_origen') {
+        await wait(()=>q('#finalidad-actividad'));
+        const purpose=q('#finalidad-actividad');
+        purpose.value='Consultoría';purpose.dispatchEvent(new Event('change',{bubbles:true}));
+        await wait(()=>q('[data-situacion="Sin permisos del MAE"]')?.disabled);
+        checks.purpose=[...purpose.options].some(x=>x.value==='Investigación') && [...purpose.options].some(x=>x.value==='Consultoría');
+        checks.policy=q('[data-situacion="Sin permisos del MAE"]').disabled;
+        checks.required=purpose.required && q('#lov-localidadOrigenCodigo-boton')?.getAttribute('aria-required')==='true';
+        q('#lov-localidadOrigenCodigo-boton').click();await wait(()=>q('#lov-localidadOrigenCodigo-dialogo[open]'));
+        const search=q('#lov-localidadOrigenCodigo-buscar');search.value='QA ARQ INEC';search.dispatchEvent(new Event('input',{bubbles:true}));
+        await wait(()=>all('#lov-localidadOrigenCodigo-lista [role=option]').some(x=>x.textContent.includes('QA ARQ INEC')));
+        all('#lov-localidadOrigenCodigo-lista [role=option]').find(x=>x.textContent.includes('QA ARQ INEC')).click();
+        await wait(()=>!q('#lov-localidadOrigenCodigo-dialogo[open]') && q('#localidad-recoleccion')?.value.startsWith('QA-ARQ-UI'));
+        await frame();
+        checks.inec=q('#localidad-recoleccion').value.startsWith('QA-ARQ-UI') && q('#lov-localidadOrigenCodigo-valor').textContent.includes('QA ARQ INEC');
+        checks.focus=document.activeElement?.id==='lov-localidadOrigenCodigo-boton';
+        q('[data-situacion="Posee permisos del MAE"]').click();await wait(()=>q('[data-situacion="Posee permisos del MAE"]')?.getAttribute('aria-pressed')==='true');
+        q('[data-origen-continuar]').click();await wait(()=>!q('#finalidad-actividad') && document.body.textContent.includes('Copia de la autorización'));
+        checks.saved=true;
+    } else if(caso==='depositos_rechazo') {
+        await wait(()=>q('[data-validar-ingreso-qr]'));
+        all('button').find(x=>x.textContent.trim()==='No recibir entrega').click();await wait(()=>model('motivo','textarea'));
+        checks.reason=model('motivo','textarea').required;
+        fillModel('motivo','QA: caja con material distinto; coordinar entrega corregida.');
+        all('button').find(x=>x.textContent.trim()==='Confirmar entrega no recibida').click();
+        await wait(()=>q('[data-validar-ingreso-qr]').textContent.includes('Entrega no recibida') && !all('button').some(x=>x.textContent.trim()==='Recibir material'));
+        checks.refused=q('[data-validar-ingreso-qr]').textContent.includes('Se requiere autorización del Curador');
+        checks.blocked=!all('button').some(x=>x.textContent.trim()==='Recibir material');
+        checks.history=!!all('details li').find(x=>x.textContent.includes('caja con material distinto'));
+        checks.technicalCannotRetry=!all('button').some(x=>x.textContent.trim()==='Autorizar nuevo intento');
+    } else if(caso==='depositos_reintento') {
+        await wait(()=>all('button').some(x=>x.textContent.trim()==='Autorizar nuevo intento'));
+        checks.curator=!!model('motivo','textarea') && !all('button').some(x=>x.textContent.trim()==='Recibir material');
+        fillModel('motivo','QA: Curador autoriza la entrega corregida.');
+        all('button').find(x=>x.textContent.trim()==='Autorizar nuevo intento').click();await wait(()=>all('button').some(x=>x.textContent.trim()==='Recibir material'));
+        checks.authorized=!q('[data-validar-ingreso-qr]').textContent.includes('Se requiere autorización del Curador');
+        checks.history=all('details li').some(x=>x.textContent.includes('caja con material distinto')) && all('details li').some(x=>x.textContent.includes('Curador autoriza'));
+        checks.receiveEnabled=all('button').find(x=>x.textContent.trim()==='Recibir material')?.disabled===false;
+    } else if(caso==='depositos_cerrado') {
+        await wait(()=>document.body.textContent.includes('Finalizada · acta firmada'));
+        checks.closed=document.body.textContent.includes('Finalizada · acta firmada');
+        checks.noIntake=!all('button,a').some(x=>/^(Anunciar entrega|Actualizar entrega|Recibir material|Validar documento de ingreso)$/.test(x.textContent.trim()));
+        checks.documents=!!all('a').find(x=>x.textContent.trim()==='Consultar documento de ingreso del expediente');
+        checks.status=!!q('[data-estado-aviso-ingreso]');
     } else if(caso==='depositos_ingreso') {
         await wait(()=>q('[data-validar-ingreso-qr]'));
         const root=q('[data-validar-ingreso-qr]');
         checks.authentic=root.textContent.includes('QR auténtico') && root.textContent.includes('LOTE-');
         checks.characteristics=['Titular','Proyecto','Institución','Lotes','Individuos'].every(t=>all('dt').some(x=>x.textContent===t));
-        [...root.querySelectorAll('button')].find(x=>x.textContent.trim()==='Rechazar solicitud').click();await wait(()=>model('motivo','textarea'));
-        checks.reason=model('motivo','textarea').required && all('label,[data-flux-label]').some(x=>x.textContent.includes('Motivo de rechazo'));
+        [...root.querySelectorAll('button')].find(x=>x.textContent.trim()==='No recibir entrega').click();await wait(()=>model('motivo','textarea'));
+        checks.reason=model('motivo','textarea').required && all('label,[data-flux-label]').some(x=>x.textContent.includes('Motivo de no recepción'));
         [...root.querySelectorAll('button')].find(x=>x.textContent.trim()==='Cancelar').click();await wait(()=>!model('motivo','textarea'));
-        all('button').find(x=>x.textContent.trim()==='Aprobar recepción').click();await wait(()=>root.textContent.includes('pendiente de validar contenido'));
+        all('button').find(x=>x.textContent.trim()==='Recibir material').click();await wait(()=>root.textContent.includes('pendiente de validar contenido'));
         checks.received=!!all('a').find(x=>x.textContent.trim()==='Registrar y validar contenido');
-        checks.noDuplicate=!all('button').some(x=>x.textContent.trim()==='Aprobar recepción');
+        checks.noDuplicate=!all('button').some(x=>x.textContent.trim()==='Recibir material');
     } else if(caso==='depositos_contenido') {
         await wait(()=>q('[data-contenido-recepcion]'));
         const fill=fillModel;
@@ -140,6 +184,6 @@ export async function comprobarUIFocal(caso) {
         checks.saved=true;
         checks.labels=all('input').filter(x=>x.getAttribute('wire:model')?.startsWith('datos.')).every(x=>x.labels?.length>0 || x.getAttribute('aria-label') || (x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim())));
     } else throw Error('Contrato desconocido.');
-    if(['depositos_documento','depositos_firma','depositos_ingreso','depositos_contenido','captura_dwc'].includes(caso)) checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    if(caso.startsWith('depositos_') || caso==='captura_dwc') checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     return {caso,checks,metrics};
 }

@@ -13,6 +13,7 @@ use Modules\GestionPrestamosRecepciones\Application\Exceptions\SolicitudNoEncont
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoCuraduriaPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\CatalogoEspecimenesPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ColaRevisionCuratorialPort;
+use Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EstadoEspecimenCatalogoPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EventPublisherPort;
 use Modules\GestionPrestamosRecepciones\Application\Ports\ExtraccionDatosDocumentoPort;
@@ -46,6 +47,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudPrestamoRep
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\SolicitudProrrogaRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\VerificacionEspecimenesRepositoryInterface;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentColaRevisionCuratorialAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentEsquemaMatrizAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentGeneradorCodigoPrestamoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentHistorialAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentRevisionDocumentalAdapter;
@@ -55,15 +57,16 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestio
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEspecimenesAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioGestionColeccionEstadoEspecimenAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\InventarioIngresoColeccionAdapter;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelEventPublisherAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LaravelTransactionManagerAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\LocalExtraccionDatosDocumentoAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionCuratoriaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\NotificacionInvestigadorAdapter;
-use Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\JavaValidacionFirmaElectronicaAdapter;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\ConciliarDocumentosDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\EvaluarPlazosDevolucionTodosLosPrestamosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\LimpiarBorradoresAbandonadosCommand;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\ProcesarIngresosPendientesCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\RespaldarDocumentosDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\RestaurarDocumentosDepositosCommand;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Console\Commands\VerificarAlmacenamientoDepositosCommand;
@@ -138,7 +141,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         InvestigadorEmailPort::class => LaravelUserInvestigadorEmailAdapter::class,
         UsuarioNombrePort::class => LaravelUsuarioNombreAdapter::class,
         CatalogoCuraduriaPort::class => InventarioGestionColeccionCatalogoCuraduriaAdapter::class,
-        \Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort::class => \Modules\GestionPrestamosRecepciones\Infrastructure\Adapters\EloquentEsquemaMatrizAdapter::class,
+        EsquemaMatrizPort::class => EloquentEsquemaMatrizAdapter::class,
         CatalogoEspecimenesPort::class => InventarioGestionColeccionEspecimenesAdapter::class,
         EstadoEspecimenCatalogoPort::class => InventarioGestionColeccionEstadoEspecimenAdapter::class,
         ValidacionTaxonomicaPort::class => GbifValidacionTaxonomicaAdapter::class,
@@ -158,6 +161,7 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
         parent::register();
 
         $this->commands([
+            ProcesarIngresosPendientesCommand::class,
             LimpiarBorradoresAbandonadosCommand::class,
             EvaluarPlazosDevolucionTodosLosPrestamosCommand::class,
             VerificarAlmacenamientoDepositosCommand::class,
@@ -180,6 +184,8 @@ class GestionPrestamosRecepcionesServiceProvider extends ModuleServiceProvider
      */
     protected function configureSchedules(Schedule $schedule): void
     {
+        $schedule->command(ProcesarIngresosPendientesCommand::class)
+            ->everyMinute()->withoutOverlapping();
         $schedule->command(LimpiarBorradoresAbandonadosCommand::class)->daily();
         $schedule->command(EvaluarPlazosDevolucionTodosLosPrestamosCommand::class)->daily();
         $schedule->command(ConciliarDocumentosDepositosCommand::class)

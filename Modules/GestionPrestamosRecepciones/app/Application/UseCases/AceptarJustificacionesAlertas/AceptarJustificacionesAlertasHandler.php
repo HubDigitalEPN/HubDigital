@@ -41,8 +41,12 @@ final class AceptarJustificacionesAlertasHandler
 
         $solicitud->aceptarTodasLasJustificaciones($input->curadorId);
 
-        $this->transactionManager->executeTransactional(function () use ($solicitud): void {
+        $notifRef = '';
+        $this->transactionManager->executeTransactional(function () use ($solicitud, &$notifRef): void {
             $this->repo->guardar($solicitud);
+            $notifRef = $this->notificacionInvestigador->notificarCodigoQrDisponible(
+                (string) $solicitud->id(), $solicitud->investigadorId(), (string) $solicitud->codigoQR(),
+            );
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);
             }
@@ -50,18 +54,13 @@ final class AceptarJustificacionesAlertasHandler
 
         $codigoQR = (string) $solicitud->codigoQR();
 
-        $notifRef = $this->notificacionInvestigador->notificarCodigoQrDisponible(
-            solicitudId: (string) $solicitud->id(),
-            investigadorId: $solicitud->investigadorId(),
-            codigoQR: $codigoQR,
-        );
-
         return AceptarJustificacionesAlertasOutput::fromPrimitives(
             estado: $solicitud->estado()->value,
             curadorResponsable: $solicitud->curadorResponsable(),
             codigoQR: $codigoQR,
             codigoQRDisponible: $codigoQR !== '',
-            notificacionInvestigadorEnviada: $notifRef !== '',
+            notificacionInvestigadorEnviada: false,
+            notificacionInvestigadorProgramada: $notifRef !== '',
         );
     }
 }
