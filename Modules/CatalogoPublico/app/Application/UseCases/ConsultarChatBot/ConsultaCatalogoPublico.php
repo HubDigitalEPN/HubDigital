@@ -114,7 +114,7 @@ final class ConsultaCatalogoPublico
             && ! preg_match('/\b(?:esa especie|ese taxon|esos registros|esos ejemplares|estos registros)\b/', $normal);
         $coleccionExplicita = $coleccionExplicita || ($matriz && (bool) preg_match('/\b(?:catalogo|coleccion)\b.*\bcomplet[oa]\b|\b(?:tod[oa] (?:el catalogo|la coleccion)|global)\b/', $normal));
         $correction = (bool) preg_match('/^(perdon|corrijo|quise decir|queria decir|no )\b/', $normal);
-        $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^(?:y|solo|dame solo|quita|quitar|elimina)\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros|de esos dos registros)\b/', $normal);
+        $followup = (bool) preg_match('/^(?:y\s+de\s+|y\s+)?cuantos?\b|^(?:y|solo|dame solo|quita|quitar|elimina)\s+|^donde\s+los\s+encontraron\b|\b(?:esa especie|ese taxon|esos registros|de esos dos registros|esa consulta|consulta anterior|filtros anteriores)\b/', $normal);
         $queryText = $pregunta;
         $geografiasNegadas = [];
         if ($operadorProvincia === [] && $correction && str_starts_with($normal, 'no ')) {
@@ -131,7 +131,8 @@ final class ConsultaCatalogoPublico
         // Sin criterios nuevos, una matriz usa la página aplicada; fuera del
         // catálogo conserva la consulta anterior. «Completo» pide alcance global.
         if ($matriz && $entities === [] && ! $coleccionExplicita && ! $referenciaSeleccion && $alcanceConfirmado !== 'consulta') {
-            if ($seleccionPortal !== null) $referenciaSeleccion = true;
+            if ($followup && $contexto !== []) $entities = $contexto;
+            elseif ($seleccionPortal !== null) $referenciaSeleccion = true;
             else $entities = $contexto;
         }
         if (($correction || $followup || $retirarFiltro !== null) && ! $coleccionExplicita && ! $referenciaSeleccion && $contexto !== []) {
@@ -447,10 +448,14 @@ final class ConsultaCatalogoPublico
     {
         if (preg_match('/\bregistros\b.*\bindividuos?\s+o\s+(?:dos\s+)?especies\b/', $normal)) return ['registros', 'especies'];
         $unidad = '(?:registros|especimenes|ejemplares|especies|generos|familias)';
-        preg_match_all('/\b(?:cuant[oa]s?|numero(?: de)?|total(?: de)?)\s+(?:(?:los|las|distint[oa]s?|public[oa]s?)\s+)*('.$unidad.')(?:\s+y\s+(?:cuant[oa]s?\s+)?('.$unidad.'))?\b/', $normal, $pedidas, PREG_SET_ORDER);
+        $item = '(?:(?:cuant[oa]s?|los|las|distint[oa]s?|public[oa]s?)\s+)*'.$unidad.'(?:\s+distint[oa]s?)?';
+        // TextoChat ya convierte las comas en espacios: conservar tambien
+        // listas como «registros, especies y familias» tras normalizarlas.
+        preg_match_all('/\b(?:cuant[oa]s?|cuenta|contar|contabiliza|numero(?: de)?|total(?: de)?)\s+('.$item.'(?:\s+(?:y\s+)?'.$item.')*)\b/', $normal, $pedidas, PREG_SET_ORDER);
         $unidades = [];
         foreach ($pedidas as $pedida) {
-            foreach (array_slice($pedida, 1) as $nombre) {
+            preg_match_all('/\b'.$unidad.'\b/', $pedida[1], $nombres);
+            foreach ($nombres[0] as $nombre) {
                 if ($nombre !== '') $unidades[] = in_array($nombre, ['ejemplares', 'especimenes'], true) ? 'registros' : $nombre;
             }
         }

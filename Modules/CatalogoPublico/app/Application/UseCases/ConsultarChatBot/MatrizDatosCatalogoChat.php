@@ -17,10 +17,15 @@ final class MatrizDatosCatalogoChat
         $normal = preg_replace('/\btabal\b/', 'tabla', $normal) ?? $normal;
         $normal = preg_replace('/\bdtaos\b/', 'datos', $normal) ?? $normal;
         if (preg_match('/^(?:que (?:es|son|significa)|como|donde|para que)\b|\b(?:descarg\w*|export\w*|csv|xlsx|excel|pasos)\b/', $normal)) return false;
+        // «Cuantos ... en una tabla» pide conteos. «Genera una matriz ... e
+        // indica cuantos coinciden» sigue pidiendo las filas y su total.
+        if (preg_match('/\b(?:matriz|tabla)\b/', $normal, $formato, PREG_OFFSET_CAPTURE)
+            && preg_match('/\b(?:cuant[oa]s?|cuenta|contar|contabiliza)\b/', $normal, $conteo, PREG_OFFSET_CAPTURE)
+            && $conteo[0][1] < $formato[0][1]) return false;
 
         return (bool) (preg_match('/\b(?:matriz|tabla)\b/', $normal)
                 && (preg_match('/\b(?:datos|especies|registros|ejemplares|especimenes|catalogo|coleccion|portal|seleccion)\b/', $normal)
-                    || preg_match('/^(?:haz|has|dame|muestra(?:me)?|quiero|necesito)\b/', $normal)))
+                    || preg_match('/\b(?:haz|has|dame|muestra(?:me)?|quiero|necesito|genera|crea|prepara|construye)\b/', $normal)))
             || (bool) preg_match('/^(?:y )?(?:(?:haz|has|dame|muestra(?:me)?|quiero|necesito|ponlos|presentalos|organizalos)\s+)?(?:(?:en )?(?:una|la)\s+)?(?:matriz|tabla)(?: de datos)?$/', $normal)
             || (bool) preg_match('/\b(?:dame|muestra(?:me)?|mostrar|quiero|necesito)\b.*\bdatos\b.*\b(?:catalogo|coleccion|portal|seleccion)\b/', $normal);
     }

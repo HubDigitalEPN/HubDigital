@@ -1,5 +1,17 @@
 # Distribución de cobertura
 
+`PortalChatConsultasComplejasTest` reproduce las instrucciones «Genera/Crea/Prepara
+una matriz», los periodos expresados con años, la distinción entre listar y contar
+en una tabla y los seguimientos de dos y tres unidades sin perder la consulta
+anterior. Comprueba que «para» no se convierta en Pará, conservando la mención
+explícita del lugar, y que el diseño experimental llegue al agente sin heredar
+filtros del catálogo. La llamada a Responses se simula con presupuesto sintético;
+no consume crédito real. Mantiene la aclaración de intervalos invertidos y los
+campos no divulgados. `FiltrosLenguajeChatTest` cubre las formas de los intervalos
+y sus límites. Son contratos PHP de interpretación y sesión: no se duplican con
+escenarios Gherkin. Las nuevas pruebas de diagnóstico en PROD y la comprobación
+posterior con Neon en localhost se registran por separado de estas pruebas.
+
 `PortalChatTablasConsultasTest` comprueba tablas automáticas en búsquedas, conteos
 y comparaciones, la excepción de un registro, las unidades y las celdas escapadas.
 `PortalChatDisponibilidadTest` conserva el chat en PROD y bloquea DEV tanto en

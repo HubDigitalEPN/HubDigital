@@ -33,6 +33,7 @@ final class DetectorEntidadesChat
         if ($codigos !== []) $resultado['codigo'] = implode(',', $codigos);
 
         $normal = $this->texto->normalizar($pregunta);
+        $paraEsLugar = $this->paraEsLugar($pregunta);
         foreach (['mariposas' => 'Lepidoptera', 'escarabajos' => 'Coleoptera'] as $comun => $cientifico) {
             if (preg_match('/\b'.$comun.'\b/', $normal)) $resultado['taxon'] = $cientifico;
         }
@@ -42,7 +43,13 @@ final class DetectorEntidadesChat
         $palabras = preg_split('/\s+/', $normal, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $candidatos = [];
         foreach ($palabras as $i => $palabra) {
-            for ($n = 1; $n <= min(6, count($palabras) - $i); $n++) $candidatos[] = implode(' ', array_slice($palabras, $i, $n));
+            for ($n = 1; $n <= min(6, count($palabras) - $i); $n++) {
+                $fragmento = array_slice($palabras, $i, $n);
+                // La normalizacion elimina la tilde de Pará; no convertir la
+                // preposicion «para» en una ubicacion por esa coincidencia.
+                if (! $paraEsLugar && in_array('para', $fragmento, true)) continue;
+                $candidatos[] = implode(' ', $fragmento);
+            }
         }
         $geografias = [];
         foreach ([['provincia', 'state_province', 'state_province_visible'], ['pais', 'country', 'country_visible'],
@@ -115,6 +122,12 @@ final class DetectorEntidadesChat
         return null;
     }
 
+    private function paraEsLugar(string $pregunta): bool
+    {
+        return (bool) preg_match('/\bpará\b/iu', $pregunta)
+            || (bool) preg_match('/\b(?:en|de|provincia|estado|localidad|sitio)\s+(?:de\s+)?para\b/iu', $pregunta);
+    }
+
     private function entidadesBasicas(string $pregunta): array
     {
         $identificador = trim($pregunta);
@@ -135,10 +148,12 @@ final class DetectorEntidadesChat
         }
         preg_match_all('/\b[A-ZÁÉÍÓÚ][a-záéíóúñ]{2,}\b/u', $pregunta, $matches);
         $omitidos = ['son', 'por', 'puedes', 'dame', 'estoy', 'solo', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'no', 'esa', 'ese', 'esta', 'este', 'como', 'que', 'cual', 'cuantos', 'cuantas', 'tienen', 'tengo', 'quiero', 'busca', 'buscar', 'especimenes', 'registros', 'genero', 'familia', 'hola', 'buenos', 'buenas', 'gracias', 'necesito', 'donde', 'muestra', 'existe'];
-        $result = [];
+        $result = []; $supuesto = null;
         $omitidos = [...$omitidos, 'para', 'con', 'ahora', 'estos', 'esas', 'estas', 'esos', 'aplicada', 'actual', 'pagina', 'excel', 'xlsx', 'csv', 'despues', 'tabla', 'matriz', 'haz', 'has', 'mapa', 'pasos', 'paso', 'publicos', 'publicas', 'catalogo', 'formato', 'datos', 'seleccion', 'aqui', 'son', 'recolecto', 'filtros', 'fuera', 'quien', 'primero', 'ultimo', 'finalmente', 'muestrame', 'dime', 'explicame', 'resto'];
+        $omitidos = [...$omitidos, 'genera', 'crea', 'prepara', 'construye', 'incluye', 'indica', 'conserva', 'mantiene', 'manten', 'presenta', 'organiza', 'cuenta', 'de'];
         foreach ($matches[0] as $principal) {
-            if (in_array($this->texto->normalizar($principal), $omitidos, true)) {
+            if (in_array($this->texto->normalizar($principal), $omitidos, true)
+                && ! ($this->texto->normalizar($principal) === 'para' && $this->paraEsLugar($pregunta))) {
                 continue;
             }
             $binomio = preg_match('/\b'.preg_quote($principal, '/').'\s+([a-z]{3,})\b/u', $pregunta, $epiteto)
@@ -175,11 +190,11 @@ final class DetectorEntidadesChat
                 continue;
             }
             if (! isset($result['taxon']) && $binomio !== null && preg_match('/(?:tax[oó]n|especie|g[eé]nero|ejemplares|registros|busca|cu[aá]ntos)/iu', $pregunta)) {
-                $result['taxon'] = $binomio;
+                $supuesto ??= $binomio;
                 continue;
             }
             if (! isset($result['taxon']) && preg_match('/(?:tax[oó]n|especie|g[eé]nero|ejemplares|registros|busca|tienen|cu[aá]ntos)/iu', $pregunta)) {
-                $result['taxon'] = $principal;
+                $supuesto ??= $principal;
             }
         }
         if (! isset($result['taxon']) && preg_match('/\b(tienen|taxon|taxones|especie|genero|familia|registros|busca|buscar|decir|corregir)\b/u', $this->texto->normalizar($pregunta))) {
@@ -205,6 +220,9 @@ final class DetectorEntidadesChat
                 }
             }
         }
+        // Los nombres realmente encontrados tienen prioridad, incluso si un
+        // verbo anterior parece un binomio y es mas largo que el taxon valido.
+        if (! isset($result['taxon']) && $supuesto !== null) $result['taxon'] = $supuesto;
         return $result;
     }
 }

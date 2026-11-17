@@ -69,7 +69,7 @@ final class FiltrosLenguajeChat
             $mes = array_search($m[2], self::MESES, true) + 1;
             $filtros = ['desde' => sprintf('%04d-%02d-%02d', (int) $m[3], $mes, (int) $m[1]),
                 'hasta' => sprintf('%04d-%02d-%02d', (int) $m[3], $mes, (int) $m[1])];
-        } elseif (preg_match('/\bentre\s+((?:18|19|20)\d{2})\s+y\s+((?:18|19|20)\d{2})\b(?!\s*(?:metros?\b|m\b))/', $texto, $m)) {
+        } elseif (preg_match('/\b(?:entre\s+|(?:periodo|intervalo|rango)\s+(?:de\s+)?|desde\s+|del\s+)((?:18|19|20)\d{2})\s+(?:y|a|al|hasta)\s+((?:18|19|20)\d{2})\b(?!\s*(?:metros?\b|m\b))/', $texto, $m)) {
             $filtros = ['desde' => $m[1].'-01-01', 'hasta' => $m[2].'-12-31'];
         } else {
             foreach (['desde' => '(?:desde|a partir de)', 'hasta' => 'hasta'] as $clave => $operador) {

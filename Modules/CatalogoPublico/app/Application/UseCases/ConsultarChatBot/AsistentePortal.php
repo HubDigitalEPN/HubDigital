@@ -27,6 +27,13 @@ final class AsistentePortal
         $pregunta = app(OrtografiaConsultaChat::class)->corregir($pregunta);
         $normal = preg_replace('/^[\s\x{00bf}?]+/u', '', Str::lower(Str::ascii(trim($pregunta)))) ?? '';
         $opciones = $this->opcionesBase();
+        // Disenar un experimento es una pregunta general, no una busqueda de
+        // ejemplares aunque mencione un organismo o niegue consultar el catalogo.
+        if (preg_match('/^(?:disena|planifica|propon|explica(?:me)?\s+(?:como\s+)?disenar)\b/', $normal)
+            && preg_match('/\b(?:experimento|estudio experimental)\b/', $normal)) {
+            if ($interpretarConModelo && ($general = $this->respuestaGeneralIA($pregunta, $historial)) !== null) return $general;
+            return app(FuentesPublicasChat::class)->responder($pregunta);
+        }
         if (($estadistica = app(EstadisticasCatalogoChat::class)->responder($pregunta, $seleccionPortal)) !== null) return $estadistica;
         if (app(MatrizDatosCatalogoChat::class)->solicitada($pregunta)) {
             $respuesta = $this->consultaCatalogo->responder($pregunta, $contextoCatalogo, $seleccionPortal);
@@ -143,7 +150,9 @@ final class AsistentePortal
                 'fuente' => 'portal', 'intent' => 'portal.csv', 'entidades' => $contextoCatalogo,
                 'opciones' => [['label' => 'Abrir registros filtrados', 'url' => $this->enlaceSeleccion($contextoCatalogo, $seleccionPortal, 'registros')]]];
         }
-        if (preg_match('/\bregistros\b.*\bespecies\b.*\bdistintas\b|\bdiferencia\b.*\bregistros\b|\b(?:lo mismo|iguales)\b.*\b(?:registros|especies)\b/', $normal)) {
+        if ((preg_match('/\bregistros\b.*\bespecies\b.*\bdistintas\b/', $normal)
+                && ! preg_match('/\b(?:cuant[oa]s?|cuenta|contar|contabiliza|numero|total)\b/', $normal))
+            || preg_match('/\bdiferencia\b.*\bregistros\b|\b(?:lo mismo|iguales)\b.*\b(?:registros|especies)\b/', $normal)) {
             return ['texto' => 'No son lo mismo. Un registro corresponde a una entrada del catálogo; varios registros pueden pertenecer a la misma especie. La riqueza cuenta cada entidad a rango especie de la jerarquía interna publicada una vez. Esa cifra no certifica nombres aceptados por una autoridad externa ni identificaciones físicas: se conservan calificadores y determinaciones abiertas. Taxón es cualquier nivel taxonómico con un nombre científico, como Arthropoda o Formicidae. El tamaño de los puntos del mapa expresa cantidad de registros, no abundancia natural.',
                 'fuente' => 'portal', 'intent' => 'portal.conteos', 'opciones' => $opciones];
         }
@@ -221,7 +230,7 @@ final class AsistentePortal
             ];
         }
 
-        $operacionContexto = ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y|solo|dame solo|quita|quitar|elimina)\s+/', $normal))
+        $operacionContexto = ($contextoCatalogo !== [] && (bool) preg_match('/^(?:y|solo|dame solo|quita|quitar|elimina)\s+|\b(?:esa consulta|consulta anterior|esos registros|filtros anteriores)\b/', $normal))
             || (bool) preg_match('/^(?:y\s+)?(?:quita(?:r)?|elimina(?:r)?|sin)\s+(?:el\s+)?filtro\b/', $normal);
         if (! $operacionContexto && preg_match('/filtro|filtrar|leyenda|mapa|dashboard|indice|indicador|exportar|geojson/i', $normal)
             && ! preg_match('/cuant|registros de|especies de/', $normal)) {

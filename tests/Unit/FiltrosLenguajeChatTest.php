@@ -19,6 +19,10 @@ test('las fechas del chat conservan días y operadores antes y después', functi
     ['Busca registros antes de 2000-05-05', ['hasta' => '2000-05-04']],
     ['Busca registros después de 2000-02-28', ['desde' => '2000-02-29']],
     ['Busca registros entre 1999 y 2000', ['desde' => '1999-01-01', 'hasta' => '2000-12-31']],
+    ['Conserva el periodo 2010 a 2025', ['desde' => '2010-01-01', 'hasta' => '2025-12-31']],
+    ['Registros del período de 2010 al 2025', ['desde' => '2010-01-01', 'hasta' => '2025-12-31']],
+    ['Busca registros desde 2010 hasta 2025', ['desde' => '2010-01-01', 'hasta' => '2025-12-31']],
+    ['Busca registros del 2010 al 2025', ['desde' => '2010-01-01', 'hasta' => '2025-12-31']],
     ['Busca registros en mayo de 2000', ['mes' => '5', 'desde' => '2000-05-01', 'hasta' => '2000-05-31']],
 ]);
 
@@ -26,6 +30,7 @@ test('una fecha imposible o invertida exige aclaración sin normalizar el día',
     expect((new FiltrosLenguajeChat)->extraer($pregunta))->toHaveKey('error_consulta');
 })->with([
     'Busca registros entre 2021-01-01 y 2020-01-01',
+    'Busca registros del periodo 2025 a 2010',
     'Busca registros desde 2000-02-30 hasta 2000-03-01',
     'Busca registros del 31 al 31 de abril de 2000',
     'Busca registros antes de 2000-13-01',
