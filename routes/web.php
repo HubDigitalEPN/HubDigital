@@ -4,10 +4,9 @@ use App\Http\Controllers\AdminBootstrapController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\VersionPortalController;
 use App\Livewire\ActivarRol;
-use App\Livewire\Administracion\CentroAdministracion;
+use App\Livewire\Administracion\ContenidosTextos;
 use App\Livewire\Administracion\ConfiguracionSistema;
 use App\Livewire\Administracion\ConfiguracionExpediente;
-use App\Livewire\Administracion\ConfiguracionTextosWizard;
 use App\Livewire\Administracion\InstitucionesCatalogo;
 use App\Livewire\Administracion\CargosCatalogo;
 use App\Livewire\Administracion\LocalidadesEcuadorCatalogo;
@@ -40,9 +39,6 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/roles/activar/{rol}', ActivarRol::class)->name('roles.activar');
-    Route::get('/administracion', CentroAdministracion::class)
-        ->middleware('role:admin')
-        ->name('admin.centro');
     Route::get('/administracion/usuarios', GestionUsuarios::class)
         ->middleware('role:admin,curador')
         ->name('admin.usuarios');
@@ -54,15 +50,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/administracion/siglas-expedientes', ConfiguracionExpediente::class)
         ->middleware('role:admin')
         ->name('admin.siglas-expedientes');
-    Route::get('/administracion/textos-depositos', ConfiguracionTextosWizard::class)
-        ->middleware('role:admin')
-        ->name('admin.textos-depositos');
-    Route::get('/administracion/textos-sistema', \App\Livewire\Administracion\ConfiguracionTextosSistema::class)
-        ->middleware('role:admin')->name('admin.textos-sistema');
+    Route::get('/administracion/contenidos', ContenidosTextos::class)
+        ->middleware('role:curador')->name('admin.contenidos');
     Route::get('/administracion/formato-ipt', \App\Livewire\Administracion\ConfiguracionFormatoIpt::class)
         ->middleware('role:admin')->name('admin.formato-ipt');
-    Route::get('/administracion/textos-portal', \App\Livewire\Administracion\ConfiguracionTextosPortal::class)
-        ->middleware('role:curador')->name('admin.textos-portal');
     Route::get('/administracion/el-laboratorio', \App\Livewire\Administracion\ConfiguracionLaboratorio::class)
         ->middleware('role:curador')->name('admin.laboratorio');
     Route::get('/administracion/fichas-taxonomicas', \App\Livewire\Administracion\FichasTaxonomicasPortal::class)

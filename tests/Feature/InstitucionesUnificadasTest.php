@@ -108,17 +108,17 @@ test('un fallo al crear el depositante revierte tambien el alta de la institucio
         ->and(DB::table('taxonomia.entidades_depositantes')->where('nombre',$nombre)->exists())->toBeFalse();
 });
 
-test('el enlace anterior redirige a la unica pantalla y el menu conserva una sola entrada funcional', function (): void {
-    $this->actingAs(User::factory()->curador()->create())->get(route('inventario.taxonomia.entidades-depositantes'))->assertRedirect(route('admin.instituciones'));
+test('la pantalla anterior se retira y el menu conserva una sola entrada funcional', function (): void {
+    $this->actingAs(User::factory()->curador()->create())->get('/inventario/taxonomia/entidades-depositantes')->assertNotFound();
     $html=$this->get(route('admin.instituciones'))->assertOk()->assertSee('Instituciones y depositantes')->getContent();
     $dom=new DOMDocument; @$dom->loadHTML('<?xml encoding="utf-8" ?>'.$html); $xpath=new DOMXPath($dom);
     // Flux genera una presentación expandida y otra emergente del mismo grupo.
     expect($xpath->query('//nav[@data-flux-sidebar-nav]//ui-disclosure//a[@href="'.route('admin.instituciones').'"]')->length)->toBe(1)
         ->and($xpath->query('//nav[@data-flux-sidebar-nav]//ui-menu//a[@href="'.route('admin.instituciones').'"]')->length)->toBe(1)
-        ->and($xpath->query('//a[@href="'.route('inventario.taxonomia.entidades-depositantes').'"]')->length)->toBe(0);
+        ->and($xpath->query('//a[@href="'.url('/inventario/taxonomia/entidades-depositantes').'"]')->length)->toBe(0);
     expect(is_file(base_path('Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EntidadDepositanteIndex.php')))->toBeFalse()
         ->and(is_file(base_path('Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/entidades/index.blade.php')))->toBeFalse();
     $this->actingAs(User::factory()->depositante()->create())->get(route('admin.instituciones'))->assertForbidden();
-    $this->get(route('inventario.taxonomia.entidades-depositantes'))->assertForbidden();
+    $this->get('/inventario/taxonomia/entidades-depositantes')->assertNotFound();
     Livewire::test(InstitucionesCatalogo::class)->assertForbidden();
 });

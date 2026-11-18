@@ -21,7 +21,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Repositories\PatenteAnualReposito
 /**
  * Componente Livewire para la configuración global de recordatorios de préstamo.
  */
-#[Layout('layouts.app', params: ['title' => 'Configuración de recordatorios'])]
+#[Layout('layouts.app', params: ['title' => 'Recordatorios de préstamos'])]
 final class ConfiguracionRecordatorios extends Component
 {
     use HandlesDomainExceptions;

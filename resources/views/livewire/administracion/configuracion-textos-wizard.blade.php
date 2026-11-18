@@ -1,7 +1,7 @@
 <div class="hub-workspace mx-auto max-w-7xl space-y-4 p-3 sm:p-5">
     <header class="hub-page-header">
         <div>
-            <h1 class="hub-page-title">Textos del asistente de depósitos</h1>
+            <h2 class="hub-section-title">Formulario de depósitos</h2>
         </div>
     </header>
 

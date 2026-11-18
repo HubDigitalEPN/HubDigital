@@ -1,7 +1,7 @@
 <div class="space-y-6">
 
     <div>
-        <flux:heading size="xl" level="1" class="font-display">Configuración de recordatorios</flux:heading>
+        <flux:heading size="xl" level="1" class="font-display">Recordatorios de préstamos</flux:heading>
     </div>
 
     @if($mensajeExito)

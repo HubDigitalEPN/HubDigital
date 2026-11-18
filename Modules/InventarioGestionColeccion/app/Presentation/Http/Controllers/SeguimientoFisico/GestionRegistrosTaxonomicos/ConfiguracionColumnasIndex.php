@@ -11,7 +11,6 @@ use Modules\CatalogoPublico\Application\Services\ColumnasRegistroPublico;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarPrioridadColumna\ActualizarPrioridadColumnaHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarPrioridadColumna\ActualizarPrioridadColumnaInput;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasMuestra;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
 
@@ -44,11 +43,7 @@ final class ConfiguracionColumnasIndex extends Component
         $this->pantallas = [
             'especimenes' => array_map(
                 fn ($c) => ['clave' => $c['clave'], 'etiqueta' => $c['etiqueta'], 'grupo' => $c['grupo'], 'prioridad' => $c['prioridad']],
-                $resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas()),
-            ),
-            'muestras' => array_map(
-                fn ($c) => ['clave' => $c['clave'], 'etiqueta' => $c['etiqueta'], 'grupo' => $c['grupo'], 'prioridad' => $c['prioridad']],
-                $resolver->aplicar('muestras', RegistroColumnasMuestra::todas()),
+                $resolver->aplicar('especimenes', array_values(array_filter(RegistroColumnasEspecimen::todas(), static fn (array $columna): bool => $columna['grupo'] !== RegistroColumnasEspecimen::GRUPO_REVISION))),
             ),
         ];
     }
@@ -83,7 +78,6 @@ final class ConfiguracionColumnasIndex extends Component
             'columnasPortal' => app(ColumnasRegistroPublico::class)->todas(),
             'pantallasMeta' => [
                 'especimenes' => ['titulo' => 'Especímenes', 'descripcion' => 'Columnas de la pantalla principal del catálogo.'],
-                'muestras' => ['titulo' => 'Muestras de colecta', 'descripcion' => 'Columnas de la bandeja de muestras.'],
             ],
         ]);
     }

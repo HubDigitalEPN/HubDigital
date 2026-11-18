@@ -8,7 +8,6 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
-use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\RevisionNombreCientifico;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ActualizarEspecimen\ActualizarEspecimenInput;
@@ -33,10 +32,8 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Re
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ReemplazarTextoEnEspecimenes\ReemplazarTextoEnEspecimenesInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\RegistrarEspecimen\RegistrarEspecimenInput;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ClasificadorMotivoRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
-use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\ClaseProblemaRevision;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\EspecimenId;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TipoEdicionMasiva;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\GeneraSvgQr;
@@ -128,16 +125,13 @@ final class EspecimenIndex extends Component
         'fFechaDesde' => 'nullable|date_format:Y-m-d',
         'fFechaHasta' => 'nullable|date_format:Y-m-d',
         'fEstado' => 'nullable|string|in:disponible,en_prestamo',
-        'fEstadoRevision' => 'nullable|string|in:pendiente,confirmada,descartada',
-        'fMotivoRevision' => 'nullable|string|max:200',
-        'fIncidencia' => 'nullable|string|in:duplicados,coordenadas,ec_publicar,fechas,taxonomia,localidades,nombres_cientificos,nombres_vacios,nombres_no_cientificos,nombres_no_resueltos,nombres_corregidos,nombres_sin_revisar',
     ];
 
     /** Campos cuyo cambio invalida la página actual y obliga a volver a la 1. */
     private const CAMPOS_FILTRO = [
         'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
         'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta', 'fEstado',
-        'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'fIncidencia', 'perPage',
+        'perPage',
     ];
 
     // ── Búsqueda y paginación ─────────────────────────────────────────────────
@@ -176,13 +170,9 @@ final class EspecimenIndex extends Component
 
     public string $fEstado = '';
 
-    public string $fEstadoRevision = '';
 
-    public string $fMotivoRevision = '';
 
-    public string $fIncidencia = '';
 
-    public bool $fParaRevision = false;
 
     // ── Configuración de columnas ─────────────────────────────────────────────
     // Vive en el servidor (no solo en Alpine) para poder render la tabla como un
@@ -494,7 +484,7 @@ final class EspecimenIndex extends Component
 
     public function restaurarColumnas(): void
     {
-        $this->ordenColumnas = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(RegistroColumnasEspecimen::todas()), 'clave');
+        $this->ordenColumnas = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(self::columnasGestion()), 'clave');
         $this->columnasVisibles = RegistroColumnasEspecimen::clavesVisiblesPorDefecto();
         $this->persistirColumnas();
     }
@@ -508,7 +498,7 @@ final class EspecimenIndex extends Component
     public function soloColumnasCriticas(ResolverPrioridadColumnas $resolver): void
     {
         $prioridades = [];
-        foreach ($resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas()) as $col) {
+        foreach ($resolver->aplicar('especimenes', self::columnasGestion()) as $col) {
             $prioridades[$col['clave']] = $col['prioridad'];
         }
 
@@ -531,7 +521,7 @@ final class EspecimenIndex extends Component
      */
     private function normalizarColumnas(array $orden, array $visibles): void
     {
-        $conocidas = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(RegistroColumnasEspecimen::todas()), 'clave');
+        $conocidas = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar(self::columnasGestion()), 'clave');
 
         $ordenado = array_values(array_intersect(
             array_map(strval(...), $orden),
@@ -540,8 +530,7 @@ final class EspecimenIndex extends Component
         foreach ($conocidas as $clave) {
             if (! in_array($clave, $ordenado, true)) {
                 $ordenado[] = $clave;
-                if (in_array($clave, ['localidad2', 'localidad3', 'revisionNombreCientifico'], true)) $visibles[] = $clave;
-                if ($clave === 'revisionNombreCientifico') $visibles[] = 'taxonNombre';
+                if (in_array($clave, ['localidad2', 'localidad3'], true)) $visibles[] = $clave;
             }
         }
 
@@ -623,32 +612,6 @@ final class EspecimenIndex extends Component
         $this->page = max(1, $p);
     }
 
-    public function preset(string $nombre): void
-    {
-        $this->reset(
-            'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
-            'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
-            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'fIncidencia',
-        );
-
-        match ($nombre) {
-            'para_revision' => $this->fParaRevision = true,
-            'sin_coords' => [$this->fParaRevision = true, $this->fMotivoRevision = 'coordenadas'],
-            'fechas_raras' => [$this->fParaRevision = true, $this->fMotivoRevision = 'fecha'],
-            'sin_occurrence_id' => [$this->fParaRevision = true, $this->fMotivoRevision = 'occurrence_id ausente'],
-            'duplicados' => $this->fIncidencia = 'duplicados',
-            'coordenadas' => $this->fIncidencia = 'coordenadas',
-            'no_publicados' => $this->fIncidencia = 'ec_publicar',
-            'fechas' => $this->fIncidencia = 'fechas',
-            'taxonomia' => $this->fIncidencia = 'taxonomia',
-            'todos' => null,
-            default => null,
-        };
-
-        $this->page = 1;
-        $this->resetValidation();
-    }
-
     /** Quita un filtro concreto desde su chip en la barra de filtros activos. */
     public function quitarFiltro(string $campo): void
     {
@@ -667,7 +630,7 @@ final class EspecimenIndex extends Component
             'errorMessage', 'successMessage', 'page',
             'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
-            'fEstado', 'fEstadoRevision', 'fMotivoRevision', 'fParaRevision', 'fIncidencia',
+            'fEstado',
         );
         $this->resetValidation();
     }
@@ -1146,7 +1109,7 @@ final class EspecimenIndex extends Component
         }
 
         $this->fichaId = $id;
-        $this->fichaDatos = app(RevisionNombreCientifico::class)->completar([$ficha->ficha])[0];
+        $this->fichaDatos = $ficha->ficha;
         $this->fichaDatos = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar([$this->fichaDatos + ['id' => $id]])[0];
         $this->fichaBorrador = [];
         foreach (RegistroColumnasEspecimen::clavesEditablesEnMasa() as $clave) {
@@ -1265,7 +1228,7 @@ final class EspecimenIndex extends Component
     public function camposEditables(): array
     {
         $etiquetas = [];
-        foreach (RegistroColumnasEspecimen::todas() as $col) {
+        foreach (self::columnasGestion() as $col) {
             $etiquetas[$col['clave']] = $col['etiqueta'];
         }
 
@@ -1290,43 +1253,6 @@ final class EspecimenIndex extends Component
     private function actorNombre(): ?string
     {
         return auth()->user()->name ?? null;
-    }
-
-    // ── Problemas de la fila ──────────────────────────────────────────────────
-
-    /**
-     * Traduce el `motivo_revision` de una fila en los avisos accionables que se
-     * pintan como triángulos.
-     *
-     * Cada aviso lleva a donde el problema SE ARREGLA, que no siempre es otra
-     * pantalla: las coordenadas solo son editables en el modal de esta misma
-     * hoja (`ActualizarEspecimenInput` expone decimalLatitude/decimalLongitude,
-     * y la bandeja de localidades únicamente las lista), así que ese aviso abre
-     * el modal en vez de navegar.
-     *
-     * Las clases sin pantalla donde corregirlas (`occurrence_id`,
-     * `individual_count`, texto libre del curador) van al centro de revisión,
-     * que es donde se triangula lo que no tiene arreglo directo. No se las
-     * manda a una bandeja que no las resuelve.
-     *
-     * @return list<array{clase: string, etiqueta: string, abreModal: bool, url: ?string}>
-     */
-    private function problemasDeFila(ClasificadorMotivoRevision $clasificador, ?string $motivo): array
-    {
-        return array_map(
-            fn (ClaseProblemaRevision $clase) => [
-                'clase' => $clase->value,
-                'etiqueta' => $clase->etiqueta(),
-                'abreModal' => $clase === ClaseProblemaRevision::Coordenadas,
-                'url' => match ($clase) {
-                    ClaseProblemaRevision::Coordenadas => null,
-                    ClaseProblemaRevision::Fecha => route('inventario.taxonomia.fechas.revision'),
-                    ClaseProblemaRevision::Taxonomia => route('inventario.taxonomia.taxones.revision'),
-                    default => route('inventario.taxonomia.revision'),
-                },
-            ],
-            $clasificador->clasificar($motivo),
-        );
     }
 
     // ── Código QR ─────────────────────────────────────────────────────────────
@@ -1430,9 +1356,14 @@ final class EspecimenIndex extends Component
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    public function render(ResolverPrioridadColumnas $resolver, ClasificadorMotivoRevision $clasificador): View
+    private static function columnasGestion(): array
     {
-        $columnas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar($resolver->aplicar('especimenes', RegistroColumnasEspecimen::todas()));
+        return array_values(array_filter(RegistroColumnasEspecimen::todas(), static fn (array $columna): bool => $columna['grupo'] !== RegistroColumnasEspecimen::GRUPO_REVISION));
+    }
+
+    public function render(ResolverPrioridadColumnas $resolver): View
+    {
+        $columnas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar($resolver->aplicar('especimenes', self::columnasGestion()));
         $extras = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->personalizadas(), 'campo');
         foreach ($extras as $extra) if (!in_array($extra, $this->ordenColumnas, true)) { $this->ordenColumnas[] = $extra; $this->columnasVisibles[] = $extra; }
         $porClave = [];
@@ -1453,20 +1384,10 @@ final class EspecimenIndex extends Component
         $output = $this->consultarPagina();
         $offset = ($this->page - 1) * $this->perPage;
 
-        // Cada fila marcada llega ya con sus avisos resueltos: la vista solo los
-        // pinta. Un espécimen puede arrastrar varios a la vez (el importador
-        // acumula fecha y coordenadas en el mismo motivo), de ahí la lista.
-        $filas = array_map(
-            fn (array $fila) => $fila + [
-                'problemas' => ($fila['estadoRevision'] ?? '') === 'pendiente'
-                    ? $this->problemasDeFila($clasificador, $fila['motivoRevision'] ?? null)
-                    : [],
-            ],
-            app(RevisionNombreCientifico::class)->completar($output->items),
-        );
+        $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($output->items);
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
-            'filas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($filas),
+            'filas' => $filas,
             'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],
             'totalPaginas' => max(1, $output->totalPaginas),
             'totalItems' => $output->total,
@@ -1521,10 +1442,6 @@ final class EspecimenIndex extends Component
             fechaDesde: $this->nullableString($this->fFechaDesde),
             fechaHasta: $this->nullableString($this->fFechaHasta),
             estado: $this->nullableString($this->fEstado),
-            estadoRevision: $this->nullableString($this->fEstadoRevision),
-            motivoRevision: $this->nullableString($this->fMotivoRevision),
-            paraRevision: $this->fParaRevision,
-            incidencia: $this->nullableString($this->fIncidencia),
             page: $page,
             perPage: in_array($this->perPage, self::TAMANOS_PAGINA, true) ? $this->perPage : 50,
             // Sin filtros = catálogo completo paginado: esta pantalla es la hoja
@@ -1554,9 +1471,6 @@ final class EspecimenIndex extends Component
             'fFechaDesde' => 'Desde',
             'fFechaHasta' => 'Hasta',
             'fEstado' => 'Estado físico',
-            'fEstadoRevision' => 'Estado revisión',
-            'fMotivoRevision' => 'Motivo revisión',
-            'fIncidencia' => 'Control curatorial',
         ];
 
         $activos = [];
@@ -1567,9 +1481,6 @@ final class EspecimenIndex extends Component
             }
         }
 
-        if ($this->fParaRevision) {
-            $activos[] = ['campo' => 'fParaRevision', 'etiqueta' => 'Solo', 'valor' => 'marcados para revisión'];
-        }
 
         return $activos;
     }

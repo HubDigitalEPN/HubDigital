@@ -5,7 +5,7 @@
     {{-- Encabezado --}}
     <header class="hub-page-header">
         <div>
-            <h1 class="mt-1 hub-page-title">Bandeja de recepciones</h1>
+            <h1 class="mt-1 hub-page-title">Revisión documental y actas</h1>
         </div>
     </header>
 

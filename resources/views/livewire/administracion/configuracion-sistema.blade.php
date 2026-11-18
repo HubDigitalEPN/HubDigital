@@ -1,7 +1,7 @@
 <div data-testid="system-settings-page" class="hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
     <header class="hub-page-header">
         <div>
-            <h1 class="mt-1 hub-page-title">Configuración del sistema</h1>
+            <h1 class="mt-1 hub-page-title">Correo y descargas</h1>
         </div>
     </header>
 

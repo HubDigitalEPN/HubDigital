@@ -8,9 +8,52 @@ export async function comprobarUIFocal(caso) {
     const checks={};let metrics={};
     const model=(key,tag='input')=>all(tag).find(x=>x.getAttribute('wire:model')===key);
     const fillModel=(key,value)=>{const el=model(key)||model(key,'textarea');if(!el)throw Error('No existe el campo '+key);const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
-    if(caso==='instituciones_unificadas') {
+    if(caso==='menu_curaduria') {
+        const sidebar=q('nav[data-flux-sidebar-nav]');
+        const logical=[...sidebar.querySelectorAll('ui-disclosure a')];
+        const paths=['/divulgacion','/administracion/contenidos','/prestamos/curador/depositos','/prestamos/receptor/depositos'];
+        checks.unique=paths.every(path=>logical.filter(a=>new URL(a.href).pathname===path).length===1);
+        checks.retired=!all('a').some(a=>/\/(?:administracion\/(?:textos-(?:portal|depositos|sistema))|divulgacion\/sincronizar|inventario\/taxonomia\/(?:revision|muestras|[^/]+\/revision|especimenes\/duplicados))$/.test(new URL(a.href).pathname));
+        checks.labels=['Revisión documental y actas','Recepción física','Recordatorios de préstamos','Publicación del catálogo','Contenidos y textos'].every(text=>sidebar.textContent.includes(text)) && !sidebar.textContent.includes('Control de calidad');
+        const shortcuts=q('nav[aria-label="Accesos principales"]');
+        checks.shortcuts=!!shortcuts && ![...shortcuts.querySelectorAll('a')].some(a=>a.textContent.trim()==='Buscar') && [...shortcuts.querySelectorAll('a')].filter(a=>new URL(a.href).pathname==='/inventario/taxonomia/especimenes').length===1;
+        checks.locality=!!all('section[aria-labelledby="coleccion-title"] a').find(a=>a.textContent.includes('Localidades') && new URL(a.href).pathname==='/inventario/taxonomia/localidades');
+        const account=all('[data-flux-sidebar] a').find(a=>a.getAttribute('aria-label')==='Mi cuenta');
+        account.click();await wait(()=>q('dialog[open]'));
+        checks.account=q('dialog[open]').textContent.includes('Configuración de cuenta');
+        const accountDialog=q('dialog[data-modal="account-settings"][open]');
+        const close=[...accountDialog.querySelectorAll('button')].find(b=>b.getClientRects().length && b.closest('dialog')===accountDialog && b.getAttribute('aria-label')==='Cerrar ventana');
+        if(!close)throw Error('No se encontró el cierre de Mi cuenta');close.click();await wait(()=>!q('dialog[open]'));await frame();
+        checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='publicacion_unificada') {
+        await wait(()=>q('[data-publicacion-catalogo]'));
+        const tabs=()=>q('nav[aria-label="Estado de publicación"]');
+        checks.page=all('h1').length===1 && q('h1').textContent.trim()==='Publicación del catálogo';
+        const pending=[...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('vista')==='pendientes');
+        pending.click();await wait(()=>new URL(location.href).searchParams.get('vista')==='pendientes' && document.body.textContent.includes('Incorporar especímenes pendientes'));await frame();
+        checks.pending=!!q('[data-publicacion-catalogo]') && tabs().querySelector('[aria-current="page"]').textContent.trim()==='Pendientes de divulgar' && all('h1').length===1;
+        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('vista')==='divulgados').click();await wait(()=>document.body.textContent.includes('Especímenes divulgados'));await frame();
+        checks.disclosed=tabs().querySelector('[aria-current="page"]').textContent.trim()==='Divulgados' && all('h1').length===1;
+        checks.noReview=!all('th').some(e=>e.textContent.includes('Revisión de datos'));
+        checks.contrast=getComputedStyle(tabs().querySelector('[aria-current="page"]')).color==='rgb(255, 255, 255)';
+        const configure=all('button').find(b=>b.getAttribute('wire:click')?.startsWith('abrirConfiguracion('));
+        if(configure){configure.click();await wait(()=>q('dialog[open]'));checks.visibility=q('dialog[open]').textContent.includes('visibilidad');const cancel=all('dialog[open] button').find(b=>b.textContent.trim()==='Cancelar');cancel.click();await wait(()=>!q('dialog[open]'));}
+        else checks.visibility=document.body.textContent.includes('No hay especímenes divulgados aún.');
+        checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='contenidos_unificados') {
+        await wait(()=>q('[data-contenidos-textos]'));
+        const tabs=()=>q('nav[aria-label="Secciones de contenidos"]');
+        checks.page=all('h1').length===1 && q('h1').textContent.trim()==='Contenidos y textos';
+        checks.portal=!!q('select[wire\\:model\\.live="grupo"]') || all('select').some(e=>e.getAttribute('wire:model.live')==='grupo');
+        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='depositos').click();await wait(()=>document.body.textContent.includes('Formulario de depósitos') && q('form[wire\\:submit="guardar"]'));
+        checks.depositos=all('input,textarea').some(e=>e.getAttribute('wire:model')?.startsWith('textos.')) && all('h1').length===1;
+        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='sistema').click();await wait(()=>document.body.textContent.includes('Textos generales del sistema') && all('input').some(e=>e.getAttribute('wire:model.live.debounce.400ms')==='busqueda'));
+        checks.sistema=all('h1').length===1 && !all('a').some(a=>/\/administracion\/textos-/.test(a.href));
+        checks.contrast=getComputedStyle(tabs().querySelector('[aria-current="page"]')).color==='rgb(255, 255, 255)';
+        checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='instituciones_unificadas') {
         await wait(()=>q('[data-directorio-instituciones]'));
-        checks.redirect=location.pathname==='/administracion/instituciones';
+        checks.canonical=location.pathname==='/administracion/instituciones';
         const canonico='/administracion/instituciones',antiguo='/inventario/taxonomia/entidades-depositantes';
         const enlaces=selector=>all(selector).filter(x=>new URL(x.href).pathname===canonico);
         checks.menu=enlaces('nav[data-flux-sidebar-nav] ui-disclosure a').length===1 && enlaces('nav[data-flux-sidebar-nav] ui-menu a').length===1 && !all('nav[data-flux-sidebar-nav] a').some(x=>new URL(x.href).pathname===antiguo);
@@ -39,6 +82,12 @@ export async function comprobarUIFocal(caso) {
         checks.duplicate=filas().length===1 && q('dialog[open]').textContent.includes('ya está registrado');
         const dialog=q('dialog[open]');checks.responsive=dialog.scrollWidth<=dialog.clientWidth+1 && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();metrics={nombre};
+    } else if(caso==='catalogo_importacion') {
+        checks.page=!!all('h1,h2').find(e=>e.textContent.includes('Importar'));
+        checks.canonical=all('a').some(a=>{const u=new URL(a.href);return u.pathname==='/administracion/contenidos' && u.searchParams.get('grupo')==='importacion';});
+        checks.noReview=!document.body.textContent.includes('Control de calidad') && !all('a').some(a=>new URL(a.href).pathname.endsWith('/revision'));
+        checks.input=!!q('input[type=file]');
+        checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='catalogo_taxones') {
         const campoBusqueda=()=>all('input').find(x=>x.getAttribute('wire:model.live.debounce.300ms')==='busqueda');
         const buscar=valor=>{const el=campoBusqueda();el.value=valor;el.dispatchEvent(new Event('input',{bubbles:true}));};
@@ -66,6 +115,7 @@ export async function comprobarUIFocal(caso) {
         metrics={nombre};
     } else if(caso==='catalogo_alta') {
         await wait(()=>all('button').find(x=>x.textContent.trim()==='Nuevo especímen'));
+        checks.noRevision=!all('th,[role="columnheader"]').some(x=>/Revisión del nombre|Estado revisión|Motivo revisión/.test(x.textContent));
         checks.dateLabels=all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · normalizada')) && all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · original'));
         all('button').find(x=>x.textContent.trim()==='Nuevo especímen').click();
         await wait(()=>model('codigoCatalogo'));

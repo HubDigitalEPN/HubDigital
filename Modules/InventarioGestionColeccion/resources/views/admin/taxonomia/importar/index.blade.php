@@ -213,7 +213,6 @@
                         ['label' => 'Especímenes', 'valor' => $resultado['especimenesPersistidos'], 'color' => 'text-bio-green'],
                         ['label' => 'Muestras creadas', 'valor' => $resultado['muestrasCreadas'], 'color' => 'text-science-blue'],
                         ['label' => 'Duplicados saltados', 'valor' => $resultado['duplicadosSaltados'], 'color' => 'text-text-secondary'],
-                        ['label' => 'Para revisión', 'valor' => $resultado['marcadosParaRevision'], 'color' => 'text-warning'],
                         ['label' => 'Errores fatales', 'valor' => count($resultado['erroresFatales']), 'color' => count($resultado['erroresFatales']) > 0 ? 'text-error' : 'text-text-secondary'],
                     ];
                 @endphp
@@ -224,24 +223,6 @@
                     </div>
                 @endforeach
             </div>
-
-            {{-- Motivos de revisión --}}
-            @if(!empty($resultado['motivosRevision']))
-                <div>
-                    <div class="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">
-                        Motivos de revisión más frecuentes
-                    </div>
-                    <div class="space-y-1.5">
-                        @foreach($resultado['motivosRevision'] as $motivo => $conteo)
-                            <div class="flex items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-sm">
-                                <span class="text-text-primary">{{ $motivo }}</span>
-                                <flux:badge color="amber" size="sm">{{ number_format((int) $conteo) }}×</flux:badge>
-                            </div>
-                        @endforeach
-                    </div>
-
-                </div>
-            @endif
 
             {{-- Errores fatales --}}
             @if(!empty($resultado['erroresFatales']))

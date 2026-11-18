@@ -4,7 +4,6 @@
             <h1>Panel del curador</h1>
         </div>
         <div class="hub-curator-heading__actions">
-            <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate class="hub-curator-button hub-curator-button--outline"><flux:icon name="rectangle-stack" class="size-4" /> Control de especímenes</a>
             <a href="{{ route('prestamos.curador.depositos', ['vista' => 'actas']) }}" wire:navigate class="hub-curator-button hub-curator-button--outline"><flux:icon name="document-text" class="size-4" /> Actas pendientes</a>
             <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate class="hub-curator-button hub-curator-button--primary"><flux:icon name="plus" class="size-4" /> Revisar ingresos</a>
         </div>
@@ -12,7 +11,6 @@
 
     <nav class="hub-curator-shortcuts" aria-label="Accesos principales">
         <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="rectangle-stack" class="size-6" /><span><strong>Colecciones</strong></span></a>
-        <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><flux:icon name="magnifying-glass" class="size-6" /><span><strong>Buscar</strong></span></a>
         <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><flux:icon name="tag" class="size-6" /><span><strong>Ingresos</strong></span></a>
         <a href="{{ route('divulgacion.imagenes') }}" wire:navigate><flux:icon name="photo" class="size-6" /><span><strong>Imágenes</strong></span></a>
         <a href="{{ route('divulgacion.analisis-diversidad') }}"><flux:icon name="chart-bar" class="size-6" /><span><strong>Análisis de diversidad</strong></span></a>
@@ -84,7 +82,7 @@
             <div class="hub-curator-metrics hub-curator-metrics--four">
                 <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><strong>{{ number_format($colEspecimenes, 0, ',', '.') }}</strong><span>Registros</span></a>
                 <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depLotesRecibidos, 0, ',', '.') }}</strong><span>Lotes recibidos</span></a>
-                <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><strong>{{ number_format($colLocalidades, 0, ',', '.') }}</strong><span>Localidades</span></a>
+                <a href="{{ route('inventario.taxonomia.localidades') }}" wire:navigate><strong>{{ number_format($colLocalidades, 0, ',', '.') }}</strong><span>Localidades</span></a>
                 <a href="{{ route('inventario.taxonomia.taxones') }}" wire:navigate><strong>{{ number_format($colTaxones, 0, ',', '.') }}</strong><span>Taxones</span></a>
             </div>
         </section>
@@ -97,6 +95,25 @@
             </div>
         </section>
     </div>
+
+    @if($administracion)
+        <section id="administracion" class="hub-panel space-y-4 p-5" aria-labelledby="administracion-titulo">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 id="administracion-titulo" class="hub-section-title">Usuarios y perfiles</h2>
+                <a href="{{ route('admin.usuarios') }}" wire:navigate class="hub-curator-button hub-curator-button--outline">Administrar usuarios</a>
+            </div>
+            <dl class="grid gap-4 sm:grid-cols-4">
+                @foreach(['Total' => $administracion['total'], 'Verificados' => $administracion['verificados'], 'Pendientes de verificar' => $administracion['pendientes'], 'Ingresos aprobados' => $administracion['ingresosAprobados']] as $nombre => $cantidad)
+                    <div><dt class="text-sm text-text-secondary">{{ $nombre }}</dt><dd class="text-2xl font-semibold text-blue-navy">{{ number_format($cantidad) }}</dd></div>
+                @endforeach
+            </dl>
+            <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                @foreach(\App\Enums\RolUsuario::cases() as $rol)
+                    <div class="flex justify-between gap-3 border-b border-border pb-2"><dt>{{ $rol->etiqueta() }}</dt><dd>{{ $administracion['porRol'][$rol->value] ?? 0 }}</dd></div>
+                @endforeach
+            </dl>
+        </section>
+    @endif
 
     <details class="hub-curator-details">
         <summary>Estadísticas y seguimiento detallado <flux:icon name="chevron-down" class="size-4" /></summary>

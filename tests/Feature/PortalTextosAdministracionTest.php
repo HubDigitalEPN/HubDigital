@@ -34,10 +34,10 @@ test('el contenido se escapa y una validación fallida conserva los textos publi
 });
 
 test('visitantes y depositantes no pueden abrir ni modificar el editor del portal', function (): void {
-    $this->get(route('admin.textos-portal'))->assertRedirect(route('login'));
+    $this->get(route('admin.contenidos'))->assertRedirect(route('login'));
     Livewire::test(ConfiguracionTextosPortal::class)->assertForbidden();
     $depositante = User::factory()->depositante()->create();
-    $this->actingAs($depositante)->get(route('admin.textos-portal'))->assertForbidden();
+    $this->actingAs($depositante)->get(route('admin.contenidos'))->assertForbidden();
     Livewire::actingAs($depositante)->test(ConfiguracionTextosPortal::class)->assertForbidden();
 });
 

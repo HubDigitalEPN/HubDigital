@@ -22,7 +22,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Persistence\Models\Solici
  * Componente Livewire para la bandeja de revisión documental de solicitudes de
  * depósito y donación pendientes de curaduría.
  */
-#[Layout('layouts.app', params: ['title' => 'Bandeja de recepciones'])]
+#[Layout('layouts.app', params: ['title' => 'Revisión documental y actas'])]
 final class BandejaDepositos extends Component
 {
     use HandlesDomainExceptions;

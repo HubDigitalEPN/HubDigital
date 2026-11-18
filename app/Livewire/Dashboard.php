@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\RolUsuario;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -115,6 +116,7 @@ class Dashboard extends Component
                 'graficoEstadosDepositos' => $this->graficoEstadosDepositos(),
                 ...$this->analiticaDepositos(),
                 ...$this->archivoCuratorial(),
+                'administracion' => $user->esAdministrador() ? $this->resumenAdministracion() : null,
             ]),
             RolUsuario::PASANTE => view('livewire.dashboard.pasante-panel'),
             RolUsuario::DEPOSITANTE => view(
@@ -134,6 +136,20 @@ class Dashboard extends Component
         if (app()->environment('local') && $this->inicioVista > 0) {
             request()->attributes->set('panel_vista_ms', (microtime(true) - $this->inicioVista) * 1000);
         }
+    }
+
+    private function resumenAdministracion(): array
+    {
+        return [
+            'total' => User::query()->count(),
+            'verificados' => User::query()->whereNotNull('email_verified_at')->count(),
+            'pendientes' => User::query()->whereNull('email_verified_at')->count(),
+            'porRol' => User::query()->with('roles')->get()
+                ->flatMap(fn (User $usuario) => $usuario->rolesAsignados())
+                ->countBy(fn (RolUsuario $rol) => $rol->value),
+            'ingresosAprobados' => SolicitudDepositoEloquentModel::query()
+                ->where('estado', EstadoSolicitudDeposito::AprobadaDocumentalmente->value)->count(),
+        ];
     }
 
     /** Datos acotados para el visor del archivo, sin descargar objetos R2 al renderizar. */

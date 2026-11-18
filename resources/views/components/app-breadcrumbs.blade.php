@@ -13,23 +13,20 @@
     ];
 
     $items = match (true) {
-        request()->routeIs('admin.centro') => [['Centro de administración', null]],
-        request()->routeIs('admin.textos-portal') => [['Divulgación', route('divulgacion.index')], ['Textos del portal', null]],
+        request()->routeIs('admin.contenidos') => [['Contenidos y textos', null]],
         request()->routeIs('admin.usuarios') => [
-            ['Centro de administración', route('admin.centro')],
             ['Usuarios y perfiles', null],
         ],
         request()->routeIs('admin.configuracion') => [
-            ['Centro de administración', route('admin.centro')],
-            ['Configuración del sistema', null],
+            ['Correo y descargas', null],
         ],
         request()->routeIs('prestamos.curador.panel') => [['Gestión de préstamos', null]],
         request()->routeIs('prestamos.curador.solicitudes') => [['Gestión de préstamos', route('prestamos.curador.panel')], ['Solicitudes', null]],
         request()->routeIs('prestamos.curador.actas') => [['Gestión de préstamos', route('prestamos.curador.panel')], ['Actas', null]],
         request()->routeIs('prestamos.curador.prestamos') => [['Gestión de préstamos', route('prestamos.curador.panel')], ['Préstamos', null]],
-        request()->routeIs('prestamos.curador.configuracion') => [['Gestión de préstamos', route('prestamos.curador.panel')], ['Configuración', null]],
-        request()->routeIs('prestamos.curador.depositos') => [['Gestión de depósitos', null], ['Recepciones', null]],
-        request()->routeIs('prestamos.receptor.depositos') => [['Recepción EPN', null], ['Lotes por recibir', null]],
+        request()->routeIs('prestamos.curador.configuracion') => [['Gestión de préstamos', route('prestamos.curador.panel')], ['Recordatorios de préstamos', null]],
+        request()->routeIs('prestamos.curador.depositos') => [['Gestión de depósitos', null], ['Revisión documental y actas', null]],
+        request()->routeIs('prestamos.receptor.depositos') => [['Gestión de depósitos', null], ['Recepción física', null]],
         request()->routeIs('prestamos.investigador.mis-solicitudes') => [['Préstamos', null], ['Mis solicitudes', null]],
         request()->routeIs('prestamos.investigador.mis-actas') => [['Préstamos', null], ['Mis actas', null]],
         request()->routeIs('prestamos.investigador.mis-prestamos') => [['Préstamos', null], ['Mis préstamos', null]],
@@ -37,6 +34,7 @@
         request()->routeIs('roles.activar') => [['Configuración de cuenta', null], ['Activar rol', null]],
         request()->routeIs('profile.edit', 'security.edit', 'appearance.edit') => [['Configuración de cuenta', null]],
         request()->routeIs('inventario.*') => [['Inventario', null], [str($routeName)->afterLast('.')->headline()->toString(), null]],
+        request()->routeIs('divulgacion.index') => [['Divulgación', null], ['Publicación del catálogo', null]],
         request()->routeIs('divulgacion.*') => [['Divulgación', null], [str($routeName)->afterLast('.')->headline()->toString(), null]],
         default => $routeName !== ''
             ? [[str($routeName)->afterLast('.')->replace('-', ' ')->headline()->toString(), null]]

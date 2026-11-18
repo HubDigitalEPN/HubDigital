@@ -50,3 +50,16 @@ test('la pantalla única de instituciones tiene cobertura propia incluso de las 
         assert.deepEqual(impact.focalScope([file]),[]);
     }
 });
+
+
+test('la reorganización selecciona solo sus espacios canónicos y las pantallas retiradas no requieren DOM inexistente', async () => {
+    const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
+    for(const id of ['menu_curaduria','publicacion_unificada','contenidos_unificados','catalogo_importacion']) {
+        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),[id]);
+        assert.ok(ui.definitions[id].checks.includes('responsive'));
+    }
+    for(const source of ['app/Livewire/Administracion/CentroAdministracion.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/revision/centro.blade.php']) {
+        assert.deepEqual(impact.focalScope([source]),[]);
+        assert.deepEqual(ui.contracts[source],['tests/Feature/NavegacionCuraduriaUnificadaTest.php']);
+    }
+});

@@ -17,7 +17,7 @@ use Livewire\Component;
 use Throwable;
 
 #[Layout('layouts.app')]
-#[Title('Configuración del sistema')]
+#[Title('Correo y descargas')]
 final class ConfiguracionSistema extends Component
 {
     public bool $descargasAutoservicio = false;

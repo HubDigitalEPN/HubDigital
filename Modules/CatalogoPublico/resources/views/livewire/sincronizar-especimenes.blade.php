@@ -2,16 +2,8 @@
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-blue-navy">Divulgar especímenes</h1>
+            <h2 class="hub-section-title">Incorporar especímenes pendientes</h2>
         </div>
-        <flux:button
-            :href="route('divulgacion.index')"
-            icon="arrow-left"
-            variant="ghost"
-            wire:navigate
-        >
-            Volver a la tabla
-        </flux:button>
     </div>
 
     {{-- Stepper --}}

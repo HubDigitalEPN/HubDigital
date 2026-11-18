@@ -12,7 +12,7 @@ const definitions = {
     chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css','resources/views/layouts/portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/ChatBotWidget.php'], checks:['install','hide','fresh','catalogOnly','restore','focus']},
 };
 Object.assign(definitions, {
-    instituciones_unificadas: {sources:['app/Services/DirectorioInstituciones.php','app/Livewire/Administracion/InstitucionesCatalogo.php','resources/views/livewire/administracion/instituciones-catalogo.blade.php','resources/views/layouts/app/sidebar.blade.php','Modules/InventarioGestionColeccion/routes/web.php'],checks:['redirect','menu','labels','saved','edited','duplicate','disabled','acta','responsive']},
+    instituciones_unificadas: {sources:['app/Services/DirectorioInstituciones.php','app/Livewire/Administracion/InstitucionesCatalogo.php','resources/views/livewire/administracion/instituciones-catalogo.blade.php','Modules/InventarioGestionColeccion/routes/web.php'],checks:['canonical','menu','labels','saved','edited','duplicate','disabled','acta','responsive']},
     catalogo_taxones: {sources:['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/TaxonIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/taxones/index.blade.php'],checks:['parents','created','search','edited','inactive','empty','responsive']},
     catalogo_alta: {sources:['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php','Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/ColumnasCatalogo.php'], checks:['open','ecuador','invalid','labels','dateLabels','saved','edited','responsive']},
     depositos_selector_anidado: {sources:['Modules/GestionPrestamosRecepciones/resources/views/components/lov-popup.blade.php'], checks:['nestedOpen','mouseKeepsEditor','saved','keyboardKeepsEditor','focus','responsive']},
@@ -131,6 +131,237 @@ Object.assign(contracts, {
     'app/Http/Responses/LoginPorPerfilResponse.php':['tests/Feature/PerfilesRecepcionDepositoTest.php'],
     'app/Livewire/ActivarRol.php':['tests/Feature/PerfilesRecepcionDepositoTest.php'],
 });
+
+// Reorganización de curaduría: contratos propios de sus entradas y pantallas.
+Object.assign(definitions, {
+    "menu_curaduria": {
+        "sources": [
+            "app/Livewire/Dashboard.php",
+            "resources/views/livewire/dashboard/curador-panel.blade.php",
+            "resources/views/layouts/app/sidebar.blade.php",
+            "resources/views/components/app-breadcrumbs.blade.php",
+            "routes/web.php",
+            "Modules/InventarioGestionColeccion/routes/web.php",
+            "Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/BandejaDepositos.php",
+            "Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php",
+            "Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ConfiguracionRecordatorios.php",
+            "Modules/GestionPrestamosRecepciones/resources/views/curador/configuracion-recordatorios.blade.php",
+            "app/Livewire/Administracion/ConfiguracionSistema.php",
+            "resources/views/livewire/administracion/configuracion-sistema.blade.php",
+            "resources/views/livewire/administracion/gestion-botones.blade.php"
+        ],
+        "checks": [
+            "unique",
+            "retired",
+            "labels",
+            "shortcuts",
+            "locality",
+            "account",
+            "responsive"
+        ]
+    },
+    "publicacion_unificada": {
+        "sources": [
+            "Modules/CatalogoPublico/app/Presentation/Http/Controllers/PublicacionCatalogo.php",
+            "Modules/CatalogoPublico/resources/views/livewire/publicacion-catalogo.blade.php",
+            "Modules/CatalogoPublico/resources/views/livewire/tabla-especimenes-divulgados.blade.php",
+            "Modules/CatalogoPublico/resources/views/livewire/sincronizar-especimenes.blade.php",
+            "Modules/CatalogoPublico/routes/web.php"
+        ],
+        "checks": [
+            "page",
+            "pending",
+            "disclosed",
+            "visibility",
+            "responsive"
+        ]
+    },
+    "contenidos_unificados": {
+        "sources": [
+            "app/Livewire/Administracion/ContenidosTextos.php",
+            "resources/views/livewire/administracion/contenidos-textos.blade.php",
+            "resources/views/livewire/administracion/configuracion-textos-portal.blade.php",
+            "resources/views/livewire/administracion/configuracion-textos-wizard.blade.php",
+            "resources/views/livewire/administracion/configuracion-textos-sistema.blade.php"
+        ],
+        "checks": [
+            "page",
+            "portal",
+            "depositos",
+            "sistema",
+            "responsive"
+        ]
+    }
+});
+for (const id of ["menu_curaduria", "publicacion_unificada", "contenidos_unificados"]) for (const file of definitions[id].sources) owner[file] = [id];
+owner["Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/CentroRevisionIndex.php"] = [];
+owner["Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/DuplicadosCatalogNumberIndex.php"] = [];
+owner["Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/FechasRevisionIndex.php"] = [];
+owner["Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/LocalidadesRevisionIndex.php"] = [];
+owner["Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/MuestrasColectaIndex.php"] = [];
+owner["Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/TaxaRevisionIndex.php"] = [];
+owner["Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/duplicados/index.blade.php"] = [];
+owner["Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/fechas/revision.blade.php"] = [];
+owner["Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/localidades/revision.blade.php"] = [];
+owner["Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/muestras/index.blade.php"] = [];
+owner["Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/revision/centro.blade.php"] = [];
+owner["Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/taxones/revision.blade.php"] = [];
+owner["app/Livewire/Administracion/CentroAdministracion.php"] = [];
+owner["resources/views/livewire/administracion/centro-administracion.blade.php"] = [];
+Object.assign(contracts, {
+    "Modules/CatalogoPublico/resources/views/livewire/sincronizar-especimenes.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/CatalogoPublico/resources/views/livewire/tabla-especimenes-divulgados.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/CatalogoPublico/routes/web.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/BandejaDepositos.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ConfiguracionRecordatorios.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/GestionPrestamosRecepciones/resources/views/curador/configuracion-recordatorios.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/GestionPrestamosRecepciones/resources/views/investigador/portal-depositos.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Domain/SeguimientoFisico/Services/RegistroColumnasEspecimen.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php",
+        "tests/Feature/CatalogoAltaManualTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/CentroRevisionIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ConfiguracionColumnasIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/DuplicadosCatalogNumberIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php",
+        "tests/Feature/CatalogoAltaManualTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/FechasRevisionIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/LocalidadesRevisionIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/MuestrasColectaIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/TaxaRevisionIndex.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/duplicados/index.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php",
+        "tests/Feature/CatalogoAltaManualTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/fechas/revision.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/importar/actualizacion.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/importar/index.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/localidades/revision.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/muestras/index.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/revision/centro.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/taxones/revision.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/InventarioGestionColeccion/routes/web.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "app/Livewire/Administracion/CentroAdministracion.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "app/Livewire/Administracion/ConfiguracionSistema.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "app/Livewire/Dashboard.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/components/app-breadcrumbs.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/layouts/app/sidebar.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/livewire/administracion/centro-administracion.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/livewire/administracion/configuracion-sistema.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/livewire/administracion/configuracion-textos-portal.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php",
+        "tests/Feature/PortalTextosAdministracionTest.php"
+    ],
+    "resources/views/livewire/administracion/configuracion-textos-sistema.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php",
+        "tests/Feature/PortalTextosAdministracionTest.php"
+    ],
+    "resources/views/livewire/administracion/configuracion-textos-wizard.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php",
+        "tests/Feature/PortalTextosAdministracionTest.php"
+    ],
+    "resources/views/livewire/administracion/gestion-botones.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/livewire/dashboard/curador-panel.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "routes/web.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/CatalogoPublico/app/Presentation/Http/Controllers/PublicacionCatalogo.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "Modules/CatalogoPublico/resources/views/livewire/publicacion-catalogo.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "app/Livewire/Administracion/ContenidosTextos.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ],
+    "resources/views/livewire/administracion/contenidos-textos.blade.php": [
+        "tests/Feature/NavegacionCuraduriaUnificadaTest.php"
+    ]
+});
+
+definitions.catalogo_importacion = {sources:['Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/importar/actualizacion.blade.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/importar/index.blade.php'], checks:['page','canonical','noReview','input','responsive']};
+for(const file of definitions.catalogo_importacion.sources) owner[file]=['catalogo_importacion'];
+owner['Modules/GestionPrestamosRecepciones/resources/views/investigador/portal-depositos.blade.php']=['contenidos_unificados'];
+owner['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ConfiguracionColumnasIndex.php']=['menu_curaduria'];
+definitions.catalogo_alta.checks.push('noRevision');
+
+// Los encabezados y rutas comunes tienen cobertura de navegación propia.
+definitions.depositos_contenido.sources = definitions.depositos_contenido.sources.filter(file => file !== 'Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php');
+definitions.instituciones_unificadas.sources = definitions.instituciones_unificadas.sources.filter(file => file !== 'Modules/InventarioGestionColeccion/routes/web.php');
+
+definitions.publicacion_unificada.checks.push('noReview','contrast');
+definitions.contenidos_unificados.checks.push('contrast');
+
 function inputs(root, id) {
     if (!definitions[id]) throw Error('Contrato UI desconocido.');
     const sources=[...new Set([...definitions[id].sources,...Object.keys(owner).filter(file=>owner[file].includes(id))])];

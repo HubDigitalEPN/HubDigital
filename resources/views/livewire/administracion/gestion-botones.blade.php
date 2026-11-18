@@ -1,5 +1,5 @@
 <div class="hub-workspace space-y-6 p-4 sm:p-6" data-testid="admin-buttons-page">
-    <a href="{{ route('admin.centro') }}" wire:navigate class="text-sm text-science-blue hover:underline">Centro de administración</a>
+    <a href="{{ route('dashboard') }}" wire:navigate class="text-sm text-science-blue hover:underline">Panel del curador</a>
     <header><h1 class="hub-page-title">Botones y permisos por perfil</h1><p class="mt-2 text-sm text-text-secondary">Define qué botones puede ver y usar cada perfil. Las personas con varios perfiles pueden cambiar entre los que tienen asignados.</p></header>
     <p class="rounded-lg border border-border bg-surface p-4 text-sm text-text-secondary">El catálogo completo contiene información interna y queda reservado a Administración, Curador y Ayudante de curador. Las descargas externas mantienen las restricciones de divulgación y el permiso general de descargas de autoservicio.</p>
     @if(session('botones-guardados'))<p role="status" class="text-bio-green">{{ session('botones-guardados') }}</p>@endif

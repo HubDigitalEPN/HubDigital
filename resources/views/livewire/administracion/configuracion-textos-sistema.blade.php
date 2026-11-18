@@ -1,7 +1,6 @@
 <div data-copy-preserve class="hub-workspace mx-auto max-w-7xl space-y-4 p-4">
-    <h1 class="hub-page-title">Textos de todas las pantallas</h1>
+    <h2 class="hub-section-title">Textos generales del sistema</h2>
 
-    <div class="flex flex-wrap gap-4"><a href="{{ route('admin.textos-portal') }}" wire:navigate class="underline">Contenido del portal y mapa</a><a href="{{ route('admin.textos-depositos') }}" wire:navigate class="underline">Contenido de depósitos</a></div>
     @if(session('textos-sistema'))<p data-hub-feedback="success" role="status">{{ session('textos-sistema') }}</p>@endif
     <div class="hub-panel grid gap-3 p-4 sm:grid-cols-2">
         <flux:input type="search" label="Buscar texto" wire:model.live.debounce.400ms="busqueda"/>

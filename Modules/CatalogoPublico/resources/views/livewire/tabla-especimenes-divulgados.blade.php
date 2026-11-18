@@ -2,16 +2,8 @@
     {{-- Page header --}}
     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="font-display text-2xl font-bold text-blue-navy">Catálogo divulgado</h1>
+            <h2 class="hub-section-title">Especímenes divulgados</h2>
         </div>
-        <flux:button
-            :href="route('divulgacion.sincronizar')"
-            icon="cloud-arrow-up"
-            variant="primary"
-            wire:navigate
-        >
-            Divulgar especímenes
-        </flux:button>
     </div>
 
     @if($configGuardada)
@@ -91,7 +83,6 @@
                     <th class="px-4 py-3 text-left font-medium text-white">N.º de catálogo</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Nombre científico</th>
                     <th class="px-4 py-3 text-left font-medium text-white">Publicación</th>
-                    <th class="px-4 py-3 text-left font-medium text-white">Revisión de datos</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden md:table-cell">Colector</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden lg:table-cell">Familia</th>
                     <th class="px-4 py-3 text-left font-medium text-white hidden xl:table-cell">Estado</th>
@@ -112,15 +103,6 @@
                         </td>
                         <td class="px-4 py-3 text-xs font-semibold {{ $especimen->publicado && $especimen->coordenadas_publicas_validas ? 'text-bio-green' : 'text-amber-700' }}">
                             {{ $especimen->publicado && $especimen->coordenadas_publicas_validas ? 'Público' : 'Solo curaduría' }}
-                        </td>
-                        <td class="px-4 py-3 text-xs text-amber-800">
-                            @if($especimen->coordenadas_otras_regiones)<span class="block">Coordenadas de otras regiones · revisar procedencia</span>@endif
-                            @if(! $especimen->scientific_name_visible || ! \Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica::contieneNombre($especimen->scientific_name ?? ''))<span class="block">Nombre científico ausente o reservado · oculto al portal</span>@endif
-                            @if($especimen->coordenadas_incompletas)<span class="block">Sin par de coordenadas · revisar fuente · oculto al portal</span>@endif
-                            @if($especimen->coordenadas_reservadas)<span class="block">Coordenadas reservadas · oculto al portal</span>@endif
-                            @if(! $especimen->coordenadas_publicas_validas && ! $especimen->coordenadas_incompletas && ! $especimen->coordenadas_reservadas && $especimen->scientific_name_visible && \Modules\CatalogoPublico\Infrastructure\NormalizacionGeografica::contieneNombre($especimen->scientific_name ?? ''))<span class="block">Coordenadas fuera del rango válido · revisar fuente · oculto al portal</span>@endif
-                            @if($especimen->fecha_colecta && ((int) substr($especimen->fecha_colecta, 0, 4) < 1800 || $especimen->fecha_colecta > date('Y-m-d')))<span class="block">Fecha original por revisar: {{ $especimen->fecha_colecta }}</span>@endif
-                            @if(preg_match('/dañad[oa]|danad[oa]|ilegible/iu', $especimen->scientific_name ?? ''))<span class="block">Identificación dañada · no cuenta como especie</span>@endif
                         </td>
                         <td class="px-4 py-3 hidden md:table-cell text-xs text-text-secondary">
                             {{ $especimen->colector ?? '—' }}
@@ -153,12 +135,12 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-4 py-12 text-center">
+                        <td colspan="8" class="px-4 py-12 text-center">
                             <div class="flex flex-col items-center gap-2 text-text-secondary">
                                 <flux:icon name="table-cells" class="size-8 opacity-40" />
                                 <span class="text-sm">No hay especímenes divulgados aún.</span>
                                 <flux:button
-                                    :href="route('divulgacion.sincronizar')"
+                                    :href="route('divulgacion.index', ['vista' => 'pendientes'])"
                                     variant="primary"
                                     size="sm"
                                     wire:navigate

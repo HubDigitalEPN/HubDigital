@@ -1,6 +1,6 @@
 <div class="hub-workspace mx-auto max-w-7xl space-y-5 p-3 sm:p-5">
     <header class="hub-page-header">
-        <div><h1 class="hub-page-title">Textos del portal</h1></div>
+        <div><h2 class="hub-section-title">Textos del portal</h2></div>
         <a href="{{ route('home') }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue underline">Abrir portal ↗</a>
     </header>
     @if(session('portal-textos'))<p data-hub-feedback="success" role="status" class="rounded-lg border border-success/30 bg-success/5 p-3 text-success">{{ session('portal-textos') }}</p>@endif

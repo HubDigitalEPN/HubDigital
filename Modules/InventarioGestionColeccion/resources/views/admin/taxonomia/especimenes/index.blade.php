@@ -177,10 +177,6 @@
             <flux:button icon="eye" variant="ghost" :href="route('divulgacion.index')" wire:navigate>
                 Administrar publicación
             </flux:button>
-            <flux:button icon="clipboard-document-check" variant="ghost"
-                         :href="route('inventario.taxonomia.revision')" wire:navigate>
-                Centro de revisión
-            </flux:button>
             <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
                 Nuevo especímen
             </flux:button>
@@ -192,20 +188,6 @@
 
     {{-- ── Barra de herramientas ───────────────────────────────────────────── --}}
     <div class="rounded-lg border border-border bg-surface shadow-sm">
-        <div class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3" aria-label="Colas de control curatorial">
-            <span class="mr-1 text-xs font-semibold text-text-secondary">Revisar:</span>
-            @foreach([
-                ['duplicados', 'IDs repetidos'],
-                ['coordenadas', 'Trazas de coordenadas'],
-                ['no_publicados', 'No publicados'],
-                ['fechas', 'Fechas incorrectas'],
-                ['taxonomia', 'Taxonomía incompleta'],
-                ['todos', 'Todos'],
-            ] as [$clave, $etiqueta])
-                @php $valorIncidencia = ['no_publicados' => 'ec_publicar', 'todos' => ''][$clave] ?? $clave; @endphp
-                <button type="button" wire:click="preset('{{ $clave }}')" class="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors {{ $fIncidencia === $valorIncidencia ? 'border-science-blue bg-science-blue/10 text-blue-navy' : 'border-border hover:bg-bg-main' }}">{{ $etiqueta }}</button>
-            @endforeach
-        </div>
 
         <div class="flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
             {{-- Búsqueda rápida: una sola caja contra códigos, taxón, colector y localidad. --}}
@@ -330,66 +312,12 @@
                         </flux:select>
                     </flux:field>
 
-                    <flux:field>
-                        <flux:label>Estado de revisión</flux:label>
-                        <flux:select wire:model.live="fEstadoRevision">
-                            <option value="">— Cualquiera —</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="confirmada">Confirmada</option>
-                            <option value="descartada">Descartada</option>
-                        </flux:select>
-                    </flux:field>
 
-                    <flux:field>
-                        <flux:label>Motivo revisión contiene</flux:label>
-                        <flux:input wire:model="fMotivoRevision" wire:keydown.enter="buscar" placeholder="Ej. coordenadas, fecha" />
-                        <flux:error name="fMotivoRevision" />
-                    </flux:field>
 
-                    <flux:field>
-                        <flux:label>Control curatorial</flux:label>
-                        <flux:select wire:model.live="fIncidencia">
-                            <option value="">— Todos —</option>
-                            <option value="duplicados">Código, catalogNumber u occurrenceID repetidos</option>
-                            <option value="coordenadas">Trazas de coordenadas</option>
-                            <option value="ec_publicar">No publicados</option>
-                            <option value="fechas">Fechas incorrectas o pendientes</option>
-                            <option value="taxonomia">Sin especie o filo enlazado</option>
-                            <option value="localidades">Desglose de localidades por revisar</option>
-                            <option value="nombres_cientificos">Nombres científicos pendientes de revisión</option>
-                            <option value="nombres_vacios">Nombre científico vacío</option>
-                            <option value="nombres_no_cientificos">Texto no científico</option>
-                            <option value="nombres_no_resueltos">Nombre sin coincidencia suficiente</option>
-                            <option value="nombres_corregidos">Grafía científica corregida</option>
-                            <option value="nombres_sin_revisar">Nombre sin revisar o modificado</option>
-                        </flux:select>
 
-                    </flux:field>
-
-                    <flux:field class="sm:col-span-2 lg:col-span-3">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" wire:model.live="fParaRevision" class="size-4 rounded border-border" />
-                            <span class="text-sm text-text-primary">Solo los marcados para revisión (pendientes con un motivo)</span>
-                        </label>
-                    </flux:field>
                 </div>
 
                 <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-xs font-medium text-text-secondary">Presets:</span>
-                        @foreach([
-                            ['label' => 'Para revisión', 'key' => 'para_revision'],
-                            ['label' => 'Sin coordenadas', 'key' => 'sin_coords'],
-                            ['label' => 'Fechas no parseables', 'key' => 'fechas_raras'],
-                            ['label' => 'Sin ID de ocurrencia', 'key' => 'sin_occurrence_id'],
-                            ['label' => 'Todo el catálogo', 'key' => 'todos'],
-                        ] as $p)
-                            <button type="button" wire:click="preset('{{ $p['key'] }}')"
-                                    class="inline-flex items-center rounded-full border border-border bg-surface px-3 py-1 text-xs transition-colors hover:bg-bg-main">
-                                {{ $p['label'] }}
-                            </button>
-                        @endforeach
-                    </div>
                     <flux:button variant="primary" icon="magnifying-glass" wire:click="buscar"
                                  wire:loading.attr="disabled" class="w-full sm:w-auto">
                         <span wire:loading.remove wire:target="buscar">Aplicar filtros</span>
@@ -646,7 +574,8 @@
                 <tbody>
                     @forelse($filas as $i => $especimen)
                         @php
-                            $marcado = ($especimen['estadoRevision'] ?? '') === 'pendiente' && ! empty($especimen['motivoRevision']);
+
+                            $marcado = false;
                             $fondo = $i % 2 === 0 ? 'bg-surface' : 'bg-bg-main';
                         @endphp
                         <tr wire:key="fila-{{ $especimen['id'] }}" class="group">
@@ -703,23 +632,6 @@
                                     {{-- Un triángulo por problema detectado, cada uno hacia donde ese
                                          problema se arregla. El title lleva el motivo literal para que
                                          el curador sepa qué pasa sin abrir nada. --}}
-                                    @foreach($especimen['problemas'] ?? [] as $problema)
-                                        @php $aviso = $problema['etiqueta'].' — '.($especimen['motivoRevision'] ?? ''); @endphp
-                                        @if($problema['abreModal'])
-                                            <button type="button" class="{{ $btnAviso }}"
-                                                    wire:click="abrirEditModal('{{ $especimen['id'] }}')"
-                                                    title="{{ $aviso }}"
-                                                    aria-label="{{ $problema['etiqueta'] }} de {{ $especimen['codigoCatalogo'] }}">
-                                                <svg class="size-4"><use href="#ico-aviso" /></svg>
-                                            </button>
-                                        @else
-                                            <a href="{{ $problema['url'] }}" wire:navigate class="{{ $btnAviso }}"
-                                               title="{{ $aviso }}"
-                                               aria-label="{{ $problema['etiqueta'] }} de {{ $especimen['codigoCatalogo'] }}">
-                                                <svg class="size-4"><use href="#ico-aviso" /></svg>
-                                            </a>
-                                        @endif
-                                    @endforeach
                                     {{-- Editar está disponible en cualquier estado: `actualizar()` solo
                                          toca metadatos curatoriales (localidad, colector, fecha, geo…),
                                          nunca la circulación del ejemplar. Condicionarlo a 'disponible'
@@ -766,7 +678,7 @@
         {{-- Móvil: tarjetas apiladas con el mismo juego de columnas. --}}
         <div class="divide-y divide-border md:hidden">
             @forelse($filas as $i => $especimen)
-                @php $marcado = ($especimen['estadoRevision'] ?? '') === 'pendiente' && ! empty($especimen['motivoRevision']); @endphp
+                @php $marcado = false; @endphp
                 <div wire:key="movil-{{ $especimen['id'] }}"
                      class="flex flex-col gap-2 p-4 @if($marcado) border-l-4 border-l-error @endif">
                     <div class="flex items-start justify-between gap-2">
@@ -783,7 +695,6 @@
                                 </span>
                             </span>
                         </label>
-                        {!! $renderCelda($especimen, 'estadoRevision') !!}
                     </div>
 
                     @foreach($columnasTabla as $col)
@@ -794,19 +705,6 @@
                     @endforeach
 
                     <div class="flex flex-wrap gap-2 pt-2">
-                        @foreach($especimen['problemas'] ?? [] as $problema)
-                            @if($problema['abreModal'])
-                                <flux:button variant="filled" icon="exclamation-triangle"
-                                             wire:click="abrirEditModal('{{ $especimen['id'] }}')">
-                                    {{ $problema['etiqueta'] }}
-                                </flux:button>
-                            @else
-                                <flux:button variant="filled" icon="exclamation-triangle"
-                                             href="{{ $problema['url'] }}" wire:navigate>
-                                    {{ $problema['etiqueta'] }}
-                                </flux:button>
-                            @endif
-                        @endforeach
                         <flux:button variant="ghost" icon="eye" wire:click="abrirFicha('{{ $especimen['id'] }}')">
                             Ver ficha
                         </flux:button>
@@ -866,14 +764,10 @@
                         </flux:heading>
 
                     </div>
-                    {!! $renderCelda($fichaDatos, 'estadoRevision') !!}
                 </div>
 
                 @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
-                @if(! empty($fichaDatos['motivoRevision']))
-                    <flux:callout data-hub-feedback="warning" variant="warning">{{ $fichaDatos['motivoRevision'] }}</flux:callout>
-                @endif
 
                 <div class="max-h-[60vh] space-y-5 overflow-y-auto pr-1">
                     @foreach($porGrupo as $grupo => $columnas)
