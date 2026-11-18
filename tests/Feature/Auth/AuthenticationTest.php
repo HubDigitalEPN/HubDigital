@@ -74,6 +74,29 @@ test('users can authenticate using the login screen', function () {
     $this->assertAuthenticated();
 });
 
+test('el ingreso con Fortify y 2FA habilitado consume Turnstile una sola vez y no reutiliza otro intento', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.secret', 'secret-for-test');
+    config()->set('services.turnstile.expected_hostname', 'labinvepn.org');
+    config()->set('services.turnstile.expected_action', 'turnstile-spin-v2');
+    expect(Features::enabled(Features::twoFactorAuthentication()))->toBeTrue();
+    Http::fake([
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::sequence()
+            ->push(['success' => true, 'hostname' => 'labinvepn.org', 'action' => 'turnstile-spin-v2'])
+            ->push(['success' => false, 'error-codes' => ['timeout-or-duplicate']]),
+    ]);
+    $user = User::factory()->create();
+    $credenciales = ['email' => $user->email, 'password' => 'password', 'cf-turnstile-response' => 'token-de-un-solo-uso'];
+    $this->postJson(route('login.store'), $credenciales)->assertOk();
+    $this->assertAuthenticatedAs($user);
+    Http::assertSentCount(1);
+    $this->post(route('logout'))->assertRedirect();
+    $this->postJson(route('login.store'), $credenciales)
+        ->assertUnprocessable()->assertJsonValidationErrors('cf-turnstile-response');
+    $this->assertGuest();
+    Http::assertSentCount(2);
+});
+
 test('email is canonicalized before authentication', function () {
     $user = User::factory()->create(['email' => 'persona@example.com']);
 
@@ -83,6 +106,41 @@ test('email is canonicalized before authentication', function () {
     ])->assertRedirect(route('portal.catalogo', ['vista' => 'mapa'], absolute: false));
 
     $this->assertAuthenticatedAs($user);
+});
+
+test('Turnstile rechaza un hostname o una accion ajenos antes de autenticar', function (string $hostname, string $action) {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.secret', 'secret-for-test');
+    config()->set('services.turnstile.expected_hostname', 'labinvepn.org');
+    config()->set('services.turnstile.expected_action', 'turnstile-spin-v2');
+    Http::fake(['https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
+        'success' => true, 'hostname' => $hostname, 'action' => $action,
+    ])]);
+    $user = User::factory()->create();
+    $this->postJson(route('login.store'), [
+        'email' => $user->email, 'password' => 'password', 'cf-turnstile-response' => 'token-ajeno',
+        'hubdigital.turnstile.validacion_peticion' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors('cf-turnstile-response');
+    $this->assertGuest();
+    Http::assertSentCount(1);
+})->with([['otro.example', 'turnstile-spin-v2'], ['labinvepn.org', 'otra-accion']]);
+
+test('Turnstile no conserva una validacion si cambia el token de la misma peticion', function () {
+    config()->set('services.turnstile.enabled', true);
+    config()->set('services.turnstile.secret', 'secret-for-test');
+    config()->set('services.turnstile.expected_hostname', 'labinvepn.org');
+    config()->set('services.turnstile.expected_action', 'turnstile-spin-v2');
+    Http::fake(['https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::sequence()
+        ->push(['success' => true, 'hostname' => 'labinvepn.org', 'action' => 'turnstile-spin-v2'])
+        ->push(['success' => false, 'error-codes' => ['invalid-input-response']])]);
+    $request = \Illuminate\Http\Request::create('/login', 'POST', ['cf-turnstile-response' => 'token-validado']);
+    app(\App\Services\Security\TurnstileVerifier::class)->validateLogin($request);
+    app(\App\Services\Security\TurnstileVerifier::class)->validateLogin($request);
+    Http::assertSentCount(1);
+    $request->merge(['cf-turnstile-response' => 'otro-token']);
+    expect(fn () => app(\App\Services\Security\TurnstileVerifier::class)->validateLogin($request))
+        ->toThrow(\Illuminate\Validation\ValidationException::class);
+    Http::assertSentCount(2);
 });
 
 test('users can not authenticate with invalid password', function () {

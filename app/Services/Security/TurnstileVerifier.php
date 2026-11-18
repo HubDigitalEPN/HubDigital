@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 final class TurnstileVerifier
 {
+    private const VALIDACION_PETICION = 'hubdigital.turnstile.validacion_peticion';
+
     /**
      * Valida el token en el servidor antes de comprobar las credenciales.
      */
@@ -39,6 +41,18 @@ final class TurnstileVerifier
             $this->reject($operation);
         }
 
+        $expectedHostname = (string) config('services.turnstile.expected_hostname');
+        $expectedAction = (string) config('services.turnstile.expected_action');
+        $huella = hash('sha256', serialize([
+            $operation, $token, $secret, $expectedHostname, $expectedAction, $request->ip(),
+        ]));
+        // Fortify invoca el callback al comprobar 2FA y al iniciar la sesión.
+        // Siteverify consume el token: conservar el éxito solo en ESTE Request,
+        // nunca en sesión ni en caché compartida entre intentos de ingreso.
+        if ($request->attributes->get(self::VALIDACION_PETICION) === $huella) {
+            return;
+        }
+
         try {
             $result = Http::asForm()
                 ->acceptJson()
@@ -55,14 +69,13 @@ final class TurnstileVerifier
             $this->reject($operation, 'No fue posible validar que eres una persona. Intenta nuevamente.');
         }
 
-        $expectedHostname = (string) config('services.turnstile.expected_hostname');
-        $expectedAction = (string) config('services.turnstile.expected_action');
-
         if (($result['success'] ?? false) !== true
             || ($expectedHostname !== '' && ($result['hostname'] ?? null) !== $expectedHostname)
             || ($expectedAction !== '' && ($result['action'] ?? null) !== $expectedAction)) {
             $this->reject($operation);
         }
+
+        $request->attributes->set(self::VALIDACION_PETICION, $huella);
     }
 
     private function reject(string $operation, ?string $message = null): never

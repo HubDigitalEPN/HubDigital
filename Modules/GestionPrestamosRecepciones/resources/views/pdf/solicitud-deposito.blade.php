@@ -29,7 +29,7 @@
 
     <div class="destinatario">
         <strong>Dr. Adrian Troya</strong><br>
-        Jefe<br>
+        Curador<br>
         Laboratorio de Invertebrados<br>
         Departamento de Biología<br>
         Escuela Politécnica Nacional

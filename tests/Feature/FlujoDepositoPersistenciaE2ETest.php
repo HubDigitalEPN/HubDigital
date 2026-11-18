@@ -469,7 +469,7 @@ test('la fecha del oficio corresponde a Quito al cruzar medianoche UTC y no modi
         'solicitud' => $solicitud,
         'perfilFirma' => \Modules\GestionPrestamosRecepciones\Presentation\Support\PerfilFirmaPdf::solicitudDepositante(),
     ])->render();
-    expect($html)->toContain('Quito, 12 de octubre de 2026')
+    expect($html)->toContain('Quito, 12 de octubre de 2026', 'Curador<br>')->not->toContain('Jefe<br>')
         ->and($solicitud->getAttributes())->toBe($antes);
 });
 
