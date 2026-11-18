@@ -196,6 +196,7 @@ test('las actualizaciones parciales conservan la geografia omitida y su revision
         ->and($fila->localidad_desglosada)->toBeFalse()->and((float)$fila->decimal_latitude)->toBe(-0.09)->and((float)$fila->decimal_longitude)->toBe(-78.47);
 })->with([
     'sector sin pais provincia ni canton'=>[['localityName'],['Sector corregido'],'Sector corregido'],
+    'sector con comas no reemplaza pais ni provincia'=>[['localityName'],['Quito, Sector norte'],'Sector norte'],
     'canton sin sector ni area'=>[['municipality'],['Quito'],'Sector anterior'],
     'columnas geograficas vacias'=>[['localityName','municipality'],['',''],'Sector anterior'],
     'pais sin canton ni sector'=>[['country'],['Ecuador'],'Sector anterior'],
@@ -236,6 +237,24 @@ test('una falla después de la primera escritura revierte especímenes taxones e
     expect($guardados)->toBe(2)->and(DB::table('taxonomia.especimenes')->count())->toBe($antes)
         ->and(DB::table('taxonomia.taxones')->whereIn('nombre_cientifico', ['Primamyrmaqa','Secundamyrmaqa'])->count())->toBe(0)
         ->and(DB::table('taxonomia.importacion_filas_catalogo')->where('importacion_id', $batch)->count())->toBe(0);
+});
+
+test('la validación bloquea un conteo fuera del rango antes de crear una carga o escribir fichas', function (string $cantidad): void {
+    $antes = DB::table('taxonomia.especimenes')->count();
+    $cargas = DB::table('taxonomia.importaciones_catalogo')->count();
+    $ruta = matrizCatalogoPrueba(['occurrenceID', 'individualCount'], [['QA-LIMITE-CONTEO', $cantidad]]);
+    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))
+        ->toThrow(DomainException::class, 'individualCount supera el máximo permitido');
+    expect(DB::table('taxonomia.especimenes')->count())->toBe($antes)
+        ->and(DB::table('taxonomia.importaciones_catalogo')->count())->toBe($cargas);
+})->with(['2147483648', '999999999999999999999999']);
+
+test('el mayor conteo admitido conserva su valor exacto en PostgreSQL', function (): void {
+    $curador = User::factory()->curador()->create(['must_change_password'=>false]);
+    $codigo = 'QA-LIMITE-VALIDO-'.\Illuminate\Support\Str::uuid();
+    $ruta = matrizCatalogoPrueba(['occurrenceID', 'individualCount'], [[$codigo, '2147483647']]);
+    app(ActualizacionCatalogo::class)->aplicar(cargaMatrizPreparada($ruta, $curador), $ruta);
+    expect(DB::table('taxonomia.especimenes')->where('codigo_catalogo', $codigo)->value('individual_count'))->toBe(2147483647);
 });
 
 test('las notas generales importadas permanecen al hidratar y volver a guardar la ficha de inventario', function (): void {

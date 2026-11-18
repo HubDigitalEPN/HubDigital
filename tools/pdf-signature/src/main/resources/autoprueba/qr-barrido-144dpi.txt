@@ -1,0 +1,2 @@
+Original SHA-256: e8891eea1796b54d82d2812bab5918391b7ab0fedebff77b15b44dbb711af847
+Certificado SHA-256: 6f8563ae1cc9350b4dab63fd8e17147f8b5f6b924b232a284eff04acdb4e75c6

@@ -6,6 +6,7 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Segui
 
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
@@ -256,9 +257,14 @@ final class EspecimenIndex extends Component
 
     public bool $showModal = false;
 
-    public array $taxones = [];
+    #[Locked]
+    public ?string $ultimoCreadoId = null;
 
-    public array $entidades = [];
+    // Opciones de presentación: nunca forman parte del estado editable de Livewire.
+    // Comparar miles de opciones en el navegador bloquea cada actualización.
+    protected array $taxones = [];
+
+    protected array $entidades = [];
 
     #[Rule('required|string|max:100')]
     public string $codigoCatalogo = '';
@@ -295,7 +301,7 @@ final class EspecimenIndex extends Component
 
     public string $entidadDepositanteId = '';
 
-    #[Rule('nullable|integer|min:0')]
+    #[Rule('nullable|integer|min:0|max:2147483647')]
     public string $individualCount = '';
 
     #[Rule('nullable|string|max:120')]
@@ -649,7 +655,7 @@ final class EspecimenIndex extends Component
             if ($conTaxones && $this->taxones === []) {
                 $this->taxones = array_map(
                     fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
-                    app(ListarTaxonesHandler::class)->handle()->items,
+                    array_values(array_filter(app(ListarTaxonesHandler::class)->handle()->items, static fn ($taxon) => $taxon->estado === 'activo')),
                 );
             }
 
@@ -666,14 +672,14 @@ final class EspecimenIndex extends Component
     public function updatedShowModal(mixed $valor): void
     {
         if (! $valor) {
-            $this->reset('taxones', 'entidades');
+            $this->taxones = $this->entidades = [];
         }
     }
 
     public function updatedShowEditModal(mixed $valor): void
     {
         if (! $valor) {
-            $this->reset('entidades');
+            $this->entidades = [];
         }
     }
 
@@ -727,8 +733,15 @@ final class EspecimenIndex extends Component
         $reglas = array_filter($this->getRules(), static fn (string $campo): bool => !str_starts_with($campo, 'edit'), ARRAY_FILTER_USE_KEY);
         $this->validate($reglas + ['entidadDepositanteId' => 'nullable|uuid']);
 
+        $taxon = app(\Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface::class)
+            ->buscarPorId(\Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId::desde($this->taxonId));
+        if ($taxon === null || $taxon->estado()->value !== 'activo') {
+            $this->addError('taxonId', 'Selecciona un taxón activo del catálogo.');
+            return;
+        }
+
         try {
-            $handler->handle(new RegistrarEspecimenInput(
+            $registrado = $handler->handle(new RegistrarEspecimenInput(
                 codigoCatalogo: $this->codigoCatalogo,
                 taxonId: $this->taxonId,
                 localidad: $this->localidad,
@@ -759,14 +772,20 @@ final class EspecimenIndex extends Component
             ));
 
             $this->showModal = false;
+            $this->ultimoCreadoId = (string) $registrado->id;
             // El cierre programático no dispara `updatedShowModal`, así que aquí
             // se sueltan los catálogos a mano.
-            $this->reset('taxones', 'entidades');
+            $this->taxones = $this->entidades = [];
             $this->successMessage = "Especímen '{$this->codigoCatalogo}' registrado correctamente.";
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
+    }
+
+    protected function validationAttributes(): array
+    {
+        return \Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::atributosValidacion();
     }
 
     // ── Edición ───────────────────────────────────────────────────────────────
@@ -861,7 +880,7 @@ final class EspecimenIndex extends Component
             ));
 
             $this->showEditModal = false;
-            $this->reset('entidades');
+            $this->entidades = [];
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
@@ -1363,6 +1382,9 @@ final class EspecimenIndex extends Component
 
     public function render(ResolverPrioridadColumnas $resolver): View
     {
+        if ($this->showModal || $this->showEditModal) {
+            $this->cargarCatalogosFormulario(conTaxones: $this->showModal);
+        }
         $columnas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar($resolver->aplicar('especimenes', self::columnasGestion()));
         $extras = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->personalizadas(), 'campo');
         foreach ($extras as $extra) if (!in_array($extra, $this->ordenColumnas, true)) { $this->ordenColumnas[] = $extra; $this->columnasVisibles[] = $extra; }
@@ -1387,6 +1409,8 @@ final class EspecimenIndex extends Component
         $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($output->items);
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
+            'taxones' => $this->taxones,
+            'entidades' => $this->entidades,
             'filas' => $filas,
             'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],
             'totalPaginas' => max(1, $output->totalPaginas),

@@ -8,6 +8,21 @@ export async function comprobarUIFocal(caso) {
     const checks={};let metrics={};
     const model=(key,tag='input')=>all(tag).find(x=>x.getAttribute('wire:model')===key);
     const fillModel=(key,value)=>{const el=model(key)||model(key,'textarea');if(!el)throw Error('No existe el campo '+key);const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
+    const comprobarAyudas=async cantidad=>{
+        const botones=all('[data-catalogo-ayuda] > button');
+        let textos=botones.length===cantidad,foco=true,ajuste=true;
+        for(const boton of botones) {
+            boton.focus();boton.click();
+            const dialogo=document.getElementById(boton.getAttribute('aria-controls'));
+            await wait(()=>dialogo?.open);await frame();
+            textos=textos && dialogo.textContent.includes('Ejemplo:') && dialogo.querySelector('h3')?.textContent.trim().length>0;
+            const rect=dialogo.getBoundingClientRect();
+            ajuste=ajuste && dialogo.scrollWidth<=dialogo.clientWidth+1 && rect.width<=document.documentElement.clientWidth && rect.left>=-1;
+            dialogo.querySelector('button[aria-label^="Cerrar ayuda:"]').click();
+            await wait(()=>!dialogo.open);foco=foco && document.activeElement===boton;
+        }
+        return {textos,foco,ajuste};
+    };
     if(caso==='menu_curaduria') {
         const sidebar=q('nav[data-flux-sidebar-nav]');
         const logical=[...sidebar.querySelectorAll('ui-disclosure a')];
@@ -87,6 +102,33 @@ export async function comprobarUIFocal(caso) {
         checks.canonical=all('a').some(a=>{const u=new URL(a.href);return u.pathname==='/administracion/contenidos' && u.searchParams.get('grupo')==='importacion';});
         checks.noReview=!document.body.textContent.includes('Control de calidad') && !all('a').some(a=>new URL(a.href).pathname.endsWith('/revision'));
         checks.input=!!q('input[type=file]');
+        const validar=()=>all('button').find(b=>b.getAttribute('wire:click')==='validar');
+        validar().click();
+        await wait(()=>all('[data-flux-error]').some(e=>e.textContent.includes('Selecciona la matriz') && e.getClientRects().length));
+        await new Promise(resolve=>setTimeout(resolve,4500));
+        checks.errorVisible=all('[data-flux-error]').some(e=>e.textContent.includes('Selecciona la matriz') && e.getClientRects().length && !e.hidden);
+        const archivo=q('input[type=file]'),nombre='qa-ayudas-'+Date.now()+'.csv',codigo='QA-UI-ARCHIVO-'+Date.now();
+        await new Promise((resolve,reject)=>{
+            const limpiar=()=>{clearTimeout(timer);archivo.removeEventListener('livewire-upload-finish',fin);archivo.removeEventListener('livewire-upload-error',error);};
+            const fin=()=>{limpiar();resolve();},error=()=>{limpiar();reject(Error('Falló la subida local de la matriz QA'));};
+            const timer=setTimeout(()=>{limpiar();reject(Error('La subida local no finalizó dentro de 20 segundos'));},20000);
+            archivo.addEventListener('livewire-upload-finish',fin);archivo.addEventListener('livewire-upload-error',error);
+            const data=new DataTransfer();data.items.add(new File(['occurrenceID;individualCount;eventDate\r\n'+codigo+';dos;sin fecha registrada\r\n'],nombre,{type:'text/csv'}));archivo.files=data.files;archivo.dispatchEvent(new Event('change',{bubbles:true}));
+        });
+        await wait(()=>all('select').find(e=>e.getAttribute('wire:model.live')==='delimitador')?.value===';');
+        checks.separator=document.body.textContent.includes('Separador detectado: Punto y coma');
+        validar().click();await wait(()=>q('[aria-label="Vista previa de la matriz"]')?.textContent.includes(codigo));
+        checks.preview=q('[aria-label="Vista previa de la matriz"]').textContent.includes('Observaciones de importación') && !!q('[aria-label="Vista previa de la matriz"] details[open]') && !q('[aria-label="Estado de la importación"]');
+        const ayuda=await comprobarAyudas(4);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;
+        const abrirGuia=all('button').find(b=>b.textContent.includes('Ayuda de las columnas de la matriz'));abrirGuia.focus();abrirGuia.click();
+        const guia=q('#guia-columnas-catalogo');await wait(()=>guia.open);await frame();
+        const filasGuia=()=>[...guia.querySelectorAll('[data-busqueda]')],cuantas=filasGuia().length,buscar=q('#buscar-guia-catalogo');
+        buscar.value='decimalLatitude';buscar.dispatchEvent(new Event('input',{bubbles:true}));await frame();
+        checks.guide=cuantas>0 && filasGuia().filter(e=>e.getClientRects().length).some(e=>e.textContent.includes('decimalLatitude')) && filasGuia().every(e=>e.querySelector('dd')?.textContent.trim());
+        checks.guideFits=guia.scrollWidth<=guia.clientWidth+1 && guia.getBoundingClientRect().width<=document.documentElement.clientWidth;
+        guia.querySelector('button[aria-label="Cerrar guía de columnas"]').click();await wait(()=>!guia.open);checks.guide=checks.guide && document.activeElement===abrirGuia;
+        all('button').find(b=>b.getAttribute('wire:click')==='limpiar').click();await wait(()=>!q('[aria-label="Vista previa de la matriz"]'));
+        metrics={columnas:cuantas,archivo:nombre,soloValidacion:true};
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='catalogo_taxones') {
         const campoBusqueda=()=>all('input').find(x=>x.getAttribute('wire:model.live.debounce.300ms')==='busqueda');
@@ -114,13 +156,14 @@ export async function comprobarUIFocal(caso) {
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         metrics={nombre};
     } else if(caso==='catalogo_alta') {
-        await wait(()=>all('button').find(x=>x.textContent.trim()==='Nuevo especímen'));
+        await wait(()=>all('button').find(x=>x.textContent.trim()==='Nuevo espécimen'));
         checks.noRevision=!all('th,[role="columnheader"]').some(x=>/Revisión del nombre|Estado revisión|Motivo revisión/.test(x.textContent));
         checks.dateLabels=all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · normalizada')) && all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · original'));
-        all('button').find(x=>x.textContent.trim()==='Nuevo especímen').click();
+        all('button').find(x=>x.textContent.trim()==='Nuevo espécimen').click();
         await wait(()=>model('codigoCatalogo'));
         checks.open=!!q('dialog[open]');
         checks.ecuador=model('fechaColecta').value===new Intl.DateTimeFormat('en-CA',{timeZone:'America/Guayaquil',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        const ayuda=await comprobarAyudas(27);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;
         const codigo='QA-UI-CATALOGO-'+Date.now();
         const taxon=model('taxonId','select');taxon.value=[...taxon.options].find(o=>o.value)?.value;taxon.dispatchEvent(new Event('change',{bubbles:true}));
         fillModel('codigoCatalogo',codigo);fillModel('fechaColecta','2026-11-10');fillModel('colector','PRUEBA QA - Colector ficticio');
@@ -128,9 +171,19 @@ export async function comprobarUIFocal(caso) {
         const registrar=()=>all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='registrarEspecimen');
         registrar().click();await wait(()=>model('decimalLatitude')?.getAttribute('aria-invalid')==='true' && model('individualCount')?.getAttribute('aria-invalid')==='true');
         checks.invalid=true;
+        await new Promise(resolve=>setTimeout(resolve,4500));
+        checks.errorVisible=['decimalLatitude','individualCount'].every(campo=>{const field=model(campo)?.closest('[data-catalogo-campo]');return [...(field?.querySelectorAll('[data-flux-error]')||[])].some(e=>e.textContent.trim() && e.getClientRects().length && !e.hidden);});
+        const enlace=q('[data-catalogo-resumen-errores] a[href="#captura-decimalLatitude"]');enlace?.click();
+        checks.errorFocus=document.activeElement===model('decimalLatitude');
         checks.labels=all('dialog[open] input,dialog[open] select,dialog[open] textarea').filter(x=>x.type!=='hidden').every(x=>x.labels?.length>0 || !!x.getAttribute('aria-label') || x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim()));
         fillModel('decimalLatitude','-0.09');fillModel('individualCount','5');fillModel('specimenNotes','PRUEBA QA. SIN MATERIAL REAL. NO DIVULGAR.');
         registrar().click();await wait(()=>!q('dialog[open]') && document.body.textContent.includes(codigo));await frame();checks.saved=true;
+        const creada=all('button').find(b=>b.textContent.trim()==='Ver última ficha creada');creada?.click();await wait(()=>q('dialog[open]')?.textContent.includes(codigo));
+        checks.createdLink=!!q('dialog[open]');all('dialog[open] button').find(b=>b.getAttribute('wire:click')==='cerrarFicha').click();await wait(()=>!q('dialog[open]'));
+        // El alta conserva los filtros previos; buscar la ficha recién creada
+        // también comprueba su persistencia cuando no está en la primera página.
+        const buscar=all('input').find(e=>e.getAttribute('wire:model.live.debounce.400ms')==='q');
+        buscar.value=codigo;buscar.dispatchEvent(new Event('input',{bubbles:true}));
         const editar=()=>all('button').find(x=>x.getAttribute('aria-label')==='Editar '+codigo);
         await wait(editar);editar().click();await wait(()=>model('editLocalidad3'));
         fillModel('editLocalidad3','PRUEBA QA - sector corregido');

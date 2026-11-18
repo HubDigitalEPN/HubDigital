@@ -178,12 +178,17 @@
                 Administrar publicación
             </flux:button>
             <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
-                Nuevo especímen
+                Nuevo espécimen
             </flux:button>
         </div>
     </div>
 
-    @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
+    @if($successMessage)
+        <flux:callout data-hub-feedback="success" variant="success">
+            {{ $successMessage }}
+            @if($ultimoCreadoId)<flux:button size="sm" variant="ghost" wire:click="abrirFicha('{{ $ultimoCreadoId }}')">Ver última ficha creada</flux:button>@endif
+        </flux:callout>
+    @endif
     @if($errorMessage && !$showModal && !$showEditModal)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     {{-- ── Barra de herramientas ───────────────────────────────────────────── --}}
@@ -1020,40 +1025,33 @@
     {{-- ── Modal: Registrar ────────────────────────────────────────────────── --}}
     {{-- El cuerpo solo existe con el modal abierto: el desplegable de taxones
          ronda las 4.000 opciones y montarlo siempre pesaba ~1 MB por render. --}}
-    <flux:modal wire:model="showModal" class="w-full max-w-4xl">
+    <flux:modal wire:model="showModal" aria-labelledby="alta-especimen-titulo" class="w-full max-w-4xl">
         @if($showModal)
-        <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Nuevo especímen</flux:heading>
-            @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
+        <div class="space-y-4 p-1" data-hub-inline-feedback>
+            <flux:heading id="alta-especimen-titulo" size="lg" class="text-text-primary">Nuevo espécimen</flux:heading>
+            <p class="text-sm text-text-secondary">Los campos con * son obligatorios. Abre el icono de ayuda de cada campo para consultar su significado, formato y ejemplo.</p>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>Código de Catálogo</flux:label><flux:input wire:model="codigoCatalogo" /><flux:error name="codigoCatalogo" /></flux:field>
-                <flux:field><flux:label>Fecha de Colecta</flux:label><flux:input type="date" wire:model="fechaColecta" /><flux:error name="fechaColecta" /></flux:field>
-                <flux:field><flux:label>Occurrence ID</flux:label><flux:input wire:model="occurrenceId" /><flux:error name="occurrenceId" /></flux:field>
-                <flux:field><flux:label>Catalog Number</flux:label><flux:input wire:model="catalogNumber" /><flux:error name="catalogNumber" /></flux:field>
-                <flux:field><flux:label>Old code</flux:label><flux:input wire:model="oldCode" /><flux:error name="oldCode" /></flux:field>
-                <flux:field><flux:label>Cardex líquido</flux:label><flux:input wire:model="cardexLiquidCollectionCode" /><flux:error name="cardexLiquidCollectionCode" /></flux:field>
+                <x-catalogo-campo campo="codigoCatalogo" />
+                <x-catalogo-campo campo="fechaColecta" />
+                <x-catalogo-campo campo="occurrenceId" />
+                <x-catalogo-campo campo="catalogNumber" />
+                <x-catalogo-campo campo="oldCode" />
+                <x-catalogo-campo campo="cardexLiquidCollectionCode" />
             </div>
-            <flux:field>
-                <flux:label>Taxón</flux:label>
-                <flux:select wire:model="taxonId">
-                    <option value="">Seleccione un taxón...</option>
-                    @foreach($taxones as $taxon)<option value="{{ $taxon['id'] }}">{{ $taxon['label'] }}</option>@endforeach
-                </flux:select>
-                <flux:error name="taxonId" />
-            </flux:field>
+            <x-catalogo-campo campo="taxonId" :opciones="$taxones" />
 
-            <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="localidad" maxlength="255" /><flux:error name="localidad" /></flux:field>
-            <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="localidad2" maxlength="255" /><flux:error name="localidad2" /></flux:field>
-            <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="localidad3" maxlength="500" /><flux:error name="localidad3" /></flux:field>
+            <x-catalogo-campo campo="localidad" />
+            <x-catalogo-campo campo="localidad2" />
+            <x-catalogo-campo campo="localidad3" />
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>País</flux:label><flux:input wire:model="country" /><flux:error name="country" /></flux:field>
-                <flux:field><flux:label>Provincia</flux:label><flux:input wire:model="stateProvince" /><flux:error name="stateProvince" /></flux:field>
-                <flux:field><flux:label>Municipio</flux:label><flux:input wire:model="municipality" /><flux:error name="municipality" /></flux:field>
-                <flux:field><flux:label>Locality name (DwC)</flux:label><flux:input wire:model="localityName" /><flux:error name="localityName" /></flux:field>
-                <flux:field><flux:label>Latitud</flux:label><flux:input wire:model="decimalLatitude" /><flux:error name="decimalLatitude" /></flux:field>
-                <flux:field><flux:label>Longitud</flux:label><flux:input wire:model="decimalLongitude" /><flux:error name="decimalLongitude" /></flux:field>
-                <flux:field><flux:label>Datum</flux:label><flux:input wire:model="geodeticDatum" /><flux:error name="geodeticDatum" /></flux:field>
-                <flux:field><flux:label>Elevación min (m)</flux:label><flux:input wire:model="elevationMinM" /><flux:error name="elevationMinM" /></flux:field>
+                <x-catalogo-campo campo="country" />
+                <x-catalogo-campo campo="stateProvince" />
+                <x-catalogo-campo campo="municipality" />
+                <x-catalogo-campo campo="localityName" />
+                <x-catalogo-campo campo="decimalLatitude" />
+                <x-catalogo-campo campo="decimalLongitude" />
+                <x-catalogo-campo campo="geodeticDatum" />
+                <x-catalogo-campo campo="elevationMinM" />
             </div>
             {{-- Detección de ubicación por coordenadas --}}
             <div class="space-y-2 rounded-lg border border-border bg-bg-main p-3">
@@ -1070,24 +1068,18 @@
                     </p>
                 @endif
             </div>
-            <flux:field><flux:label>Colector</flux:label><flux:input wire:model="colector" /><flux:error name="colector" /></flux:field>
+            <x-catalogo-campo campo="colector" />
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>Individuos</flux:label><flux:input wire:model="individualCount" /><flux:error name="individualCount" /></flux:field>
-                <flux:field><flux:label>Preparación</flux:label><flux:input wire:model="preparations" /><flux:error name="preparations" /></flux:field>
-                <flux:field><flux:label>Disposición</flux:label><flux:input wire:model="disposition" /><flux:error name="disposition" /></flux:field>
-                <flux:field><flux:label>Occurrence status</flux:label><flux:input wire:model="occurrenceStatus" /><flux:error name="occurrenceStatus" /></flux:field>
-                <flux:field><flux:label>Bioma</flux:label><flux:input wire:model="biome" /><flux:error name="biome" /></flux:field>
-                <flux:field><flux:label>Hábitat</flux:label><flux:input wire:model="habitat" /><flux:error name="habitat" /></flux:field>
+                <x-catalogo-campo campo="individualCount" />
+                <x-catalogo-campo campo="preparations" />
+                <x-catalogo-campo campo="disposition" />
+                <x-catalogo-campo campo="occurrenceStatus" />
+                <x-catalogo-campo campo="biome" />
+                <x-catalogo-campo campo="habitat" />
             </div>
-            <flux:field><flux:label>Notas</flux:label><flux:textarea wire:model="specimenNotes" /><flux:error name="specimenNotes" /></flux:field>
-            <flux:field>
-                <flux:label>Entidad depositante (opcional)</flux:label>
-                <flux:select wire:model="entidadDepositanteId">
-                    <option value="">Sin entidad depositante</option>
-                    @foreach($entidades as $entidad)<option value="{{ $entidad['id'] }}">{{ $entidad['label'] }}</option>@endforeach
-                </flux:select>
-                <flux:error name="entidadDepositanteId" />
-            </flux:field>
+            <x-catalogo-campo campo="specimenNotes" />
+            <x-catalogo-campo campo="entidadDepositanteId" :opciones="$entidades" />
+            <x-catalogo-errores :mensaje="$errorMessage" />
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="registrarEspecimen"
@@ -1101,25 +1093,24 @@
     </flux:modal>
 
     {{-- ── Modal: Editar ───────────────────────────────────────────────────── --}}
-    <flux:modal wire:model="showEditModal" class="w-full max-w-4xl">
+    <flux:modal wire:model="showEditModal" aria-labelledby="edicion-especimen-titulo" class="w-full max-w-4xl">
         @if($showEditModal)
-        <div class="space-y-4 p-1">
-            <flux:heading size="lg" class="text-text-primary">Editar especímen</flux:heading>
-            @if($errors->any())<div data-hub-feedback="error" role="alert" class="text-sm text-error">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
-            @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
+        <div class="space-y-4 p-1" data-hub-inline-feedback>
+            <flux:heading id="edicion-especimen-titulo" size="lg" class="text-text-primary">Editar espécimen</flux:heading>
+            <p class="text-sm text-text-secondary">Conserva los datos de la etiqueta. Una ficha histórica puede mantener vacíos los datos que se desconocen.</p>
 
-            <flux:field><flux:label>Localidad · reserva, parque o área protegida</flux:label><flux:input wire:model="editLocalidad" maxlength="255" /><flux:error name="editLocalidad" /></flux:field>
-            <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="editLocalidad2" maxlength="255" /><flux:error name="editLocalidad2" /></flux:field>
-            <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="editLocalidad3" maxlength="500" /><flux:error name="editLocalidad3" /></flux:field>
+            <x-catalogo-campo campo="editLocalidad" />
+            <x-catalogo-campo campo="editLocalidad2" />
+            <x-catalogo-campo campo="editLocalidad3" />
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>País</flux:label><flux:input wire:model="editCountry" /></flux:field>
-                <flux:field><flux:label>Provincia</flux:label><flux:input wire:model="editStateProvince" /></flux:field>
-                <flux:field><flux:label>Municipio</flux:label><flux:input wire:model="editMunicipality" /></flux:field>
-                <flux:field><flux:label>Locality name (DwC)</flux:label><flux:input wire:model="editLocalityName" /></flux:field>
-                <flux:field><flux:label>Latitud</flux:label><flux:input wire:model="editDecimalLatitude" /></flux:field>
-                <flux:field><flux:label>Longitud</flux:label><flux:input wire:model="editDecimalLongitude" /></flux:field>
-                <flux:field><flux:label>Datum</flux:label><flux:input wire:model="editGeodeticDatum" /></flux:field>
-                <flux:field><flux:label>Elevación min (m)</flux:label><flux:input wire:model="editElevationMinM" /></flux:field>
+                <x-catalogo-campo campo="editCountry" />
+                <x-catalogo-campo campo="editStateProvince" />
+                <x-catalogo-campo campo="editMunicipality" />
+                <x-catalogo-campo campo="editLocalityName" />
+                <x-catalogo-campo campo="editDecimalLatitude" />
+                <x-catalogo-campo campo="editDecimalLongitude" />
+                <x-catalogo-campo campo="editGeodeticDatum" />
+                <x-catalogo-campo campo="editElevationMinM" />
             </div>
             {{-- Detección de ubicación por coordenadas --}}
             <div class="space-y-2 rounded-lg border border-border bg-bg-main p-3">
@@ -1136,23 +1127,18 @@
                     </p>
                 @endif
             </div>
-            <flux:field><flux:label>Fecha de Colecta</flux:label><flux:input type="date" wire:model="editFechaColecta" /><flux:error name="editFechaColecta" /></flux:field>
-            <flux:field><flux:label>Colector</flux:label><flux:input wire:model="editColector" /><flux:error name="editColector" /></flux:field>
+            <x-catalogo-campo campo="editFechaColecta" />
+            <x-catalogo-campo campo="editColector" />
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>Preparación</flux:label><flux:input wire:model="editPreparations" /></flux:field>
-                <flux:field><flux:label>Disposición</flux:label><flux:input wire:model="editDisposition" /></flux:field>
-                <flux:field><flux:label>Occurrence status</flux:label><flux:input wire:model="editOccurrenceStatus" /></flux:field>
-                <flux:field><flux:label>Bioma</flux:label><flux:input wire:model="editBiome" /></flux:field>
-                <flux:field class="md:col-span-2"><flux:label>Hábitat</flux:label><flux:input wire:model="editHabitat" /></flux:field>
+                <x-catalogo-campo campo="editPreparations" />
+                <x-catalogo-campo campo="editDisposition" />
+                <x-catalogo-campo campo="editOccurrenceStatus" />
+                <x-catalogo-campo campo="editBiome" />
+                <x-catalogo-campo campo="editHabitat" />
             </div>
-            <flux:field><flux:label>Notas</flux:label><flux:textarea wire:model="editSpecimenNotes" rows="3" /></flux:field>
-            <flux:field>
-                <flux:label>Entidad depositante (opcional)</flux:label>
-                <flux:select wire:model="editEntidadDepositanteId">
-                    <option value="">Sin entidad depositante</option>
-                    @foreach($entidades as $entidad)<option value="{{ $entidad['id'] }}">{{ $entidad['label'] }}</option>@endforeach
-                </flux:select>
-            </flux:field>
+            <x-catalogo-campo campo="editSpecimenNotes" />
+            <x-catalogo-campo campo="editEntidadDepositanteId" :opciones="$entidades" />
+            <x-catalogo-errores :mensaje="$errorMessage" />
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showEditModal', false)">Cancelar</flux:button>
                 <flux:button variant="primary" wire:click="actualizarEspecimen"

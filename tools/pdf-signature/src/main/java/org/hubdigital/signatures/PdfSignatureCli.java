@@ -967,6 +967,7 @@ public final class PdfSignatureCli {
     }
 
     private static void selftest() throws Exception {
+        selftestQrFases();
         Set<TrustAnchor> reales = trustAnchors();
         prepareEngine();
         if (cachedAnchors != reales) throw new IllegalStateException("La preparación modificó la confianza publicada.");
@@ -1035,31 +1036,69 @@ public final class PdfSignatureCli {
 
     private static String leerQrPrueba(PDDocument pdf, int dpi) throws Exception {
         var image = new org.apache.pdfbox.rendering.PDFRenderer(pdf).renderImageWithDPI(0, dpi);
+        try { return leerQrImagen(image, dpi); }
+        finally { image.flush(); }
+    }
+
+    private static String leerQrImagen(java.awt.image.BufferedImage image, int dpi) throws Exception {
         int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
         var source = new com.google.zxing.RGBLuminanceSource(image.getWidth(), image.getHeight(), pixels);
-        // El detector de un solo QR escoge una terna de localizadores y abandona
-        // si esa terna no decodifica. En la página completa puede escoger marcas
-        // del propio patrón o del texto. Examinar todas las ternas no presupone
-        // dónde está el sello y conserva la imagen renderizada a su DPI real.
+        // ZXing 3.5.4 examina una fila de cada tres incluso con TRY_HARDER.
+        // Un QR pequeño puede perder localizadores en una de esas fases.
+        // Cubrimos las tres sobre los mismos píxeles, sin escalar ni asumir
+        // la posición del sello. Se reúnen TODOS los resultados: dos QR
+        // distintos siguen siendo ambiguos aunque aparezcan en fases diferentes.
         Set<String> leidos = new HashSet<>();
-        for (var binarizer : List.of(new com.google.zxing.common.HybridBinarizer(source),
-            new com.google.zxing.common.GlobalHistogramBinarizer(source))) {
-            try {
-                for (var result : new com.google.zxing.multi.qrcode.QRCodeMultiReader().decodeMultiple(
-                    new com.google.zxing.BinaryBitmap(binarizer),
-                    java.util.Map.of(com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE))) {
-                    leidos.add(result.getText());
+        for (int fase = 0; fase < Math.min(3, image.getHeight()); fase++) {
+            var filas = source.crop(0, fase, image.getWidth(), image.getHeight() - fase);
+            for (var binarizer : List.of(new com.google.zxing.common.HybridBinarizer(filas),
+                new com.google.zxing.common.GlobalHistogramBinarizer(filas))) {
+                try {
+                    for (var result : new com.google.zxing.multi.qrcode.QRCodeMultiReader().decodeMultiple(
+                        new com.google.zxing.BinaryBitmap(binarizer),
+                        java.util.Map.of(com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE))) {
+                        leidos.add(result.getText());
+                    }
+                } catch (com.google.zxing.NotFoundException ignored) {
+                    // Otra fase o binarización puede encontrar los localizadores;
+                    // nunca se acepta contenido sin decodificar los píxeles.
                 }
-            } catch (com.google.zxing.NotFoundException ignored) {
-                // Otra binarización puede encontrar los localizadores; nunca se
-                // acepta el contenido esperado sin decodificar los píxeles.
             }
         }
-        image.flush();
         if (leidos.isEmpty()) throw new IllegalStateException("No se lee el QR de la autoprueba a " + dpi + " dpi.",
             com.google.zxing.NotFoundException.getNotFoundInstance());
         if (leidos.size() != 1) throw new IllegalStateException("La autoprueba contiene códigos QR ambiguos a " + dpi + " dpi.");
         return leidos.iterator().next();
+    }
+
+    private static void selftestQrFases() throws Exception {
+        try (var imagen = PdfSignatureCli.class.getResourceAsStream("/autoprueba/qr-barrido-144dpi.png");
+             var texto = PdfSignatureCli.class.getResourceAsStream("/autoprueba/qr-barrido-144dpi.txt")) {
+            if (imagen == null || texto == null) throw new IllegalStateException("Falta la regresión sintética del barrido QR.");
+            var raster = javax.imageio.ImageIO.read(imagen);
+            String esperado = new String(texto.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            if (!esperado.equals(leerQrImagen(raster, 144))) {
+                throw new IllegalStateException("El barrido QR no conserva las dos huellas completas de la muestra sintética.");
+            }
+            var control = new java.awt.image.BufferedImage(raster.getWidth(), raster.getHeight(), java.awt.image.BufferedImage.TYPE_INT_RGB);
+            var grafico = control.createGraphics();
+            grafico.setColor(java.awt.Color.WHITE); grafico.fillRect(0, 0, control.getWidth(), control.getHeight());
+            grafico.dispose();
+            boolean ausente = false;
+            try { leerQrImagen(control, 144); }
+            catch (IllegalStateException e) { if (!(e.getCause() instanceof com.google.zxing.NotFoundException)) throw e; ausente = true; }
+            if (!ausente) throw new IllegalStateException("El barrido QR acepta una imagen sin código.");
+            grafico = control.createGraphics(); grafico.drawImage(raster, 0, 0, null); grafico.dispose();
+            var segundo = new com.google.zxing.qrcode.QRCodeWriter().encode("Segundo QR de control distinto", com.google.zxing.BarcodeFormat.QR_CODE, 160, 160);
+            for (int y = 0; y < segundo.getHeight(); y++) for (int x = 0; x < segundo.getWidth(); x++) {
+                control.setRGB(100 + x, 80 + y, segundo.get(x, y) ? 0xff000000 : 0xffffffff);
+            }
+            boolean ambiguo = false;
+            try { leerQrImagen(control, 144); }
+            catch (IllegalStateException e) { if (!e.getMessage().contains("QR ambiguos")) throw e; ambiguo = true; }
+            if (!ambiguo) throw new IllegalStateException("El barrido QR acepta dos códigos distintos.");
+            raster.flush(); control.flush();
+        }
     }
 
     private static void selftestOficial(Path temp, Path p12, X509Certificate cert, KeyPair keys) throws Exception {

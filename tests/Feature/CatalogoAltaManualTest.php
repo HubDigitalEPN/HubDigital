@@ -43,7 +43,7 @@ test('el alta rechaza datos opcionales invalidos antes de persistir', function (
     expect(DB::table('taxonomia.especimenes')->where('codigo_catalogo', $codigo)->exists())->toBeFalse();
 })->with([
     ['decimalLatitude', '91'], ['decimalLongitude', '-181'], ['individualCount', '-1'],
-    ['individualCount', '2.5'], ['individualCount', 'texto'], ['elevationMinM', 'texto'],
+    ['individualCount', '2.5'], ['individualCount', 'texto'], ['individualCount', '2147483648'], ['elevationMinM', 'texto'],
     ['occurrenceId', str_repeat('x', 121)], ['entidadDepositanteId', 'no-es-uuid'],
 ]);
 
@@ -58,6 +58,7 @@ test('el curador registra una ficha completa y el codigo duplicado conserva el o
         ->assertHasNoErrors()->assertSet('showModal', false);
     $ficha = DB::table('taxonomia.especimenes')->where('codigo_catalogo', $codigo)->first();
     expect($ficha->individual_count)->toBe(5)->and((float)$ficha->decimal_latitude)->toBe(-0.09);
+    $ui->assertSet('ultimoCreadoId', $ficha->id)->assertSee('Ver última ficha creada');
     expect(DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $ficha->id)->exists())->toBeFalse();
     $ui->update(updates: ['codigoCatalogo' => $codigo, 'taxonId' => $taxon, 'fechaColecta' => '2026-11-10', 'colector' => 'Otro colector', 'showModal' => true])
         ->call('registrarEspecimen')->assertSet('showModal', true);

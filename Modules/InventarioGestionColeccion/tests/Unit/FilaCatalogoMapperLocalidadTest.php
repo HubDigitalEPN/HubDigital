@@ -37,6 +37,15 @@ test('dos segmentos: país y localidad', function (): void {
         ->and($r->localityName)->toBe('Yasuní');
 });
 
+test('las comas de localityName no inventan país provincia ni municipio', function (): void {
+    $r = mapearLocalidad(['localityName' => 'Quito, Sector norte']);
+    expect($r->country)->toBeNull()->and($r->stateProvince)->toBeNull()->and($r->municipality)->toBeNull()
+        ->and($r->localityName)->toBe('Sector norte')->and($r->localidadVerbatim)->toBe('Quito, Sector norte');
+    $conContexto = mapearLocalidad(['localityName' => 'Reserva, Ruta, Sendero, Punto 3', 'country' => 'Ecuador', 'stateProvince' => 'Pichincha']);
+    expect($conContexto->country)->toBe('Ecuador')->and($conContexto->stateProvince)->toBe('Pichincha')
+        ->and($conContexto->municipality)->toBeNull()->and($conContexto->localityName)->toBe('Punto 3');
+});
+
 test('sin comas no descompone: solo normaliza la caja', function (): void {
     $r = mapearLocalidad(['verbatimLocality' => 'YASUNÍ']);
 

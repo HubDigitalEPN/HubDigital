@@ -25,6 +25,7 @@ class ActualizarCatalogoIndex extends Component
     public $archivo = null;
     public string $delimitador = ',';
     public string $modo = 'completar';
+    public ?string $separadorDetectado = null;
     #[Locked] public ?array $resultado = null;
     #[Locked] public ?string $archivoSha256 = null;
     #[Locked] public ?string $parametrosValidados = null;
@@ -62,9 +63,27 @@ class ActualizarCatalogoIndex extends Component
         return ['archivo.required' => 'Selecciona la matriz que deseas cargar.', 'archivo.mimes' => 'Selecciona un archivo Excel o CSV.', 'archivo.max' => 'La matriz no debe superar los 20 MB.'];
     }
 
-    public function updatedArchivo(): void { $this->invalidar(); $this->validateOnly('archivo'); }
+    public function updatedArchivo(): void
+    {
+        $this->invalidar();
+        $this->separadorDetectado = null;
+        $this->validateOnly('archivo');
+        if (!in_array(strtolower($this->archivo->getClientOriginalExtension()), ['csv', 'txt'], true)) return;
+        $cabecera = strtok((string)file_get_contents($this->archivo->getRealPath(), false, null, 0, 32768), "\r\n");
+        if ($cabecera === false) return;
+        $candidatos = [];
+        foreach ([','=>',', ';'=>';', 'tab'=>"\t"] as $opcion=>$caracter) {
+            $celdas = str_getcsv($cabecera, $caracter, '"', '');
+            $claves = array_map(static fn ($valor) => preg_replace('/[^a-z0-9]/', '', strtolower((string)$valor)), $celdas);
+            if (count($celdas) > 1 && array_intersect($claves, ['occurrenceid', 'catalognumber']) !== []) $candidatos[] = $opcion;
+        }
+        if (count($candidatos) === 1) {
+            $this->delimitador = $candidatos[0];
+            $this->separadorDetectado = match ($this->delimitador) { ';'=>'Punto y coma', 'tab'=>'Tabulación', default=>'Coma' };
+        }
+    }
     public function updatedModo(): void { $this->invalidar(); }
-    public function updatedDelimitador(): void { $this->invalidar(); }
+    public function updatedDelimitador(): void { $this->separadorDetectado = null; $this->invalidar(); }
 
     private function invalidar(): void
     {
@@ -82,7 +101,9 @@ class ActualizarCatalogoIndex extends Component
             $this->resultado = app(ActualizacionCatalogo::class)->analizar((string)$this->archivo->getRealPath(), strtolower($this->archivo->getClientOriginalExtension()), $this->delimitador === 'tab' ? "\t" : $this->delimitador, $this->modo);
             $this->archivoSha256 = hash_file('sha256', $this->archivo->getRealPath());
             $this->parametrosValidados = $this->modo.'|'.$this->delimitador;
-            $this->successMessage = 'Validación completa. Revisa las altas y actualizaciones antes de guardar.';
+            $this->successMessage = $this->resultado['avisos']
+                ? 'Validación con observaciones. Revisa los valores originales que no pudieron normalizarse antes de guardar.'
+                : 'Validación completa. Revisa las altas y actualizaciones antes de guardar.';
         } catch (\Throwable $error) { $this->mostrarError($error); }
     }
 
@@ -148,7 +169,7 @@ class ActualizarCatalogoIndex extends Component
         $this->paginaDetalle = max(1, min(2500, $this->paginaDetalle + ($delta < 0 ? -1 : 1)));
     }
 
-    public function limpiar(): void { $this->invalidar(); $this->reset('archivo'); $this->resetValidation(); }
+    public function limpiar(): void { $this->invalidar(); $this->reset('archivo', 'separadorDetectado'); $this->resetValidation(); }
 
     public function render(): View
     {
@@ -156,6 +177,7 @@ class ActualizarCatalogoIndex extends Component
         $carga = $this->importacionId ? DB::table('taxonomia.importaciones_catalogo')->where('id', $this->importacionId)->first() : null;
         $historial = DB::table('taxonomia.importaciones_catalogo')->orderByDesc('created_at')->limit(10)->get();
         $filas = $this->detalle ? DB::table('taxonomia.importacion_filas_catalogo')->where('importacion_id', $this->detalle['id'])->orderBy('fila')->offset(($this->paginaDetalle - 1) * 20)->limit(21)->get() : collect();
-        return view('inventariogestioncoleccion::admin.taxonomia.importar.actualizacion', compact('carga', 'historial', 'filas'));
+        $guiaCampos = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'];
+        return view('inventariogestioncoleccion::admin.taxonomia.importar.actualizacion', compact('carga', 'historial', 'filas', 'guiaCampos'));
     }
 }

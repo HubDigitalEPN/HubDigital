@@ -1,23 +1,28 @@
-<div class="mx-auto max-w-6xl space-y-5 p-4 sm:p-6" @if($carga && in_array($carga->estado, ['en_cola', 'procesando'])) wire:poll.3s="consultar" @endif>
+<div class="mx-auto max-w-6xl space-y-5 p-4 sm:p-6" data-hub-inline-feedback @if($carga && in_array($carga->estado, ['en_cola', 'procesando'])) wire:poll.3s="consultar" @endif>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div><h1 class="text-2xl font-semibold text-blue-navy">{{ \App\Support\PortalCopy::text('importacion.titulo') }}</h1></div>
         <div class="flex flex-wrap items-center gap-3"><x-catalogo-excel-menu accion="exportarExcel" /><a href="{{ route('inventario.taxonomia.especimenes') }}" class="hub-ig-button">Ver catálogo</a></div>
     </div>
     @if($errorMessage)<div role="alert" class="rounded border border-red-200 bg-red-50 p-4 text-red-900">{{ $errorMessage }}</div>@endif
-    @if($successMessage)<div role="status" class="rounded border border-green-200 bg-green-50 p-4 text-green-900">{{ $successMessage }}</div>@endif
+    @if($successMessage)<div role="status" class="rounded border p-4 {{ $resultado && $resultado['avisos'] ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-green-200 bg-green-50 text-green-900' }}">{{ $successMessage }}</div>@endif
     <section class="space-y-4 rounded border border-border bg-surface p-5 shadow-sm" aria-label="Cargar matriz del catálogo">
+        <p class="text-sm text-text-secondary">1. Selecciona la matriz. 2. Valida y revisa la vista previa. 3. Importa y espera la confirmación de guardado.</p>
         <div class="grid gap-5 sm:grid-cols-2">
-            <flux:field><flux:label>Matriz Excel o CSV</flux:label><input type="file" wire:model="archivo" accept=".xlsx,.xls,.csv,.txt" aria-label="Matriz del catálogo" class="block w-full rounded border border-border bg-bg-main p-3 text-sm"/><flux:error name="archivo"/></flux:field>
-            <flux:field><flux:label>Cómo incorporar los datos</flux:label><flux:select wire:model.live="modo"><option value="completar">Completar datos vacíos</option><option value="actualizar">Actualizar datos con la matriz</option></flux:select></flux:field>
+            <flux:field class="relative"><flux:label class="pe-9">Matriz Excel o CSV</flux:label><input type="file" wire:model="archivo" accept=".xlsx,.xls,.csv,.txt" aria-label="Matriz del catálogo" class="block w-full rounded border border-border bg-bg-main p-3 pe-12 text-sm"/><x-catalogo-ayuda campo="importacion-archivo" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('archivo')"/><flux:error name="archivo"/></flux:field>
+            <flux:field class="relative"><flux:label class="pe-12">Cómo incorporar los datos</flux:label><flux:select wire:model.live="modo" class="pe-16!"><option value="completar">Completar datos vacíos</option><option value="actualizar">Actualizar datos con la matriz</option></flux:select><x-catalogo-ayuda campo="importacion-modo" :selector="true" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('modo')"/></flux:field>
         </div>
-        @if($archivo && in_array(strtolower($archivo->getClientOriginalExtension()), ['csv', 'txt']))<flux:select wire:model.live="delimitador" label="Separador CSV"><option value=",">Coma</option><option value=";">Punto y coma</option><option value="tab">Tabulación</option></flux:select>@endif
+        @if($archivo && in_array(strtolower($archivo->getClientOriginalExtension()), ['csv', 'txt']))
+            <flux:field class="relative"><flux:label class="pe-12">Separador CSV</flux:label><flux:select wire:model.live="delimitador" class="pe-16!"><option value=",">Coma</option><option value=";">Punto y coma</option><option value="tab">Tabulación</option></flux:select><x-catalogo-ayuda campo="importacion-delimitador" :selector="true" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('delimitador')"/></flux:field>
+            @if($separadorDetectado)<p class="text-sm text-text-secondary">Separador detectado: {{ $separadorDetectado }}. Puedes cambiarlo si tu archivo usa otro.</p>@endif
+        @endif
         <div class="flex flex-wrap gap-3">
             <flux:button variant="filled" wire:click="validar" wire:loading.attr="disabled" wire:target="archivo,validar,importar">Validar matriz</flux:button>
             <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar" :disabled="!$resultado || ($carga && in_array($carga->estado, ['en_cola', 'procesando']))" wire:confirm="Se aplicarán las altas y actualizaciones del resumen. ¿Continuar?">Importar al catálogo</flux:button>
             <flux:button variant="ghost" wire:click="limpiar" wire:loading.attr="disabled">Cambiar archivo</flux:button>
-            <a href="{{ route('inventario.taxonomia.importar.plantilla') }}" class="hub-ig-button ml-auto">Modificación/visualización plantilla original</a>
+            <a href="{{ route('inventario.taxonomia.importar.plantilla') }}" class="hub-ig-button ml-auto">Ver o descargar plantilla</a>
         </div>
-        <div class="ml-auto max-w-xl space-y-2 text-right"><a href="{{ route('inventario.taxonomia.importar.plantilla.configurar') }}" class="hub-ig-button">Subir plantilla modificada</a><a href="{{ route('admin.contenidos', ['seccion' => 'portal', 'grupo' => 'importacion']) }}" class="hub-ig-button">Editar textos informativos</a></div>
+        <x-catalogo-guia-columnas :columnas="$guiaCampos" />
+        <div class="ml-auto max-w-xl space-y-2 text-right"><a href="{{ route('inventario.taxonomia.importar.plantilla.configurar') }}" class="hub-ig-button">Configurar columnas de la plantilla</a><a href="{{ route('admin.contenidos', ['seccion' => 'portal', 'grupo' => 'importacion']) }}" class="hub-ig-button">Editar textos informativos</a></div>
         <p wire:loading wire:target="archivo,validar,importar" role="status" class="text-sm text-science-blue">Procesando la matriz…</p>
     </section>
     @if($carga)
@@ -35,7 +40,12 @@
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">@foreach(['nuevos' => 'Nuevos', 'actualizados' => 'Por actualizar', 'sin_cambios' => 'Sin cambios', 'provisionales' => 'Identificación provisional'] as $key => $label)<div class="rounded border border-border bg-bg-main p-3"><strong class="block text-2xl">{{ number_format($resultado[$key], 0, ',', '.') }}</strong><span class="text-sm text-text-secondary">{{ $label }}</span></div>@endforeach</div>
             @if($resultado['provisionales'])@endif
             @if($resultado['columnas_adicionales'])<details class="text-sm"><summary>Columnas adicionales conservadas ({{ count($resultado['columnas_adicionales']) }})</summary><p class="mt-2 break-words">{{ implode(', ', $resultado['columnas_adicionales']) }}</p></details>@endif
-            @if($resultado['avisos'])<details class="text-sm"><summary>Observaciones de importación</summary>@foreach($resultado['avisos'] as $aviso => $cantidad)<p class="mt-1">{{ $cantidad }} · {{ $aviso }}</p>@endforeach</details>@endif
+            @if($resultado['avisos'])
+                <div class="relative rounded border border-amber-300 bg-amber-50 p-3 pe-12 text-sm text-amber-900">
+                    <details open><summary class="font-semibold">Observaciones de importación</summary><p class="mt-2">Revisa estos valores antes de guardar. Se conserva el texto original y no se inventan valores normalizados.</p>@foreach($resultado['avisos'] as $aviso => $cantidad)<p class="mt-1">{{ $cantidad }} · {{ $aviso }}</p>@endforeach</details>
+                    <x-catalogo-ayuda campo="importacion-observaciones" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('observaciones')" />
+                </div>
+            @endif
             <x-grid-frame label="Vista previa del catálogo"><table><thead><tr><th scope="col">Fila</th><th scope="col">Identificador</th><th scope="col">Acción</th><th scope="col">Campos con cambios</th></tr></thead><tbody>@foreach($resultado['muestra'] as $r)<tr><td>{{ $r['fila'] }}</td><td>{{ $r['codigo'] }}</td><td>{{ ['nuevos' => 'Crear', 'actualizados' => 'Actualizar', 'sin_cambios' => 'Sin cambios'][$r['accion']] }}</td><td>{{ implode(', ', $r['campos']) }}</td></tr>@endforeach</tbody></table></x-grid-frame>
             <p class="text-xs text-text-secondary">Se muestran los primeros {{ count($resultado['muestra']) }} registros del archivo.</p>
         </section>

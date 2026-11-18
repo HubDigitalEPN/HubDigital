@@ -122,6 +122,12 @@ test('fecha no parseable preserva verbatim y emite warning', function (): void {
         ->and($fila->motivoRevision())->toContain('fecha_colecta no parseable');
 });
 
+test('un conteo con dos signos no se transforma silenciosamente en cero', function (): void {
+    $fila = mapearFila(['occurrenceID' => 'QA-CONTEO-SIGNOS', 'individualCount' => '--1']);
+    expect($fila->individualCount)->toBeNull()->and($fila->individualCountVerbatim)->toBe('--1')
+        ->and($fila->motivoRevision())->toContain('individual_count no numérico');
+});
+
 test('occurrence_id ausente emite warning específico', function (): void {
     $fila = mapearFila([
         'oldCode' => 'BT2F3',

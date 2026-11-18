@@ -106,6 +106,12 @@ final class ActualizacionCatalogo
         $codigo = self::identidad($datos['occurrence_id'] ?? $datos['catalog_number'] ?? '');
         if ($codigo === '') throw new DomainException("Fila {$fila}: occurrenceID o catalogNumber es obligatorio para identificar el registro.");
         if (mb_strlen($codigo) > 100) throw new DomainException("Fila {$fila}: el identificador supera los 100 caracteres permitidos.");
+        $cantidadOriginal = trim((string)($datos['individual_count'] ?? $datos['invidual_count'] ?? ''));
+        $digitosCantidad = ltrim($cantidadOriginal, '0');
+        if (preg_match('/^\d+$/D', $cantidadOriginal) === 1
+            && (strlen($digitosCantidad) > 10 || (strlen($digitosCantidad) === 10 && strcmp($digitosCantidad, '2147483647') > 0))) {
+            throw new DomainException("Fila {$fila}: individualCount supera el máximo permitido de 2147483647 individuos. Corrige la celda antes de importar.");
+        }
         $mapeada = $this->mapper->mapear($datos);
         if ($mapeada->individualCount !== null && $mapeada->individualCount < 0) throw new DomainException("Fila {$fila}: individualCount no puede ser negativo.");
         [$taxonomia, $provisional] = $this->taxonomia($datos);

@@ -76,6 +76,17 @@ function scanFeedback() {
         if (source.closest('.hub-in-app-toast, [data-hub-notification-root]')) return;
         // Las confirmaciones y los resultados con controles propios conservan sus acciones.
         if (source.querySelector('button, a, input, select, textarea, [role="button"]')) return;
+        // Captura e importación necesitan conservar el motivo junto al campo.
+        // La opción es explícita: el resto mantiene sus avisos habituales.
+        if (source.closest('[data-hub-inline-feedback]')) {
+            // innerText fuerza un layout por cada campo tras el morph de Livewire.
+            // El texto del error no depende de su estado visual ni de su geometría.
+            const message = (source.textContent || '').replace(/\s+/g, ' ').trim();
+            const ocultar = !message;
+            if (source.hidden !== ocultar) source.hidden = ocultar;
+            rendered.delete(source);
+            return;
+        }
         const message = (source.innerText || source.textContent || '').replace(/\s+/g, ' ').trim();
         if (rendered.has(source) && rendered.get(source) !== message) source.hidden = false;
         if (!message || !source.getClientRects().length || getComputedStyle(source).visibility === 'hidden') return;

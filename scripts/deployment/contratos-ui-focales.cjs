@@ -361,6 +361,16 @@ definitions.instituciones_unificadas.sources = definitions.instituciones_unifica
 
 definitions.publicacion_unificada.checks.push('noReview','contrast');
 definitions.contenidos_unificados.checks.push('contrast');
+definitions.catalogo_alta.checks.push('help','helpFocus','helpFits','errorVisible','errorFocus','createdLink');
+definitions.catalogo_importacion.checks.push('help','helpFocus','helpFits','guide','guideFits','errorVisible','separator','preview');
+definitions.catalogo_importacion.sources.push('Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php');
+owner['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php']=['catalogo_importacion'];
+for (const file of ['resources/views/components/catalogo-ayuda.blade.php','Modules/InventarioGestionColeccion/app/Presentation/Support/AyudasCapturaCatalogo.php','resources/js/hub-notifications.js']) owner[file]=['catalogo_alta','catalogo_importacion'];
+for (const file of ['resources/views/components/catalogo-campo.blade.php','resources/views/components/catalogo-errores.blade.php']) owner[file]=['catalogo_alta'];
+owner['resources/views/components/catalogo-guia-columnas.blade.php']=['catalogo_importacion'];
+for (const file of ['resources/views/components/catalogo-ayuda.blade.php','resources/views/components/catalogo-campo.blade.php','resources/views/components/catalogo-errores.blade.php','resources/views/components/catalogo-guia-columnas.blade.php','Modules/InventarioGestionColeccion/app/Presentation/Support/AyudasCapturaCatalogo.php']) contracts[file]=['tests/Feature/CatalogoAyudasCapturaTest.php'];
+contracts['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php'].push('tests/Feature/CatalogoAyudasCapturaTest.php');
+contracts['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php']=['tests/Feature/ImportacionCatalogoMatricesTest.php','tests/Feature/CatalogoAyudasCapturaTest.php'];
 
 function inputs(root, id) {
     if (!definitions[id]) throw Error('Contrato UI desconocido.');

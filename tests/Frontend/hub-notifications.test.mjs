@@ -23,6 +23,7 @@ function browser() {
         closest(selector) {
             if (selector.includes('.hub-in-app-toast') && this.className === 'hub-in-app-toast') return this;
             if (selector.includes('[data-hub-notification-root]') && this.attributes['data-hub-notification-root'] !== undefined) return this;
+            if (selector.includes('[data-hub-inline-feedback]') && this.attributes['data-hub-inline-feedback'] !== undefined) return this;
             return this.parent?.closest(selector) || null;
         }
         matches(selector) {
@@ -120,6 +121,31 @@ test('los errores del formulario se agrupan y un cambio de mensaje vuelve a noti
     ui.advance(500); ui.mutate();
     assert.equal(ui.notices().length, 2);
     assert.match(ui.notices()[1].textContent, /El código no es válido/);
+});
+
+test('la captura conserva errores persistentes junto al campo sin cambiar los avisos de otros formularios', () => {
+    const ui = browser(), section = ui.document.createElement('section');
+    section.setAttribute('data-hub-inline-feedback', '');
+    ui.document.body.append(section);
+    const inline = ui.error('La latitud debe estar entre -90 y 90.');
+    Object.defineProperty(inline, 'innerText', { get() { throw Error('La captura no debe forzar un layout por cada error.'); } });
+    section.append(inline);
+    inline.hidden = true; // Estado dejado por el aviso previo a la actualización.
+    const outside = ui.error('Error de otro formulario.');
+    ui.boot();
+    assert.equal(inline.hidden, false);
+    assert.equal(outside.hidden, true);
+    assert.equal(ui.notices().length, 1);
+    assert.match(ui.notices()[0].textContent, /Error de otro formulario/);
+    ui.advance(4000);
+    assert.equal(ui.notices().length, 0);
+    assert.equal(inline.getClientRects().length, 1);
+    inline.textContent = ''; ui.mutate();
+    assert.equal(inline.hidden, true);
+    inline.textContent = 'La longitud no es válida.'; ui.mutate();
+    assert.equal(inline.hidden, false);
+    assert.equal(ui.notices().length, 0);
+    assert.equal(ui.document.activeElement, 'campo-original');
 });
 
 test('un fallo HTTP evita el modal técnico y conserva privado el cuerpo de la respuesta', () => {

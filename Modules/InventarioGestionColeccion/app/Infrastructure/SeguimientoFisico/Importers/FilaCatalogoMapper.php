@@ -83,9 +83,9 @@ final class FilaCatalogoMapper
 
         // Fuente de la localidad: puede venir como una sola celda separada por comas
         // en orden geográfico ("País, Provincia, Localidad, …").
-        $fuenteLocalidad = $this->limpiar($normalizada['localidad_verbatim'] ?? null)
-            ?? $this->limpiar($normalizada['verbatim_locality'] ?? null)
-            ?? $localityName;
+        $fuenteVerbatim = $this->limpiar($normalizada['localidad_verbatim'] ?? null)
+            ?? $this->limpiar($normalizada['verbatim_locality'] ?? null);
+        $fuenteLocalidad = $fuenteVerbatim ?? $localityName;
         // Segmentos normalizados (por si viene "País, Provincia, Localidad, …").
         $partes = $this->partesLocalidad($fuenteLocalidad);
         // Verbatim: cadena normalizada, cada segmento con su propia caja. Se
@@ -103,7 +103,10 @@ final class FilaCatalogoMapper
         // Si la localidad viene en una sola celda separada por comas, descompónla
         // (país→provincia→…→localidad) y RELLENA solo los campos que no traigan ya
         // un valor explícito de su propia columna.
-        if (count($partes) >= 2) {
+        // localityName es un sitio: "Quito, sector norte" no convierte Quito
+        // en país. El desglose histórico País/Provincia/... solo se aplica a
+        // la fuente completa expresamente cargada en una columna verbatim.
+        if ($fuenteVerbatim !== null && count($partes) >= 2) {
             $desc = $this->descomponerLocalidad($partes);
             $country ??= $desc['country'];
             $stateProvince ??= $desc['stateProvince'];
@@ -160,7 +163,7 @@ final class FilaCatalogoMapper
         $individualCountRaw = $this->limpiar($normalizada['individual_count'] ?? $normalizada['invidual_count'] ?? null);
         $individualCount = null;
         if ($individualCountRaw !== null) {
-            if (ctype_digit(ltrim($individualCountRaw, '-'))) {
+            if (preg_match('/^-?\d+$/D', $individualCountRaw) === 1) {
                 $individualCount = (int) $individualCountRaw;
             } else {
                 $individualCountVerbatim ??= $individualCountRaw;
