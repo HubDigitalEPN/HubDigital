@@ -40,7 +40,7 @@ final class DescargarActaRecepcion
         }
 
         // El depositante no debe recibir una version final aun no firmada.
-        abort_if($esDueno, 404);
+        abort_if($esDueno && ! $esCurador, 404);
 
         try {
             $original = $originales->obtenerVerificado($id)['contenido'];

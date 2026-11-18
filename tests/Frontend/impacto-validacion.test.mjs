@@ -10,6 +10,14 @@ import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 
 const now = Date.parse('2026-10-28T20:00:00Z');
+test('publicar una eliminación aprobada no vuelve a seleccionarla y una restauración sigue siendo un cambio', () => {
+    assert.deepEqual(impact.changedFiles({'retirada.php':'eliminado'},{ }),[]);
+    assert.deepEqual(impact.changedFiles({},{'retirada.php':'eliminado'}),[]);
+    assert.deepEqual(impact.changedFiles({'retirada.php':'hash'},{'retirada.php':'eliminado'}),['retirada.php']);
+    assert.deepEqual(impact.changedFiles({'retirada.php':'hash'},{}),['retirada.php']);
+    assert.deepEqual(impact.changedFiles({'retirada.php':'eliminado'},{'retirada.php':'hash'}),['retirada.php']);
+    assert.deepEqual(impact.changedFiles({},{'nueva.php':'hash'}),['nueva.php']);
+});
 test('los contratos propios de depósitos seleccionan sus escenarios sin invalidar recibos DOM', () => {
     const root = path.resolve(import.meta.dirname, '../..');
     const entries = impact.config.contratos_propios;

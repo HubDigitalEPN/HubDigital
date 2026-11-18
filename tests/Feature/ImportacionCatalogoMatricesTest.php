@@ -38,11 +38,11 @@ function fichaVaciaMatriz(string $codigo, ?string $oldCode = null): string
     return (string)$id;
 }
 
-function cargaMatrizPreparada(string $ruta, User $curador, string $modo = 'completar'): string
+function cargaMatrizPreparada(string $ruta, User $curador, string $modo = 'completar', string $extension = 'xlsx', string $separador = ','): string
 {
-    $plan = app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx', ',', $modo);
+    $plan = app(ActualizacionCatalogo::class)->analizar($ruta, $extension, $separador, $modo);
     $id = (string)\Illuminate\Support\Str::uuid();
-    DB::table('taxonomia.importaciones_catalogo')->insert(['id' => $id, 'archivo_nombre' => 'practica.xlsx', 'fuente_sha256' => hash_file('sha256', $ruta), 'modo' => $modo, 'archivo_ruta' => 'catalogo/prueba.xlsx', 'extension' => 'xlsx', 'delimitador' => ',', 'creado_por_id' => $curador->id, 'estado' => 'en_cola', 'plan_sha256' => $plan['huella'], 'resumen' => json_encode($plan + ['modo' => $modo]), 'created_at' => now(), 'updated_at' => now()]);
+    DB::table('taxonomia.importaciones_catalogo')->insert(['id' => $id, 'archivo_nombre' => 'practica.'.$extension, 'fuente_sha256' => hash_file('sha256', $ruta), 'modo' => $modo, 'archivo_ruta' => 'catalogo/prueba.'.$extension, 'extension' => $extension, 'delimitador' => $separador, 'creado_por_id' => $curador->id, 'estado' => 'en_cola', 'plan_sha256' => $plan['huella'], 'resumen' => json_encode($plan + ['modo' => $modo]), 'created_at' => now(), 'updated_at' => now()]);
     return $id;
 }
 
@@ -177,6 +177,44 @@ test('completar conserva datos existentes y actualizar sólo sustituye valores p
     expect(DB::table('taxonomia.especimenes')->where('id', $id)->value('colector'))->toBe('Colector actualizado')
         ->and(DB::table('taxonomia.especimenes')->where('id', $id)->value('habitat'))->toBe('Hábitat conservado');
 });
+
+test('las actualizaciones parciales conservan la geografia omitida y su revision sin cambiar la identidad', function (array $columna, array $valores, string $sector): void {
+    $curador=User::factory()->curador()->create(['must_change_password'=>false]);
+    $codigo='QA-PARCIAL-'.\Illuminate\Support\Str::uuid();
+    $id=fichaVaciaMatriz($codigo);
+    DB::table('taxonomia.especimenes')->where('id',$id)->update(['country'=>'Ecuador','state_province'=>'Pichincha','municipality'=>'Quito',
+        'localidad'=>'Reserva QA','localidad2'=>'QUITO','localidad3'=>'Sector anterior','localidad_verbatim'=>'Reserva QA, Sector anterior',
+        'localidad_desglosada'=>false,'individual_count'=>3,'decimal_latitude'=>-0.09,'decimal_longitude'=>-78.47]);
+    $ruta=tempnam(sys_get_temp_dir(),'parcial_geo_').'.csv';$GLOBALS['matrices_catalogo_temporales'][]=$ruta;
+    $f=fopen($ruta,'wb');fputcsv($f,['occurrenceID','individualCount',...$columna],';','"','');fputcsv($f,[$codigo,'4',...$valores],';','"','');fclose($f);
+    $batch=cargaMatrizPreparada($ruta,$curador,'actualizar','csv',';');
+    app(ActualizacionCatalogo::class)->aplicar($batch,$ruta);
+    $fila=DB::table('taxonomia.especimenes')->where('id',$id)->first();
+    expect($fila->codigo_catalogo)->toBe($codigo)->and((int)$fila->individual_count)->toBe(4)
+        ->and($fila->country)->toBe('Ecuador')->and($fila->state_province)->toBe('Pichincha')->and($fila->municipality)->toBe('Quito')
+        ->and($fila->localidad)->toBe('Reserva QA')->and($fila->localidad2)->toBe('QUITO')->and($fila->localidad3)->toBe($sector)
+        ->and($fila->localidad_desglosada)->toBeFalse()->and((float)$fila->decimal_latitude)->toBe(-0.09)->and((float)$fila->decimal_longitude)->toBe(-78.47);
+})->with([
+    'sector sin pais provincia ni canton'=>[['localityName'],['Sector corregido'],'Sector corregido'],
+    'canton sin sector ni area'=>[['municipality'],['Quito'],'Sector anterior'],
+    'columnas geograficas vacias'=>[['localityName','municipality'],['',''],'Sector anterior'],
+    'pais sin canton ni sector'=>[['country'],['Ecuador'],'Sector anterior'],
+]);
+
+test('completar datos geograficos llena solo el canton ausente y conserva los sectores existentes', function (string $area, ?string $canton, array $cabeceras, array $valores): void {
+    $curador=User::factory()->curador()->create(['must_change_password'=>false]);
+    $codigo='QA-COMPLETAR-GEO-'.\Illuminate\Support\Str::uuid();$id=fichaVaciaMatriz($codigo);
+    DB::table('taxonomia.especimenes')->where('id',$id)->update(['country'=>'Ecuador','state_province'=>'Pichincha','municipality'=>$canton ? 'Quito' : null,
+        'localidad'=>$area,'localidad2'=>$canton,'localidad3'=>'Sector conservado','localidad_desglosada'=>false,'individual_count'=>3]);
+    $ruta=matrizCatalogoPrueba(['occurrenceID','individualCount',...$cabeceras],[[$codigo,4,...$valores]]);
+    $batch=cargaMatrizPreparada($ruta,$curador,'completar');app(ActualizacionCatalogo::class)->aplicar($batch,$ruta);
+    $f=DB::table('taxonomia.especimenes')->where('id',$id)->first();
+    expect($f->id)->toBe($id)->and($f->localidad)->toBe($area)->and($f->localidad2)->toBe('QUITO')
+        ->and($f->localidad3)->toBe('Sector conservado')->and((int)$f->individual_count)->toBe(3)->and($f->localidad_desglosada)->toBeFalse();
+})->with([
+    'sector nuevo no sustituye el existente aunque no haya area'=>['','QUITO',['localityName'],['Sector que no debe reemplazar']],
+    'canton nuevo completa sin vaciar area ni sector'=>['Reserva QA',null,['municipality'],['Quito']],
+]);
 
 test('una falla después de la primera escritura revierte especímenes taxones e historial de todas las filas', function (): void {
     $curador = User::factory()->curador()->create(['must_change_password' => false]);

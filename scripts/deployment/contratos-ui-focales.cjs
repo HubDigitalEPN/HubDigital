@@ -62,6 +62,8 @@ Object.assign(owner, {
     'Modules/CatalogoPublico/resources/views/components/busqueda-universal.blade.php':['tarjetas'],
 });
 const contracts = {
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DescargarActaRecepcion.php':['tests/Feature/DepositosPlantillaCierreTest.php'],
+    'Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/ActualizacionCatalogo.php':['tests/Feature/ImportacionCatalogoMatricesTest.php'],
     'app/Services/DirectorioInstituciones.php':['tests/Feature/InstitucionesUnificadasTest.php'],
     'app/Livewire/Administracion/InstitucionesCatalogo.php':['tests/Feature/InstitucionesUnificadasTest.php'],
     'resources/views/livewire/administracion/instituciones-catalogo.blade.php':['tests/Feature/InstitucionesUnificadasTest.php'],

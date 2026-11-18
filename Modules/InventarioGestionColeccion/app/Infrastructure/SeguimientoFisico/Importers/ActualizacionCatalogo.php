@@ -142,15 +142,31 @@ final class ActualizacionCatalogo
         $marcador = $anterior && $anterior->taxon_id === null && $anterior->fecha_colecta === null && $anterior->individual_count === null
             && ($anterior->localidad === null || $anterior->localidad === '') && (string)($anterior->old_code ?? '') === (string)($fila - 1);
         if ($marcador) { $cambios['old_code'] = $mapeada->oldCode; $cambios['muestra_id'] = null; }
-        if (!$anterior || $modo === 'actualizar' || ($anterior->localidad === null || $anterior->localidad === '')) {
-            $region = DesgloseLocalidad::clave($mapeada->country ?? '') === 'ecuador' ? $this->territorios->paraProvincia($mapeada->stateProvince ?? '') : [];
-            $municipio = $region[DesgloseLocalidad::clave($mapeada->municipality ?? '')] ?? null;
-            $localidad = DesgloseLocalidad::desde($mapeada->localidadVerbatim ?? $mapeada->localidad, $municipio, territorios: $region, contexto: [$mapeada->country, $mapeada->stateProvince]);
-            if ($mapeada->localidad !== '') {
-                $cambios['localidad'] = $localidad['localidad'] ?? '';
-                $cambios['localidad2'] = $localidad['localidad2'];
-                $cambios['localidad3'] = $localidad['localidad3'];
-                $cambios['localidad_desglosada'] = !$localidad['requiere_revision'];
+        if ($mapeada->localidad !== '') {
+            // Una matriz parcial conserva el contexto que no trae; no se infiere
+            // la ausencia del cantón o del área a partir de una celda de sector.
+            $pais = $mapeada->country ?? $anterior->country ?? null;
+            $provincia = $mapeada->stateProvince ?? $anterior->state_province ?? null;
+            $canton = $mapeada->municipality ?? $anterior->municipality ?? null;
+            $region = DesgloseLocalidad::clave($pais ?? '') === 'ecuador' ? $this->territorios->paraProvincia($provincia ?? '') : [];
+            $municipio = $region[DesgloseLocalidad::clave($canton ?? '')] ?? null;
+            $localidad = DesgloseLocalidad::desde($mapeada->localidadVerbatim ?? $mapeada->localidad, $municipio, territorios: $region, contexto: [$pais, $provincia]);
+            $conservaPartes = false;
+            $aplicaDesglose = !$anterior;
+            foreach (['localidad', 'localidad2', 'localidad3'] as $campo) {
+                $existente = $anterior->{$campo} ?? null;
+                if ($anterior && ($localidad[$campo] === null || $localidad[$campo] === '' || ($modo === 'completar' && trim($existente ?? '') !== ''))) {
+                    unset($cambios[$campo]);
+                    $conservaPartes = $conservaPartes || trim($existente ?? '') !== '';
+                } else {
+                    $nuevo = $localidad[$campo] ?? ($campo === 'localidad' ? '' : null);
+                    $cambios[$campo] = $nuevo;
+                    $aplicaDesglose = $aplicaDesglose || $existente !== $nuevo;
+                }
+            }
+            // Conservar partes pendientes no acredita una revisión completa.
+            if ($aplicaDesglose) {
+                $cambios['localidad_desglosada'] = !$localidad['requiere_revision'] && (!$conservaPartes || (bool)$anterior->localidad_desglosada);
             }
         }
         foreach ($datos as $clave => $valor) {

@@ -28,7 +28,10 @@ function owner(file) {
 }
 
 function changedFiles(previous, current) {
-    return [...new Set([...Object.keys(previous), ...Object.keys(current)])].filter(f => previous[f] !== current[f]).sort();
+    // Git deja de listar una eliminación al publicarla. La ausencia posterior
+    // representa la misma eliminación aprobada, no otro cambio ejecutable.
+    const value = (map, file) => Object.hasOwn(map, file) ? map[file] : 'eliminado';
+    return [...new Set([...Object.keys(previous), ...Object.keys(current)])].filter(f => value(previous, f) !== value(current, f)).sort();
 }
 
 function closure(start, consumers) {

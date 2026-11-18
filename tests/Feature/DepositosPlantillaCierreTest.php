@@ -17,6 +17,29 @@ use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\Re
 
 uses(Tests\DatabaseFeatureTestCase::class);
 
+test('el original del acta respeta el permiso de curaduria aunque el curador tambien sea titular', function (string $rol, int $esperado): void {
+    configurarR2FalsoParaPruebas();
+    $usuario=User::factory()->{$rol}()->create();
+    $solicitud=solicitudColaR2ParaPruebas();
+    $solicitud->forceFill(['investigador_id'=>$usuario->id,'estado'=>'Aprobada Documentalmente','codigo_qr'=>'LOTE-OWNQA1'])->save();
+    $original='%PDF-fixture original QA para comprobar permisos de descarga';
+    $ruta='actas/qa/'.$solicitud->id.'/original.pdf';
+    app(AlmacenamientoDepositos::class)->guardarContenido($ruta,$original,'application/pdf');
+    $recepcion=RecepcionLoteEloquentModel::create(['id'=>(string)Str::uuid(),'solicitud_deposito_id'=>$solicitud->id,
+        'tipo_tramite'=>'Depósito','codigo_qr'=>'LOTE-OWNQA1','estado'=>'Verificado Físicamente','items_verificacion'=>[],'observaciones'=>[],
+        'acta_recepcion'=>['nombre'=>'acta.pdf','ruta'=>$ruta],'acta_original_referencia'=>(string)Str::uuid(),
+        'acta_original_ruta'=>$ruta,'acta_original_sha256'=>hash('sha256',$original),'acta_original_version'=>1,'acta_original_materializada_en'=>now()]);
+    $url=route('prestamos.deposito.acta-recepcion',$solicitud->id);
+    $respuesta=$this->actingAs($usuario)->get($url)->assertStatus($esperado);
+    if($esperado===200)$respuesta->assertHeader('Content-Type','application/pdf')->assertHeader('Cache-Control','no-store, private')->assertContent($original);
+    $this->actingAs(User::factory()->depositante()->create())->get($url)->assertForbidden();
+    $firmada='%PDF-fixture acta firmada para comprobar disponibilidad del titular';
+    $rutaFirmada='actas/qa/'.$solicitud->id.'/firmada.pdf';
+    app(AlmacenamientoDepositos::class)->guardarContenido($rutaFirmada,$firmada,'application/pdf');
+    $recepcion->forceFill(['acta_firmada_ruta'=>$rutaFirmada,'firmada_en'=>now()])->save();
+    $this->actingAs($usuario)->get($url)->assertOk()->assertContent($firmada);
+})->with(['curador titular'=>['curador',200],'administrador titular'=>['administrador',200],'solo depositante'=>['depositante',404]]);
+
 test('solo el acta final firmada cierra el trámite y sustituye las acciones en escritorio y móvil', function (): void {
     configurarR2FalsoParaPruebas();
     $solicitud = solicitudColaR2ParaPruebas();
