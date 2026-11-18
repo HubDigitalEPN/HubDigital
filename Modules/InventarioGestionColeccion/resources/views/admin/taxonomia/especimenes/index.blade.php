@@ -1134,10 +1134,10 @@
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:field><flux:label>Código de Catálogo</flux:label><flux:input wire:model="codigoCatalogo" /><flux:error name="codigoCatalogo" /></flux:field>
                 <flux:field><flux:label>Fecha de Colecta</flux:label><flux:input type="date" wire:model="fechaColecta" /><flux:error name="fechaColecta" /></flux:field>
-                <flux:field><flux:label>Occurrence ID</flux:label><flux:input wire:model="occurrenceId" /></flux:field>
-                <flux:field><flux:label>Catalog Number</flux:label><flux:input wire:model="catalogNumber" /></flux:field>
-                <flux:field><flux:label>Old code</flux:label><flux:input wire:model="oldCode" /></flux:field>
-                <flux:field><flux:label>Cardex líquido</flux:label><flux:input wire:model="cardexLiquidCollectionCode" /></flux:field>
+                <flux:field><flux:label>Occurrence ID</flux:label><flux:input wire:model="occurrenceId" /><flux:error name="occurrenceId" /></flux:field>
+                <flux:field><flux:label>Catalog Number</flux:label><flux:input wire:model="catalogNumber" /><flux:error name="catalogNumber" /></flux:field>
+                <flux:field><flux:label>Old code</flux:label><flux:input wire:model="oldCode" /><flux:error name="oldCode" /></flux:field>
+                <flux:field><flux:label>Cardex líquido</flux:label><flux:input wire:model="cardexLiquidCollectionCode" /><flux:error name="cardexLiquidCollectionCode" /></flux:field>
             </div>
             <flux:field>
                 <flux:label>Taxón</flux:label>
@@ -1152,14 +1152,14 @@
             <flux:field><flux:label>Localidad 2 · cantón o parroquia</flux:label><flux:input wire:model="localidad2" maxlength="255" /><flux:error name="localidad2" /></flux:field>
             <flux:field><flux:label>Localidad 3 · localidad, sector, ruta o vía</flux:label><flux:input wire:model="localidad3" maxlength="500" /><flux:error name="localidad3" /></flux:field>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>País</flux:label><flux:input wire:model="country" /></flux:field>
-                <flux:field><flux:label>Provincia</flux:label><flux:input wire:model="stateProvince" /></flux:field>
-                <flux:field><flux:label>Municipio</flux:label><flux:input wire:model="municipality" /></flux:field>
-                <flux:field><flux:label>Locality name (DwC)</flux:label><flux:input wire:model="localityName" /></flux:field>
-                <flux:field><flux:label>Latitud</flux:label><flux:input wire:model="decimalLatitude" /></flux:field>
-                <flux:field><flux:label>Longitud</flux:label><flux:input wire:model="decimalLongitude" /></flux:field>
-                <flux:field><flux:label>Datum</flux:label><flux:input wire:model="geodeticDatum" /></flux:field>
-                <flux:field><flux:label>Elevación min (m)</flux:label><flux:input wire:model="elevationMinM" /></flux:field>
+                <flux:field><flux:label>País</flux:label><flux:input wire:model="country" /><flux:error name="country" /></flux:field>
+                <flux:field><flux:label>Provincia</flux:label><flux:input wire:model="stateProvince" /><flux:error name="stateProvince" /></flux:field>
+                <flux:field><flux:label>Municipio</flux:label><flux:input wire:model="municipality" /><flux:error name="municipality" /></flux:field>
+                <flux:field><flux:label>Locality name (DwC)</flux:label><flux:input wire:model="localityName" /><flux:error name="localityName" /></flux:field>
+                <flux:field><flux:label>Latitud</flux:label><flux:input wire:model="decimalLatitude" /><flux:error name="decimalLatitude" /></flux:field>
+                <flux:field><flux:label>Longitud</flux:label><flux:input wire:model="decimalLongitude" /><flux:error name="decimalLongitude" /></flux:field>
+                <flux:field><flux:label>Datum</flux:label><flux:input wire:model="geodeticDatum" /><flux:error name="geodeticDatum" /></flux:field>
+                <flux:field><flux:label>Elevación min (m)</flux:label><flux:input wire:model="elevationMinM" /><flux:error name="elevationMinM" /></flux:field>
             </div>
             {{-- Detección de ubicación por coordenadas --}}
             <div class="space-y-2 rounded-lg border border-border bg-bg-main p-3">
@@ -1178,20 +1178,21 @@
             </div>
             <flux:field><flux:label>Colector</flux:label><flux:input wire:model="colector" /><flux:error name="colector" /></flux:field>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <flux:field><flux:label>Individuos</flux:label><flux:input wire:model="individualCount" /></flux:field>
-                <flux:field><flux:label>Preparación</flux:label><flux:input wire:model="preparations" /></flux:field>
-                <flux:field><flux:label>Disposición</flux:label><flux:input wire:model="disposition" /></flux:field>
-                <flux:field><flux:label>Occurrence status</flux:label><flux:input wire:model="occurrenceStatus" /></flux:field>
-                <flux:field><flux:label>Bioma</flux:label><flux:input wire:model="biome" /></flux:field>
-                <flux:field><flux:label>Hábitat</flux:label><flux:input wire:model="habitat" /></flux:field>
+                <flux:field><flux:label>Individuos</flux:label><flux:input wire:model="individualCount" /><flux:error name="individualCount" /></flux:field>
+                <flux:field><flux:label>Preparación</flux:label><flux:input wire:model="preparations" /><flux:error name="preparations" /></flux:field>
+                <flux:field><flux:label>Disposición</flux:label><flux:input wire:model="disposition" /><flux:error name="disposition" /></flux:field>
+                <flux:field><flux:label>Occurrence status</flux:label><flux:input wire:model="occurrenceStatus" /><flux:error name="occurrenceStatus" /></flux:field>
+                <flux:field><flux:label>Bioma</flux:label><flux:input wire:model="biome" /><flux:error name="biome" /></flux:field>
+                <flux:field><flux:label>Hábitat</flux:label><flux:input wire:model="habitat" /><flux:error name="habitat" /></flux:field>
             </div>
-            <flux:field><flux:label>Notas</flux:label><flux:textarea wire:model="specimenNotes" /></flux:field>
+            <flux:field><flux:label>Notas</flux:label><flux:textarea wire:model="specimenNotes" /><flux:error name="specimenNotes" /></flux:field>
             <flux:field>
                 <flux:label>Entidad depositante (opcional)</flux:label>
                 <flux:select wire:model="entidadDepositanteId">
                     <option value="">Sin entidad depositante</option>
                     @foreach($entidades as $entidad)<option value="{{ $entidad['id'] }}">{{ $entidad['label'] }}</option>@endforeach
                 </flux:select>
+                <flux:error name="entidadDepositanteId" />
             </flux:field>
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showModal', false)">Cancelar</flux:button>

@@ -25,7 +25,7 @@
     <dialog id="{{ $idLov }}-dialogo" class="hub-lov-overlay" role="dialog" aria-modal="true" aria-labelledby="{{ $idLov }}-titulo"
         x-init="$nextTick(() => { if ($el.isConnected && !$el.open) { $el.showModal(); $el.querySelector('.hub-lov-search')?.focus({preventScroll: true}) } })"
         x-on:cancel.prevent.stop="cerrar()" x-on:keydown.escape.stop.prevent="cerrar()"
-        x-on:click.self="cerrar()">
+        x-on:click.stop="if ($event.target === $el) cerrar()">
         <section class="hub-lov-dialog {{ str_starts_with($label, 'Localidad') ? 'hub-lov-dialog--localidad' : '' }}">
             <div class="hub-lov-heading"><h3 id="{{ $idLov }}-titulo">Buscar</h3>
                 <button type="button" x-on:click="cerrar()" aria-label="Cerrar lista de {{ mb_strtolower($label) }}">×</button>
@@ -47,7 +47,7 @@
                     <button type="button" role="option" tabindex="-1" x-bind:id="'{{ $idLov }}-opcion-' + indice"
                         x-bind:data-indice="indice" x-bind:aria-selected="(opcion.valor === valor).toString()"
                         x-bind:class="{'is-active': indice === activa}" x-on:mouseenter="activa = indice"
-                        x-on:click="escoger(opcion.valor)" x-text="opcion.etiqueta" @if($busquedaRemota) x-bind:disabled="cargando" @endif></button>
+                        x-on:click.stop="escoger(opcion.valor)" x-text="opcion.etiqueta" @if($busquedaRemota) x-bind:disabled="cargando" @endif></button>
                 </template>
             </div>
             <p x-show="{{ $busquedaRemota ? '!cargando && !errorBusqueda && ' : '' }}!filtradas.length" class="hub-lov-empty">No hay opciones que coincidan con la búsqueda.</p>

@@ -132,7 +132,7 @@
 
     <ul class="detalle">
         <li>
-            Detalle:
+            Detalle declarado en la solicitud:
             <table class="detalle-tabla">
                 <thead>
                     <tr>
@@ -161,20 +161,35 @@
     </p>
 
     <p>
-        La recepción física fue constatada por <strong>{{ $receptor ?? 'Recepción EPN' }}</strong>
-        @if($recepcion->verificadoEn) el {{ $recepcion->verificadoEn->format('d/m/Y H:i') }}@endif.
+        Recepción registrada por <strong>{{ $operadorRecepcion ?? 'Recepción EPN' }}</strong>
+        @if($recepcion->verificadoEn) el @fechaEc($recepcion->verificadoEn)@endif.
     </p>
+    <p>Responsable institucional de recepción: <strong>{{ $receptor ?? 'Recepción EPN' }}</strong>.</p>
+
+    @if($contenidoRecibido ?? null)
+        <p><strong>Proyecto:</strong> {{ $contenidoRecibido['proyecto'] }}</p>
+        <p><strong>Contenido constatado:</strong> {{ count($contenidoRecibido['registros']) }} registros · {{ $contenidoRecibido['individuos'] }} individuos.</p>
+        <table class="detalle-tabla">
+            <thead><tr><th>Recipiente / lote</th><th>Identificación constatada</th><th>Individuos</th></tr></thead>
+            <tbody>@foreach($contenidoRecibido['registros'] as $registro)
+                <tr><td>{{ $registro['identificador'] }}</td><td>{{ $registro['datos']['scientificName'] }}</td><td>{{ $registro['cantidad'] }}</td></tr>
+            @endforeach</tbody>
+        </table>
+        <ul class="detalle">@foreach($contenidoRecibido['registros'] as $registro)
+            @if(trim($registro['observaciones']) !== '')<li><strong>{{ $registro['identificador'] }}:</strong> {{ $registro['observaciones'] }}</li>@endif
+        @endforeach</ul>
+    @endif
 
     <div class="section">
         @if($recepcion->observaciones !== [])
-            <p><strong>Observaciones registradas:</strong></p>
+            <p><strong>Observaciones generales del lote:</strong></p>
             <ul class="detalle">
                 @foreach($recepcion->observaciones as $observacion)
                     <li>{{ $observacion }}</li>
                 @endforeach
             </ul>
         @else
-            <p><strong>Observaciones registradas:</strong> Sin observaciones.</p>
+            <p><strong>Observaciones generales del lote:</strong> Sin observaciones generales.</p>
         @endif
     </div>
 

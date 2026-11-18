@@ -100,11 +100,13 @@ final class LectorActualizacionCatalogo
             }
             $libro = $this->texto((string)$zip->getFromName('xl/workbook.xml'));
             $relaciones = $this->texto((string)$zip->getFromName('xl/_rels/workbook.xml.rels'));
-            $hoja = $libro->sheets->sheet[0] ?? null;
+            // El prefijo XML es libre: Excel y otros exportadores usan tanto
+            // namespace predeterminado como x:workbook/x:sheet.
+            $hoja = ($libro->xpath('./*[local-name()="sheets"]/*[local-name()="sheet"]') ?: [])[0] ?? null;
             if ($hoja === null) throw new DomainException('El Excel no contiene una hoja de datos.');
             $id = (string)$hoja->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships')['id'];
             $entrada = null;
-            foreach ($relaciones->Relationship as $relacion) {
+            foreach ($relaciones->xpath('./*[local-name()="Relationship"]') ?: [] as $relacion) {
                 if ((string)$relacion['Id'] !== $id) continue;
                 if ((string)$relacion['TargetMode'] === 'External') throw new DomainException('La hoja de datos no puede ser un enlace externo.');
                 $target = (string)$relacion['Target'];
@@ -134,14 +136,15 @@ final class LectorActualizacionCatalogo
             if ($zip->locateName('xl/styles.xml') !== false) {
                 $estilos = $this->texto((string)$zip->getFromName('xl/styles.xml'));
                 $formatos = [];
-                foreach ($estilos->numFmts->numFmt ?? [] as $formato) $formatos[(int)$formato['numFmtId']] = (string)$formato['formatCode'];
+                foreach ($estilos->xpath('./*[local-name()="numFmts"]/*[local-name()="numFmt"]') ?: [] as $formato) $formatos[(int)$formato['numFmtId']] = (string)$formato['formatCode'];
                 $indice = 0;
-                foreach ($estilos->cellXfs->xf ?? [] as $formato) {
+                foreach ($estilos->xpath('./*[local-name()="cellXfs"]/*[local-name()="xf"]') ?: [] as $formato) {
                     $num = (int)$formato['numFmtId'];
                     $fechas[$indice++] = Date::isDateTimeFormatCode($formatos[$num] ?? NumberFormat::builtInFormatCode($num) ?: 'General');
                 }
             }
-            $calendario = in_array((string)($libro->workbookPr['date1904'] ?? ''), ['1', 'true'], true) ? Date::CALENDAR_MAC_1904 : Date::CALENDAR_WINDOWS_1900;
+            $propiedades = ($libro->xpath('./*[local-name()="workbookPr"]') ?: [])[0] ?? null;
+            $calendario = in_array((string)($propiedades['date1904'] ?? ''), ['1', 'true'], true) ? Date::CALENDAR_MAC_1904 : Date::CALENDAR_WINDOWS_1900;
             $lector = $this->xml($ruta, $entrada);
             $leidas = 0;
             $numero = 0;
@@ -168,14 +171,27 @@ final class LectorActualizacionCatalogo
                         $columna = 0;
                         foreach (str_split($letras[0] ?? '') as $letra) $columna = $columna * 26 + ord($letra) - 64;
                         if ($columna < 1 || $columna > self::MAX_COLUMNAS) throw new DomainException("Fila {$numero}: la matriz supera las 200 columnas permitidas.");
-                        if (isset($celda->f) && !isset($celda->v)) throw new DomainException("Fila {$numero}, celda {$ref}: la fórmula no tiene un resultado guardado. Abre y guarda el Excel antes de subirlo.");
+                        $formula = ($celda->xpath('./*[local-name()="f"]') ?: [])[0] ?? null;
+                        $valorNodo = ($celda->xpath('./*[local-name()="v"]') ?: [])[0] ?? null;
+                        if ($formula !== null && $valorNodo === null) throw new DomainException("Fila {$numero}, celda {$ref}: la fórmula no tiene un resultado guardado. Abre y guarda el Excel antes de subirlo.");
                         $tipo = (string)$celda['t'];
                         $valor = match ($tipo) {
-                            's' => isset($celda->v) ? ($strings[(int)$celda->v] ?? throw new DomainException("Texto inválido en {$ref}.")) : '',
+                            's' => $valorNodo !== null ? ($strings[(int)$valorNodo] ?? throw new DomainException("Texto inválido en {$ref}.")) : '',
                             'inlineStr' => implode('', array_map(static fn ($v) => (string)$v, $celda->xpath('.//*[local-name()="t"]'))),
                             'e' => throw new DomainException("Fila {$numero}, celda {$ref}: Excel contiene un error. Corrige la celda."),
-                            default => (string)$celda->v,
+                            default => (string)$valorNodo,
                         };
+                        if ($tipo === 'd' && $valor !== '') {
+                            // Las fechas ISO tipadas no son números de serie.
+                            // Conservar el día de la celda, sin convertir su zona.
+                            $fecha = \DateTimeImmutable::createFromFormat('!Y-m-d', substr($valor, 0, 10));
+                            $errores = \DateTimeImmutable::getLastErrors();
+                            if (!preg_match('/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?$/D', $valor)
+                                || $fecha === false || ($errores !== false && ($errores['warning_count'] || $errores['error_count']))) {
+                                throw new DomainException("Fila {$numero}, celda {$ref}: la fecha de Excel no es válida.");
+                            }
+                            $valor = $fecha->format('Y-m-d');
+                        }
                         if ($valor !== '' && is_numeric($valor) && ($fechas[(int)$celda['s']] ?? false)) {
                             $anterior = Date::getExcelCalendar();
                             try { Date::setExcelCalendar($calendario); $valor = Date::excelToDateTimeObject((float)$valor)->format('Y-m-d'); }

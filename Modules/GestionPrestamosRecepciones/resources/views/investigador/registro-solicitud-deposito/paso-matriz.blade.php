@@ -22,8 +22,8 @@
                             <p><em>{{ $registro['especieCorregida'] ?: $registro['especieIngresada'] }}</em> · {{ ($registro['advertencias'] ?? []) !== [] ? 'Datos por corregir' : $registro['estado'] }}</p>
                             @foreach($registro['advertencias'] ?? [] as $advertencia)<p class="text-error">{{ $advertencia['campo'] ?? '' }}: {{ $advertencia['mensaje'] ?? $advertencia['original'] ?? 'Revisa este valor en el Excel.' }}</p>@endforeach
                             @if(in_array($registro['estado'], ['Pendiente', 'No Verificado'], true))
-                                @foreach($registro['especiesSugeridas'] ?? [] as $sugerencia)<flux:button size="sm" wire:click="aceptarSugerencia(@js($idRegistro), @js($sugerencia))">Usar {{ $sugerencia }}</flux:button>@endforeach
-                                <flux:button size="sm" wire:click="mantenerNombreOriginal(@js($idRegistro))">Conservar nombre original para revisión curatorial</flux:button>
+                                @foreach($registro['especiesSugeridas'] ?? [] as $sugerencia)<flux:button size="sm" :wire:click="'aceptarSugerencia('.\Illuminate\Support\Js::from($idRegistro).', '.\Illuminate\Support\Js::from($sugerencia).')'">Usar {{ $sugerencia }}</flux:button>@endforeach
+                                <flux:button size="sm" :wire:click="'mantenerNombreOriginal('.\Illuminate\Support\Js::from($idRegistro).')'">Conservar nombre original para revisión curatorial</flux:button>
                             @endif
                         </div>
                     @endforeach

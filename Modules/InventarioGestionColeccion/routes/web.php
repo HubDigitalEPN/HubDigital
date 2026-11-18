@@ -8,7 +8,6 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DatasetConfigForm;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarPlantillaImportController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DuplicadosCatalogNumberIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EntidadDepositanteIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EtiquetadoQrIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarDwcController;
@@ -40,7 +39,7 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
             Route::get('/especimenes/duplicados', DuplicadosCatalogNumberIndex::class)->name('especimenes.duplicados');
             Route::get('/muestras', MuestrasColectaIndex::class)->name('muestras');
             Route::get('/fechas/revision', FechasRevisionIndex::class)->name('fechas.revision');
-            Route::get('/entidades-depositantes', EntidadDepositanteIndex::class)->name('entidades-depositantes');
+            Route::get('/entidades-depositantes', static fn () => redirect()->route('admin.instituciones'))->name('entidades-depositantes');
             Route::get('/dataset-config', DatasetConfigForm::class)->name('dataset.config');
             Route::get('/dwc/descargar', ExportarDwcController::class)->name('dwc.descargar');
             Route::get('/columnas-config', ConfiguracionColumnasIndex::class)->name('columnas.config');

@@ -439,7 +439,7 @@ final class EspecimenIndex extends Component
             $this->restaurarColumnas();
         }
 
-        $this->fechaColecta = date('Y-m-d');
+        $this->fechaColecta = now('America/Guayaquil')->format('Y-m-d');
     }
 
     public function boot(): void
@@ -752,19 +752,17 @@ final class EspecimenIndex extends Component
             'geoMensaje',
         );
         $this->resetValidation();
-        $this->fechaColecta = date('Y-m-d');
+        $this->fechaColecta = now('America/Guayaquil')->format('Y-m-d');
         $this->showModal = true;
     }
 
     public function registrarEspecimen(RegistrarEspecimenHandler $handler): void
     {
-        $this->validateOnly('codigoCatalogo');
-        $this->validateOnly('taxonId');
-        $this->validateOnly('localidad');
-        $this->validateOnly('localidad2');
-        $this->validateOnly('localidad3');
-        $this->validateOnly('fechaColecta');
-        $this->validateOnly('colector');
+        // Validar todos los datos de alta antes de convertirlos. Un cast a int
+        // o float no debe convertir texto o fracciones en datos científicos.
+        // Las reglas de edición pertenecen a otro modal, normalmente vacío.
+        $reglas = array_filter($this->getRules(), static fn (string $campo): bool => !str_starts_with($campo, 'edit'), ARRAY_FILTER_USE_KEY);
+        $this->validate($reglas + ['entidadDepositanteId' => 'nullable|uuid']);
 
         try {
             $handler->handle(new RegistrarEspecimenInput(

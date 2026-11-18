@@ -12,6 +12,11 @@ const definitions = {
     chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css','resources/views/layouts/portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/ChatBotWidget.php'], checks:['install','hide','fresh','catalogOnly','restore','focus']},
 };
 Object.assign(definitions, {
+    instituciones_unificadas: {sources:['app/Services/DirectorioInstituciones.php','app/Livewire/Administracion/InstitucionesCatalogo.php','resources/views/livewire/administracion/instituciones-catalogo.blade.php','resources/views/layouts/app/sidebar.blade.php','Modules/InventarioGestionColeccion/routes/web.php'],checks:['redirect','menu','labels','saved','edited','duplicate','disabled','acta','responsive']},
+    catalogo_taxones: {sources:['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/TaxonIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/taxones/index.blade.php'],checks:['parents','created','search','edited','inactive','empty','responsive']},
+    catalogo_alta: {sources:['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php','Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/ColumnasCatalogo.php'], checks:['open','ecuador','invalid','labels','dateLabels','saved','edited','responsive']},
+    depositos_selector_anidado: {sources:['Modules/GestionPrestamosRecepciones/resources/views/components/lov-popup.blade.php'], checks:['nestedOpen','mouseKeepsEditor','saved','keyboardKeepsEditor','focus','responsive']},
+    depositos_matriz: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-matriz.blade.php'], checks:['compiled','pendingBlocked','original','suggestion','ready','responsive']},
     depositos_origen: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-origen.blade.php','Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Investigador/RegistroSolicitudDeposito.php'], checks:['purpose','required','policy','inec','focus','saved','responsive']},
     depositos_rechazo: {sources:['Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/RecepcionQrDeposito.php'], checks:['reason','refused','blocked','history','technicalCannotRetry','responsive']},
     depositos_reintento: {sources:['Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/EstadoEntregaNotification.php'], checks:['curator','authorized','history','receiveEnabled','responsive']},
@@ -44,6 +49,10 @@ definitions.chat.sources.push('public/pwa-cache.js','public/service-worker.js');
 definitions.laboratorio.sources.push(...['Adrian.jpg','vladimir_carvajal.jpg','David_Donoso_2.jpg','asistente.jpg','edith_montalvo.jpg','Edith_M.jpg','Dayana_T1.jpg','Monica_Guerra.png','Diego_Almeida.png','Michelle_Velez.jpg','Pablo_Arguello.png','Selene_Baez.png'].map(file=>'public/images/laboratorio/equipo/'+file));
 for (const [id, value] of Object.entries(definitions)) for (const source of value.sources) (owner[source] ||= []).push(id);
 Object.assign(owner, {
+    // Las pantallas retiradas se acreditan por el contrato de redirección y
+    // ausencia de la pantalla; no tienen un cuerpo DOM que volver a abrir.
+    'Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EntidadDepositanteIndex.php':[],
+    'Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/entidades/index.blade.php':[],
     'tests/Browser/contratos-ui-focales.mjs':Object.keys(definitions),
     'Modules/CatalogoPublico/resources/views/components/filtro-investigacion.blade.php':['tarjetas'],
     'resources/js/portal-map-model.js':[],
@@ -53,6 +62,25 @@ Object.assign(owner, {
     'Modules/CatalogoPublico/resources/views/components/busqueda-universal.blade.php':['tarjetas'],
 });
 const contracts = {
+    'app/Services/DirectorioInstituciones.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'app/Livewire/Administracion/InstitucionesCatalogo.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'resources/views/livewire/administracion/instituciones-catalogo.blade.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'resources/views/layouts/app/sidebar.blade.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'Modules/InventarioGestionColeccion/routes/web.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EntidadDepositanteIndex.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/entidades/index.blade.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/TaxonIndex.php':['tests/Feature/TaxonesCicloCuradorTest.php'],
+    'Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/taxones/index.blade.php':['tests/Feature/TaxonesCicloCuradorTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/ContenidoRecibidoDeposito.php':['tests/Feature/DepositosContenidoColeccionTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Adapters/InventarioIngresoColeccionAdapter.php':['tests/Feature/DepositosContenidoColeccionTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Infrastructure/Documentos/DomPdfGeneradorActaRecepcionAdapter.php':['tests/Feature/DepositosContenidoColeccionTest.php'],
+    'Modules/GestionPrestamosRecepciones/resources/views/pdf/acta-recepcion.blade.php':['tests/Feature/DepositosContenidoColeccionTest.php'],
+    'Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/ColumnasCatalogo.php':['tests/Feature/CatalogoAltaManualTest.php'],
+    'Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php':['tests/Feature/CatalogoAltaManualTest.php'],
+    'Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php':['tests/Feature/CatalogoAltaManualTest.php'],
+    'Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/LectorActualizacionCatalogo.php':['tests/Unit/LectorCatalogoNamespacesTest.php','tests/Feature/ImportacionCatalogoMatricesTest.php'],
+    'Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-matriz.blade.php':['tests/Feature/DepositosMatrizInteraccionTest.php'],
+    'Modules/GestionPrestamosRecepciones/app/Presentation/Support/TextoSolicitudDeposito.php':['tests/Feature/DepositosMatrizInteraccionTest.php'],
     'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/IngresoPendienteDeposito.php':['tests/Feature/DepositosArquitecturaTest.php'],
     'Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/FlujoIngresoDeposito.php':['tests/Feature/DepositosArquitecturaTest.php'],
     'Modules/GestionPrestamosRecepciones/app/Infrastructure/Jobs/ProcesarIngresoDeposito.php':['tests/Feature/DepositosArquitecturaTest.php'],

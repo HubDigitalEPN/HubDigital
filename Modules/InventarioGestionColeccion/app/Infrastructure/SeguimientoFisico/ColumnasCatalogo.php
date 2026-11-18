@@ -45,6 +45,8 @@ final class ColumnasCatalogo
             $campo = self::campo($col['clave']);
             if (isset($madre[$campo]) && !isset($porCampo[$campo])) continue;
             if (isset($porCampo[$campo])) $col['etiqueta'] = $porCampo[$campo]['cabecera'];
+            if ($col['clave'] === 'fechaColecta') $col['etiqueta'] .= ' · normalizada';
+            if ($col['clave'] === 'fechaVerbatim') $col['etiqueta'] .= ' · original';
             $salida[] = $col;
         }
         foreach ($def['columnas'] as $col) if ($col['personalizada'] ?? false) {

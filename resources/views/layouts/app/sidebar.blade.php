@@ -126,7 +126,7 @@
                             heading="Gestión de depósitos" icon="archive-box"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*')"
+                            :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*', 'admin.instituciones')"
                         >
                             <flux:sidebar.item
                                 icon="inbox-arrow-down"
@@ -173,7 +173,7 @@
                             heading="Catálogo" icon="rectangle-stack"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades', 'inventario.taxonomia.entidades-depositantes')"
+                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades')"
                         >
                             <flux:sidebar.item
                                 icon="magnifying-glass"
@@ -214,14 +214,6 @@
                                 wire:navigate
                             >
                                 Localidades
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="building-library"
-                                :href="route('inventario.taxonomia.entidades-depositantes')"
-                                :current="request()->routeIs('inventario.taxonomia.entidades-depositantes')"
-                                wire:navigate
-                            >
-                                Instituciones depositantes
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group

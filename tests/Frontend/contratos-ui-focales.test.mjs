@@ -31,3 +31,22 @@ test('los contratos de depósitos y Pasante seleccionan exclusivamente sus panta
     }
     assert.deepEqual(impact.focalScope(['tests/Browser/contratos-ui-focales.mjs']),[]);
 });
+
+test('los contratos de alta y taxones no seleccionan recorridos ajenos del catálogo', async () => {
+    const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
+    for(const id of ['catalogo_alta','catalogo_taxones']) {
+        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),[id]);
+        assert.ok(ui.definitions[id].checks.includes('responsive'));
+    }
+    assert.deepEqual(impact.focalScope(['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/LectorActualizacionCatalogo.php']),[]);
+    assert.ok(ui.contracts['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/LectorActualizacionCatalogo.php'].includes('tests/Unit/LectorCatalogoNamespacesTest.php'));
+});
+
+test('la pantalla única de instituciones tiene cobertura propia incluso de las pantallas retiradas', async () => {
+    const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
+    assert.deepEqual(impact.focalScope(ui.definitions.instituciones_unificadas.sources),['instituciones_unificadas']);
+    for(const file of ['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EntidadDepositanteIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/entidades/index.blade.php']) {
+        assert.deepEqual(ui.contracts[file],['tests/Feature/InstitucionesUnificadasTest.php']);
+        assert.deepEqual(impact.focalScope([file]),[]);
+    }
+});

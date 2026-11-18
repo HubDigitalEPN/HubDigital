@@ -6,6 +6,8 @@
         </flux:button>
     </div>
 
+    <flux:input type="search" wire:model.live.debounce.300ms="busqueda" label="Buscar taxones por nombre, rango o autor" placeholder="Nombre científico, rango o autor" maxlength="255" />
+
     @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage && !$showModal && !$showEditModal)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
@@ -26,7 +28,7 @@
                 </thead>
                 <tbody class="divide-y divide-border">
                     @forelse($taxonesPaginados as $taxon)
-                        <tr class="hover:bg-bg-main transition-colors">
+                        <tr data-taxon-id="{{ $taxon['id'] }}" class="hover:bg-bg-main transition-colors">
                             <td class="px-4 py-3 font-medium text-text-primary font-serif italic">{{ $taxon['nombreCientifico'] }}</td>
                             <td class="px-4 py-3 text-text-primary capitalize">{{ $taxon['rango'] }}</td>
                             <td class="px-4 py-3 text-text-secondary text-xs font-serif italic">{{ $taxon['padreNombre'] ?? '—' }}</td>
@@ -51,7 +53,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-8 text-center text-text-secondary">No hay taxones registrados.</td></tr>
+                        <tr><td colspan="7" class="px-4 py-8 text-center text-text-secondary">{{ trim($busqueda) !== '' ? 'No hay taxones que coincidan con la búsqueda.' : 'No hay taxones registrados.' }}</td></tr>
                     @endforelse
                 </tbody>
             </table></x-grid-frame>
@@ -60,7 +62,7 @@
         {{-- Móvil --}}
         <div class="md:hidden divide-y divide-border">
             @forelse($taxonesPaginados as $taxon)
-                <div class="p-4 space-y-2">
+                <div data-taxon-id="{{ $taxon['id'] }}" class="p-4 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
                             <div class="font-serif italic text-text-primary break-words">{{ $taxon['nombreCientifico'] }}</div>
@@ -97,7 +99,7 @@
                     </div>
                 </div>
             @empty
-                <div class="p-6 text-center text-text-secondary text-sm">No hay taxones registrados.</div>
+                <div class="p-6 text-center text-text-secondary text-sm">{{ trim($busqueda) !== '' ? 'No hay taxones que coincidan con la búsqueda.' : 'No hay taxones registrados.' }}</div>
             @endforelse
         </div>
 

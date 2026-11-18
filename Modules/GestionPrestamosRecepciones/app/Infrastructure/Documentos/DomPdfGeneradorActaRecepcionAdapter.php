@@ -38,11 +38,13 @@ final class DomPdfGeneradorActaRecepcionAdapter implements GeneradorActaRecepcio
 
         return Pdf::loadView('gestionprestamosrecepciones::pdf.acta-recepcion', [
             'recepcion' => $recepcion,
+            'contenidoRecibido' => app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\ContenidoRecibidoDeposito::class)->detalle($recepcion->solicitudId),
             'depositante' => $depositante,
             'investigador' => $depositante?->nombre ?? $recepcion->investigadorId,
             'curador' => $curador,
             'nombreFirma' => $nombreFirma,
             'receptor' => $receptor,
+            'operadorRecepcion' => $recepcion->recibidoPor !== null ? $this->usuarios->obtenerNombre($recepcion->recibidoPor) : null,
             'fecha' => $fecha,
             'versionActa' => $versionActa,
             'perfilFirma' => ['perfil' => $perfil, 'rol' => 'curador', 'bloque' => 'https://firmas.hubdigital.invalid/bloques/'.$ruta, 'zona' => 'https://firmas.hubdigital.invalid/zonas/'.$ruta],

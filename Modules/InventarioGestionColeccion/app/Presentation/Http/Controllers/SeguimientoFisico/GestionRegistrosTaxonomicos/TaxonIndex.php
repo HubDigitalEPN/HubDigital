@@ -31,6 +31,10 @@ final class TaxonIndex extends Component
 
     public int $perPage = 15;
 
+    public string $busqueda = '';
+
+    public function updatedBusqueda(): void { $this->page = 1; }
+
     public bool $showModal = false;
 
     #[Rule('required|string|max:255')]
@@ -103,6 +107,7 @@ final class TaxonIndex extends Component
             ));
 
             $this->cargarTaxones($listarHandler);
+            $this->busqueda = $this->nombreCientifico;
             $this->showModal = false;
             $this->successMessage = 'Taxón registrado correctamente.';
             $this->errorMessage = null;
@@ -146,6 +151,7 @@ final class TaxonIndex extends Component
             ));
 
             $this->cargarTaxones($listarHandler);
+            $this->busqueda = $this->editNombreCientifico;
             $this->showEditModal = false;
             $this->successMessage = 'Taxón actualizado correctamente.';
             $this->errorMessage = null;
@@ -171,7 +177,7 @@ final class TaxonIndex extends Component
 
     public function nextPage(): void
     {
-        if ($this->page < (int) ceil(count($this->taxones) / $this->perPage)) {
+        if ($this->page < (int) ceil(count($this->taxonesFiltrados()) / $this->perPage)) {
             $this->page++;
         }
     }
@@ -185,7 +191,7 @@ final class TaxonIndex extends Component
 
     public function goToPage(int $p): void
     {
-        $this->page = max(1, min($p, (int) ceil(count($this->taxones) / $this->perPage)));
+        $this->page = max(1, min($p, (int) ceil(count($this->taxonesFiltrados()) / $this->perPage)));
     }
 
     private function cargarTaxones(ListarTaxonesHandler $handler): void
@@ -210,16 +216,26 @@ final class TaxonIndex extends Component
 
     public function render(): View
     {
-        $total = count($this->taxones);
+        $filtrados = $this->taxonesFiltrados();
+        $total = count($filtrados);
         $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
+        $this->page = max(1, min($this->page, $totalPaginas));
         $offset = ($this->page - 1) * $this->perPage;
 
         return view('inventariogestioncoleccion::admin.taxonomia.taxones.index', [
-            'taxonesPaginados' => array_slice($this->taxones, $offset, $this->perPage),
+            'taxonesPaginados' => array_slice($filtrados, $offset, $this->perPage),
             'totalPaginas' => $totalPaginas,
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
             'fin' => min($offset + $this->perPage, $total),
         ]);
+    }
+
+    /** Filtrar la tabla conserva el catálogo completo del selector de padre. */
+    private function taxonesFiltrados(): array
+    {
+        $busqueda = mb_strtolower(mb_substr(trim($this->busqueda), 0, 255));
+        return $busqueda === '' ? $this->taxones : array_values(array_filter($this->taxones,
+            static fn (array $taxon): bool => str_contains(mb_strtolower(implode(' ', [$taxon['nombreCientifico'], $taxon['rango'], $taxon['autor'] ?? ''])), $busqueda)));
     }
 }

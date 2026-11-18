@@ -66,6 +66,7 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
                 'motivoJustificacion' => $registro->motivoJustificacion(),
             ];
         }
+        $filas = $this->filasParaColeccion($solicitudId, (string)$solicitud->numero(), $filas);
 
         $lote = $this->recepcionRepo->buscarPorSolicitudId($id);
         $numero = (string) $solicitud->numero();
@@ -137,10 +138,24 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
         $numero = (string) $solicitud->numero();
         $codigos = [];
 
-        foreach (array_keys($matriz->registros()) as $registroId) {
-            $codigos[] = IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $registroId);
+        $declaradas = [];
+        foreach ($matriz->registros() as $registroId => $registro) {
+            $declaradas[] = ['identificadorEstable' => $registroId, 'datosDwC' => $registro->datosDwC(), 'estadoRegistro' => $registro->estado()->value, 'motivoJustificacion' => $registro->motivoJustificacion()];
+        }
+        $filas = $this->filasParaColeccion($solicitudId, $numero, $declaradas);
+        foreach ($filas as $fila) {
+            $codigos[] = IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $fila['identificadorEstable']);
         }
 
         return $codigos;
+    }
+
+    private function filasParaColeccion(string $solicitudId, string $numero, array $declaradas): array
+    {
+        // Un acta histórica ya ingresada conserva sus códigos y su trazabilidad.
+        // La corrección no vuelve a interpretar ni duplica esos lotes cerrados.
+        $codigosHistoricos = array_map(static fn ($fila): string => IngresarLoteDepositoHandler::codigoCatalogoPara($numero, $fila['identificadorEstable']), $declaradas);
+        if ($this->especimenRepo->resumenPorCodigosCatalogo($codigosHistoricos)['total'] > 0) return $declaradas;
+        return app(\Modules\GestionPrestamosRecepciones\Infrastructure\Services\ContenidoRecibidoDeposito::class)->paraIngreso($solicitudId, $declaradas);
     }
 }

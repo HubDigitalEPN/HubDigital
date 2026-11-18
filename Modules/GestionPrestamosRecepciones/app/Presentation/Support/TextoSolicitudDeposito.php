@@ -20,6 +20,6 @@ final class TextoSolicitudDeposito
             .', en mi calidad de '.mb_convert_case(trim($solicitud->solicitud_cargo ?: 'cargo'), MB_CASE_TITLE, 'UTF-8')
             .', solicito autorice la recepción de los especímenes de '.mb_strtolower($solicitud->solicitud_grupo ?: 'grupo de especímenes')
             .', que fueron recolectados en el proyecto «'.TextoOficio::oracion($solicitud->solicitud_proyecto ?: 'título del proyecto')
-            .'», cuyos detalles indico en la tabla compartida vía Google Drive, conforme a los requisitos establecidos en la página web del Laboratorio.';
+            .'», cuyos detalles indico en la matriz adjunta al expediente de HubDigital, conforme a los requisitos establecidos en la página web del Laboratorio.';
     }
 }
