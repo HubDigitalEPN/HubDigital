@@ -1,3 +1,4 @@
+<div>
 <div class="space-y-4" data-editor-visual-portal x-data="portalVisualEditor($wire, @js($mapa), @js('portal:'.\App\Support\EditorPortal::pagina($grupo)), @js(\App\Support\EditorPortal::version(\App\Support\DisposicionContenido::clave('portal:'.\App\Support\EditorPortal::pagina($grupo)))), @js((object) \App\Support\DisposicionContenido::leer('portal:'.\App\Support\EditorPortal::pagina($grupo))))" x-on:portal-texto-publicado.window="recargar()" wire:key="editor-visual-{{ $grupo }}">
     <header><h2 class="hub-section-title">Edita los textos sobre el portal</h2><p class="mt-2 text-sm text-text-secondary">Selecciona un texto en su ubicación original. Los cambios se publican al guardar. Los datos científicos y los documentos firmados conservan sus propios procesos.</p></header>
     <div class="hub-panel hub-editor-filtros flex flex-wrap items-end gap-4 p-4">
@@ -35,4 +36,6 @@
             <div class="flex flex-wrap justify-end gap-3"><flux:button type="button" x-on:click="$flux.modal('portal-texto-inmediato').close()">Cancelar</flux:button><flux:button type="submit" variant="primary" :loading="false" x-bind:disabled="seleccionOcupada || !!errorSeleccion || publicando">Guardar y publicar texto</flux:button></div>
         </form>
     </flux:modal>
+</div>
+
 </div>

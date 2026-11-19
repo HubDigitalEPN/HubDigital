@@ -59,3 +59,7 @@ Modules/InventarioGestionColeccion/docs/provisioning_prod/
 # Identidad generada del bundle OCI; el commit que contiene el codigo se conserva en Git.
 /SOURCE-METADATA.json
 /SOURCE-MANIFEST.sha256
+
+# Cache local de Python; nunca forma parte de las fuentes publicadas.
+__pycache__/
+*.py[cod]

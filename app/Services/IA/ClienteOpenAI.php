@@ -39,7 +39,7 @@ final class ClienteOpenAI
         try {
             $r = Http::withToken((string) config('ia.openai_key'))
                 ->withHeaders(['OpenAI-Organization' => (string) config('ia.organization'), 'OpenAI-Project' => (string) config('ia.project')])
-                ->connectTimeout(2)->timeout(min(15, max(2, (int) config('ia.timeout_seconds', 12))))
+                ->connectTimeout(2)->timeout(min(45, max(2, (int) config('ia.timeout_seconds', 30))))
                 ->post('https://api.openai.com/v1/responses', $cuerpo);
             // Nunca reintentar automáticamente una inferencia: podría haberse facturado.
             if (! $r->successful()) {

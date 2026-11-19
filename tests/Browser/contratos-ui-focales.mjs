@@ -202,6 +202,15 @@ export async function comprobarUIFocal(caso) {
         const before=iframe.contentWindow.location.href;iframe.contentDocument.querySelector('nav a').click();await frame();
         checks.noNavigation=iframe.contentWindow.location.href===before;
         const cancel=all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar');cancel?.click();
+        const grupos=['depositos','catalogo','inicio'],cambios=[];
+        for(const grupo of grupos){
+            const anterior=q('[data-editor-visual-portal]');
+            await Livewire.find(anterior.closest('[wire\\:id]').getAttribute('wire:id')).$set('grupo',grupo);
+            await wait(()=>q('[data-editor-visual-portal]')!==anterior && q('[data-editor-visual-portal] iframe')?.contentDocument?.body?.dataset.portalEditorReady==='true');
+            const actual=q('[data-editor-visual-portal]'),vista=actual.querySelector('iframe'),enlace=actual.querySelector('a[target="_blank"]');
+            cambios.push(new URL(vista.src).pathname===new URL(enlace.href).pathname && actual._x_dataStack[0].disposicion.scope==='portal:'+grupo);
+        }
+        checks.sectionSwitch=cambios.every(Boolean);
     } else if(caso==='laboratorio_editor') {
         const root=q('[x-data^="laboratorioEditor"]'),iframe=root.querySelector('iframe');
         await wait(()=>iframe.contentDocument?.querySelector('[data-elemento="texto-titulo"]'));

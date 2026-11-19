@@ -12,5 +12,5 @@ return [
     'ledger' => env('IA_PRESUPUESTO_PATH', env('APP_ENV') === 'production'
         ? '/var/lib/hubdigital/ia/presupuesto.json' : storage_path('app/private/ia/presupuesto.json')),
     'max_output_tokens' => 1600,
-    'timeout_seconds' => 12,
+    'timeout_seconds' => 30,
 ];

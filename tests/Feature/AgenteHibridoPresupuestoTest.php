@@ -39,6 +39,17 @@ function schemaIA(): array
     return ['type' => 'object', 'properties' => ['opcion' => ['type' => 'string']], 'required' => ['opcion'], 'additionalProperties' => false];
 }
 
+test('la espera de una respuesta abierta conserva un plazo acotado sin reintentos', function (int $configurado, int $esperado): void {
+    $this->presupuestoIA->inicializar('org-prueba', 'proj-prueba', 63_000_000, time() + 3600);
+    config(['ia.timeout_seconds' => $configurado]);
+    Http::fake(['https://api.openai.com/v1/responses' => function ($request, array $options) use ($esperado) {
+        expect($options['timeout'])->toBe($esperado)->and($options['connect_timeout'])->toBe(2);
+        return Http::response(respuestaIA());
+    }]);
+    expect(app(ClienteOpenAI::class)->estructurar('Clasifica', 'Hola', schemaIA()))->toBe(['opcion' => 'deposito']);
+    Http::assertSentCount(1);
+})->with([[-1, 2], [12, 12], [30, 30], [120, 45]]);
+
 test('el comando de estado no crea crédito ni contacta a OpenAI y la configuración conserva el modelo con tarifa verificada', function (): void {
     $this->artisan(EstadoPresupuestoIACommand::class)->expectsOutput('Qwen: OpenAI bloqueado por falta de un presupuesto privado válido.')->assertSuccessful();
     $configuracion = require base_path('config/ia.php');

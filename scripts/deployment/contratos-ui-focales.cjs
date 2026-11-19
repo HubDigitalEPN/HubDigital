@@ -369,6 +369,7 @@ Object.assign(definitions, {
     catalogo_borrado:{sources:['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/EliminarEspecimenes.php','Modules/InventarioGestionColeccion/database/migrations/2026_11_18_220000_create_eliminaciones_especimenes.php'],checks:['individual','cancelled','deleted','batch','selectionCleared','fit']},
 });
 for(const id of ['portal_editor_visual','laboratorio_editor','catalogo_borrado'])for(const file of definitions[id].sources)(owner[file]??=[]).push(id);
+definitions.portal_editor_visual.checks.push('sectionSwitch');
 for(const file of ['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php']){owner[file].push('catalogo_borrado');contracts[file].push('tests/Feature/EspecimenBorradoDefinitivoTest.php');}
 for(const file of definitions.portal_editor_visual.sources)contracts[file]=['tests/Feature/EditorVisualPortalesTest.php','tests/Feature/PortalTextosAdministracionTest.php'];
 for(const file of definitions.laboratorio_editor.sources)contracts[file]=['tests/Feature/PaginaLaboratorioTest.php'];
