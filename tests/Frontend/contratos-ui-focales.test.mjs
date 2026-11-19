@@ -55,7 +55,7 @@ test('la pantalla única de instituciones tiene cobertura propia incluso de las 
 test('la reorganización selecciona solo sus espacios canónicos y las pantallas retiradas no requieren DOM inexistente', async () => {
     const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
     for(const id of ['menu_curaduria','publicacion_unificada','contenidos_unificados','catalogo_importacion']) {
-        const propios={menu_curaduria:[id],publicacion_unificada:[id,'grillas_continuas'],contenidos_unificados:[id,'editor_wizard','textos_contexto'],catalogo_importacion:[id]};
+        const propios={menu_curaduria:[id],publicacion_unificada:[id,'grillas_continuas'],contenidos_unificados:[id,'editor_wizard','textos_contexto','ficha_editor_directo'],catalogo_importacion:[id]};
         assert.deepEqual(impact.focalScope(ui.definitions[id].sources),propios[id]);
         assert.ok(ui.definitions[id].checks.includes('responsive'));
     }

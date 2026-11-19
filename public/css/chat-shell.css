@@ -14,7 +14,7 @@ html[data-chat-hidden] :is(#portal-chat-mobile-trigger, .portal-chat-shell) { di
 .portal-chat-table :is(th,td) { padding:.35rem .5rem; border-bottom:1px solid #d1dce5; }
 .portal-chat-table thead { background:#edf4f8; }
 .portal-chat-table td { text-align:right; font-variant-numeric:tabular-nums; }
-.portal-chat-table[data-chat-matrix] { min-width:52rem; }
+.portal-chat-table[data-chat-matrix] { overflow-wrap:anywhere; }
 .portal-chat-table[data-chat-matrix] td { text-align:left; }
 @media(max-width: 639px) { .portal-chat-launcher:has(#chat-bot-trigger[style*="display: none"]) { display: none; } }
 @media(max-width: 639px) {

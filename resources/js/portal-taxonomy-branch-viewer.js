@@ -28,6 +28,8 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
     const herramientas = crear('div', 'portal-branch-tools'); herramientas.append(credito);
     const estadoPerfil = crear('p', 'portal-branch-profile-status'); estadoPerfil.setAttribute('role', 'status');
     perfil.append(foto, herramientas, descripcion, estadoPerfil);
+    perfil.dataset.disposicionGrupo='g-4444444444444444';
+    foto.dataset.disposicionId='i-1111111111111111';herramientas.dataset.disposicionId='i-2222222222222222';descripcion.dataset.disposicionId='i-3333333333333333';
     cabecera.append(perfil);
     const vista = crear('div', 'portal-branch-tree'); vista.setAttribute('role', 'tree');
     const contenido = crear('div', 'portal-branch-rows'); contenido.setAttribute('role', 'none'); vista.append(contenido);
@@ -91,6 +93,8 @@ export function crearExploradorRama(elemento, acciones, panelFicha) {
             }
             estadoPerfil.hidden = !!(ficha.foto || ficha.descripcion);
             if (!ficha.foto && !ficha.descripcion) estadoPerfil.textContent = 'Todavía no hay una ficha publicada para este taxón.';
+            for(const el of [foto,herramientas,descripcion]){el.style.removeProperty('width');el.style.removeProperty('max-width');el.style.removeProperty('min-height');el.style.removeProperty('flex-shrink');}
+            globalThis.hubDisposicionContenido?.distribuir(perfil,ficha.disposicion||{});
         } catch (error) {
             if (error.name === 'AbortError' || destruido || revision !== revisionFicha) return;
             estadoPerfil.hidden = false; estadoPerfil.textContent = 'No se pudo cargar la ficha. La rama sigue disponible.';

@@ -94,8 +94,9 @@ test('el cuerpo DOM focal exige su recibo MCP propio sin seleccionar los nueve r
 test('el runner focal compartido conserva UI intacta y exige los casos de las fuentes propias', () => {
     const runner='tests/Browser/contratos-ui-focales.mjs';
     assert.deepEqual(impact.focalScope([runner]),[]);
-    assert.deepEqual(impact.focalScope([runner,'public/css/chat-shell.css']),['chat']);
-    assert.deepEqual(impact.focalScope([runner,'config/pagina-laboratorio.php','public/css/chat-shell.css']),['laboratorio','chat']);
+    assert.deepEqual(impact.focalScope([runner,'public/css/chat-shell.css']),['chat_tablas_simples']);
+    assert.deepEqual(impact.focalScope([runner,'config/pagina-laboratorio.php','public/css/chat-shell.css']),['laboratorio','chat_tablas_simples']);
+    assert.deepEqual(impact.focalScope([runner,'public/js/chat-shell.js']),['chat']);
     assert.deepEqual(impact.focalScope([runner,'public/js/card-scroll.js']),['tarjetas']);
 });
 

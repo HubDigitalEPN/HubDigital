@@ -16,7 +16,7 @@ test('el editor recorre las plantillas reales de los siete pasos sin crear ni re
     $antes=DB::table('recepciones.solicitudes_deposito')->count();
     $ui=Livewire::actingAs(User::factory()->administrador()->create())->test(ConfiguracionTextosWizard::class);
     foreach(VistaPreviaWizard::pasos() as $paso=>$dato){
-        $ui->set('pasoEditor',$paso)->assertSee('data-wizard-fragmento',false)->assertSee('Paso que quieres editar');
+        $ui->set('pasoEditor',$paso)->assertSee('data-wizard-fragmento',false)->assertSee('Pasos para editar textos')->assertDontSee('Paso que quieres editar');
         $doc=new DOMDocument;@$doc->loadHTML('<?xml encoding="UTF-8">'.$ui->html());$x=new DOMXPath($doc);
         $region=$x->query('//*[@data-wizard-fragmento]')->item(0);expect($region)->not->toBeNull();
         foreach($x->query('.//*',$region) as $nodo)foreach($nodo->attributes as $a)expect($a->name)->not->toStartWith('wire:')->not->toStartWith('x-')->not->toStartWith('on');
@@ -36,7 +36,7 @@ test('las posiciones del wizard se guardan por paso sin modificar valores ni reg
     Livewire::test(ConfiguracionTextosWizard::class)->call('guardarDisposicion',$orden,$version)->assertHasNoErrors();
     expect(\App\Support\DisposicionContenido::leer('wizard:0'))->toBe($orden)
         ->and(\App\Support\DisposicionContenido::leer('wizard:1'))->toBe([]);
-    $this->get(route('admin.contenidos',['seccion'=>'depositos']))->assertOk()->assertSee('Reorganizar posiciones');
+    $this->get(route('admin.contenidos',['seccion'=>'depositos']))->assertOk()->assertSee('Guardar y publicar')->assertDontSee('Reorganizar posiciones')->assertDontSee('Otros estados y textos de este paso');
     Livewire::test(ConfiguracionTextosWizard::class)->call('guardarDisposicion',[], $version)->assertHasErrors('textoActual');
 });
 

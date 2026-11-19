@@ -12,7 +12,8 @@ final class DisposicionContenido
     public static function clave(string $ambito): string
     {
         $permitidos = array_merge(array_map(fn ($p) => 'portal:'.$p, array_keys(EditorPortal::paginas())), array_map(fn ($p) => 'wizard:'.$p, array_keys(VistaPreviaWizard::pasos())));
-        abort_unless(in_array($ambito, $permitidos, true), 422);
+        $ficha = str_starts_with($ambito, 'ficha:') && \Illuminate\Support\Str::isUuid(substr($ambito, 6));
+        abort_unless(in_array($ambito, $permitidos, true) || $ficha, 422);
         return 'disposicion.'.str_replace(':', '.', $ambito);
     }
 

@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/archivo/imagen/{id}', \App\Http\Controllers\ServirImagenArchivo::class)->middleware(['auth', 'verified'])->name('archivo.imagen');
 
 Route::view('/', 'portal-inicio')->name('home');
+Route::get('/contenido/fotos/{foto}/{hash}', \App\Http\Controllers\FotoEditorialPortal::class)
+    ->where('foto', 'inicio|depositos|logo')->where('hash', '[a-f0-9]{64}')->name('portal.foto-editorial');
 Route::view('/el-laboratorio', 'portal-laboratorio')->name('laboratorio');
 Route::get('/el-laboratorio/fotos/{foto}/{hash}', \App\Http\Controllers\FotoPaginaLaboratorio::class)
     ->where('foto', '(?:'.implode('|', array_keys(config('pagina-laboratorio.fotos'))).'|bloque-[a-f0-9]{16})')->where('hash', '[a-f0-9]{64}')->name('laboratorio.foto');

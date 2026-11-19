@@ -34,6 +34,14 @@ final class FichasTaxonomicasPortal extends Component
     public bool $publicada = false;
     public bool $quitarFoto = false;
     public $foto;
+    public bool $editorFichaAbierto = false;
+
+    #[\Livewire\Attributes\Renderless]
+    public function guardarDisposicion(array $grupos, string $version): string
+    {
+        abort_unless($this->taxonId !== '', 422);
+        return \App\Support\DisposicionContenido::guardar('ficha:'.$this->taxonId, $grupos, $version);
+    }
 
     public function boot(): void { abort_unless(auth()->user()?->esCurador(), 403); }
     public function updatedBusqueda(): void { $this->resetPage(); }
@@ -74,6 +82,7 @@ final class FichasTaxonomicasPortal extends Component
                 'fuente_url' => trim($this->fuenteUrl), 'publicada' => $this->publicada,
             ], $foto, $this->quitarFoto, (string) auth()->id(), $this->version);
             $this->seleccionar($this->taxonId);
+            $this->editorFichaAbierto = false;
             session()->flash('ficha-guardada', 'Ficha guardada. Se mostrará al volver a seleccionar el taxón en el explorador.');
         } catch (\Illuminate\Validation\ValidationException $error) { throw $error; }
         catch (\Throwable $error) { report($error); $this->addError('foto', 'No se pudo guardar la ficha. El contenido anterior se conserva; vuelve a intentarlo.'); }

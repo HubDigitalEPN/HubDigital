@@ -12,7 +12,7 @@ afterEach(fn()=>PortalCopy::forget());
 
 test('la opcion unica integra laboratorio y fichas y las pantallas antiguas no redirigen', function (): void {
     $this->actingAs(User::factory()->administrador()->create());
-    $this->get(route('admin.contenidos'))->assertOk()->assertSee('Vista editable:')->assertSee('El Laboratorio: estructura y fotos')->assertSee('Fichas del explorador');
+    $this->get(route('admin.contenidos'))->assertOk()->assertSee('Vista editable:')->assertDontSee('El Laboratorio: estructura y fotos')->assertSee('Fichas del explorador');
     $this->get('/administracion/el-laboratorio')->assertNotFound();
     $this->get('/administracion/fichas-taxonomicas')->assertNotFound();
 });

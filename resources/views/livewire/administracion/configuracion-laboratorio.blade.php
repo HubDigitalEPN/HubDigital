@@ -1,104 +1,68 @@
-<div class="hub-workspace mx-auto max-w-7xl space-y-5 p-3 sm:p-5">
-    <header class="hub-page-header">
-        <div><h2 class="hub-section-title">Página El Laboratorio</h2><p class="mt-2 text-sm text-text-secondary">Arrastra las fotos y los textos sobre la página. Haz doble clic en un texto para editarlo en el mismo contexto.</p></div>
-        <a href="{{ route('laboratorio') }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue underline">Ver página pública</a>
-    </header>
-    @if(session('laboratorio-guardado'))<p role="status" data-hub-feedback="success" class="hub-panel p-4 text-success">{{ session('laboratorio-guardado') }}</p>@endif
-    @if($errors->any())<div role="alert" data-hub-feedback="error" class="hub-panel p-4 text-error"><p>No se publicaron los cambios:</p><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <form wire:submit="guardar" class="space-y-5">
-        @php($catalogoDiseno = array_map(fn ($elemento) => array_intersect_key($elemento, array_flip(['tipo', 'etiqueta'])), \App\Services\DisenoLaboratorio::elementos($pagina)))
-        <section class="hub-panel space-y-4 p-4" aria-labelledby="lab-layout-title" wire:ignore x-data="laboratorioEditor($wire, @js($posiciones), @js($catalogoDiseno))" x-on:laboratorio-publicado.window="recargar()">
-            <h2 id="lab-layout-title" class="hub-section-title">Posición libre de fotos y textos</h2>
-            <p class="text-sm text-text-secondary">Arrastra para mover; las flechas ajustan la posición con el teclado. Haz doble clic en un texto para editarlo. Puedes cambiar tamaños y capas. Guarda para publicar en PostgreSQL. En móviles, el contenido conserva un orden de lectura vertical.</p>
-            <div class="lab-layout-controls">
-                <label class="lab-admin-field">Elemento<select x-model="seleccion" x-on:change="elegir(seleccion)"><option value="">Selecciona un elemento</option><template x-for="(elemento,id) in catalogo" :key="id"><option :value="id" x-text="elemento.etiqueta"></option></template></select></label>
-                <template x-if="seleccion && posiciones[seleccion]">
-                    <div class="lab-layout-values">
-                        <label class="lab-admin-field">Horizontal (%)<input type="number" min="0" max="95" step="any" x-model.number="posiciones[seleccion].x" x-on:change="cambiar()"></label>
-                        <label class="lab-admin-field">Vertical<input type="number" min="0" max="5000" step="any" x-model.number="posiciones[seleccion].y" x-on:change="cambiar()"></label>
-                        <label class="lab-admin-field">Ancho (%)<input type="number" min="5" max="100" step="any" x-model.number="posiciones[seleccion].ancho" x-on:change="cambiar()"></label>
-                        <label class="lab-admin-field" x-show="catalogo[seleccion].tipo === 'foto'">Alto<input type="number" min="1" max="500" step="any" x-model.number="posiciones[seleccion].alto" x-on:change="cambiar()"></label>
-                        <label class="lab-admin-field" x-show="catalogo[seleccion].tipo !== 'foto'">Tamaño de texto<input type="number" min="0.5" max="8" step="any" x-model.number="posiciones[seleccion].fuente" x-on:change="cambiar()"></label>
-                        <label class="lab-admin-field">Capa<input type="number" min="0" max="20" step="1" x-model.number="posiciones[seleccion].capa" x-on:change="cambiar()"></label>
-                    </div>
-                </template>
-            </div>
-            <p role="status" class="text-sm text-text-secondary" x-text="mensaje"></p>
-            <div class="lab-layout-frame"><iframe x-ref="vista" x-on:load="iniciar()" src="{{ route('laboratorio') }}?edicion=1" title="Editor visual de El Laboratorio"></iframe></div>
-            <button type="button" class="lab-admin-add" x-on:click="restaurar()">Restaurar composición original</button>
+<div class="hub-workspace space-y-3" data-editor-laboratorio
+     x-data="laboratorioEditor($wire, @js($posiciones), @js(array_map(fn ($elemento) => array_intersect_key($elemento, array_flip(['tipo', 'etiqueta'])), \App\Services\DisenoLaboratorio::elementos($pagina))), @js(collect(config('portal-copy.navegacion'))->mapWithKeys(fn ($v, $k) => ['navegacion.'.$k => \App\Support\PortalCopy::text('navegacion.'.$k)])), @js([(parse_url(route('home'), PHP_URL_PATH) ?: '/') => route('admin.contenidos'), parse_url(route('portal.catalogo'), PHP_URL_PATH) => route('admin.contenidos', ['grupo' => 'catalogo']), parse_url(route('depositos.portal'), PHP_URL_PATH) => route('admin.contenidos', ['grupo' => 'depositos'])]))"
+     x-on:laboratorio-publicado.window="recargar()" x-on:foto-editorial-publicada.window="recargar()" x-on:laboratorio-bloque-retirado.window="retirarBloque($event.detail.id)">
+    <p class="sr-only">Arrastra un texto o una fotografía para moverlo. Haz doble clic para editarlo. Haz doble clic en un espacio vacío para añadir contenido; también puedes enfocar el lienzo y pulsar Intro.</p>
+    @if(session('laboratorio-guardado'))<p role="status" data-hub-feedback="success" class="hub-panel p-3 text-success">{{ session('laboratorio-guardado') }}</p>@endif
+    @if($errors->any())<div role="alert" data-hub-feedback="error" class="hub-panel p-3 text-error"><p>No se publicaron los cambios:</p><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+    @include('livewire.administracion.partials.foto-editorial')
+    @include('livewire.administracion.partials.texto-navegacion')
+    <form wire:submit="guardar" class="space-y-3">
+        <section class="hub-panel overflow-hidden" aria-label="Editor visual de El Laboratorio">
+            <div class="lab-layout-frame" wire:ignore><iframe sandbox="allow-same-origin" inert style="pointer-events:none" x-ref="vista" src="{{ route('laboratorio') }}?_editor=1&edicion=1" title="Editor visual de El Laboratorio"></iframe></div>
         </section>
-        @php($grupos = [
-            'Presentación' => ['titulo' => 'Título de la página', 'principal' => 'Texto principal'],
-            'Nuestro personal' => ['personal_destacado' => 'Palabra destacada del título', 'personal_titulo' => 'Resto del título', 'personal_descripcion' => 'Presentación del equipo'],
-            'Perfil de Adrian' => ['adrian_nombre' => 'Nombre', 'adrian_cargo' => 'Cargo', 'adrian_bio' => 'Presentación breve', 'adrian_especialidad' => 'Especialidad'],
-            'Perfil de Vladimir' => ['vladimir_nombre' => 'Nombre', 'vladimir_cargo' => 'Cargo', 'vladimir_bio' => 'Descripción'],
-            'Perfil de David' => ['david_nombre' => 'Nombre', 'david_cargo' => 'Cargo', 'david_bio' => 'Descripción'],
-            'Colaboración y contacto' => ['colaboracion_titulo' => 'Título de colaboración', 'colaboracion_texto' => 'Invitación', 'contacto_titulo' => 'Pregunta de contacto', 'contacto_accion' => 'Texto del enlace', 'contacto_email' => 'Correo del curador'],
-        ])
-        @foreach($grupos as $grupo => $campos)
-            <fieldset class="hub-panel space-y-4 p-4"><legend class="hub-section-title">{{ $grupo }}</legend>
-                @foreach($campos as $clave => $etiqueta)
-                    <label class="lab-admin-field">{{ $etiqueta }}
-                        @if(in_array($clave, ['principal', 'personal_descripcion', 'adrian_bio', 'adrian_especialidad', 'vladimir_bio', 'david_bio', 'colaboracion_texto'], true))
-                            <textarea wire:model="textos.{{ $clave }}" rows="{{ $clave === 'principal' ? 7 : 3 }}" maxlength="20000" required></textarea>
-                        @else
-                            <input type="{{ $clave === 'contacto_email' ? 'email' : 'text' }}" wire:model="textos.{{ $clave }}" maxlength="5000" required>
-                        @endif
-                    </label>
-                @endforeach
-            </fieldset>
-        @endforeach
-        <section class="hub-panel space-y-4 p-4" aria-labelledby="lab-photo-editor-title">
-            <h2 id="lab-photo-editor-title" class="hub-section-title">Fotografías</h2>
-            <p class="text-sm text-text-secondary">JPG, PNG, WebP o AVIF de hasta 8 MB. Describe cada fotografía para lectores de pantalla. Los cambios se publican al guardar.</p>
-            <div class="lab-admin-photos">
-                @foreach($pagina['fotos'] as $clave => $foto)
-                    <fieldset class="rounded-md border border-border p-3" wire:key="foto-laboratorio-{{ $clave }}"><legend class="text-sm font-semibold">{{ $foto['etiqueta'] }}</legend>
-                        <div class="lab-admin-preview"><x-laboratorio-foto :clave="$clave" :foto="$foto" /></div>
-                        <label class="lab-admin-field">Nueva fotografía<input type="file" wire:model="fotos.{{ $clave }}" accept="image/jpeg,image/png,image/webp,image/avif"></label>
-                        <label class="lab-admin-field mt-3">Descripción accesible<input wire:model="alternativos.{{ $clave }}" maxlength="180" required></label>
-                        <label class="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" wire:model="restaurarFotos.{{ $clave }}">Usar fotografía original del diseño</label>
-                    </fieldset>
-                @endforeach
-            </div>
-        </section>
-        <section class="hub-panel space-y-4 p-4" aria-labelledby="lab-extra-editor-title">
-            <h2 id="lab-extra-editor-title" class="hub-section-title">Más fotografías y contenido</h2>
-            <p class="text-sm text-text-secondary">Añade hasta 30 bloques. Cada bloque admite texto, una fotografía o ambos. Puedes cambiar el orden; todo se publica al guardar. Los textos admiten hasta 20.000 caracteres y muestran las primeras 300 palabras antes de «Leer más».</p>
-            @foreach($bloques as $indice => $bloque)
-                <fieldset class="lab-admin-block" wire:key="bloque-laboratorio-{{ $bloque['id'] }}">
-                    <legend>Bloque {{ $indice + 1 }}</legend>
-                    <div class="lab-admin-block-actions">
-                        <button type="button" wire:click="moverBloque('{{ $bloque['id'] }}', -1)" @disabled($loop->first) aria-label="Subir bloque {{ $indice + 1 }}">Subir</button>
-                        <button type="button" wire:click="moverBloque('{{ $bloque['id'] }}', 1)" @disabled($loop->last) aria-label="Bajar bloque {{ $indice + 1 }}">Bajar</button>
-                        <button type="button" wire:click="quitarBloque('{{ $bloque['id'] }}')" aria-label="Quitar bloque {{ $indice + 1 }}">Quitar bloque</button>
-                    </div>
-                    <label class="lab-admin-field">Título (opcional)<input wire:model="bloques.{{ $indice }}.titulo" maxlength="180"></label>
-                    <label class="lab-admin-field">Texto (opcional)<textarea wire:model="bloques.{{ $indice }}.texto" rows="5" maxlength="20000"></textarea></label>
-                    @error('bloques.'.$indice.'.texto')<p class="text-sm text-error" role="alert">{{ $message }}</p>@enderror
-                    @php($fotoPublicada = collect($pagina['bloques'])->firstWhere('id', $bloque['id'])['foto'] ?? null)
-                    @if($fotoPublicada['ruta'] ?? null)
-                        <div class="lab-admin-preview"><x-laboratorio-foto :clave="'bloque-'.$bloque['id']" :foto="$fotoPublicada" /></div>
-                        <label class="flex items-start gap-2 text-sm"><input type="checkbox" wire:model="quitarFotosBloques.{{ $bloque['id'] }}">Quitar fotografía publicada</label>
-                    @endif
-                    <label class="lab-admin-field">Fotografía (opcional)<input type="file" wire:model="fotosBloques.{{ $bloque['id'] }}" accept="image/jpeg,image/png,image/webp,image/avif"></label>
-                    <label class="lab-admin-field">Descripción accesible de la fotografía<input wire:model="bloques.{{ $indice }}.alt" maxlength="180" required></label>
-                </fieldset>
-            @endforeach
-            <button type="button" wire:click="agregarBloque" @disabled(count($bloques) >= 30) class="lab-admin-add">Añadir bloque</button>
-        </section>
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
             <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-science-blue px-5 py-3 text-sm font-semibold text-white">Guardar y publicar</button>
+            <span role="status" class="text-sm text-text-secondary" x-text="mensaje"></span>
             <span wire:loading role="status" class="text-sm text-text-secondary">Guardando contenido y fotografías…</span>
         </div>
     </form>
     <flux:modal wire:model="textoAbierto" aria-labelledby="lab-texto-seleccionado" class="w-full max-w-xl">
         @if($campoSeleccionado !== '')
-            <h2 id="lab-texto-seleccionado" class="hub-section-title">Texto seleccionado en la página</h2>
-            @if($campoSeleccionado === 'personal_titulo')<label class="mt-4 grid gap-2 text-sm">Palabra destacada<input wire:model="textos.personal_destacado" maxlength="5000" class="rounded border border-border p-3"></label>@endif
-            <label class="mt-4 grid gap-2 text-sm">Contenido<textarea rows="7" maxlength="20000" wire:model="{{ $modeloSeleccionado }}" class="w-full rounded border border-border p-3"></textarea></label>
-            @error($modeloSeleccionado)<p role="alert" class="text-error">{{ $message }}</p>@enderror
-            <div class="mt-4 flex justify-end gap-3"><flux:button wire:click="$set('textoAbierto', false)">Cerrar editor</flux:button><flux:button variant="primary" wire:click="guardar" wire:loading.attr="disabled">Guardar y publicar</flux:button></div>
+            <form wire:submit="guardar" class="space-y-4">
+                <h2 id="lab-texto-seleccionado" class="hub-section-title">Editar texto</h2>
+                @if($campoSeleccionado === 'personal_titulo')<label class="lab-admin-field">Palabra destacada<input wire:model="textos.personal_destacado" maxlength="5000"></label>@endif
+                <label class="lab-admin-field">Contenido<textarea rows="7" maxlength="20000" wire:model="{{ $modeloSeleccionado }}"></textarea></label>
+                @if($campoSeleccionado === 'adrian_bio')<label class="lab-admin-field">Especialidad<textarea wire:model="textos.adrian_especialidad" maxlength="20000"></textarea></label>@endif
+                @if($campoSeleccionado === 'contacto_accion')<label class="lab-admin-field">Correo de contacto<input type="email" wire:model="textos.contacto_email" maxlength="5000"></label>@endif
+                @error($modeloSeleccionado)<p role="alert" class="text-error">{{ $message }}</p>@enderror
+                <div class="flex flex-wrap justify-end gap-3">
+                    <flux:button type="button" x-on:click="restaurar()">Restaurar composición original</flux:button>
+                    <flux:button type="button" wire:click="$set('textoAbierto', false)">Cancelar</flux:button>
+                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar y publicar</flux:button>
+                </div>
+            </form>
+        @endif
+    </flux:modal>
+    <flux:modal wire:model="fotoAbierta" aria-labelledby="lab-foto-seleccionada" class="w-full max-w-xl">
+        @if($fotoSeleccionada !== '')
+            <form wire:submit="guardar" class="space-y-4" wire:key="editar-foto-{{ $fotoSeleccionada }}">
+                <h2 id="lab-foto-seleccionada" class="hub-section-title">Cambiar fotografía</h2>
+                <label class="lab-admin-field">Nueva fotografía<input type="file" wire:model="{{ $modeloFoto }}" accept="image/jpeg,image/png,image/webp,image/avif"></label>
+                <p class="text-sm text-text-secondary">JPG, PNG, WebP o AVIF de hasta 8 MB.</p>
+                @error($modeloFoto)<p role="alert" class="text-error">{{ $message }}</p>@enderror
+                <label class="lab-admin-field">Descripción accesible<input wire:model="{{ $modeloAlternativo }}" maxlength="180" required></label>
+                <label class="flex items-start gap-2 text-sm"><input type="checkbox" wire:model="{{ $modeloRestaurarFoto }}">{{ $fotoBloque ? 'Quitar fotografía publicada' : 'Usar fotografía original del diseño' }}</label>
+                <div class="flex flex-wrap justify-end gap-3"><flux:button type="button" wire:click="$set('fotoAbierta', false)">Cancelar</flux:button><flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar y publicar</flux:button></div>
+            </form>
+        @endif
+    </flux:modal>
+    <flux:modal wire:model="bloqueAbierto" aria-labelledby="lab-bloque-seleccionado" class="w-full max-w-xl">
+        @if($indiceBloque !== false)
+            <form wire:submit="guardar" class="space-y-4" wire:key="editar-bloque-{{ $bloqueSeleccionado }}">
+                <h2 id="lab-bloque-seleccionado" class="hub-section-title">{{ $bloqueNuevo ? 'Nuevo contenido' : 'Editar contenido' }}</h2>
+                <label class="lab-admin-field">Título (opcional)<input wire:model="bloques.{{ $indiceBloque }}.titulo" maxlength="180"></label>
+                <label class="lab-admin-field">Texto (opcional)<textarea wire:model="bloques.{{ $indiceBloque }}.texto" rows="6" maxlength="20000"></textarea></label>
+                @error('bloques.'.$indiceBloque.'.texto')<p role="alert" class="text-error">{{ $message }}</p>@enderror
+                <label class="lab-admin-field">Fotografía (opcional)<input type="file" wire:model="fotosBloques.{{ $bloqueSeleccionado }}" accept="image/jpeg,image/png,image/webp,image/avif"></label>
+                @error('fotosBloques.'.$bloqueSeleccionado)<p role="alert" class="text-error">{{ $message }}</p>@enderror
+                <label class="lab-admin-field">Descripción accesible de la fotografía<input wire:model="bloques.{{ $indiceBloque }}.alt" maxlength="180"></label>
+                @unless($bloqueNuevo)<label class="flex items-start gap-2 text-sm"><input type="checkbox" wire:model="quitarFotosBloques.{{ $bloqueSeleccionado }}">Quitar fotografía publicada</label>@endunless
+                <div class="flex flex-wrap justify-end gap-3">
+                    @unless($bloqueNuevo)<flux:button type="button" wire:click="quitarBloqueVisual">Quitar este contenido</flux:button>@endunless
+                    <flux:button type="button" wire:click="cancelarBloqueVisual">Cancelar</flux:button>
+                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar y publicar</flux:button>
+                </div>
+            </form>
         @endif
     </flux:modal>
 </div>

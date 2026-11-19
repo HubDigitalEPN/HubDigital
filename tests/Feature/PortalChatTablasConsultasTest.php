@@ -35,5 +35,6 @@ test('la tabla general escapa valores y no expone campos no declarados', functio
         ->and(json_encode($respuesta['tabla']))->not->toContain('NO-DIVULGAR');
     Livewire::test(ChatBotWidget::class)->set('mensajes', [['rol' => 'chatbot', 'texto' => 'Resultados', 'tabla' => $respuesta['tabla']]])
         ->assertSeeHtml('&lt;script&gt;dato&lt;/script&gt;')->assertDontSeeHtml('<script>dato</script>')
-        ->assertSeeHtml('<th scope="col">Registros</th>');
+        ->assertSeeHtml('<th scope="col">Registros</th>')
+        ->assertDontSeeHtml('data-grid-frame')->assertDontSeeHtml('data-hub-grid')->assertDontSee('Buscar en esta columna');
 });

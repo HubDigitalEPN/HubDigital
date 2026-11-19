@@ -72,8 +72,10 @@ test('el widget renderiza la matriz con encabezados y celdas escapadas y explica
         ->assertSee('QA3-CHAT-1')->assertSeeHtml('&lt;script&gt;dato&lt;/script&gt;')->assertDontSeeHtml('<script>dato</script>');
     $respuesta = app(AsistentePortal::class)->responder('haz una matriz de datos de esta selección', app(ConsultarChatBotHandler::class), seleccionPortal: ['fc' => 'INEXISTENTE']);
     expect($respuesta['datos']['total'])->toBe(0)
-        ->and($respuesta['tabla']['filas'])->toBe([])
+        ->and($respuesta)->not->toHaveKey('tabla')
         ->and($respuesta['texto'])->toContain('No hay registros públicos');
+    Livewire::test(ChatBotWidget::class)->set('mensajes', [['rol'=>'chatbot', 'texto'=>$respuesta['texto'], 'tabla'=>['titulo'=>'Matriz de datos públicos', 'columnas'=>['codigo'=>'Código'], 'filas'=>[]]]])
+        ->assertSee('No hay registros públicos')->assertDontSeeHtml('portal-chat-table-scroll')->assertDontSeeHtml('<table');
     config(['chatbot.specimen_search' => false]);
     expect(app(AsistentePortal::class)->responder('haz una matriz de datos', app(ConsultarChatBotHandler::class))['intent'])->toBe('catalogo.aclaracion');
     Http::assertNothingSent();

@@ -38,16 +38,19 @@ final class ConfiguracionTextosWizard extends Component
     protected function pdfSolicitudGenerado(): bool { return false; }
     protected function propiedadParaDocumento(string $nombre): string { return (new \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Investigador\RegistroSolicitudDeposito)->propiedadParaDocumento($nombre); }
 
-    public function seleccionarTexto(string $clave): void
+    #[\Livewire\Attributes\Renderless]
+    public function seleccionarTexto(string $clave): array
     {
         abort_unless(is_string(config('wizard-copy.'.$clave)),422);
         $this->claveSeleccionada=$clave;
         $this->originalSeleccionado=config('wizard-copy.'.$clave);
         $this->textoActual=WizardCopy::text($clave);
         $this->versionTexto=$this->versionSeleccion();$this->resetValidation();$this->editorAbierto=true;
+        return ['original' => $this->originalSeleccionado, 'texto' => $this->textoActual];
     }
 
-    public function seleccionarLiteral(string $texto): void
+    #[\Livewire\Attributes\Renderless]
+    public function seleccionarLiteral(string $texto): array
     {
         $texto=TextosSistema::normalizar($texto);
         abort_unless(isset(TextosSistema::catalogo()[hash('sha256',$texto)]),422);
@@ -55,6 +58,7 @@ final class ConfiguracionTextosWizard extends Component
         $this->originalSeleccionado=$texto;
         $this->textoActual=TextosSistema::diccionario()[$texto]??$texto;
         $this->versionTexto=$this->versionSeleccion();$this->resetValidation();$this->editorAbierto=true;
+        return ['original' => $this->originalSeleccionado, 'texto' => $this->textoActual];
     }
 
     private function tablaSeleccion(): string { return str_starts_with($this->claveSeleccionada,'sistema:')?'usuarios.textos_sistema':'usuarios.textos_wizard'; }

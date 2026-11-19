@@ -9,7 +9,14 @@ final class TablaRespuestaCatalogoChat
 {
     public function aplicar(array $respuesta): array
     {
-        if (isset($respuesta['tabla'])) return $respuesta;
+        if (isset($respuesta['datos']['total']) && is_numeric($respuesta['datos']['total']) && (int) $respuesta['datos']['total'] === 0) {
+            unset($respuesta['tabla']);
+            return $respuesta;
+        }
+        if (isset($respuesta['tabla'])) {
+            if (empty($respuesta['tabla']['filas'])) unset($respuesta['tabla']);
+            return $respuesta;
+        }
         if (($respuesta['intent'] ?? null) === 'portal.mapa_ayuda' && isset($respuesta['datos']['con_coordenadas']) && $respuesta['datos']['total'] > 1) {
             $respuesta['tabla'] = ['titulo' => 'Registros de la selección', 'columnas' => ['nombre' => 'Dato', 'cantidad' => 'Registros'],
                 'filas' => [['nombre' => 'Publicados', 'cantidad' => $respuesta['datos']['total']], ['nombre' => 'Con coordenadas públicas válidas', 'cantidad' => $respuesta['datos']['con_coordenadas']]]];

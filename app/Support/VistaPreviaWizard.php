@@ -53,6 +53,14 @@ final class VistaPreviaWizard
             foreach ($nodo->attributes as $atributo) if (str_starts_with($atributo->name, 'wire:loading') && !preg_match('/\.(?:remove|attr|class)(?:\.|$)/', $atributo->name)) $esCarga = true;
             if ($esCarga) { $nodo->parentNode?->removeChild($nodo); continue; }
             $mostrar=$nodo->getAttribute('x-show');
+            if ($nodo->getAttribute('role') === 'radio') {
+                foreach (['Depósito', 'Donación'] as $tipo) {
+                    if (str_starts_with(trim($nodo->textContent), $tipo)) {
+                        $nodo->setAttribute('data-wizard-modalidad', $tipo);
+                        $nodo->setAttribute('aria-checked', $tipo === $modalidad ? 'true' : 'false');
+                    }
+                }
+            }
             if (preg_match('/^tipo === [\x27"](Depósito|Donación)[\x27"]$/u',$mostrar,$m) && $m[1]!==$modalidad){$nodo->parentNode?->removeChild($nodo);continue;}
             foreach(iterator_to_array($nodo->attributes) as $atributo){
                 if (str_starts_with($atributo->name, 'wire:model')) $nodo->setAttribute('data-disposicion-model', $atributo->value);

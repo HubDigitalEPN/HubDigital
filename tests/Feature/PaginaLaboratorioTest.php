@@ -128,6 +128,39 @@ test('solo administración y curador pueden editar la página', function () {
     Livewire::actingAs($curador)->test(ConfiguracionLaboratorio::class)->assertOk();
 });
 
+test('la edición de fotografías se abre desde su identidad y rechaza elementos ajenos', function () {
+    Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionLaboratorio::class)
+        ->call('seleccionarFoto', 'foto-adrian')->assertSet('fotoAbierta', true)->assertSet('fotoSeleccionada', 'adrian')
+        ->assertSee('Nueva fotografía')->assertSee('Descripción accesible')
+        ->assertDontSee('Más fotografías y contenido')->assertDontSee('Posición libre de fotos y textos');
+    Livewire::test(ConfiguracionLaboratorio::class)->call('seleccionarFoto', 'foto-../../archivo')->assertStatus(422);
+    Livewire::test(ConfiguracionLaboratorio::class)->call('seleccionarFoto', 'foto-bloque-0000000000000000')->assertStatus(422);
+});
+
+test('el lienzo crea contenido en la posición elegida y cancelar retira únicamente el borrador nuevo', function () {
+    $ui=Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionLaboratorio::class)
+        ->call('crearBloqueVisual', 20, 150)->assertHasNoErrors()->assertSet('bloqueAbierto', true);
+    $id=$ui->get('bloqueSeleccionado');
+    expect($ui->get('posiciones')['texto-bloque-'.$id.'-titulo']['x'])->toBe(20.0);
+    expect(app(PaginaLaboratorio::class)->leer()['bloques'])->toBe([]);
+    $ui->call('cancelarBloqueVisual')->assertSet('bloqueAbierto', false)->assertSet('bloques', [])->assertSet('posiciones', []);
+    $ui->call('crearBloqueVisual', 96, 150)->assertHasErrors('x');
+});
+
+test('el contenido creado en contexto publica texto y fotografía y permite editar y retirar el bloque', function () {
+    $ui=Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionLaboratorio::class)
+        ->call('crearBloqueVisual', 15, 160)->set('bloques.0.titulo', 'Contenido desde el lienzo')->set('bloques.0.texto', 'Texto científico del laboratorio');
+    $id=$ui->get('bloqueSeleccionado');
+    $ui->set('fotosBloques.'.$id, UploadedFile::fake()->image('foto-contextual.jpg', 300, 200))->call('guardar')->assertHasNoErrors();
+    $pagina=app(PaginaLaboratorio::class)->leer();
+    expect($pagina['bloques'][0]['titulo'])->toBe('Contenido desde el lienzo')
+        ->and($pagina['bloques'][0]['foto']['ruta'])->not->toBeNull()
+        ->and($pagina['posiciones']['texto-bloque-'.$id.'-titulo']['x'])->toBe(15);
+    $ui->call('seleccionarElemento', 'texto-bloque-'.$id.'-titulo')->assertSet('bloqueAbierto', true)
+        ->call('quitarBloqueVisual')->call('guardar')->assertHasNoErrors();
+    expect(app(PaginaLaboratorio::class)->leer()['bloques'])->toBe([]);
+});
+
 test('publicar texto y foto actualiza la página sin alterar otros textos y permite restaurar la foto', function () {
     $admin = User::factory()->administrador()->create();
     DB::table('usuarios.textos_portal')->updateOrInsert(['clave' => 'inicio.hero_descripcion'], ['contenido' => 'Texto de inicio independiente', 'created_at' => now(), 'updated_at' => now()]);

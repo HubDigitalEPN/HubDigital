@@ -70,8 +70,8 @@
 
             <figure class="relative min-h-72 min-w-0 max-w-full overflow-hidden sm:min-h-96 lg:min-h-full">
                 <img
-                    src="{{ asset('images/portal-depositos-hero.webp') }}"
-                    alt="{{ $depositosTexto('hero_alt') }}"
+                    data-editorial-foto="depositos" src="{{ \App\Support\FotosEditoriales::url('depositos') }}"
+                    alt="{{ \App\Support\FotosEditoriales::alt('depositos', $depositosTexto('hero_alt')) }}"
                     class="portal-depositos-hero-image absolute inset-0 size-full object-cover object-[62%_50%]"
                     fetchpriority="high"
                 />

@@ -27,8 +27,8 @@
 
                 <figure class="relative min-h-[23rem] overflow-hidden sm:min-h-[30rem] lg:min-h-full">
                     <img
-                        src="{{ asset('images/portal-laboratorio-hero.jpg') }}"
-                        alt="{{ $inicio('hero_alt') }}"
+                        data-editorial-foto="inicio" src="{{ \App\Support\FotosEditoriales::url('inicio') }}"
+                        alt="{{ \App\Support\FotosEditoriales::alt('inicio', $inicio('hero_alt')) }}"
                         width="1536"
                         height="1024"
                         class="absolute inset-0 size-full object-cover object-center"

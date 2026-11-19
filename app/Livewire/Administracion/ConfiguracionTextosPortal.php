@@ -17,6 +17,7 @@ use Livewire\Component;
 #[Title('Textos del portal')]
 final class ConfiguracionTextosPortal extends Component
 {
+    use \Livewire\WithFileUploads, \App\Livewire\Concerns\WithFotosEditoriales;
     public array $textos = [];
     #[\Livewire\Attributes\Url] public string $grupo = 'inicio';
     #[\Livewire\Attributes\Locked] public string $claveSeleccionada = '';
@@ -45,8 +46,8 @@ final class ConfiguracionTextosPortal extends Component
         $original = TextosSistema::normalizar($original);
         $id = hash('sha256', $original);
         if (!isset(TextosSistema::catalogo()[$id])) {
-            $this->addError('textoActual', 'Ese valor es un dato variable, no un texto editorial. Usa la lista de campos para editar el texto completo.');
-            return ['error' => 'Ese valor es un dato variable. Selecciona un texto editorial o usa la lista de campos.'];
+            $this->addError('textoActual', 'Ese valor es un dato variable. Selecciona un texto editorial completo.');
+            return ['error' => 'Ese valor es un dato variable. Selecciona un texto editorial completo.'];
         }
         $pagina = EditorPortal::pagina($this->grupo);
         abort_unless(isset(EditorPortal::paginas()[$pagina]), 422);
@@ -130,7 +131,7 @@ final class ConfiguracionTextosPortal extends Component
         $grupos = ['inicio' => 'Inicio', 'navegacion' => 'Cabecera y pie de página', 'contacto' => 'Contacto', 'depositos' => 'Portal de depósitos', 'catalogo' => 'Colección Biológica', 'importacion' => 'Importar y actualizar catálogo', 'privacidad' => 'Política de privacidad', 'terminos' => 'Términos de uso', 'licencia' => 'Licencia', 'citar' => 'Cómo citar', 'creditos' => 'Créditos y financiamiento', 'indicadores' => 'Explicaciones de indicadores', 'figuras' => 'Pies de figuras'];
         abort_unless(array_key_exists($this->grupo, $grupos), 422);
         $pagina = EditorPortal::pagina($this->grupo);
-        $vista = isset(EditorPortal::paginas()[$pagina]) ? route(EditorPortal::paginas()[$pagina]) : null;
+        $vista = isset(EditorPortal::paginas()[$pagina]) ? route(EditorPortal::paginas()[$pagina], ['_editor' => '1']) : null;
         $mapa = [];
         foreach (config('portal-copy', []) as $grupo => $campos) foreach ($campos as $clave => $defecto) $mapa[$grupo.'.'.$clave] = PortalCopy::text($grupo.'.'.$clave);
         foreach (PortalCopy::all() as $clave => $contenido) {
@@ -138,6 +139,11 @@ final class ConfiguracionTextosPortal extends Component
             $dato = json_decode($contenido, true);
             if (is_array($dato) && is_string($dato['original'] ?? null) && is_string($dato['texto'] ?? null)) $mapa['literal:'.$dato['original']] = $dato['texto'];
         }
-        return view('livewire.administracion.editor-visual-portal', ['grupos' => $grupos, 'campos' => config('portal-copy.'.$this->grupo, []), 'vista' => $vista, 'mapa' => $mapa]);
+        $paginasEditor = [];
+        foreach (EditorPortal::paginas() as $id => $ruta) {
+            $paginasEditor[parse_url(route($ruta), PHP_URL_PATH) ?: '/'] = $id === 'laboratorio'
+                ? route('admin.contenidos', ['seccion' => 'laboratorio']) : $id;
+        }
+        return view('livewire.administracion.editor-visual-portal', ['grupos' => $grupos, 'vista' => $vista, 'mapa' => $mapa, 'paginasEditor' => $paginasEditor]);
     }
 }

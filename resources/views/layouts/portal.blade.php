@@ -14,12 +14,12 @@
 
     <header x-data="{ abierto: false }" class="sticky top-0 z-50 border-b border-blue-navy/10 bg-white/95 backdrop-blur-md">
         <div class="portal-header-container mx-auto flex h-[4.75rem] w-full items-center justify-between">
-            <a href="{{ route('home') }}" class="group flex min-w-0 items-center gap-3 !text-blue-navy" aria-label="{{ $navegacion('inicio_accesible') }}">
-                <img src="{{ asset('images/logo-epn-v1.avif') }}" alt="" class="h-12 w-auto shrink-0 object-contain" />
+            <a data-editor-fixed href="{{ route('home') }}" class="group flex min-w-0 items-center gap-3 !text-blue-navy" aria-label="{{ $navegacion('inicio_accesible') }}">
+                <img data-editorial-foto="logo" src="{{ \App\Support\FotosEditoriales::url('logo') }}" alt="{{ \App\Support\FotosEditoriales::alt('logo', '') }}" class="h-12 w-auto shrink-0 object-contain" />
                 <span class="h-10 w-px shrink-0 bg-blue-navy/20" aria-hidden="true"></span>
                 <span class="min-w-0 leading-tight">
-                    <span class="hidden text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-text-secondary sm:block">{{ $navegacion('institucion') }}</span>
-                    <span class="block truncate font-display text-base font-bold text-blue-navy sm:text-lg">{{ $navegacion('laboratorio') }}</span>
+                    <span data-portal-copy="navegacion.institucion" class="hidden text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-text-secondary sm:block">{{ $navegacion('institucion') }}</span>
+                    <span data-portal-copy="navegacion.laboratorio" class="block truncate font-display text-base font-bold text-blue-navy sm:text-lg">{{ $navegacion('laboratorio') }}</span>
                 </span>
             </a>
 
@@ -31,8 +31,8 @@
             </nav>
 
             @if(\App\Support\AccesoCatalogo::completo())
-                <div class="flex shrink-0 items-center gap-3">
-                    <div class="hidden max-w-56 min-w-0 text-right text-xs sm:block">
+                <div data-editor-fixed class="flex shrink-0 items-center gap-3">
+                    <div data-editor-no-text class="hidden max-w-56 min-w-0 text-right text-xs sm:block">
                         <strong class="block truncate">Hola, {{ auth()->user()->nombreSaludo() }}</strong>
                         <div class="flex items-center justify-end gap-2">
                             @if(auth()->user()->rolesAsignados()->count() > 1)
@@ -44,8 +44,8 @@
                     @if(\App\Support\BotonesSistema::visible('panel.curador'))
                     <a @if(\App\Support\BotonesSistema::permitido('panel.curador')) href="{{ route('dashboard') }}" @else aria-disabled="true" tabindex="-1" @endif class="portal-curator-access" aria-label="Ir al panel del curador">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z"/></svg>
-                    <span class="portal-curator-full-label">Panel del curador</span>
-                    <span class="portal-curator-short-label" aria-hidden="true">Panel</span>
+                    <span data-portal-copy="navegacion.panel_curador" class="portal-curator-full-label">{{ $navegacion('panel_curador') }}</span>
+                    <span data-portal-copy="navegacion.panel_corto" class="portal-curator-short-label" aria-hidden="true">{{ $navegacion('panel_corto') }}</span>
                     </a>
                     @endif
                 </div>
@@ -139,7 +139,7 @@
         <div class="portal-container mx-auto grid gap-10 py-12 lg:grid-cols-[1.15fr_0.7fr_0.9fr]">
             <div>
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('images/logo-epn-v1.avif') }}" alt="{{ $navegacion('logo_alt') }}" class="h-14 w-auto object-contain" />
+                    <img data-editorial-foto="logo" src="{{ \App\Support\FotosEditoriales::url('logo') }}" alt="{{ \App\Support\FotosEditoriales::alt('logo', $navegacion('logo_alt')) }}" class="h-14 w-auto object-contain" />
                     <div class="border-l border-white/20 pl-3">
                         <p class="font-display text-lg font-semibold text-white">{{ $navegacion('laboratorio') }}</p>
                         <p class="mt-1 text-xs uppercase tracking-[0.12em] text-white/60">{{ $navegacion('institucion') }}</p>

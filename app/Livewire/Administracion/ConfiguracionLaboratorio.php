@@ -17,13 +17,16 @@ use Livewire\WithFileUploads;
 #[Title('Página El Laboratorio')]
 final class ConfiguracionLaboratorio extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads, \App\Livewire\Concerns\WithFotosEditoriales, \App\Livewire\Concerns\WithTextosNavegacion;
     public array $textos = [], $alternativos = [], $fotos = [], $restaurarFotos = [];
     public array $bloques = [], $fotosBloques = [], $quitarFotosBloques = [];
     public array $posiciones = [];
     #[Locked] public string $version = '';
     #[Locked] public string $campoSeleccionado = '';
     public bool $textoAbierto = false;
+    public bool $fotoAbierta = false, $bloqueAbierto = false;
+    #[Locked] public string $fotoSeleccionada = '', $bloqueSeleccionado = '';
+    #[Locked] public bool $bloqueNuevo = false;
 
     public function seleccionarElemento(string $id): void
     {
@@ -31,13 +34,69 @@ final class ConfiguracionLaboratorio extends Component
             $indice = array_search($partes[1], array_column($this->bloques, 'id'), true);
             abort_if($indice === false, 422);
             $this->campoSeleccionado = 'bloques.'.$indice.'.'.$partes[2];
-            $this->textoAbierto = true;
+            $this->bloqueSeleccionado = $partes[1];
+            $this->bloqueNuevo = false;
+            $this->bloqueAbierto = true;
             return;
         }
         $clave = $id === 'texto-personal' ? 'personal_titulo' : substr($id, 6);
         abort_unless(str_starts_with($id, 'texto-') && array_key_exists($clave, config('pagina-laboratorio.textos')), 422);
         $this->campoSeleccionado = $clave;
         $this->textoAbierto = true;
+    }
+
+    public function seleccionarFoto(string $id): void
+    {
+        abort_unless(str_starts_with($id, 'foto-'), 422);
+        $clave = substr($id, 5);
+        if (str_starts_with($clave, 'bloque-')) {
+            abort_unless(in_array(substr($clave, 7), array_column($this->bloques, 'id'), true), 422);
+        } else {
+            abort_unless(array_key_exists($clave, config('pagina-laboratorio.fotos')), 422);
+        }
+        $this->resetValidation();
+        $this->fotoSeleccionada = $clave;
+        $this->fotoAbierta = true;
+    }
+
+    public function crearBloqueVisual(float $x, float $y): void
+    {
+        validator(['x' => $x, 'y' => $y], ['x' => 'numeric|between:0,95', 'y' => 'numeric|between:0,4500'])->validate();
+        if (count($this->bloques) >= 30) { $this->addError('bloques', 'Puedes publicar hasta 30 bloques adicionales.'); return; }
+        $this->agregarBloque();
+        $indice = array_key_last($this->bloques);
+        $id = $this->bloques[$indice]['id'];
+        $this->bloqueSeleccionado = $id;
+        $this->bloqueNuevo = true;
+        $this->bloqueAbierto = true;
+        foreach (['titulo' => 0, 'texto' => 8] as $campo => $desfase) {
+            $this->posiciones['texto-bloque-'.$id.'-'.$campo] = ['x' => $x, 'y' => $y + $desfase, 'ancho' => min(60, 100 - $x), 'alto' => 8, 'fuente' => $campo === 'titulo' ? 2 : 1.25, 'capa' => 0];
+        }
+        $this->posiciones['foto-bloque-'.$id] = ['x' => $x, 'y' => $y + 20, 'ancho' => min(40, 100 - $x), 'alto' => 25, 'fuente' => 1.25, 'capa' => 0];
+    }
+
+    public function cancelarBloqueVisual(): void
+    {
+        if ($this->bloqueNuevo) {
+            $id = $this->bloqueSeleccionado;
+            $this->quitarBloque($id);
+            unset($this->posiciones['texto-bloque-'.$id.'-titulo'], $this->posiciones['texto-bloque-'.$id.'-texto'], $this->posiciones['foto-bloque-'.$id]);
+        }
+        $this->bloqueAbierto = $this->bloqueNuevo = false;
+    }
+
+    public function updatedBloqueAbierto(bool $abierto): void
+    {
+        if (!$abierto) $this->cancelarBloqueVisual();
+    }
+
+    public function quitarBloqueVisual(): void
+    {
+        $id = $this->bloqueSeleccionado;
+        $this->quitarBloque($id);
+        unset($this->posiciones['texto-bloque-'.$id.'-titulo'], $this->posiciones['texto-bloque-'.$id.'-texto'], $this->posiciones['foto-bloque-'.$id]);
+        $this->bloqueAbierto = $this->bloqueNuevo = false;
+        $this->dispatch('laboratorio-bloque-retirado', id: $id);
     }
 
     public function boot(): void
@@ -114,6 +173,7 @@ final class ConfiguracionLaboratorio extends Component
             $this->fotosBloques = $this->quitarFotosBloques = [];
             $this->mount($pagina);
             $this->textoAbierto = false;
+            $this->fotoAbierta = $this->bloqueAbierto = $this->bloqueNuevo = false;
             $this->dispatch('laboratorio-publicado');
             session()->flash('laboratorio-guardado', 'Página publicada. Los textos y las fotografías ya están actualizados.');
         } catch (\Illuminate\Validation\ValidationException $error) { throw $error; }
@@ -122,6 +182,15 @@ final class ConfiguracionLaboratorio extends Component
 
     public function render(): View
     {
-        return view('livewire.administracion.configuracion-laboratorio', ['pagina' => app(PaginaLaboratorio::class)->leer(), 'modeloSeleccionado' => str_starts_with($this->campoSeleccionado, 'bloques.') ? $this->campoSeleccionado : 'textos.'.$this->campoSeleccionado]);
+        $indiceFoto = str_starts_with($this->fotoSeleccionada, 'bloque-') ? array_search(substr($this->fotoSeleccionada, 7), array_column($this->bloques, 'id'), true) : false;
+        return view('livewire.administracion.configuracion-laboratorio', [
+            'pagina' => app(PaginaLaboratorio::class)->leer(),
+            'modeloSeleccionado' => str_starts_with($this->campoSeleccionado, 'bloques.') ? $this->campoSeleccionado : 'textos.'.$this->campoSeleccionado,
+            'indiceBloque' => array_search($this->bloqueSeleccionado, array_column($this->bloques, 'id'), true),
+            'fotoBloque' => $indiceFoto !== false,
+            'modeloFoto' => $indiceFoto !== false ? 'fotosBloques.'.substr($this->fotoSeleccionada, 7) : 'fotos.'.$this->fotoSeleccionada,
+            'modeloAlternativo' => $indiceFoto !== false ? 'bloques.'.$indiceFoto.'.alt' : 'alternativos.'.$this->fotoSeleccionada,
+            'modeloRestaurarFoto' => $indiceFoto !== false ? 'quitarFotosBloques.'.substr($this->fotoSeleccionada, 7) : 'restaurarFotos.'.$this->fotoSeleccionada,
+        ]);
     }
 }

@@ -19,6 +19,7 @@ final class FichaTaxonomicaPublica
             'id' => $taxon, 'descripcion' => $ficha->descripcion ?? '',
             'foto' => ($ficha?->foto_ruta) ? route('portal.ficha-foto', ['taxon' => $taxon, 'v' => $ficha->foto_sha256]) : null,
             'alt' => $ficha->foto_alt ?? '', 'credito' => $ficha->credito ?? '', 'fuente' => $ficha->fuente_url ?? '',
+            'disposicion' => \App\Support\DisposicionContenido::leer('ficha:'.$taxon),
         ], 200, ['Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff']);
     }
 }

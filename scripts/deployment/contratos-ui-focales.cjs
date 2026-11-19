@@ -434,6 +434,14 @@ owner['Modules/GestionPrestamosRecepciones/resources/views/components/sum-cell.b
 contracts['Modules/GestionPrestamosRecepciones/resources/views/components/sum-cell.blade.php']=['tests/Feature/EditorWizardContextoTest.php'];
 contracts['resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php']=['tests/Feature/PortalFichasTaxonomicasTest.php'];
 owner['public/css/contenidos-editor.css']=['portal_editor_visual','editor_wizard','textos_contexto','contenidos_unificados','laboratorio_editor'];
+definitions.portal_editor_visual.checks.push('direct');
+definitions.editor_wizard.checks.push('direct','modality');
+definitions.laboratorio_editor.checks.push('photoEditor','inlineCreate','direct');
+definitions.chat_tablas_simples={sources:['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/css/chat-shell.css','Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/MatrizDatosCatalogoChat.php','Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/TablaRespuestaCatalogoChat.php','Modules/CatalogoPublico/app/Application/UseCases/ConsultarChatBot/AsistentePortal.php'],checks:['empty','simple','guidance','fit']};
+for(const file of definitions.chat_tablas_simples.sources){
+    owner[file]=['chat_tablas_simples'];
+    contracts[file]=[...new Set([...(contracts[file]||[]),'tests/Feature/PortalChatMatrizDatosTest.php','tests/Feature/PortalChatTablasConsultasTest.php','tests/Feature/PortalChatDisenoExperimentalTest.php','tests/Feature/PortalChatConsultasComplejasTest.php'])];
+}
 
 function inputs(root, id) {
     if (!definitions[id]) throw Error('Contrato UI desconocido.');
@@ -484,4 +492,14 @@ function approve(root,id,checks,before) {
     const dir=path.join(root,'.local/validation/ui-focal');fs.mkdirSync(dir,{recursive:true});
     fs.writeFileSync(path.join(dir,id+'.json'),JSON.stringify({root:fs.realpathSync(root),provider:'opera_neon',profile:'NeonCodexQA',executed_at:new Date().toISOString(),checks,inputs:current},null,2)+'\n');
 }
+definitions.laboratorio_editor.checks.push('reconnected','allPhotos','uniform','noResize','headerPhoto','inlinePublish','inlineRemove');
+definitions.editor_wizard.checks.push('portable');
+definitions.portal_editor_visual.checks.push('allSections','fixed','fixedText','inert','photos');
+definitions.ficha_editor_directo={sources:['app/Livewire/Administracion/FichasTaxonomicasPortal.php','resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/FichaTaxonomicaPublica.php','resources/js/portal-taxonomy-branch-viewer.js','public/js/contenido-disposicion.js','public/css/contenidos-editor.css'],checks:['move','photo','text','uniform','noResize','fit']};
+for(const f of definitions.ficha_editor_directo.sources){owner[f]=[...new Set([...(owner[f]||[]).filter(id=>id!=='grillas_continuas'),'ficha_editor_directo'])];(contracts[f]??=[]).push('tests/Feature/PortalFichasTaxonomicasTest.php');}
+for(const f of ['app/Support/FotosEditoriales.php','app/Livewire/Concerns/WithFotosEditoriales.php','app/Livewire/Concerns/WithTextosNavegacion.php','app/Support/VistaEditorialInerte.php','app/Http/Controllers/FotoEditorialPortal.php','app/Http/Middleware/CachePublicPortal.php','resources/views/livewire/administracion/partials/foto-editorial.blade.php','resources/views/livewire/administracion/partials/texto-navegacion.blade.php']){
+    definitions.portal_editor_visual.sources.push(f);owner[f]=['portal_editor_visual'];contracts[f]=['tests/Feature/EditorPresentacionDirectaTest.php'];
+}
+for(const f of ['resources/views/layouts/portal.blade.php','config/portal-copy.php','routes/web.php']){(contracts[f]??=[]).push('tests/Feature/EditorPresentacionDirectaTest.php');}
+owner['public/css/pagina-laboratorio.css']=['laboratorio_editor'];
 module.exports={definitions,owner,contracts,inputs,status,verify,approve,preserveCompatible,runnerFragment};

@@ -29,10 +29,11 @@ final class AsistentePortal
         $opciones = $this->opcionesBase();
         // Disenar un experimento es una pregunta general, no una busqueda de
         // ejemplares aunque mencione un organismo o niegue consultar el catalogo.
-        if (preg_match('/^(?:disena|planifica|propon|explica(?:me)?\s+(?:como\s+)?disenar)\b/', $normal)
-            && preg_match('/\b(?:experimento|estudio experimental)\b/', $normal)) {
+        if ((preg_match('/^(?:disena|planifica|propon|explica(?:me)?\b.*(?:como\s+)?disenar)\b/', $normal)
+            && preg_match('/\b(?:experimento|estudio experimental)\b/', $normal))
+            || (preg_match('/^explica(?:me)?\b/', $normal) && preg_match('/\b(?:aleatorizar|aleatorizacion|replicacion experimental)\b/', $normal))) {
             if ($interpretarConModelo && ($general = $this->respuestaGeneralIA($pregunta, $historial)) !== null) return $general;
-            return app(FuentesPublicasChat::class)->responder($pregunta);
+            return $this->orientacionExperimental($normal);
         }
         if (($estadistica = app(EstadisticasCatalogoChat::class)->responder($pregunta, $seleccionPortal)) !== null) return $estadistica;
         if (app(MatrizDatosCatalogoChat::class)->solicitada($pregunta)) {
@@ -316,6 +317,23 @@ final class AsistentePortal
         $texto = app(\App\Services\IA\AgenteHibrido::class)->conversar($pregunta, $historial,
             'Este chat está en el portal público. Los datos publicados y sus conteos se consultan con los filtros del catálogo; los hechos que no hayan sido devueltos por esa consulta no están confirmados.');
         return $texto === null ? null : ['texto' => $texto, 'fuente' => 'agente_hibrido', 'intent' => 'general.conversacion', 'opciones' => []];
+    }
+
+    private function orientacionExperimental(string $pregunta): array
+    {
+        $ejemplo = str_contains($pregunta, 'iluminacion') && str_contains($pregunta, 'escarabaj');
+        $texto = "Como guía general para un diseño hipotético:\n\n"
+            ."1. Hipótesis y variables. Define qué factor manipularás y qué respuesta medirás antes de recoger datos. "
+            .($ejemplo ? "Por ejemplo, comparar actividad de escarabajos bajo iluminación nocturna frente a oscuridad, midiendo encuentros o capturas por unidad de esfuerzo.\n\n" : "Mantén separado el tratamiento de su resultado y fija el método de medición.\n\n")
+            ."2. Control y asignación al azar. Compara un grupo sin tratamiento con los tratamientos; usa equipos y procedimientos equivalentes. Asigna las unidades al azar dentro de bloques de lugares similares. Así reduces confusión entre tratamiento y características del lugar.\n\n"
+            ."3. Réplicas independientes. Usa varias parcelas o unidades por tratamiento y repite las mediciones en distintas fechas. Los ejemplares de una misma parcela y sus mediciones repetidas no son réplicas independientes: evita la pseudorreplicación. Determina el tamaño muestral mediante un piloto o un análisis de potencia.\n\n"
+            ."4. Condiciones y sesgos. Estandariza el esfuerzo y el horario; registra clima, hábitat y otras variables que puedan influir. Separa parcelas para evitar contaminación entre tratamientos. Si es posible, quien identifique o cuente las muestras debe desconocer el tratamiento. Controla sesgos de selección, detección y pérdidas de muestras.\n\n"
+            ."5. Análisis e interpretación. Define de antemano la comparación principal y analiza el tratamiento considerando bloques y medidas repetidas; informa el efecto y su incertidumbre. Una asociación observada por sí sola es correlación; la manipulación aleatoria con controles aporta evidencia causal dentro de las condiciones estudiadas, sin demostrar automáticamente una causa universal.\n\n"
+            ."6. Alcance. Minimiza la perturbación del entorno y revisa los permisos que correspondan antes de llevarlo a la práctica. Esta propuesta es orientativa: no presenta resultados observados ni usa registros de la colección.";
+        if (preg_match('/\b(?:dos|2) frases\b/', $pregunta)) {
+            $texto = 'Define unidades experimentales comparables, asigna al azar el tratamiento y un control dentro de bloques de hábitat similar y utiliza varias réplicas independientes con el mismo esfuerzo de muestreo. Repite las mediciones, controla sesgos de selección y detección y analiza los efectos considerando bloques y medidas repetidas para distinguir una asociación de evidencia causal, sin tratar individuos de una parcela como réplicas independientes.';
+        }
+        return ['texto' => $texto, 'fuente' => 'orientacion_general', 'intent' => 'general.diseno_experimental', 'opciones' => []];
     }
 
     private function enlaceSeleccion(array $contextoCatalogo, ?array $seleccionPortal, string $vista): string

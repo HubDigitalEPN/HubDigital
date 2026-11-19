@@ -57,6 +57,8 @@ return [
         'accion' => 'Escribir al laboratorio',
     ],
     'navegacion' => [
+        'panel_curador' => 'Panel del curador',
+        'panel_corto' => 'Panel',
         'saltar_contenido' => 'Saltar al contenido principal',
         'inicio_accesible' => 'Inicio del Laboratorio de Invertebrados EPN',
         'institucion' => 'Escuela Politécnica Nacional',

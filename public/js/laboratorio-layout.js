@@ -49,12 +49,22 @@
         if (event.target.matches?.('[data-lab-profile-dialog]')) event.target.__labOpener?.focus({preventScroll:true});
     }, true);
 
-    window.laboratorioEditor = (wire, originales, catalogo) => ({
-        posiciones: Object.assign({}, JSON.parse(JSON.stringify(originales))), catalogo, seleccion: '', mensaje: 'Selecciona y arrastra un texto o una fotografía.', nodos: {}, wire,
+    window.laboratorioEditor = (wire, originales, catalogo, mapa={}, paginas={}) => ({
+        posiciones: Object.assign({}, JSON.parse(JSON.stringify(originales))), catalogo, mapa, paginas, seleccion: '', mensaje: '', nodos: {}, wire,
+        init(){this._resize=()=>this.ajustarAltura();window.addEventListener('resize',this._resize);this.$nextTick(()=>{const frame=this.$refs.vista;if(!frame)return;this._onload=()=>this.iniciar();frame.onload=this._onload;if(frame.contentDocument?.readyState==='complete'){if(frame.contentDocument.querySelector('.lab-page'))this.iniciar();else if(frame.contentDocument.querySelector('.lab-editor-canvas'))this.recargar();}});},
+        destroy(){window.removeEventListener('resize',this._resize);clearTimeout(this._navegacion);if(this.$refs.vista?.onload===this._onload)this.$refs.vista.onload=null;},
+        ajustarAltura(){const f=this.$refs.vista;if(f?.getBoundingClientRect)f.style.setProperty('--hub-editor-altura',Math.max(240,window.innerHeight-f.getBoundingClientRect().top-88)+'px');},
         iniciar() {
             const doc = this.$refs.vista.contentDocument;
             const article = doc?.querySelector('.lab-page');
+            if(!article&&doc?.querySelector('.lab-editor-canvas')&&Object.keys(this.nodos).length){this.ajustarAltura();return;}
             if (!article) { this.mensaje = 'No se pudo cargar la vista. Recarga la página.'; return; }
+            window.prepararPortalEditorial(doc,this.mapa);
+            doc.addEventListener('submit',e=>{e.preventDefault();e.stopImmediatePropagation();},true);
+            doc.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();const a=e.target.closest('nav a[href]');if(a&&e.detail<2){clearTimeout(this._navegacion);this._navegacion=setTimeout(()=>{const u=new URL(a.href,window.location.href),destino=this.paginas[u.pathname];if(u.origin===window.location.origin&&destino)window.Livewire.navigate(destino);},350);}},true);
+            const editar=e=>{clearTimeout(this._navegacion);if(e.target.closest('[data-lab-editor-canvas]'))return;e.preventDefault();e.stopImmediatePropagation();const foto=e.target.closest('[data-editorial-foto]'),texto=e.target.closest('[data-portal-copy]');if(foto)this.wire.seleccionarFotoEditorial(foto.dataset.editorialFoto,foto.alt);else if(texto&&!texto.closest('[data-editor-no-text]'))this.wire.seleccionarTextoNavegacion(texto.dataset.portalCopy);};
+            doc.addEventListener('dblclick',editar,true);doc.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.target.closest('[data-disposicion-handle],[data-disposicion-resize]'))editar(e);},true);
+            doc.querySelectorAll('[data-portal-copy],[data-editorial-foto]').forEach(el=>el.tabIndex=0);
             const rect = article.getBoundingClientRect(), width = rect.width;
             const elementos = [...article.querySelectorAll('[data-lab-element]')];
             elementos.forEach(el=>{const id=el.dataset.labElement;if(!this.catalogo[id])this.catalogo[id]={tipo:el.dataset.labKind||'texto',etiqueta:el.dataset.labLabel||(el.textContent.trim().slice(0,80)||id)};});
@@ -72,7 +82,10 @@
                 return {id, clone, css: {color:css.color,fontWeight:css.fontWeight,lineHeight:parseFloat(css.lineHeight)/parseFloat(css.fontSize)||1.4}, p};
             });
             const canvas = doc.createElement('div'); canvas.className = 'lab-free-canvas lab-editor-canvas'; canvas.dataset.labEditorCanvas = 'true';
-            doc.body.replaceChildren(canvas); doc.body.style.cssText = 'margin:0;background:white'; this.nodos = {};
+            canvas.tabIndex=0;canvas.setAttribute('aria-label','Página editable. Doble clic en un espacio vacío o Intro para añadir contenido.');
+            canvas.addEventListener('dblclick',event=>{if(event.target!==canvas)return;const box=canvas.getBoundingClientRect();this.crearBloque(Math.max(0,Math.min(95,(event.clientX-box.left)/width*100)),Math.max(0,Math.min(4500,(event.clientY-box.top)/width*100)));});
+            canvas.addEventListener('keydown',event=>{if(event.target!==canvas||event.key!=='Enter')return;event.preventDefault();this.crearBloque(4,Math.min(4500,Math.max(0,...Object.values(this.posiciones).map(p=>p.y+p.alto))+3));});
+            article.replaceWith(canvas); this.nodos = {};
             canvas.addEventListener('click',event=>{if(event.target.closest('a'))event.preventDefault();});
             canvas.addEventListener('toggle',()=>this.pintar(),true);
             for (const {id,clone,css,p} of capturas) {
@@ -81,26 +94,27 @@
                 item.tabIndex = 0; item.setAttribute('role','group'); item.setAttribute('aria-label',this.catalogo[id].etiqueta);
                 item.style.color = css.color; item.style.fontWeight = css.fontWeight; item.style.lineHeight = css.lineHeight;
                 item.append(clone);
-                const resize = doc.createElement('button'); resize.type = 'button'; resize.className = 'lab-editor-resize'; resize.setAttribute('aria-label','Redimensionar '+this.catalogo[id].etiqueta); item.append(resize);
+                item.dataset.disposicionEditable='true';
+                const asa=doc.createElement('button');asa.type='button';asa.dataset.disposicionHandle=id;asa.textContent='⠿';asa.setAttribute('aria-label','Mover: '+this.catalogo[id].etiqueta);item.append(asa);
                 item.addEventListener('pointerdown', event => {
                     this.elegir(id);
                     if (event.target.closest('summary')) return;
                     event.preventDefault(); item.setPointerCapture(event.pointerId);
                     const start = {x:event.clientX,y:event.clientY,scroll:doc.defaultView.scrollY,p:{...this.posiciones[id]}};
-                    const redimensionar = event.target === resize;
                     const mover = e => {
                         const dx = (e.clientX-start.x)/width*100, dy = (e.clientY-start.y+doc.defaultView.scrollY-start.scroll)/width*100;
                         const actual = this.posiciones[id];
-                        if (redimensionar) { actual.ancho=Math.max(5,Math.min(100-actual.x,start.p.ancho+dx)); if(this.catalogo[id].tipo==='foto')actual.alto=Math.max(1,Math.min(500,start.p.alto+dy)); }
-                        else { actual.x=Math.max(0,Math.min(100-actual.ancho,start.p.x+dx));actual.y=Math.max(0,Math.min(5000,start.p.y+dy)); }
+                        { actual.x=Math.max(0,Math.min(100-actual.ancho,start.p.x+dx));actual.y=Math.max(0,Math.min(5000,start.p.y+dy)); }
                         this.pintar();
                     };
                     const terminar = () => {item.removeEventListener('pointermove',mover);item.removeEventListener('pointerup',terminar);item.removeEventListener('pointercancel',terminar);this.sincronizar();};
                     item.addEventListener('pointermove',mover);item.addEventListener('pointerup',terminar);item.addEventListener('pointercancel',terminar);
                 });
                 item.addEventListener('focus',()=>this.elegir(id));
-                item.addEventListener('dblclick',()=>{if(id.startsWith('texto-'))this.wire.seleccionarElemento(id);});
+                item.addEventListener('dblclick',event=>{if(event.target.closest('[data-disposicion-handle]'))return;if(id.startsWith('texto-'))this.wire.seleccionarElemento(id);else if(id.startsWith('foto-'))this.wire.seleccionarFoto(id);});
                 item.addEventListener('keydown',event=>{
+                    if(event.key==='Enter'&&event.target===asa){event.preventDefault();return;}
+                    if(event.key==='Enter'){event.preventDefault();event.stopPropagation();if(id.startsWith('foto-'))this.wire.seleccionarFoto(id);else this.wire.seleccionarElemento(id);return;}
                     const delta=event.shiftKey?1:.1,p=this.posiciones[id];
                     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
                     event.preventDefault();if(event.key==='ArrowLeft')p.x-=delta;if(event.key==='ArrowRight')p.x+=delta;if(event.key==='ArrowUp')p.y-=delta;if(event.key==='ArrowDown')p.y+=delta;
@@ -109,7 +123,7 @@
                 canvas.append(item);this.nodos[id]=item;
             }
             this.pintar();
-            this.mensaje = 'Arrastra para mover. Usa el tirador inferior para cambiar el tamaño. Las flechas ajustan la posición con precisión.';
+            this.mensaje = '';this.ajustarAltura();this.$refs.vista.style.pointerEvents='auto';this.$refs.vista.inert=false;
         },
         elegir(id) { this.seleccion=id;Object.entries(this.nodos).forEach(([key,node])=>node.classList.toggle('lab-editor-selected',key===id)); },
         pintar() {
@@ -120,9 +134,10 @@
                 if(this.catalogo[id].tipo==='foto')node.style.height=`${p.alto}cqw`;
                 bottom=Math.max(bottom,node.offsetTop+node.offsetHeight);
             }
-            const canvas=this.$refs.vista.contentDocument?.querySelector('.lab-editor-canvas');if(canvas)canvas.style.height=`${Math.ceil(bottom+100)}px`;
+            const canvas=this.$refs.vista.contentDocument?.querySelector('.lab-editor-canvas');if(canvas)canvas.style.height=`${Math.ceil(bottom+250)}px`;
         },
         sincronizar() {this.wire.set('posiciones',JSON.parse(JSON.stringify(this.posiciones)),false);this.mensaje='Posición ajustada. Pulsa «Guardar y publicar» para aplicarla.';},
+        crearBloque(x,y){this.wire.set('posiciones',JSON.parse(JSON.stringify(this.posiciones)),false);this.wire.crearBloqueVisual(x,y);},
         cambiar() {
             const p=this.posiciones[this.seleccion];if(!p)return;
             for(const key of ['x','y','ancho','alto','fuente','capa'])p[key]=Number(p[key])||0;
@@ -130,6 +145,7 @@
             this.pintar();this.sincronizar();
         },
         restaurar() {this.posiciones={};this.wire.set('posiciones',{},false);this.mensaje='Se restaurará el diseño original al guardar.';},
-        recargar() {this.posiciones=Object.assign({},JSON.parse(JSON.stringify(this.wire.posiciones)));this.$refs.vista.src=this.$refs.vista.src.split('?')[0]+'?edicion='+Date.now();},
+        retirarBloque(id){for(const key of ['texto-bloque-'+id+'-titulo','texto-bloque-'+id+'-texto','foto-bloque-'+id]){this.nodos[key]?.remove();delete this.nodos[key];delete this.posiciones[key];}this.pintar();this.sincronizar();},
+        recargar() {this.posiciones=Object.assign({},JSON.parse(JSON.stringify(this.wire.posiciones)));this.$refs.vista.style.pointerEvents='none';this.$refs.vista.inert=true;this.$refs.vista.src=this.$refs.vista.src.split('?')[0]+'?_editor=1&edicion='+Date.now();},
     });
 })();

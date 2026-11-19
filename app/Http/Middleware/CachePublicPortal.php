@@ -13,6 +13,12 @@ final class CachePublicPortal
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
+        if ($request->query('_editor') === '1' && $request->isMethod('GET') && $request->user()?->esCurador()
+            && in_array($request->route()?->getName(), \App\Support\EditorPortal::paginas(), true)
+            && $response->getStatusCode() === 200 && str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
+            $response->setContent(\App\Support\VistaEditorialInerte::sanear($response->getContent()));
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
         if ($request->user()) {
             $response->headers->set('X-Portal-Session', 'authenticated');
         }

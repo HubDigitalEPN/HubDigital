@@ -55,8 +55,8 @@
                             </span>
                             <div class="portal-chat-bubble portal-chat-bubble-incoming max-w-[88%] min-w-0 rounded-2xl rounded-bl-sm border border-blue-navy/10 bg-white px-3.5 py-2.5 text-sm leading-5 text-blue-navy shadow-sm">
                                 <p class="whitespace-pre-wrap break-words">{{ $mensaje['texto'] }}</p>
-                                @if(!empty($mensaje['tabla']))
-                                    <div class="portal-chat-table-scroll"><x-grid-frame :label="$mensaje['tabla']['titulo']" :client="true">
+                                @if(!empty($mensaje['tabla']['filas']))
+                                    <div class="portal-chat-table-scroll" tabindex="0" role="region" aria-label="{{ $mensaje['tabla']['titulo'] }}">
                                         <table class="portal-chat-table" @if(count($mensaje['tabla']['columnas'] ?? []) > 3) data-chat-matrix @endif>
                                             <caption>{{ $mensaje['tabla']['titulo'] }}</caption>
                                             @if(isset($mensaje['tabla']['columnas']))
@@ -67,7 +67,7 @@
                                                 <tbody>@foreach($mensaje['tabla']['filas'] as $fila)<tr><th scope="row">{{ $fila['nombre'] }}</th><td>{{ number_format($fila['registros'], 0, ',', '.') }}</td></tr>@endforeach</tbody>
                                             @endif
                                         </table>
-                                    </x-grid-frame></div>
+                                    </div>
                                 @endif
                                 @if(! empty($mensaje['opciones']))
                                     <div class="portal-chat-suggestions mt-2.5 flex flex-wrap gap-1.5">

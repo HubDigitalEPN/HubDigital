@@ -49,10 +49,11 @@ final class MatrizDatosCatalogoChat
             : 'Matriz de datos públicos '.$alcance.': '.count($filas).' de '.$total.' registros. Cada fila corresponde a un registro; la identificación puede llegar a especie u otro rango. Los campos no divulgados o sin dato aparecen como «—».';
         if ($total > 10) $texto .= ' Se muestran los primeros 10; abre los registros para consultar el resto de la misma selección.';
 
-        return ['texto' => $texto, 'intent' => 'catalogo.matriz_datos', 'fuente' => 'catalogo',
+        $respuesta = ['texto' => $texto, 'intent' => 'catalogo.matriz_datos', 'fuente' => 'catalogo',
             'confianza' => 'HIGH', 'confianza_valor' => 1.0, 'entidades' => $entidades,
             'datos' => ['total' => $total, 'filas' => $filas],
-            'tabla' => ['titulo' => 'Matriz de datos públicos', 'columnas' => ['codigo' => 'Código', 'nombre' => 'Identificación', 'fecha' => 'Fecha de colecta', 'colector' => 'Colector', 'pais' => 'País', 'provincia' => 'Provincia', 'localidad' => 'Localidad'], 'filas' => $filas],
             'opciones' => [['label' => 'Ver todos los registros consultados', 'url' => route('portal.catalogo', array_replace($seleccion->parametros, ['vista' => 'registros']))]]];
+        if ($filas !== []) $respuesta['tabla'] = ['titulo' => 'Matriz de datos públicos', 'columnas' => ['codigo' => 'Código', 'nombre' => 'Identificación', 'fecha' => 'Fecha de colecta', 'colector' => 'Colector', 'pais' => 'País', 'provincia' => 'Provincia', 'localidad' => 'Localidad'], 'filas' => $filas];
+        return $respuesta;
     }
 }

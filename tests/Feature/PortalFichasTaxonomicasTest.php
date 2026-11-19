@@ -109,3 +109,15 @@ test('visitantes y depositantes no pueden administrar fichas ni ver fotos privad
     Livewire::test(FichasTaxonomicasPortal::class)->assertForbidden();
     $this->get(route('admin.ficha-foto', ['taxon' => $rama['clase']]))->assertForbidden();
 });
+
+test('el orden de foto credito y texto se publica solo para la ficha seleccionada', function (): void {
+    [$rama] = fichaPortalFixture();
+    $usuario = User::factory()->curador()->create();
+    $clave = \App\Support\DisposicionContenido::clave('ficha:'.$rama['clase']);
+    $orden = ['g-4444444444444444' => ['i-3333333333333333', 'i-1111111111111111', 'i-2222222222222222']];
+    Livewire::actingAs($usuario)->test(FichasTaxonomicasPortal::class)->call('seleccionar', $rama['clase'])
+        ->assertSee('data-ficha-vista', false)->call('guardarDisposicion', $orden, \App\Support\EditorPortal::version($clave))->assertHasNoErrors();
+    $this->getJson(route('portal.ficha', ['taxon' => $rama['clase']]))->assertOk()->assertJsonPath('disposicion', $orden);
+    $this->getJson(route('portal.ficha', ['taxon' => $rama['orden']]))->assertOk()->assertJsonPath('disposicion', []);
+    \App\Support\PortalCopy::forget();
+});
