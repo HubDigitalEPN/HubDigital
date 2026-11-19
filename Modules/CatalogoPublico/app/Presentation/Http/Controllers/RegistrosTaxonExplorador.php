@@ -19,6 +19,7 @@ use Modules\CatalogoPublico\Infrastructure\Persistence\Eloquent\Repositories\Elo
 
 final class RegistrosTaxonExplorador extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     use CargaRegistrosPublicos;
 
     #[Locked]
@@ -112,6 +113,8 @@ final class RegistrosTaxonExplorador extends Component
 
         $paginacion = ['ids' => [], 'total' => 0, 'pagina' => 1, 'ultima' => 1];
         if ($this->taxonId !== '') $paginacion = app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($this->filtros(), $this->pagina, tamano: $this->registrosPorPagina);
+        $this->rangoGrillaContinua($this->taxonId,$paginacion['total'],$this->registrosPorPagina,$this->pagina);
+        if($this->taxonId!=='' && $this->gridVentana['hasta']>$this->gridVentana['desde'])$paginacion=app(EloquentProveedorEspecimenesParaArbol::class)->paginaPublica($this->filtros(),$this->gridVentana['desde'],tamano:$this->registrosPorPagina,paginas:$this->gridVentana['hasta']-$this->gridVentana['desde']+1);
         $registros = $this->cargarDetallesPorEspecimenIds($paginacion['ids'], app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
         $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         return view('catalogopublico::livewire.registros-taxon-explorador', compact('paginacion', 'registros', 'imagenes'));

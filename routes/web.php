@@ -54,11 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:curador')->name('admin.contenidos');
     Route::get('/administracion/formato-ipt', \App\Livewire\Administracion\ConfiguracionFormatoIpt::class)
         ->middleware('role:admin')->name('admin.formato-ipt');
-    Route::get('/administracion/el-laboratorio', \App\Livewire\Administracion\ConfiguracionLaboratorio::class)
-        ->middleware('role:curador')->name('admin.laboratorio');
-    Route::get('/administracion/fichas-taxonomicas', \App\Livewire\Administracion\FichasTaxonomicasPortal::class)
-        ->middleware('role:curador')->name('admin.fichas-taxonomicas');
-    Route::get('/administracion/fichas-taxonomicas/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)
+    Route::get('/administracion/contenidos/fichas/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)
         ->whereUuid('taxon')->middleware('role:curador')->name('admin.ficha-foto');
     Route::get('/administracion/instituciones', InstitucionesCatalogo::class)
         ->middleware('role:curador')

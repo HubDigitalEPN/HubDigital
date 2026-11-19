@@ -23,7 +23,9 @@ final class ContenidosTextos extends Component
 
     public function render()
     {
-        $secciones = ['portal' => 'Portal'];
+        $secciones = ['portal' => 'Portales: edición visual'];
+        if (in_array(auth()->user()->rolActivo(), [\App\Enums\RolUsuario::ADMIN, \App\Enums\RolUsuario::CURADOR], true)) $secciones['laboratorio'] = 'El Laboratorio: estructura y fotos';
+        $secciones['fichas'] = 'Fichas del explorador';
         if (auth()->user()->esAdministrador()) {
             $secciones += ['depositos' => 'Formulario de depósitos', 'sistema' => 'Textos generales del sistema'];
         }

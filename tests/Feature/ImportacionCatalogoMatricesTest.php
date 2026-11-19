@@ -51,6 +51,27 @@ afterEach(function (): void {
     $GLOBALS['matrices_catalogo_temporales'] = [];
 });
 
+test('CSV BOM con solo occurrenceID crea y actualiza la misma ficha sin alternativa catalogNumber', function (): void {
+    $curador = User::factory()->curador()->create(['must_change_password' => false]);
+    $ruta = tempnam(sys_get_temp_dir(), 'csv_bom_identidad_');
+    $GLOBALS['matrices_catalogo_temporales'][] = $ruta;
+    $codigo = 'QA-CSV-BOM-SOLO-ID';
+    $total = DB::table('taxonomia.especimenes')->count();
+    file_put_contents($ruta, "\xEF\xBB\xBF\"occurrenceID\";\"individualCount\"\r\n\"{$codigo}\";\"2\"\r\n");
+    $carga = cargaMatrizPreparada($ruta, $curador, 'completar', 'csv', ';');
+    $resultado = app(ActualizacionCatalogo::class)->aplicar($carga, $ruta);
+    $ficha = DB::table('taxonomia.especimenes')->where('occurrence_id', $codigo)->sole();
+    expect($resultado['nuevos'])->toBe(1)->and($ficha->individual_count)->toBe(2)
+        ->and(DB::table('taxonomia.especimenes')->count())->toBe($total + 1);
+    file_put_contents($ruta, "\xEF\xBB\xBF\"occurrenceID\";\"individualCount\"\r\n\"{$codigo}\";\"5\"\r\n");
+    $carga = cargaMatrizPreparada($ruta, $curador, 'actualizar', 'csv', ';');
+    $resultado = app(ActualizacionCatalogo::class)->aplicar($carga, $ruta);
+    expect($resultado['actualizados'])->toBe(1)->and($resultado['nuevos'])->toBe(0)
+        ->and(DB::table('taxonomia.especimenes')->where('occurrence_id', $codigo)->sole()->id)->toBe($ficha->id)
+        ->and(DB::table('taxonomia.especimenes')->where('id', $ficha->id)->value('individual_count'))->toBe(5)
+        ->and(DB::table('taxonomia.especimenes')->count())->toBe($total + 1);
+});
+
 test('las columnas repetidas y sus alias conservan valores no vacíos y todas sus posiciones originales', function (): void {
     $ruta = matrizCatalogoPrueba(['occurrenceID','occurrenceID','recordNumber','recordNumber','individualCount','invidualCount','caste','typECaste','notesGeneral','taxonomicNotes'], [['MEPN:INV:900001','','CAM-01','','','2','worker','','Nota general','Identificación por revisar']]);
     $filas = iterator_to_array(app(LectorActualizacionCatalogo::class)->filas($ruta, 'xlsx'));

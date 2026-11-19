@@ -2,16 +2,43 @@
 // Inspecciona y opera el DOM real; no sustituye datos, respuestas ni código de la app.
 export async function comprobarUIFocal(caso) {
     const q=selector=>document.querySelector(selector), all=selector=>[...document.querySelectorAll(selector)];
-    const wait=async fn=>{const end=Date.now()+15000;while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,80));}throw Error('No terminó el estado esperado del contrato '+caso);};
+    const wait=async fn=>{const end=Date.now()+(['portal_editor_visual','laboratorio_editor','catalogo_borrado','editor_wizard','textos_contexto','grillas_continuas'].includes(caso)?45000:15000);while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,80));}throw Error('No terminó el estado esperado del contrato '+caso);};
     const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+    const recargarFrame=async(iframe,comprobar)=>{const anterior=iframe.contentDocument;iframe.contentWindow.location.reload();await wait(()=>iframe.contentDocument!==anterior && iframe.contentDocument?.readyState==='complete' && comprobar());await frame();};
     if (!['localhost','127.0.0.1'].includes(location.hostname)) throw Error('Solo localhost.');
     const checks={};let metrics={};
     const model=(key,tag='input')=>all(tag).find(x=>x.getAttribute('wire:model')===key);
     const fillModel=(key,value)=>{const el=model(key)||model(key,'textarea');if(!el)throw Error('No existe el campo '+key);const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
+    const comprobarOrden=async(rootSelector,iframe=null)=>{
+        const root=()=>q(rootSelector),estado=()=>root()._x_dataStack[0].disposicion;
+        await wait(()=>estado().root);await frame();
+        root().querySelector('[data-herramientas-disposicion] button').click();
+        await frame();await wait(()=>estado().grupos.length>0);
+        const grupo=estado().grupos.find(g=>g.items.length>=3);if(!grupo)throw Error('No hay un bloque reorganizable de prueba.');
+        const leer=g=>[...g.parent.children].filter(n=>g.items.includes(n)).map(n=>n.dataset.disposicionId),original=leer(grupo),id=grupo.id;
+        const cargo=grupo.items.find(n=>n.matches('.hub-request-cell--cargo')),movidoOriginal=cargo||grupo.items[0],movidoId=movidoOriginal.dataset.disposicionId,pasos=cargo?original.indexOf(movidoId):1;
+        const asa=movidoOriginal.querySelector('[data-disposicion-handle]');asa.focus();for(let i=0;i<pasos;i++)asa.dispatchEvent(new KeyboardEvent('keydown',{key:cargo?'ArrowLeft':'ArrowDown',bubbles:true}));
+        const dentro=g=>{const p=g.parent.getBoundingClientRect();return g.items.every(n=>{const r=n.getBoundingClientRect();return r.left>=p.left-1&&r.right<=p.right+1;});};
+        await frame();if(!dentro(grupo))return false;
+        const esperado=leer(grupo);if(esperado.join()===original.join()||!estado().pendiente)return false;
+        await frame();await wait(()=>!root().querySelectorAll('[data-herramientas-disposicion] button')[1].disabled);
+        root().querySelectorAll('[data-herramientas-disposicion] button')[1].click();await wait(()=>!estado().guardando&&!estado().pendiente);
+        if(iframe)await recargarFrame(iframe,()=>iframe.contentDocument?.body?.dataset.portalEditorReady==='true');
+        else{await Livewire.find(root().getAttribute('wire:id')).$refresh();await frame();}
+        if(!estado().activa)root().querySelector('[data-herramientas-disposicion] button').click();
+        const nuevo=estado().grupos.find(g=>g.id===id);if(!nuevo||leer(nuevo).join()!==esperado.join()||!dentro(nuevo))return false;
+        const movido=nuevo.items.find(n=>n.dataset.disposicionId===movidoId).querySelector('[data-disposicion-handle]');movido.focus();for(let i=0;i<pasos;i++)movido.dispatchEvent(new KeyboardEvent('keydown',{key:cargo?'ArrowRight':'ArrowUp',bubbles:true}));
+        await frame();await wait(()=>!root().querySelectorAll('[data-herramientas-disposicion] button')[1].disabled);
+        root().querySelectorAll('[data-herramientas-disposicion] button')[1].click();await wait(()=>!estado().guardando&&!estado().pendiente);
+        const restaurado=leer(nuevo).join()===original.join();root().querySelector('[data-herramientas-disposicion] button').click();return restaurado;
+    };
     const comprobarAyudas=async cantidad=>{
         const botones=all('[data-catalogo-ayuda] > button');
-        let textos=botones.length===cantidad,foco=true,ajuste=true;
+        let textos=botones.length===cantidad,foco=true,ajuste=true,posicion=true;
         for(const boton of botones) {
+            const fila=boton.closest('[data-catalogo-control-fila]'),control=fila?.querySelector('[data-catalogo-control]');
+            const b=boton.getBoundingClientRect(),c=control?.getBoundingClientRect(),f=fila?.getBoundingClientRect();
+            posicion=posicion && !!control && !control.contains(boton) && b.left>=c.right+4 && Math.abs(b.right-f.right)<=1 && Math.abs(b.top-c.top-6)<=1;
             boton.focus();boton.click();
             const dialogo=document.getElementById(boton.getAttribute('aria-controls'));
             await wait(()=>dialogo?.open);await frame();
@@ -21,13 +48,87 @@ export async function comprobarUIFocal(caso) {
             dialogo.querySelector('button[aria-label^="Cerrar ayuda:"]').click();
             await wait(()=>!dialogo.open);foco=foco && document.activeElement===boton;
         }
-        return {textos,foco,ajuste};
+        return {textos,foco,ajuste,posicion};
     };
-    if(caso==='menu_curaduria') {
+    if(caso==='editor_wizard') {
+        const root=()=>q('[data-editor-wizard]'),vista=()=>q('[data-wizard-vista]');
+        await wait(()=>vista());
+        const original=vista().querySelector('h2').textContent.trim(),nuevo='Solicitud QA del editor contextual';
+        vista().querySelector('h2').click();await wait(()=>q('dialog[open] textarea'));
+        checks.selected=q('dialog[open]').textContent.includes('Ubicación:') && q('dialog[open] textarea').value===original;
+        fillModel('textoActual',nuevo);q('dialog[open] button[type=submit]').click();
+        await wait(()=>!q('dialog[open]') && vista()?.querySelector('h2').textContent.trim()===nuevo);
+        checks.saved=true;
+        await Livewire.find(root().getAttribute('wire:id')).$refresh();await frame();
+        checks.reloaded=vista().querySelector('h2').textContent.trim()===nuevo;
+        vista().querySelector('h2').click();await wait(()=>q('dialog[open] textarea'));fillModel('textoActual',original);q('dialog[open] button[type=submit]').click();
+        await wait(()=>!q('dialog[open]') && vista()?.querySelector('h2').textContent.trim()===original);checks.restored=true;
+        checks.positions=await comprobarOrden('[data-editor-wizard]');
+        let completos=true,inertes=true,scrollCorrecto=true,regionesConScroll=0;
+        for(const paso of [0,1,2,3,4,7,8]){
+            const button=all('nav[aria-label="Pasos para editar textos"] button').find(b=>b.getAttribute('wire:click')===`$set('pasoEditor', ${paso})`);
+            button.click();await wait(()=>q('nav[aria-label="Pasos para editar textos"] [aria-current="step"]')?.textContent===button.textContent);await frame();
+            const fragmento=q('[data-wizard-fragmento]');
+            completos=completos && !!fragmento && fragmento.textContent.trim().length>20;
+            inertes=inertes && !fragmento.querySelector('script,dialog,ui-modal,[href],[action],[wire\\:click],[wire\\:submit],[wire\\:model],[required],[aria-required],[pattern],[data-flux-loading-indicator],.animate-spin');
+            const v=vista();scrollCorrecto=scrollCorrecto&&getComputedStyle(v).overflowY==='auto'&&v.getBoundingClientRect().bottom<=innerHeight+1;
+            if(v.scrollHeight>v.clientHeight+1){regionesConScroll++;v.scrollTop=0;v.scrollBy(0,200);await frame();scrollCorrecto=scrollCorrecto&&v.scrollTop>0;}
+        }
+        checks.steps=completos;checks.inert=inertes;
+        checks.scroll=scrollCorrecto;metrics.scrollRegions=regionesConScroll;
+        checks.apex=all('[data-editor-wizard] > .hub-panel select').every(e=>e.hasAttribute('data-hub-apex-control')) && !q('dialog[data-hub-apex-field]');
+        checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='textos_contexto') {
+        await wait(()=>q('[data-filtros-textos-sistema]'));
+        const filtros=q('[data-filtros-textos-sistema]'),inputs=[...filtros.querySelectorAll('input,select')];
+        checks.apex=inputs.length===2 && inputs.every(e=>e.hasAttribute('data-hub-apex-control'));
+        checks.aligned=innerWidth<640 || Math.abs(inputs[0].getBoundingClientRect().top-inputs[1].getBoundingClientRect().top)<=1;
+        const buscador=inputs.find(e=>e.tagName==='INPUT');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(buscador,'Identificador del lote / recipiente');buscador.dispatchEvent(new Event('input',{bubbles:true}));
+        await wait(()=>all('table tbody tr').length===1 && q('table tbody').textContent.includes('Identificador del lote / recipiente'));
+        q('table tbody button').click();await wait(()=>model('contenido','textarea'));
+        checks.location=document.body.textContent.includes('Estás cambiando este texto en:') && document.body.textContent.includes('Etiqueta del campo') && document.body.textContent.includes('Contenido');
+        const original=model('contenido','textarea').value,nuevo='Identificador QA de recipiente';
+        fillModel('contenido',nuevo);q('form[wire\\:submit="guardar"] button[type=submit]').click();
+        await wait(()=>!model('contenido','textarea') && q('table tbody')?.textContent.includes(nuevo));checks.saved=true;
+        q('table tbody button').click();await wait(()=>model('contenido','textarea')?.value===nuevo);
+        checks.reloaded=true;fillModel('contenido',original);q('form[wire\\:submit="guardar"] button[type=submit]').click();
+        await wait(()=>!model('contenido','textarea') && !q('table tbody')?.textContent.includes(nuevo));checks.restored=true;
+        checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='grillas_continuas') {
+        await wait(()=>q('[data-hub-grid="server"]'));
+        const root=q('[data-hub-grid="server"]'),state=Alpine.$data(root),scroll=root.querySelector('.hub-ig-scroll');
+        const rows=()=>[...root.querySelectorAll('tbody tr')].filter(r=>!r.querySelector('[colspan]'));
+        const search=root.querySelector('input[wire\\:model="busqueda"]');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(search,'QA-UI-GRID-');search.dispatchEvent(new Event('input',{bubbles:true}));search.closest('form').requestSubmit();
+        await wait(()=>rows().length===15 && rows().every(r=>r.textContent.includes('QA-UI-GRID-')));
+        scroll.scrollIntoView({block:'center'});await frame();
+        const cargar=async(modo,esperado,direccion=1)=>{
+            scroll.scrollTop=direccion>0?scroll.scrollHeight:0;
+            const event=modo==='rueda'?new WheelEvent('wheel',{deltaY:direccion*160,bubbles:true,cancelable:true}):new KeyboardEvent('keydown',{key:direccion>0?'PageDown':'PageUp',bubbles:true,cancelable:true});
+            scroll.dispatchEvent(event);
+            await wait(()=>!state.cargandoContinuidad && Number(state.datosVentana()?.hasta)===esperado);await frame();
+        };
+        await cargar('rueda',2);checks.wheel=rows().length===30;
+        await cargar('teclado',3);checks.keyboard=rows().length===45;
+        await cargar('rueda',4);checks.bounded=rows().length===45 && state.datosVentana().desde===2 && scroll.clientHeight<=innerHeight && scroll.scrollHeight>scroll.clientHeight;
+        await cargar('teclado',3,-1);checks.previous=state.datosVentana().desde===1 && rows()[0].textContent.includes('QA-UI-GRID-000');
+        const header=root.querySelector('thead th');header.click();await wait(()=>q('dialog[open].hub-ig-column-popup'));
+        checks.menu=q('dialog[open]').textContent.includes('Buscar en esta columna') && q('dialog[open] input')===document.activeElement;
+        const popup=q('dialog[open]');[...popup.querySelectorAll('button')].find(b=>b.title==='Orden descendente').click();
+        await wait(()=>!q('dialog[open]') && rows()[0].textContent.includes('QA-UI-GRID-065'));checks.sorted=true;
+        header.click();await wait(()=>q('dialog[open]'));
+        const term=q('dialog[open] input[type=search]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(term,'QA-UI-GRID-042');term.dispatchEvent(new Event('input',{bubbles:true}));
+        [...q('dialog[open]').querySelectorAll('button')].find(b=>b.textContent.trim()==='Aplicar').click();await wait(()=>!q('dialog[open]') && rows().length===1);
+        checks.filtered=rows()[0].textContent.includes('QA-UI-GRID-042') && state.datosVentana().desde===1 && state.datosVentana().hasta===1;
+        checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1 && !q('dialog[data-hub-apex-field]');
+        metrics={height:scroll.clientHeight,viewport:innerHeight,window:state.datosVentana()};
+    } else if(caso==='menu_curaduria') {
         const sidebar=q('nav[data-flux-sidebar-nav]');
         const logical=[...sidebar.querySelectorAll('ui-disclosure a')];
         const paths=['/divulgacion','/administracion/contenidos','/prestamos/curador/depositos','/prestamos/receptor/depositos'];
         checks.unique=paths.every(path=>logical.filter(a=>new URL(a.href).pathname===path).length===1);
+        checks.administration=['/administracion/contenidos','/divulgacion/asistente'].every(path=>{const links=logical.filter(a=>new URL(a.href).pathname===path);return links.length===1 && links[0].closest('ui-disclosure')?.textContent.includes('Administración');});
         checks.retired=!all('a').some(a=>/\/(?:administracion\/(?:textos-(?:portal|depositos|sistema))|divulgacion\/sincronizar|inventario\/taxonomia\/(?:revision|muestras|[^/]+\/revision|especimenes\/duplicados))$/.test(new URL(a.href).pathname));
         checks.labels=['Revisión documental y actas','Recepción física','Recordatorios de préstamos','Publicación del catálogo','Contenidos y textos'].every(text=>sidebar.textContent.includes(text)) && !sidebar.textContent.includes('Control de calidad');
         const shortcuts=q('nav[aria-label="Accesos principales"]');
@@ -60,12 +161,82 @@ export async function comprobarUIFocal(caso) {
         const tabs=()=>q('nav[aria-label="Secciones de contenidos"]');
         checks.page=all('h1').length===1 && q('h1').textContent.trim()==='Contenidos y textos';
         checks.portal=!!q('select[wire\\:model\\.live="grupo"]') || all('select').some(e=>e.getAttribute('wire:model.live')==='grupo');
-        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='depositos').click();await wait(()=>document.body.textContent.includes('Formulario de depósitos') && q('form[wire\\:submit="guardar"]'));
-        checks.depositos=all('input,textarea').some(e=>e.getAttribute('wire:model')?.startsWith('textos.')) && all('h1').length===1;
+        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='laboratorio').click();await wait(()=>document.body.textContent.includes('Página El Laboratorio') && q('iframe'));
+        checks.laboratorio=all('h1').length===1 && !!q('[x-data^="laboratorioEditor"]');
+        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='fichas').click();await wait(()=>document.body.textContent.includes('Fichas del explorador taxonómico'));
+        checks.fichas=all('h1').length===1 && document.body.textContent.includes('Editar ficha');
+        const fichaGrid=q('[data-fichas-editor] .hub-ig'),fichaPanel=q('[data-fichas-editor] section[aria-label="Editar ficha"]');
+        checks.fichaClarity=document.body.textContent.includes('1. Busca el taxón') && (innerWidth<1100 || fichaGrid.getBoundingClientRect().width>fichaPanel.getBoundingClientRect().width*1.4);
+        const filaInicial=fichaGrid.querySelectorAll('tbody tr').length,scroller=fichaGrid.querySelector('.hub-ig-scroll');
+        scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new WheelEvent('wheel',{deltaY:700,bubbles:true,cancelable:true}));
+        await wait(()=>fichaGrid.querySelectorAll('tbody tr').length>filaInicial);checks.fichaInfinite=true;
+        fichaGrid.querySelector('tbody button').click();await wait(()=>q('#ficha-descripcion'));
+        const descripcion=q('#ficha-descripcion').value;fillModel('descripcion','Leyenda QA del editor integrado');q('section[aria-label="Editar ficha"] button[type=submit]').click();
+        await wait(()=>document.body.textContent.includes('Ficha guardada.') && q('#ficha-descripcion')?.value==='Leyenda QA del editor integrado');
+        fillModel('descripcion',descripcion);q('section[aria-label="Editar ficha"] button[type=submit]').click();await wait(()=>q('#ficha-descripcion')?.value===descripcion);checks.fichaSaved=true;
+        [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='depositos').click();await wait(()=>q('[data-editor-wizard]'));
+        checks.depositos=all('nav[aria-label="Pasos para editar textos"] button').length===7 && !!q('[data-wizard-vista]') && all('h1').length===1;
         [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='sistema').click();await wait(()=>document.body.textContent.includes('Textos generales del sistema') && all('input').some(e=>e.getAttribute('wire:model.live.debounce.400ms')==='busqueda'));
         checks.sistema=all('h1').length===1 && !all('a').some(a=>/\/administracion\/textos-/.test(a.href));
         checks.contrast=getComputedStyle(tabs().querySelector('[aria-current="page"]')).color==='rgb(255, 255, 255)';
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='portal_editor_visual') {
+        const root=q('[data-editor-visual-portal]'),iframe=root.querySelector('iframe');
+        const fillPortal=value=>{const el=q('dialog[open] textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));};
+        await wait(()=>iframe.contentDocument?.body?.dataset.portalEditorReady==='true' && iframe.contentDocument?.querySelector('h1'));
+        checks.realPage=iframe.contentWindow.location.origin===location.origin && iframe.contentDocument.querySelector('h1').textContent.trim().length>10;
+        const original=iframe.contentDocument.querySelector('h1').textContent.trim(),nuevo='PRUEBA QA LOCAL — edición visual de Inicio';
+        const t=performance.now();iframe.contentDocument.querySelector('h1').click();checks.immediate=!!q('dialog[open]');metrics.modalOpenMs=Math.round(performance.now()-t);
+        await wait(()=>q('dialog[open] textarea')&&!root._x_dataStack[0].seleccionOcupada&&!q('dialog[open] textarea').disabled);
+        await frame();
+        checks.selected=q('dialog[open] textarea').value===original;
+        fillPortal(nuevo);q('dialog[open] button[type=submit]').click();
+        await wait(()=>!q('dialog[open]') && iframe.contentDocument?.body?.dataset.portalEditorReady==='true' && iframe.contentDocument?.querySelector('h1')?.textContent.trim()===nuevo);
+        checks.saved=true;await recargarFrame(iframe,()=>iframe.contentDocument?.body?.dataset.portalEditorReady==='true' && iframe.contentDocument?.querySelector('h1')?.textContent.trim()===nuevo);
+        checks.reloaded=true;
+        iframe.contentDocument.querySelector('h1').click();await wait(()=>q('dialog[open] textarea')?.value===nuevo&&!root._x_dataStack[0].seleccionOcupada&&!q('dialog[open] textarea').disabled);await frame();
+        const rect=q('dialog[open]').getBoundingClientRect();checks.fit=rect.left>=-1 && rect.right<=innerWidth+1 && q('dialog[open]').scrollWidth<=q('dialog[open]').clientWidth+1;
+        fillPortal(original);q('dialog[open] button[type=submit]').click();
+        await wait(()=>!q('dialog[open]') && iframe.contentDocument?.body?.dataset.portalEditorReady==='true' && iframe.contentDocument?.querySelector('h1')?.textContent.trim()===original);checks.restored=true;
+        checks.positions=await comprobarOrden('[data-editor-visual-portal]',iframe);
+        const before=iframe.contentWindow.location.href;iframe.contentDocument.querySelector('nav a').click();await frame();
+        checks.noNavigation=iframe.contentWindow.location.href===before;
+        const cancel=all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar');cancel?.click();
+    } else if(caso==='laboratorio_editor') {
+        const root=q('[x-data^="laboratorioEditor"]'),iframe=root.querySelector('iframe');
+        await wait(()=>iframe.contentDocument?.querySelector('[data-elemento="texto-titulo"]'));
+        const estado=root._x_dataStack[0],item=()=>iframe.contentDocument?.querySelector('[data-elemento="texto-titulo"]');
+        if(Object.keys(estado.wire.posiciones).length)throw Error('Preparar fixture con composición original para poder restaurarla por UI');
+        const original=estado.wire.textos.titulo,x=estado.posiciones['texto-titulo'].x;
+        checks.canvas=Object.keys(estado.nodos).length>10 && iframe.contentDocument.querySelector('.lab-editor-canvas')!==null;
+        item().focus();item().dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await frame();
+        checks.keyboard=Math.abs(estado.posiciones['texto-titulo'].x-x-.1)<.0001;
+        item().dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await wait(()=>q('dialog[open] textarea'));
+        checks.textEditor=q('dialog[open] textarea').value===original;
+        fillModel('textos.titulo','Laboratorio — PRUEBA QA LOCAL');
+        all('dialog[open] button').find(x=>x.textContent.trim()==='Guardar y publicar').click();
+        await wait(()=>!q('dialog[open]') && item()?.textContent.includes('PRUEBA QA LOCAL'));
+        checks.saved=document.body.textContent.includes('Página publicada');
+        await recargarFrame(iframe,()=>item()?.textContent.includes('PRUEBA QA LOCAL'));
+        checks.reloaded=estado.posiciones['texto-titulo'].x===Number((x+.1).toFixed(3));
+        all('button').find(x=>x.textContent.trim()==='Restaurar composición original').click();
+        item().dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await wait(()=>q('dialog[open] textarea'));
+        fillModel('textos.titulo',original);all('dialog[open] button').find(x=>x.textContent.trim()==='Guardar y publicar').click();
+        await wait(()=>!q('dialog[open]') && item()?.textContent.includes(original) && Object.keys(estado.wire.posiciones).length===0);
+        checks.restored=true;checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='catalogo_borrado') {
+        const botones=()=>all('button[aria-label^="Borrar QA-BORRADO-UI-20261118-"]').filter(x=>x.getClientRects().length);
+        await wait(()=>botones().length===2);
+        if(!botones().every(b=>/^Borrar QA-BORRADO-UI-20261118-[AB]$/.test(b.getAttribute('aria-label'))))throw Error('Fixture de borrado no acotado');
+        const codigo=botones()[0].getAttribute('aria-label').slice(7);botones()[0].click();await wait(()=>q('dialog[open]')?.textContent.includes(codigo));
+        checks.individual=q('dialog[open]').textContent.includes('definitivamente');
+        all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();await wait(()=>!q('dialog[open]'));checks.cancelled=botones().length===2;
+        botones()[0].click();await wait(()=>q('dialog[open]'));all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && botones().length===1);checks.deleted=true;
+        all('button').find(x=>x.textContent.trim()==='Marcar los 1 de esta página').click();await frame();
+        all('button').find(x=>x.textContent.trim()==='Borrar selección').click();await wait(()=>q('dialog[open]'));
+        all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && botones().length===0);
+        checks.batch=true;checks.selectionCleared=all('button').find(x=>x.textContent.trim()==='Borrar selección').disabled;
+        checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='instituciones_unificadas') {
         await wait(()=>q('[data-directorio-instituciones]'));
         checks.canonical=location.pathname==='/administracion/instituciones';
@@ -119,7 +290,7 @@ export async function comprobarUIFocal(caso) {
         checks.separator=document.body.textContent.includes('Separador detectado: Punto y coma');
         validar().click();await wait(()=>q('[aria-label="Vista previa de la matriz"]')?.textContent.includes(codigo));
         checks.preview=q('[aria-label="Vista previa de la matriz"]').textContent.includes('Observaciones de importación') && !!q('[aria-label="Vista previa de la matriz"] details[open]') && !q('[aria-label="Estado de la importación"]');
-        const ayuda=await comprobarAyudas(4);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;
+        const ayuda=await comprobarAyudas(4);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
         const abrirGuia=all('button').find(b=>b.textContent.includes('Ayuda de las columnas de la matriz'));abrirGuia.focus();abrirGuia.click();
         const guia=q('#guia-columnas-catalogo');await wait(()=>guia.open);await frame();
         const filasGuia=()=>[...guia.querySelectorAll('[data-busqueda]')],cuantas=filasGuia().length,buscar=q('#buscar-guia-catalogo');
@@ -163,7 +334,7 @@ export async function comprobarUIFocal(caso) {
         await wait(()=>model('codigoCatalogo'));
         checks.open=!!q('dialog[open]');
         checks.ecuador=model('fechaColecta').value===new Intl.DateTimeFormat('en-CA',{timeZone:'America/Guayaquil',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-        const ayuda=await comprobarAyudas(27);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;
+        const ayuda=await comprobarAyudas(27);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
         const codigo='QA-UI-CATALOGO-'+Date.now();
         const taxon=model('taxonId','select');taxon.value=[...taxon.options].find(o=>o.value)?.value;taxon.dispatchEvent(new Event('change',{bubbles:true}));
         fillModel('codigoCatalogo',codigo);fillModel('fechaColecta','2026-11-10');fillModel('colector','PRUEBA QA - Colector ficticio');

@@ -18,6 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class ExportarEspecimenesGbif extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     // ── Filtros ───────────────────────────────────────────────────────────────
     /** Nombre de taxón en cualquier nivel (reino, orden, familia, género, especie). */
     public string $fTaxon = '';
@@ -148,6 +149,14 @@ final class ExportarEspecimenesGbif extends Component
 
     public function render(): View
     {
+        if($this->buscado){
+            $handler=app(BuscarEspecimenesHandler::class);
+            $actual=$handler->handle($this->construirInput($this->page,$this->perPage));
+            $this->total=$actual->total;$this->totalPaginas=max(1,$actual->totalPaginas);
+            $this->rangoGrillaContinua(json_encode($this->construirInput(1,$this->perPage)),$this->total,$this->perPage,$this->page);
+            $this->especimenes=[];
+            for($p=$this->gridVentana['desde'];$p<=$this->gridVentana['hasta'];$p++)array_push($this->especimenes,...($p===$this->page?$actual:$handler->handle($this->construirInput($p,$this->perPage)))->items);
+        }
         return view('inventariogestioncoleccion::admin.taxonomia.dataset.exportar-seleccion');
     }
 }

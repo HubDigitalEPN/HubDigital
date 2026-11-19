@@ -22,6 +22,23 @@ final class ConfiguracionLaboratorio extends Component
     public array $bloques = [], $fotosBloques = [], $quitarFotosBloques = [];
     public array $posiciones = [];
     #[Locked] public string $version = '';
+    #[Locked] public string $campoSeleccionado = '';
+    public bool $textoAbierto = false;
+
+    public function seleccionarElemento(string $id): void
+    {
+        if (preg_match('/^texto-bloque-([a-f0-9]{16})-(titulo|texto)$/D', $id, $partes)) {
+            $indice = array_search($partes[1], array_column($this->bloques, 'id'), true);
+            abort_if($indice === false, 422);
+            $this->campoSeleccionado = 'bloques.'.$indice.'.'.$partes[2];
+            $this->textoAbierto = true;
+            return;
+        }
+        $clave = $id === 'texto-personal' ? 'personal_titulo' : substr($id, 6);
+        abort_unless(str_starts_with($id, 'texto-') && array_key_exists($clave, config('pagina-laboratorio.textos')), 422);
+        $this->campoSeleccionado = $clave;
+        $this->textoAbierto = true;
+    }
 
     public function boot(): void
     {
@@ -96,6 +113,7 @@ final class ConfiguracionLaboratorio extends Component
             $this->fotos = $this->restaurarFotos = [];
             $this->fotosBloques = $this->quitarFotosBloques = [];
             $this->mount($pagina);
+            $this->textoAbierto = false;
             $this->dispatch('laboratorio-publicado');
             session()->flash('laboratorio-guardado', 'Página publicada. Los textos y las fotografías ya están actualizados.');
         } catch (\Illuminate\Validation\ValidationException $error) { throw $error; }
@@ -104,6 +122,6 @@ final class ConfiguracionLaboratorio extends Component
 
     public function render(): View
     {
-        return view('livewire.administracion.configuracion-laboratorio', ['pagina' => app(PaginaLaboratorio::class)->leer()]);
+        return view('livewire.administracion.configuracion-laboratorio', ['pagina' => app(PaginaLaboratorio::class)->leer(), 'modeloSeleccionado' => str_starts_with($this->campoSeleccionado, 'bloques.') ? $this->campoSeleccionado : 'textos.'.$this->campoSeleccionado]);
     }
 }

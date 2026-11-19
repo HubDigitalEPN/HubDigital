@@ -16,8 +16,26 @@
         let label = field?.querySelector('[data-flux-label], .hub-lov-label');
         if (!field) {
             label = [...(control.labels || [])].find(item => !item.classList.contains('sr-only'));
+            if (label?.contains(control)) {
+                // Una etiqueta envolvente conserva su asociación nativa. Sólo
+                // su texto flota; nunca posicionar el label que contiene el control.
+                let caption = label.querySelector(':scope > [data-hub-apex-caption]');
+                if (!caption) {
+                    const nodes = [...label.childNodes].filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+                    if (nodes.length) {
+                        caption = document.createElement('span');
+                        caption.setAttribute('data-hub-apex-caption', '');
+                        nodes[0].before(caption);
+                        nodes.forEach(node => caption.append(node));
+                    }
+                }
+                if (caption) { field = label; label = caption; }
+            }
             let candidate = control.parentElement;
-            for (let depth = 0; label && candidate && depth < 3; depth++, candidate = candidate.parentElement) {
+            for (let depth = 0; !field && label && candidate && depth < 3; depth++, candidate = candidate.parentElement) {
+                // El contenedor de una ventana o página no es un campo aunque
+                // sólo contenga un buscador. Mantener display/posición del modal.
+                if (candidate.matches('dialog,ui-modal,form,section,main,body,html')) break;
                 if (candidate.contains(label)) { field = candidate; break; }
             }
         }

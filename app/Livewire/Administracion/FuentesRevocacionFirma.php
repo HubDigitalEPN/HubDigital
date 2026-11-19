@@ -123,10 +123,10 @@ final class FuentesRevocacionFirma extends Component
     public function render(): View
     {
         return view('livewire.administracion.fuentes-revocacion-firma', [
-            'fuentes' => $this->ordenarConsultaGrilla(DB::table('recepciones.fuentes_revocacion_firma')
+            'fuentes' => $this->paginarGrilla($this->ordenarConsultaGrilla(DB::table('recepciones.fuentes_revocacion_firma')
                 ->when(trim($this->busqueda) !== '', fn ($query) => $query->where(function ($subquery): void {
                     $subquery->where('entidad', 'ilike', '%'.trim($this->busqueda).'%')->orWhere('patron_emisor', 'ilike', '%'.trim($this->busqueda).'%');
-                })), 'entidad')->orderBy('codigo')->paginate($this->filasGrilla()),
+                })), 'entidad')->orderBy('codigo')),
         ]);
     }
 

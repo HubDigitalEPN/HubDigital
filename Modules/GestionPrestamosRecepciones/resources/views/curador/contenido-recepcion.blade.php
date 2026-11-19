@@ -17,11 +17,11 @@
             <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar registro validado</flux:button>
         </form>
     @endif
-    <div class="overflow-x-auto"><table class="w-full text-sm"><caption class="text-left font-semibold py-2">{{ $filas->count() }} registros · {{ $filas->sum('cantidad') }} individuos comprobados</caption><thead><tr><th class="p-2 text-left">Identificador</th><th class="p-2 text-left">Contenido</th><th class="p-2">Cantidad</th><th class="p-2">Acciones</th></tr></thead><tbody>
+    <x-grid-frame label="Contenido físico comprobado" :client="true"><table class="w-full text-sm"><caption class="text-left font-semibold py-2">{{ $filas->count() }} registros · {{ $filas->sum('cantidad') }} individuos comprobados</caption><thead><tr><th class="p-2 text-left">Identificador</th><th class="p-2 text-left">Contenido</th><th class="p-2">Cantidad</th><th class="p-2">Acciones</th></tr></thead><tbody>
     @foreach($filas as $fila)
         <tr wire:key="contenido-{{ $fila->id }}" class="border-t border-border"><td class="p-2">{{ $fila->identificador }}</td><td class="p-2">{{ json_decode($fila->datos_dwc, true)['scientificName'] }}<p>{{ $fila->observaciones }}</p></td><td class="p-2 text-center">{{ $fila->cantidad }}</td><td class="p-2">@unless($solicitud->contenido_validado_en)<flux:button size="sm" wire:click="editarRegistro('{{ $fila->id }}')">Editar</flux:button><flux:button size="sm" wire:click="eliminarRegistro('{{ $fila->id }}')" wire:confirm="¿Eliminar este registro antes de cerrar el contenido?">Eliminar</flux:button>@endunless</td></tr>
     @endforeach
-    </tbody></table></div>
+    </tbody></table></x-grid-frame>
     @unless($solicitud->contenido_validado_en)
         <form wire:submit="finalizar" class="rounded-lg border border-border p-4 space-y-3">
             <h2 class="text-lg font-semibold">Finalizar validación técnica</h2>

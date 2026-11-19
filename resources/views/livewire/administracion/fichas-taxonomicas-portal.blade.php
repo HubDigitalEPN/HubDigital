@@ -1,8 +1,8 @@
-<div class="mx-auto w-full max-w-6xl space-y-5">
-    <header><h1 class="hub-page-title">Fichas del explorador taxonómico</h1></header>
+<div class="w-full space-y-3" data-fichas-editor>
+    <header><h2 class="hub-section-title">Fichas del explorador taxonómico</h2><p class="text-sm text-text-secondary">1. Busca el taxón en la tabla. 2. Pulsa «Editar ficha». 3. Agrega su fotografía y explicación y guarda. Marca «Publicar ficha» para mostrarla al pulsar ese taxón en el explorador de la colección. Desplázate sobre la tabla para cargar más taxones.</p></header>
     @if (!$disponible)<p role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">La tabla de fichas está pendiente de actualizar. Puedes consultar los taxones; el guardado se habilitará al actualizar la base.</p>@endif
     @if (session('ficha-guardada'))<p data-hub-feedback="success" role="status" class="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">{{ session('ficha-guardada') }}</p>@endif
-    <div class="grid gap-5 xl:grid-cols-2">
+    <div class="hub-fichas-columnas">
         <x-interactive-grid :rows="$taxones" label="Taxones para fichas" :columns="['Nombre científico', 'Rango', 'Fotografía', 'Publicación', 'Acciones']">
             <thead><tr><x-grid-heading field="nombre">Nombre científico</x-grid-heading><x-grid-heading field="rango">Rango</x-grid-heading><x-grid-heading>Fotografía</x-grid-heading><x-grid-heading>Publicación</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
             <tbody>@forelse($taxones as $item)
@@ -24,7 +24,7 @@
 
                     <button type="submit" @disabled(!$disponible) wire:loading.attr="disabled" wire:target="guardar,foto" class="rounded-lg bg-blue-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Guardar ficha</button>
                 </form>
-            @else<p class="py-12 text-center text-sm text-text-secondary">Selecciona un taxón para administrar su fotografía y explicación.</p>@endif
+            @else<p class="py-5 text-center text-sm text-text-secondary">Pulsa «Editar ficha» en la fila del taxón. Aquí aparecerán su fotografía, leyenda, autor, licencia y estado de publicación.</p>@endif
         </section>
     </div>
 </div>

@@ -115,7 +115,7 @@ final class GruposAnimalesCatalogo extends Component
         }
 
         return view('livewire.administracion.grupos-animales-catalogo', [
-            'grupos' => $this->ordenarConsultaGrilla($consulta, 'nombre')->orderBy('codigo')->paginate($this->filasGrilla()),
+            'grupos' => $this->paginarGrilla($this->ordenarConsultaGrilla($consulta, 'nombre')->orderBy('codigo')),
         ]);
     }
 

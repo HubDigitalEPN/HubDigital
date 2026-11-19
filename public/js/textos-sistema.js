@@ -39,7 +39,7 @@
         }
     };
     const iniciar = () => {
-        diccionario = Object.assign(Object.create(null), JSON.parse(document.getElementById('textos-sistema-datos')?.textContent || '{}'));
+        diccionario = Object.assign(Object.create(null), JSON.parse(document.getElementById('textos-sistema-datos')?.textContent || '{}'), JSON.parse(document.getElementById('textos-editoriales-datos')?.textContent || '{}'));
         const escapar = texto => texto.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&').replace(/\s+/gu, '\\s+');
         const claves = Object.keys(diccionario).sort((a,b) => b.length-a.length).map(escapar);
         patron = claves.length ? new RegExp('(?<![\\p{L}\\p{N}_])(?:'+claves.join('|')+')(?![\\p{L}\\p{N}_])', 'gu') : null;

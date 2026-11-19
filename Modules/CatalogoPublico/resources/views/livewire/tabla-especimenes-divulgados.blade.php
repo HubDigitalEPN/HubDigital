@@ -158,7 +158,7 @@
     {{-- Pagination --}}
     @if($especimenes->hasPages())
         <div class="flex justify-center">
-            {{ $especimenes->links('pagination.apex') }}
+            <x-grid-pagination :paginator="$especimenes" label="Especímenes divulgados" />
         </div>
     @endif
 

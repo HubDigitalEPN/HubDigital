@@ -64,6 +64,9 @@ final class LectorActualizacionCatalogo
         if (!in_array($delimitador, [',', ';', "\t"], true)) throw new DomainException('Selecciona un separador CSV válido.');
         $archivo = fopen($ruta, 'rb');
         try {
+            // El BOM debe retirarse antes de interpretar las comillas del CSV.
+            // Despues de fgetcsv ya seria parte del primer encabezado literal.
+            if (fread($archivo, 3) !== "\xEF\xBB\xBF") rewind($archivo);
             $fila = 0;
             while (($valores = fgetcsv($archivo, null, $delimitador, '"', '')) !== false) yield ++$fila => array_map(static fn ($v) => (string)$v, $valores);
         } finally { fclose($archivo); }

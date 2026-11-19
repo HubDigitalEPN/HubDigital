@@ -14,4 +14,5 @@
         <table>{{ $slot }}</table>
     </div>
     <x-grid-pagination :paginator="$rows" :label="$label" />
+    <p x-show="cargandoContinuidad" x-cloak role="status" class="p-3 text-sm">Cargando más filas…</p><div x-show="errorContinuidad" x-cloak class="p-3 text-sm" role="status"><span x-text="errorContinuidad"></span><button type="button" class="hub-ig-button" x-on:click="cargarContinuidad(ultimaDireccion,true)">Reintentar carga</button></div>
 </section>

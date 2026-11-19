@@ -4,6 +4,18 @@ declare(strict_types=1);
 
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\LectorActualizacionCatalogo;
 
+test('CSV con encabezado entre comillas conserva occurrenceID con y sin BOM', function (string $bom, string $separador): void {
+    $ruta = tempnam(sys_get_temp_dir(), 'qa_csv_bom_');
+    $nota = "PRUEBA QA; texto con \"comillas\"\nsegunda línea";
+    file_put_contents($ruta, $bom.'"occurrenceID"'.$separador.'"notesGeneral"'."\r\n".'"QA-CSV-BOM-01"'.$separador.'"'.str_replace('"', '""', $nota).'"'."\r\n");
+    try {
+        $filas = iterator_to_array((new LectorActualizacionCatalogo)->filas($ruta, 'csv', $separador));
+        expect($filas)->toHaveCount(1)
+            ->and($filas[2]['datos'])->toMatchArray(['occurrence_id' => 'QA-CSV-BOM-01', 'notes_general' => $nota])
+            ->and($filas[2]['original'][0]['cabecera'])->toBe('occurrenceID');
+    } finally { unlink($ruta); }
+})->with(['sin BOM' => '', 'con BOM' => "\xEF\xBB\xBF"])->with([',', ';', "\t"]);
+
 test('lee el mismo libro con namespace predeterminado o prefijo y conserva fechas y formulas', function (string $p): void {
     $ruta = tempnam(sys_get_temp_dir(), 'qa_xlsx_').'.xlsx';
     $ns = $p === '' ? 'xmlns' : 'xmlns:x';

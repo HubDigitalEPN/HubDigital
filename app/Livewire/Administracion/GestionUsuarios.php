@@ -386,7 +386,7 @@ final class GestionUsuarios extends Component
                 }
             });
 
-        return $this->ordenarConsultaGrilla($consulta, 'first_name')->orderBy('last_name')->orderBy('id')->paginate($this->filasGrilla());
+        return $this->paginarGrilla($this->ordenarConsultaGrilla($consulta, 'first_name')->orderBy('last_name')->orderBy('id'));
     }
 
     protected function gridColumns(): array

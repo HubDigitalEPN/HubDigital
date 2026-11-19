@@ -1,5 +1,27 @@
 # Validacion del agente y generacion del paquete OCI
 
+Si cambia una entrada compartida despues de conservar archivos PHP completos,
+`php-parcial.cjs delimitar PROYECTO FUENTES_ORIGINALES.json` verifica primero
+que las fuentes originales, runtime y entorno corresponden exactamente a la huella
+del runner. Exige contratos propios para cada fuente cambiada y retira solo sus
+archivos afectados o aquellos cuyo cuerpo cambio. Conserva las fechas y procedencia
+del resto y registra las dos huellas y el alcance en el punto de avance. Una fuente
+sin mapa, un cambio de soporte de pruebas o de runtime/entorno detiene esta accion.
+Esta delimitacion acredita compatibilidad; no declara ejecutadas pruebas nuevas.
+La unica equivalencia de runtime automatica admite el JSON de resultados generado
+por Pest dentro de `vendor/pestphp/pest/.temp/test-results`: exige igual cantidad de
+archivos y los mismos builds y entorno; inspecciona todo vendor desde el sello
+original y se detiene si otra biblioteca fue escrita, aparece un enlace o el archivo
+no es JSON. El informe conserva expresamente este motivo. Las pruebas focales deben
+usar `--cache-directory` fuera de vendor, como ya hace el runner del paquete.
+
+Cambiar el selector UI u otro caso no obliga a repetir recorridos intactos.
+`preserveCompatible` exige el runner original completo con la misma huella del
+recibo, las fuentes propias y build iguales, y el cuerpo y ayudas del caso sin
+cambios. Conserva el recibo original sin escribirlo ni renovar su fecha; guarda
+un testigo separado en `ui-focal/compatibilidad`. Un cambio de aserciones, fuentes
+o ayudas utilizadas obliga a ejecutar de nuevo ese caso mediante Neon.
+
 La cobertura se conserva y se distribuye por responsabilidad: seis de veinte
 familias corresponden al agente (30 %) y catorce al paquete manual (70 %).
 Estos porcentajes no representan minutos ni cantidad de casos. El contrato es

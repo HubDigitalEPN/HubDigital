@@ -9,6 +9,10 @@
     </nav>
     @if($seccion === 'portal')
         <livewire:administracion.configuracion-textos-portal />
+    @elseif($seccion === 'laboratorio')
+        <livewire:administracion.configuracion-laboratorio />
+    @elseif($seccion === 'fichas')
+        <livewire:administracion.fichas-taxonomicas-portal />
     @elseif($seccion === 'depositos')
         <livewire:administracion.configuracion-textos-wizard />
     @else

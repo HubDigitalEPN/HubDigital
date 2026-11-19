@@ -243,7 +243,7 @@
                             heading="Divulgación" icon="megaphone"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('divulgacion.*', 'admin.contenidos', 'admin.fichas-taxonomicas', 'admin.laboratorio')"
+                            :expanded="request()->routeIs('divulgacion.index', 'divulgacion.imagenes')"
                         >
                             <flux:sidebar.item icon="table-cells" :href="route('divulgacion.index')" :current="request()->routeIs('divulgacion.index')" wire:navigate>Publicación del catálogo</flux:sidebar.item>
                             <flux:sidebar.item
@@ -254,25 +254,12 @@
                             >
                                 Imágenes
                             </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="chat-bubble-left-right"
-                                :href="route('divulgacion.asistente')"
-                                :current="request()->routeIs('divulgacion.asistente')"
-                                wire:navigate
-                            >
-                                Asistente del portal
-                            </flux:sidebar.item>
-                            <flux:sidebar.item icon="photo" :href="route('admin.fichas-taxonomicas')" :current="request()->routeIs('admin.fichas-taxonomicas')" wire:navigate>Fichas del explorador</flux:sidebar.item>
-                            <flux:sidebar.item icon="pencil-square" :href="route('admin.contenidos')" :current="request()->routeIs('admin.contenidos')" wire:navigate>
-                                Contenidos y textos
-                            </flux:sidebar.item>
-                            @if(in_array(auth()->user()->rolActivo(), [RolUsuario::ADMIN, RolUsuario::CURADOR], true))
-                            <flux:sidebar.item icon="photo" :href="route('admin.laboratorio')" :current="request()->routeIs('admin.laboratorio')" wire:navigate>El Laboratorio: textos y fotos</flux:sidebar.item>
-                            @endif
 
                         </flux:sidebar.group>
+                            <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*','divulgacion.asistente')" class="grid">
+                                <flux:sidebar.item icon="pencil-square" :href="route('admin.contenidos')" :current="request()->routeIs('admin.contenidos')" wire:navigate>Contenidos y textos</flux:sidebar.item>
+                                <flux:sidebar.item icon="chat-bubble-left-right" :href="route('divulgacion.asistente')" :current="request()->routeIs('divulgacion.asistente')" wire:navigate>Asistente del portal</flux:sidebar.item>
                         @if($rolActivo === RolUsuario::ADMIN)
-                            <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*')" class="grid">
                                 <flux:sidebar.item icon="key" :href="route('admin.botones')" :current="request()->routeIs('admin.botones')" wire:navigate>Botones y permisos</flux:sidebar.item>
                                 <flux:sidebar.item icon="table-cells" :href="route('admin.formato-ipt')" :current="request()->routeIs('admin.formato-ipt')" wire:navigate>Formato IPT (GBIF)</flux:sidebar.item>
                                 <flux:sidebar.item
@@ -297,8 +284,8 @@
                                 <flux:sidebar.item icon="hashtag" :href="route('admin.siglas-expedientes')" :current="request()->routeIs('admin.siglas-expedientes')" wire:navigate>
                                     Siglas de expedientes
                                 </flux:sidebar.item>
-                            </flux:sidebar.group>
                         @endif
+                            </flux:sidebar.group>
                     @endif
                 @endauth
             </flux:sidebar.nav>

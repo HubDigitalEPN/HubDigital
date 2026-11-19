@@ -7,6 +7,8 @@
         columnSearch: '', draftHidden: [], sortColumns: [], sortField: '', sortDirection: 'asc', filterText: '', filterValues: {},
         columnOrder: [], columnFilters: {}, activeColumn: 0, columnTerm: '', columnOperator: 'contains', valueSearch: '', draggingColumn: null,
         pageSort: '', pageDirection: 'asc', pageMatches: 0, headerTrigger: null,
+        clientFirstPage: 1, clientLastLoaded: 1, clientWindowToken: '', clientAnchor: 1,
+        cargandoContinuidad: false, errorContinuidad: '', ultimaDireccion: 1,
         init() {
             this.root = this.$el;
             if (!this.columns.length) this.columns = [...this.root.querySelectorAll('thead tr:first-child th')].map(cell => cell.dataset.gridLabel || cell.textContent.trim() || 'Acciones');
@@ -24,6 +26,101 @@
             this.observer = new MutationObserver(() => { this.installHeaders(); this.applyColumns(); if (client) this.renderClientRows(); else this.renderPageRows(); });
             this.observer.observe(this.root.querySelector('table'), {childList: true, subtree: true});
             this.applyColumns();
+            this.$nextTick?.(() => this.instalarScroll());
+        },
+        datosVentana() {
+            let pager=this.root.querySelector('[data-grid-window]');
+            if(!pager){
+                const component=this.root.closest?.('[wire\\:id]');
+                const opciones=[...(component?.querySelectorAll('[data-grid-window]')||[])].filter(el=>el.getClientRects().length && (!el.closest('[data-hub-grid]') || el.closest('[data-hub-grid]')===this.root));
+                if(opciones.length===1)pager=opciones[0];
+            }
+            try{return pager?JSON.parse(pager.dataset.gridWindow):null;}catch{return null;}
+        },
+        instalarScroll() {
+            // El catálogo público ya dispone de su propio cursor de carga.
+            if(this.root.closest?.('[data-hay-mas]'))return;
+            this.superficie=this.root.querySelector('.atlas-record-table-scroll')||this.root.querySelector('.hub-ig-scroll');
+            if(!this.superficie?.addEventListener)return;
+            const envoltura=this.root.querySelector('.hub-ig-scroll');
+            if(envoltura!==this.superficie)envoltura.style.overflow='visible';
+            const component=this.root.closest?.('[wire\\:id]');
+            const paginador=component?.querySelector('.hub-ig-footer [wire\\:click], nav[role="navigation"] [wire\\:click]');
+            if(!client && !server && !this.datosVentana() && !paginador){
+                client=this.client=true;this.originalOrder=new WeakMap();
+                this.sortColumns=this.columns.map((label,index)=>({field:String(index),label}));
+                this.$watch('clientPerPage',()=>{this.clientGo(1);});this.renderClientRows();
+            }
+            this.alRueda=event=>{
+                if(event.ctrlKey || event.target.closest?.('dialog,textarea,select,[contenteditable="true"]'))return;
+                const direccion=Math.sign(event.deltaY);
+                if(direccion && this.enBorde(direccion) && this.puedeContinuar(direccion)){
+                    if(event.cancelable)event.preventDefault();this.cargarContinuidad(direccion);
+                }
+            };
+            this.alScroll=()=>{if(this.intencionScroll && this.enBorde(this.intencionScroll)){const direccion=this.intencionScroll;this.intencionScroll=0;if(this.puedeContinuar(direccion))this.cargarContinuidad(direccion);}};
+            this.alTocar=event=>{this.inicioTacto=event.touches[0]?.clientY;};
+            this.alMoverTacto=event=>{
+                this.intencionScroll=Math.sign((this.inicioTacto??0)-(event.touches[0]?.clientY??0));
+                this.alScroll();
+            };
+            this.alTecla=event=>{
+                if(event.target.closest?.('input,textarea,select,button,[contenteditable="true"]'))return;
+                if(['PageDown','ArrowDown','End'].includes(event.key))this.intencionScroll=1;
+                else if(['PageUp','ArrowUp','Home'].includes(event.key))this.intencionScroll=-1;
+                else return;
+                if(this.enBorde(this.intencionScroll) && this.puedeContinuar(this.intencionScroll)){
+                    event.preventDefault();this.alScroll();
+                }
+            };
+            this.superficie.addEventListener('wheel',this.alRueda,{passive:false});
+            this.superficie.addEventListener('scroll',this.alScroll,{passive:true});
+            this.superficie.addEventListener('touchstart',this.alTocar,{passive:true});this.superficie.addEventListener('touchmove',this.alMoverTacto,{passive:true});this.superficie.addEventListener('keydown',this.alTecla);
+            this.alMedir=()=>this.ajustarScroll();
+            window.addEventListener('resize',this.alMedir,{passive:true});window.addEventListener('scroll',this.alMedir,{passive:true});
+            if(typeof ResizeObserver!=='undefined'){this.medidas=new ResizeObserver(this.alMedir);this.medidas.observe(this.root);}
+            this.ajustarScroll();
+        },
+        ajustarScroll() {
+            if(!this.superficie?.isConnected)return;
+            const viewport=window.visualViewport?.height||window.innerHeight;
+            const top=this.superficie.getBoundingClientRect().top;
+            const modal=this.root.closest('dialog[open]');
+            const bottom=modal?Math.min(viewport,modal.getBoundingClientRect().bottom):viewport;
+            const altura=Math.max(100,Math.min(bottom-Math.max(8,top)-64,viewport-120));
+            const valor=altura+'px';if(this.superficie.style.maxHeight!==valor)this.superficie.style.maxHeight=valor;
+            this.superficie.style.overscrollBehaviorY='auto';
+        },
+        enBorde(direccion) {const s=this.superficie;return !!s && (direccion>0?s.scrollHeight-s.scrollTop-s.clientHeight<=16:s.scrollTop<=1);},
+        puedeContinuar(direccion) {
+            if(this.cargandoContinuidad || this.errorContinuidad)return false;
+            const v=this.datosVentana();
+            return v?(direccion>0?v.hasta<v.paginas:v.desde>1):this.client?(direccion>0?this.clientLastLoaded<this.clientLastPage:this.clientFirstPage>1):false;
+        },
+        async cargarContinuidad(direccion,reintento=false) {
+            if(reintento)this.errorContinuidad='';
+            if(!this.puedeContinuar(direccion))return;
+            this.cargandoContinuidad=true;this.ultimaDireccion=direccion;
+            const s=this.superficie,top=s.getBoundingClientRect().top;
+            const ancla=this.dataRows().find(row=>!row.hidden && row.getBoundingClientRect().bottom>top+40);
+            const identidad=ancla?.getAttribute('wire:key')||ancla?.textContent;
+            const y=ancla?.getBoundingClientRect().top;let timer;
+            try{
+                const v=this.datosVentana();
+                if(v)await Promise.race([this.$wire.cargarGrillaContinua(direccion,v.consulta,direccion>0?v.hasta:v.desde),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Tiempo agotado')),45000);})]);
+                else this.cargarClienteContinuo(direccion);
+                await this.$nextTick();
+                const conservada=this.dataRows().find(row=>(row.getAttribute('wire:key')||row.textContent)===identidad);
+                if(conservada && y!==undefined)s.scrollTop+=conservada.getBoundingClientRect().top-y;
+                this.ajustarScroll();
+            }catch{this.errorContinuidad='No se pudieron cargar más filas. Conservamos las visibles; puedes reintentar.';}
+            finally{clearTimeout(timer);this.cargandoContinuidad=false;}
+        },
+        cargarClienteContinuo(direccion) {
+            const maximo=Math.max(1,Math.min(3,Math.floor(600/this.clientPerPage)));
+            if(direccion>0 && this.clientLastLoaded<this.clientLastPage){this.clientLastLoaded++;this.clientFirstPage=Math.max(this.clientFirstPage,this.clientLastLoaded-maximo+1);}
+            else if(direccion<0 && this.clientFirstPage>1){this.clientFirstPage--;this.clientLastLoaded=Math.min(this.clientLastLoaded,this.clientFirstPage+maximo-1);}
+            this.renderClientRows();
         },
         headers() { return [...this.root.querySelectorAll('thead tr:first-child th')]; },
         installHeaders() {
@@ -74,7 +171,7 @@
             this.$nextTick(() => { const box = trigger.getBoundingClientRect(); dialog.style.left = Math.max(8, Math.min(box.left, innerWidth - dialog.offsetWidth - 8))+'px'; dialog.style.top = Math.max(8, Math.min(box.bottom+4, innerHeight-dialog.offsetHeight-8))+'px'; dialog.querySelector('input')?.focus(); });
         },
         get columnField() { return this.headers()[this.activeColumn]?.dataset.gridField || ''; },
-        get columnScope() { return this.server && this.columnField ? 'Todas las filas de la consulta' : this.client ? 'Todas las filas de la tabla' : 'Filas de esta página; los filtros generales conservan toda la consulta'; },
+        get columnScope() { return this.server && this.columnField ? 'Todas las filas de la consulta' : this.client ? 'Todas las filas de la tabla' : 'Filas cargadas; los filtros generales conservan toda la consulta'; },
         get columnValues() {
             const needle = this.normalize(this.valueSearch);
             return [...new Set(this.dataRows().map(row => this.cellText(row, this.activeColumn)))].filter(value => value && (!needle || this.normalize(value).includes(needle))).sort(new Intl.Collator('es', {numeric:true}).compare).slice(0, 100);
@@ -195,7 +292,7 @@
         searchPage() { this.clientPage = 1; this.renderClientRows(); },
         get clientLastPage() { return Math.max(1, Math.ceil(this.clientTotal / this.clientPerPage)); },
         get clientPageNumbers() { return [...new Set([1, ...Array.from({length: 5}, (_, i) => this.clientPage - 2 + i), this.clientLastPage])].filter(n => n > 0 && n <= this.clientLastPage).sort((a,b) => a-b); },
-        clientGo(page) { this.clientPage = Math.max(1, Math.min(this.clientLastPage, page)); this.renderClientRows(); },
+        clientGo(page) { this.clientPage = Math.max(1, Math.min(this.clientLastPage, page)); this.clientFirstPage=this.clientLastLoaded=this.clientPage;this.renderClientRows(); },
         renderClientRows() {
             const body = this.root.querySelector('table tbody'); if (!body) return;
             const rows = [...body.rows].filter(row => !row.querySelector('td[colspan]'));
@@ -207,9 +304,12 @@
             else if (sorted.some((row, i) => row !== rows[i])) for (const row of sorted) body.append(row);
             const normalizar = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
             const text = normalizar(this.searchText.trim());
+            const token=JSON.stringify([text,this.sortField,this.sortDirection,this.columnFilters,this.clientPerPage]);
+            if(token!==this.clientWindowToken || this.clientAnchor!==this.clientPage){this.clientWindowToken=token;this.clientAnchor=this.clientPage;this.clientFirstPage=this.clientLastLoaded=this.clientPage;}
             const matches = sorted.filter(row => (!text || normalizar(row.textContent).includes(text)) && Object.entries(this.columnFilters).every(([column, filter]) => this.matchesColumn(this.cellText(row, Number(column)), filter)));
             this.clientTotal = matches.length; this.clientPage = Math.min(this.clientPage, this.clientLastPage);
-            const visible = new Set(matches.slice((this.clientPage-1)*this.clientPerPage, this.clientPage*this.clientPerPage));
+            this.clientFirstPage=Math.min(this.clientFirstPage,this.clientLastPage);this.clientLastLoaded=Math.min(this.clientLastLoaded,this.clientLastPage);
+            const visible = new Set(matches.slice((this.clientFirstPage-1)*this.clientPerPage, this.clientLastLoaded*this.clientPerPage));
             for (const row of rows) row.hidden = !visible.has(row);
         },
         downloadPage() {
@@ -225,6 +325,10 @@
             link.download = this.label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-') + '-pagina.csv';
             link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); this.closeMenu();
         },
-        destroy() { this.menuOpen = false; this.observer?.disconnect(); },
+        destroy() {
+            this.menuOpen=false;this.observer?.disconnect();this.medidas?.disconnect();
+            if(this.superficie){for(const [tipo,fn] of [['wheel',this.alRueda],['scroll',this.alScroll],['touchstart',this.alTocar],['touchmove',this.alMoverTacto],['keydown',this.alTecla]])if(fn)this.superficie.removeEventListener(tipo,fn);}
+            if(this.alMedir){window.removeEventListener('resize',this.alMedir);window.removeEventListener('scroll',this.alMedir);}
+        },
     });
 })();

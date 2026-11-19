@@ -109,7 +109,7 @@ final class InstitucionesCatalogo extends Component
         $query=app(DirectorioInstituciones::class)->consulta();
         if (trim($this->busqueda)!=='') $query->where('nombre','ilike','%'.trim($this->busqueda).'%');
         return view('livewire.administracion.instituciones-catalogo',[
-            'instituciones'=>$this->ordenarConsultaGrilla($query,'nombre')->orderBy('id')->paginate($this->filasGrilla()),
+            'instituciones'=>$this->paginarGrilla($this->ordenarConsultaGrilla($query,'nombre')->orderBy('id')),
             'pendientes'=>Schema::hasTable('usuarios.catalogos_nombres_pendientes')
                 ? DB::table('usuarios.catalogos_nombres_pendientes')->where('tipo','institucion')->where('resuelto',false)
                     ->when(trim($this->busquedaPendientes)!=='',fn($q)=>$q->where('valor_original','ilike','%'.trim($this->busquedaPendientes).'%'))->orderBy('valor_original')->get()

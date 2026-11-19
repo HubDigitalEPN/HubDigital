@@ -102,9 +102,10 @@ test('validación, conflicto editorial y despublicación conservan el contenido 
 
 test('visitantes y depositantes no pueden administrar fichas ni ver fotos privadas', function (): void {
     [$rama] = fichaPortalFixture();
-    $this->get(route('admin.fichas-taxonomicas'))->assertRedirect(route('login'));
+    $this->get(route('admin.contenidos', ['seccion' => 'fichas']))->assertRedirect(route('login'));
+    $this->get('/administracion/fichas-taxonomicas')->assertNotFound();
     Livewire::test(FichasTaxonomicasPortal::class)->assertForbidden();
-    $this->actingAs(User::factory()->depositante()->create())->get(route('admin.fichas-taxonomicas'))->assertForbidden();
+    $this->actingAs(User::factory()->depositante()->create())->get(route('admin.contenidos', ['seccion' => 'fichas']))->assertForbidden();
     Livewire::test(FichasTaxonomicasPortal::class)->assertForbidden();
     $this->get(route('admin.ficha-foto', ['taxon' => $rama['clase']]))->assertForbidden();
 });

@@ -11,6 +11,7 @@
         @unless(isset($reset))<button type="button" class="hub-ig-button hub-ig-reset" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button>@endunless
     </div>
     <div class="hub-ig-scroll" tabindex="0" role="region" aria-label="Filas de {{ $label }}">{{ $slot }}</div>
+    <p x-show="cargandoContinuidad" x-cloak role="status" class="p-3 text-sm">Cargando más filas…</p><div x-show="errorContinuidad" x-cloak class="p-3 text-sm" role="status"><span x-text="errorContinuidad"></span><button type="button" class="hub-ig-button" x-on:click="cargarContinuidad(ultimaDireccion,true)">Reintentar carga</button></div>
     @if($client)
         <p x-show="clientTotal === 0" class="p-4 text-sm" role="status">No hay filas que coincidan.</p>
         <nav class="hub-ig-footer" aria-label="Paginación de {{ $label }}">
@@ -21,7 +22,7 @@
                 <button type="button" class="hub-ig-page-button" x-on:click="clientGo(clientPage+1)" :disabled="clientPage >= clientLastPage" aria-label="Página siguiente">›</button>
                 <button type="button" class="hub-ig-page-button" x-on:click="clientGo(clientLastPage)" :disabled="clientPage >= clientLastPage" aria-label="Última página">»</button>
             </div>
-            <span class="hub-ig-range" role="status" x-text="(clientTotal ? (clientPage-1)*clientPerPage+1 : 0)+'–'+Math.min(clientPage*clientPerPage,clientTotal)+' de '+clientTotal"></span>
+            <span class="hub-ig-range" role="status" x-text="(clientTotal ? (clientFirstPage-1)*clientPerPage+1 : 0)+'–'+Math.min(clientLastLoaded*clientPerPage,clientTotal)+' de '+clientTotal"></span>
         </nav>
     @endif
     {{ $pagination ?? '' }}

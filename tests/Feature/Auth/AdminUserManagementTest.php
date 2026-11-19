@@ -27,7 +27,8 @@ test('only an administrator can open user management', function () {
         ->assertOk()
         ->assertSee('data-testid="admin-users-page"', false)
         ->assertSee('aria-label="Ruta de navegación"', false)
-        ->assertSee('Centro de administración');
+        ->assertSee('Administración')->assertSee('Usuarios y perfiles')
+        ->assertDontSee('Centro de administración');
 
     $this->actingAs($depositante)->get(route('admin.usuarios'))->assertForbidden();
 });

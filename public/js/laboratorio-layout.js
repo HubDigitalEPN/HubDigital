@@ -99,6 +99,7 @@
                     item.addEventListener('pointermove',mover);item.addEventListener('pointerup',terminar);item.addEventListener('pointercancel',terminar);
                 });
                 item.addEventListener('focus',()=>this.elegir(id));
+                item.addEventListener('dblclick',()=>{if(id.startsWith('texto-'))this.wire.seleccionarElemento(id);});
                 item.addEventListener('keydown',event=>{
                     const delta=event.shiftKey?1:.1,p=this.posiciones[id];
                     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;

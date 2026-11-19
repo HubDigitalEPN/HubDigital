@@ -37,4 +37,43 @@ function record(root,plan,cache,before,after,log,provenance='ejecucion') {
     write(root,plan,cache);return Object.keys(passed);
 }
 module.exports={state,results,load,write,pending,record};
+/** Delimita un cambio compartido con fuentes originales cuya huella coincide
+ * exactamente con la del runner. No inventa ni renueva aprobaciones. */
+function delimit(root,plan,original,current,contracts) {
+    const file=filename(root,plan),cache=JSON.parse(fs.readFileSync(file,'utf8'));
+    const before=state(root,plan,original),after=state(root,plan,current);
+    if(cache.root!==before.root||cache.shared!==before.shared)throw Error('Las fuentes originales no corresponden al punto de avance PHP.');
+    if((original.sector_environment||original.environment)!==(current.sector_environment||current.environment))throw Error('Cambio runtime o entorno; no se delimita automaticamente.');
+    let runtimeCompatibility=null;
+    if(JSON.stringify(original.runtime)!==JSON.stringify(current.runtime)){
+        const old=original.runtime,now=current.runtime,roots=Object.keys(now.per_root||{}),cutoff=Date.parse(original.completed_at);
+        const changedRoots=roots.filter(r=>old.per_root?.[r]!==now.per_root[r]);
+        if(!Number.isFinite(cutoff)||old.files!==now.files||JSON.stringify(old.roots)!==JSON.stringify(now.roots)||JSON.stringify(changedRoots)!==JSON.stringify(['vendor']))throw Error('Cambio runtime; falta delimitar sus bibliotecas o builds.');
+        const modified=[];
+        function walk(relative){for(const entry of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){const file=relative+'/'+entry.name;if(entry.isSymbolicLink())throw Error('Enlace inesperado en vendor.');if(entry.isDirectory())walk(file);else if(entry.isFile()&&fs.statSync(path.join(root,file)).mtimeMs>cutoff)modified.push(file);else if(!entry.isFile())throw Error('Runtime no regular.');}}
+        walk('vendor');
+        const pest='vendor/pestphp/pest/.temp/test-results';
+        if(JSON.stringify(modified)!==JSON.stringify([pest]))throw Error('Cambio runtime de bibliotecas: '+modified.join(', '));
+        JSON.parse(fs.readFileSync(path.join(root,pest),'utf8'));
+        runtimeCompatibility={reason:'Unico cambio de vendor: resultados JSON generados por Pest; sin escritura de bibliotecas ni cambio de cantidad de archivos, builds o entorno.',since:original.completed_at,modified};
+    }
+    const relevant=f=>!/^tests\//.test(f)&&!/^Modules\/[^/]+\/tests\//.test(f)&&!/^scripts\//.test(f)&&!f.endsWith('.md');
+    const changed=[...new Set([...Object.keys(original.sources),...Object.keys(current.sources)])].filter(f=>relevant(f)&&original.sources[f]!==current.sources[f]);
+    const support=/^tests\/(Pest\.php|bootstrap\.php|[^/]*TestCase\.php|Support\/|Concerns\/)/;
+    if([...new Set([...Object.keys(original.sources),...Object.keys(current.sources)])].some(f=>support.test(f)&&original.sources[f]!==current.sources[f]))throw Error('Cambio soporte compartido de pruebas; falta delimitar manualmente su contrato.');
+    const unknown=changed.filter(f=>!Object.hasOwn(contracts,f));if(unknown.length)throw Error('Fuentes sin contrato propio para delimitar PHP: '+unknown.join(', '));
+    const affected=new Set(changed.flatMap(f=>contracts[f]).filter(f=>/Test\.php$/.test(f)));
+    const removed=[];for(const file of Object.keys(cache.entries))if(affected.has(file)||(after.own[file]!==undefined&&cache.entries[file].own!==after.own[file])){removed.push(file);delete cache.entries[file];}
+    const preserved=Object.keys(cache.entries),report={at:new Date().toISOString(),previous_shared:cache.shared,shared:after.shared,changed,affected:[...affected],preserved,removed,runtime_compatibility:runtimeCompatibility};
+    cache.shared=after.shared;(cache.delimitations||=[]).push(report);write(root,plan,cache);
+    return report;
+}
+module.exports.delimit=delimit;
+if(require.main===module&&process.argv[2]==='delimitar'){
+    try{const [,rootArg,originalPath]=process.argv.slice(2),root=fs.realpathSync(rootArg),plan=JSON.parse(fs.readFileSync(path.join(root,'.local/validation/plan-impacto.json'),'utf8')),original=JSON.parse(fs.readFileSync(originalPath,'utf8')),evidence=JSON.parse(fs.readFileSync(path.join(root,'.local/validation/evidencia-agente.json'),'utf8'));
+        const listing=spawnSync(process.execPath,[path.join(root,'scripts/deployment/huellas-codigo.cjs'),root],{encoding:'utf8',windowsHide:true,maxBuffer:33554432});if(listing.status!==0)throw Error('No se identificaron las fuentes actuales.');
+        const sources=Object.fromEntries(listing.stdout.trimEnd().split('\n').map(line=>{const i=line.indexOf('  ');return[line.slice(i+2),line.slice(0,i)];}));
+        const report=delimit(root,plan,original,{...evidence,sources},require('./contratos-ui-focales.cjs').contracts);console.log(JSON.stringify(report,null,2));
+    }catch(error){console.error(error.message);process.exitCode=1;}
+} else
 if(require.main===module){try{const [rootArg,originalPath]=process.argv.slice(2),root=fs.realpathSync(rootArg),original=JSON.parse(fs.readFileSync(originalPath,'utf8')),plan=JSON.parse(fs.readFileSync(path.join(root,'.local/validation/plan-impacto.json'),'utf8'));if(original.root!==root||original.baseline!==plan.baseline_sha256)throw Error('Origen PHP incompatible.');const before=state(root,plan,original),after=state(root,plan);const cache=load(root,plan,after);const passed=record(root,plan,cache,before,after,path.resolve(root,original.log),'log-original-completo; runner-anterior-no-repetido');console.log('PHP_ARCHIVOS_COMPLETOS_CONSERVADOS='+passed.length);console.log('PHP_PENDIENTES='+pending(plan.paquete.pruebas_php,cache,after).join(', '));}catch(error){console.error(error.message);process.exitCode=1;}}

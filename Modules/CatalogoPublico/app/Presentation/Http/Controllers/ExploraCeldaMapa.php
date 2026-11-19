@@ -16,6 +16,7 @@ use Modules\CatalogoPublico\Infrastructure\CalidadDatoPublico;
 
 trait ExploraCeldaMapa
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     #[Locked]
     public ?array $celdaMapa = null;
 
@@ -268,12 +269,13 @@ trait ExploraCeldaMapa
         $tamanoPagina = $this->vistaCelda === 'registros' ? $this->registrosPorPaginaCelda : EloquentProveedorEspecimenesParaArbol::TAMANO_PAGINA;
         $ultima = max(1, (int) ceil(($mostrarRegistros ? $total : $totalGrupos) / $tamanoPagina));
         $pagina = min($this->paginaCelda, $ultima);
+        [$offsetContinuo,$limiteContinuo]=$this->rangoGrillaContinua(json_encode([$base->toSql(),$base->getBindings(),$this->vistaCelda,$registro_seleccionado]),$total,$tamanoPagina,$pagina);
         $grupos = array_slice($grupos, $mostrarRegistros ? 0 : ($pagina - 1) * $tamanoPagina, $tamanoPagina, true);
         $registros = $imagenes = [];
         if ($mostrarRegistros) {
             $consultaRegistros = clone $base;
             if ($this->vistaCelda === 'grupos' && $registro_seleccionado !== null) $consultaRegistros->where('te.id', $registro_seleccionado['especimen_id']);
-            $ids = $consultaRegistros->orderBy('te.fila_origen_excel')->orderBy('te.id')->offset(($pagina - 1) * $tamanoPagina)->limit($tamanoPagina)->pluck('te.id')->all();
+            $ids = $consultaRegistros->orderBy('te.fila_origen_excel')->orderBy('te.id')->offset($offsetContinuo)->limit($limiteContinuo)->pluck('te.id')->all();
             $registros = $this->cargarDetallesPorEspecimenIds($ids, app(ProveedorEspecimenesPort::class), app(EspecimenDivulgableRepositoryInterface::class));
             $imagenes = $this->cargarImagenesPorEspecimen(array_values(array_filter(array_column($registros, 'occurrence_id'))));
         }

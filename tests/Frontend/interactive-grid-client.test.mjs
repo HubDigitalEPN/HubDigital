@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source = await readFile(new URL('../../public/js/interactive-grid.js', import.meta.url), 'utf8');
-function grid(extra = {}) {
-    const rows = Array.from({length: 42}, (_, i) => {
+function grid(extra = {}, count = 42) {
+    const rows = Array.from({length: count}, (_, i) => {
         const cells = ['Registro '+(i+1), i === 40 ? 'Taxón único' : 'Taxón general'].map(innerText => ({innerText, hidden: false, colSpan: 1}));
         return {cells, children: cells, hidden: false, textContent: cells.map(c=>c.innerText).join(' '), querySelector: () => null};
     });
@@ -27,6 +27,16 @@ test('la búsqueda abarca las filas no visibles y el paginado conserva todos los
     assert.equal(g.visible().length,1); assert.equal(g.visible()[0].cells[0].innerText,'Registro 41');
     assert.equal(g.state.clientPage,1); assert.equal(g.state.clientTotal,1);
     g.state.reset(); assert.equal(g.rows.length,42); assert.equal(g.visible().length,15);
+});
+
+test('la carga continua agrega filas y limita la ventana; permite volver sin perder registros',()=>{
+    const g=grid({},80);
+    g.state.cargarClienteContinuo(1);assert.equal(g.visible().length,30);
+    g.state.cargarClienteContinuo(1);assert.equal(g.visible().length,45);
+    g.state.cargarClienteContinuo(1);assert.equal(g.visible().length,45);
+    assert.equal(g.visible()[0].cells[0].innerText,'Registro 16');assert.equal(g.visible().at(-1).cells[0].innerText,'Registro 60');
+    g.state.cargarClienteContinuo(-1);assert.equal(g.visible()[0].cells[0].innerText,'Registro 1');
+    g.state.searchText='UNICO';g.state.searchPage();assert.equal(g.visible().length,1);assert.equal(g.state.clientFirstPage,1);assert.equal(g.state.clientLastLoaded,1);
 });
 test('el menú espera a ser visible, admite Fin y Escape y queda dentro de una pantalla estrecha', () => {
     const frames=[], document={activeElement: null};

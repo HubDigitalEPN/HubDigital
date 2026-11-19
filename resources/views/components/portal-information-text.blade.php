@@ -11,4 +11,4 @@
     ];
     $partes = preg_split('/(\{[a-z_]+\})/u', \App\Support\PortalCopy::text($clave), -1, PREG_SPLIT_DELIM_CAPTURE);
 @endphp
-<p class="whitespace-pre-line">@foreach($partes as $parte)@if(isset($enlaces[$parte]))<a class="underline text-science-blue" href="{{ $enlaces[$parte][0] }}" @if(in_array($parte, ['{licencia}', '{licencia_completa}'], true)) rel="license" @endif>{{ $enlaces[$parte][1] }}</a>@else{{ $variables[$parte] ?? $parte }}@endif@endforeach</p>
+<p data-portal-copy="{{ $clave }}" class="whitespace-pre-line">@foreach($partes as $parte)@if(isset($enlaces[$parte]))<a class="underline text-science-blue" href="{{ $enlaces[$parte][0] }}" @if(in_array($parte, ['{licencia}', '{licencia_completa}'], true)) rel="license" @endif>{{ $enlaces[$parte][1] }}</a>@else{{ $variables[$parte] ?? $parte }}@endif@endforeach</p>

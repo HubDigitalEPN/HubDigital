@@ -99,7 +99,7 @@ final class CargosCatalogo extends Component
         }
 
         return view('livewire.administracion.cargos-catalogo', [
-            'cargos' => $this->ordenarConsultaGrilla($query, 'nombre')->orderBy('id')->paginate($this->filasGrilla()),
+            'cargos' => $this->paginarGrilla($this->ordenarConsultaGrilla($query, 'nombre')->orderBy('id')),
             'activos' => DB::table('usuarios.cargos_catalogo')->where('activo', true)->count(),
         ]);
     }

@@ -7,7 +7,7 @@
     'ayuda' => null,
 ])
 
-<div class="rounded-lg border p-3 relative
+<div data-disposicion-campo="{{ $campo }}" class="rounded-lg border p-3 relative
     {{ $faltante ? 'border-error bg-white' : ($manual ? 'border-warning/50 bg-white' : 'border-border bg-surface') }}"
 >
     {{-- Header --}}

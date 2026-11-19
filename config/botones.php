@@ -12,6 +12,7 @@ return [
     'catalogo.analisis' => ['nombre' => 'Descargar análisis CSV', 'grupo' => 'Catálogo', 'roles' => $cuentas, 'elegibles' => $cuentas],
     'catalogo.especies' => ['nombre' => 'Descargar lista de especies', 'grupo' => 'Catálogo', 'roles' => $cuentas, 'elegibles' => $cuentas],
     'inventario.exportar' => ['nombre' => 'Exportar Excel del inventario', 'grupo' => 'Curaduría', 'roles' => $equipo, 'elegibles' => $equipo],
+    'inventario.eliminar' => ['nombre' => 'Borrar definitivamente especímenes', 'grupo' => 'Curaduría', 'roles' => [Rol::ADMIN->value, Rol::CURADOR->value], 'elegibles' => [Rol::ADMIN->value, Rol::CURADOR->value]],
     'panel.curador' => ['nombre' => 'Abrir panel del curador', 'grupo' => 'Curaduría', 'roles' => $equipo, 'elegibles' => $equipo],
     'depositos.reporte' => ['nombre' => 'Descargar reporte de depósitos', 'grupo' => 'Curaduría', 'roles' => $equipo, 'elegibles' => $equipo],
 ];

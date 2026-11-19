@@ -118,7 +118,8 @@ test('la ampliación del perfil actualiza solo las versiones predeterminadas y c
 });
 
 test('solo administración y curador pueden editar la página', function () {
-    $this->get(route('admin.laboratorio'))->assertRedirect(route('login'));
+    $this->get(route('admin.contenidos', ['seccion' => 'laboratorio']))->assertRedirect(route('login'));
+    $this->get('/administracion/el-laboratorio')->assertNotFound();
     foreach ([RolUsuario::DEPOSITANTE, RolUsuario::AYUDANTE_CURADOR] as $rol) {
         $usuario = User::factory()->create(['rol' => $rol]);
         Livewire::actingAs($usuario)->test(ConfiguracionLaboratorio::class)->assertForbidden();

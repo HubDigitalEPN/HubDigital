@@ -5,7 +5,7 @@
         $pageNumbers = collect(array_merge([1, $lastPage], range(max(1, $currentPage - 2), min($lastPage, $currentPage + 2))))->unique()->sort()->values();
         $previousNumber = 0;
     @endphp
-    <nav class="hub-ig-footer" aria-label="Paginación de {{ $label }}">
+    <nav class="hub-ig-footer" aria-label="Paginación de {{ $label }}" @if($paginator instanceof \App\Support\PaginadorGrillaContinua) data-grid-window='@json($paginator->ventana)' @endif>
         <div class="hub-ig-page-controls">
             <button type="button" class="hub-ig-page-button" wire:click="gotoPage(1, '{{ $paginator->getPageName() }}')" @disabled($paginator->onFirstPage()) aria-label="Primera página" title="Primera página"><flux:icon name="chevron-double-left" /></button>
             <button type="button" class="hub-ig-page-button" wire:click="previousPage('{{ $paginator->getPageName() }}')" @disabled($paginator->onFirstPage()) aria-label="Página anterior" title="Página anterior"><flux:icon name="chevron-left" /></button>

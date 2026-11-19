@@ -30,6 +30,9 @@ test('cada campo del alta tiene nombre accesible ayuda con ejemplo y enlace a su
         expect($xpath->query('.//button[@aria-haspopup="dialog"]', $campo)->length)->toBe(1);
         $control = $xpath->query('.//*[@id="captura-'.$modelo.'"]', $campo)->item(0);
         expect($control)->not->toBeNull();
+        expect($xpath->query('.//*[@data-catalogo-control-fila]/*[@data-catalogo-control]', $campo)->length)->toBe(1);
+        expect($xpath->query('.//*[@data-catalogo-control]//*[@data-catalogo-ayuda]', $campo)->length)->toBe(0);
+        expect($xpath->query('.//*[@data-catalogo-control-fila]/*[@data-catalogo-ayuda="'.$modelo.'"]', $campo)->length)->toBe(1);
         $dialogo = $xpath->query('.//dialog', $campo)->item(0);
         expect($dialogo->textContent)->toContain('Ejemplo:', 'Cerrar ayuda');
     }

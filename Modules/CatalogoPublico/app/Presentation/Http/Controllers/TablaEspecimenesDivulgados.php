@@ -19,6 +19,7 @@ use Modules\CatalogoPublico\Infrastructure\ElegibilidadGeograficaPortal;
 #[Layout('layouts.app', params: ['title' => 'Cátalogo divulgado'])]
 final class TablaEspecimenesDivulgados extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     use WithPagination;
 
     #[Url(as: 'catalogo')]
@@ -299,9 +300,7 @@ final class TablaEspecimenesDivulgados extends Component
             $query->where('te.colector', $this->colector);
         }
 
-        $especimenes = $query
-            ->orderBy('te.occurrence_id')
-            ->paginate(25);
+        $especimenes = $this->paginarGrilla($query->orderBy('te.occurrence_id'),25);
 
         foreach ($especimenes->items() as $fila) {
             $fila->family = $familiasPorEspecie[$fila->species_id] ?? null;

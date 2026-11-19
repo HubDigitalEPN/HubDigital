@@ -6,8 +6,8 @@ namespace App\Support;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Symfony\Component\Finder\Finder;
 
 final class TextosSistema
 {
@@ -19,9 +19,9 @@ final class TextosSistema
     /** Inventario editorial de vistas, etiquetas y mensajes; nunca evalúa código. */
     public static function catalogo(): array
     {
-        return Cache::remember('textos-sistema-catalogo-v4', 300, static function (): array {
+        return Cache::remember('textos-sistema-catalogo-v6', 300, static function (): array {
             $catalogo = [];
-            $agregar = static function (string $texto, string $pantalla) use (&$catalogo): void {
+            $agregar = static function (string $texto, string $pantalla, string $campo = 'Texto o mensaje visible') use (&$catalogo): void {
                 $texto = self::normalizar($texto);
                 if ($texto === '' || mb_strlen($texto) > 5000 || !preg_match('/\p{L}/u', $texto)
                     || !preg_match('/^[\p{L}\p{N}¿¡]/u', $texto)
@@ -29,11 +29,15 @@ final class TextosSistema
                     || preg_match('/^[A-Za-z_][A-Za-z0-9_.]*\s*\(|^[A-Z]{1,3}\d+$|^[A-Za-z_$][A-Za-z0-9_$]*(?:Error|Exception)$|^[a-z]+(?:[A-Z][A-Za-z0-9_]*)+$/D', $texto)
                     || preg_match('/\b(?:SELECT|FROM|WHERE|JOIN|CASE WHEN)\b|\b(?:config|route|asset|session|view)\s*\(/u', $texto)) return;
                 $id = hash('sha256', $texto);
-                $catalogo[$id] ??= ['original' => $texto, 'pantallas' => []];
+                $catalogo[$id] ??= ['original' => $texto, 'pantallas' => [], 'ubicaciones' => []];
                 $catalogo[$id]['pantallas'][$pantalla] = $pantalla;
+                $catalogo[$id]['ubicaciones'][$pantalla.'|'.$campo] = ['pantalla'=>$pantalla,'campo'=>$campo];
             };
             $directorios = [resource_path('views'), resource_path('js'), public_path('js'), app_path('Livewire'), base_path('Modules')];
-            foreach ($directorios as $directorio) foreach (File::allFiles($directorio) as $archivo) {
+            // El inventario es del código editorial propio. No recorrer miles
+            // de dependencias ni sus copias compiladas para abrir un texto.
+            $archivos = self::archivos($directorios);
+            foreach ($archivos as $archivo) {
                 $ruta = str_replace('\\', '/', $archivo->getPathname());
                 if ((!str_ends_with($ruta, '.php') && !str_ends_with($ruta, '.js')) || str_contains($ruta, '/tests/') || str_contains($ruta, '/database/')) continue;
                 if (str_contains($ruta, '/Modules/') && !str_contains($ruta, '/resources/views/') && !str_contains($ruta, '/Presentation/')) continue;
@@ -55,8 +59,8 @@ final class TextosSistema
                         $texto = preg_replace('/{{.*?}}|{!!.*?!!}|@(?:if|elseif|foreach|php|error|class)\([^\n]*?\)|@\w+/su', '', $texto);
                         $agregar($texto, $pantalla);
                     }
-                    preg_match_all('/(?:label|title|placeholder|aria-label)="([^"{}$]+)"/u', $html, $atributos);
-                    foreach ($atributos[1] as $texto) $agregar($texto, $pantalla);
+                    preg_match_all('/(label|title|placeholder|aria-label)="([^"{}$]+)"/u', $html, $atributos, PREG_SET_ORDER);
+                    foreach ($atributos as $atributo) $agregar($atributo[2], $pantalla, match($atributo[1]){'label'=>'Etiqueta del campo «'.$atributo[2].'»','placeholder'=>'Indicación dentro del campo «'.$atributo[2].'»','title'=>'Ayuda emergente «'.$atributo[2].'»',default=>'Nombre accesible del control «'.$atributo[2].'»'});
                 }
                 foreach (token_get_all($fuente) as $token) {
                     if (!is_array($token) || $token[0] !== T_CONSTANT_ENCAPSED_STRING) continue;
@@ -73,6 +77,13 @@ final class TextosSistema
             uasort($catalogo, static fn ($a, $b) => strnatcasecmp($a['original'], $b['original']));
             return $catalogo;
         });
+    }
+
+    private static function archivos(array $directorios): Finder
+    {
+        return Finder::create()->files()->in($directorios)
+            ->exclude(['node_modules', 'vendor', 'build', 'build-catalogopublico', 'build-gestionprestamosrecepciones', 'build-inventariogestioncoleccion'])
+            ->name(['*.php', '*.js']);
     }
 
     private static function pantalla(string $ruta): string

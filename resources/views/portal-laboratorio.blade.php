@@ -18,7 +18,7 @@
                 </header>
                 @php($ramas = ['entomologia' => ['personas' => ['adrian', 'vladimir', 'david']]] + config('pagina-laboratorio.ramas'))
                 <nav class="lab-branch-nav" aria-label="Áreas de investigación">
-                    @foreach($ramas as $rama => $datosRama)<a href="#rama-{{ $rama }}">{{ $rama === 'entomologia' ? 'Entomología' : $t['rama_'.$rama.'_titulo'] }}</a>@endforeach
+                    @foreach($ramas as $rama => $datosRama)<a href="#rama-{{ $rama }}">{{ $t['rama_'.$rama.'_titulo'] }}</a>@endforeach
                 </nav>
                 @foreach($ramas as $rama => $datosRama)
                     <section class="lab-branch" aria-labelledby="rama-{{ $rama }}" data-lab-branch="{{ $rama }}">

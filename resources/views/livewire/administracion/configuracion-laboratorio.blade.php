@@ -1,6 +1,6 @@
 <div class="hub-workspace mx-auto max-w-7xl space-y-5 p-3 sm:p-5">
     <header class="hub-page-header">
-        <div><h1 class="hub-page-title">Página El Laboratorio</h1><p class="mt-2 text-sm text-text-secondary">Edita la presentación, los perfiles y cada fotografía de la página pública.</p></div>
+        <div><h2 class="hub-section-title">Página El Laboratorio</h2><p class="mt-2 text-sm text-text-secondary">Arrastra las fotos y los textos sobre la página. Haz doble clic en un texto para editarlo en el mismo contexto.</p></div>
         <a href="{{ route('laboratorio') }}" target="_blank" rel="noopener" class="text-sm font-semibold text-science-blue underline">Ver página pública</a>
     </header>
     @if(session('laboratorio-guardado'))<p role="status" data-hub-feedback="success" class="hub-panel p-4 text-success">{{ session('laboratorio-guardado') }}</p>@endif
@@ -9,7 +9,7 @@
         @php($catalogoDiseno = array_map(fn ($elemento) => array_intersect_key($elemento, array_flip(['tipo', 'etiqueta'])), \App\Services\DisenoLaboratorio::elementos($pagina)))
         <section class="hub-panel space-y-4 p-4" aria-labelledby="lab-layout-title" wire:ignore x-data="laboratorioEditor($wire, @js($posiciones), @js($catalogoDiseno))" x-on:laboratorio-publicado.window="recargar()">
             <h2 id="lab-layout-title" class="hub-section-title">Posición libre de fotos y textos</h2>
-            <p class="text-sm text-text-secondary">Selecciona y arrastra cualquier elemento. Puedes cambiar su tamaño y colocarlo encima o debajo de otros. Guarda primero los nuevos textos o fotos para verlos aquí. En móviles, el contenido se ordena de arriba abajo para mantener su lectura.</p>
+            <p class="text-sm text-text-secondary">Arrastra para mover; las flechas ajustan la posición con el teclado. Haz doble clic en un texto para editarlo. Puedes cambiar tamaños y capas. Guarda para publicar en PostgreSQL. En móviles, el contenido conserva un orden de lectura vertical.</p>
             <div class="lab-layout-controls">
                 <label class="lab-admin-field">Elemento<select x-model="seleccion" x-on:change="elegir(seleccion)"><option value="">Selecciona un elemento</option><template x-for="(elemento,id) in catalogo" :key="id"><option :value="id" x-text="elemento.etiqueta"></option></template></select></label>
                 <template x-if="seleccion && posiciones[seleccion]">
@@ -92,4 +92,13 @@
             <span wire:loading role="status" class="text-sm text-text-secondary">Guardando contenido y fotografías…</span>
         </div>
     </form>
+    <flux:modal wire:model="textoAbierto" aria-labelledby="lab-texto-seleccionado" class="w-full max-w-xl">
+        @if($campoSeleccionado !== '')
+            <h2 id="lab-texto-seleccionado" class="hub-section-title">Texto seleccionado en la página</h2>
+            @if($campoSeleccionado === 'personal_titulo')<label class="mt-4 grid gap-2 text-sm">Palabra destacada<input wire:model="textos.personal_destacado" maxlength="5000" class="rounded border border-border p-3"></label>@endif
+            <label class="mt-4 grid gap-2 text-sm">Contenido<textarea rows="7" maxlength="20000" wire:model="{{ $modeloSeleccionado }}" class="w-full rounded border border-border p-3"></textarea></label>
+            @error($modeloSeleccionado)<p role="alert" class="text-error">{{ $message }}</p>@enderror
+            <div class="mt-4 flex justify-end gap-3"><flux:button wire:click="$set('textoAbierto', false)">Cerrar editor</flux:button><flux:button variant="primary" wire:click="guardar" wire:loading.attr="disabled">Guardar y publicar</flux:button></div>
+        @endif
+    </flux:modal>
 </div>

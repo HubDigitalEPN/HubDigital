@@ -9,6 +9,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 
 trait WithInteractiveGrid
 {
+    use WithContinuousGrid;
     public string $gridSort = '';
 
     public string $gridDirection = 'asc';

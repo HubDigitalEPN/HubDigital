@@ -9,7 +9,7 @@
                             {{ $inicio('hero_titulo') }}
                         </h1>
                         @php($descripcionPortada = explode(' con la sociedad ', $inicio('hero_descripcion'), 2))
-                        <p class="portal-hero-description mt-6 text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
+                        <p data-portal-copy="inicio.hero_descripcion" class="portal-hero-description mt-6 text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
                             <span>{{ $descripcionPortada[0] }}</span>@if(isset($descripcionPortada[1])) <span>con la sociedad {{ $descripcionPortada[1] }}</span>@endif
                         </p>
 

@@ -58,6 +58,7 @@
         </div>
 
         <x-inventariogestioncoleccion::paginacion-tabla
+            :continuidad="$continuidad"
             :pagina="$page" :total-paginas="$totalPaginas" :total-items="$totalItems"
             :inicio="$inicio" :fin="$fin" />
     </div>

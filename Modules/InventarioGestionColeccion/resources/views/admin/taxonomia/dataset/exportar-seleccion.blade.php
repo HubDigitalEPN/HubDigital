@@ -97,7 +97,7 @@
                     @endforeach
                 </div>
 
-                <x-grid-pages :page="$page" :last="$totalPaginas" :total="$total" :per-page="$perPage" action="irAPagina" label="Especimenes seleccionables" />
+                <x-grid-pages :page="$page" :last="$totalPaginas" :total="$total" :per-page="$perPage" :continuidad="$gridVentana" action="irAPagina" label="Especimenes seleccionables" />
             </div>
         @endif
     @else

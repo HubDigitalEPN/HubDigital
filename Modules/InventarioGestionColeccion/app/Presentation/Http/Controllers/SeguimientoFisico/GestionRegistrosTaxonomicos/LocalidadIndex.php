@@ -23,6 +23,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Localidades'])]
 final class LocalidadIndex extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     use TraduceErroresPersistencia;
 
     /** @var array<int, array<string, mixed>> */
@@ -357,14 +358,22 @@ final class LocalidadIndex extends Component
 
     public function render(): View
     {
-        $offset = ($this->page - 1) * $this->perPage;
+        $handler=app(ListarLocalidadesHandler::class);
+        $this->cargarLocalidades($handler,$this->page);
+        [$offset,$limite]=$this->rangoGrillaContinua('localidades',$this->totalItems,$this->perPage,$this->page);
+        $filas=[];
+        for($p=$this->gridVentana['desde'];$p<=$this->gridVentana['hasta'];$p++){
+            if($p===$this->page)array_push($filas,...$this->localidades);
+            else array_push($filas,...array_map(fn($l)=>(array)$l,$handler->handle(new ListarLocalidadesInput(page:$p,perPage:$this->perPage))->items));
+        }
 
         return view('inventariogestioncoleccion::admin.taxonomia.localidades.index', [
-            'localidadesPaginadas' => $this->localidades,
+            'localidadesPaginadas' => $filas,
+            'continuidad'=>$this->gridVentana,
             'totalPaginas' => $this->totalPaginas,
             'totalItems' => $this->totalItems,
             'inicio' => $this->totalItems > 0 ? $offset + 1 : 0,
-            'fin' => min($offset + $this->perPage, $this->totalItems),
+            'fin' => min($offset + count($filas), $this->totalItems),
         ]);
     }
 }

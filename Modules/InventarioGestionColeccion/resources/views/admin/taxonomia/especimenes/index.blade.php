@@ -107,7 +107,10 @@
 
      Pasar los ids como ARGUMENTO de método los serializa como un array JSON
      plano, sin diffing por clave. Y marcar deja de costar peticiones. --}}
-<div class="space-y-4 p-4 sm:p-6"
+@php
+    $puedeBorrar = \App\Support\BotonesSistema::visible('inventario.eliminar');
+@endphp
+<div class="space-y-4 p-4 sm:p-6" x-on:especimenes-eliminados.window="limpiar(); cerrarCelda()"
      x-data="{
          sel: {},
          get n() { return Object.keys(this.sel).length },
@@ -505,11 +508,14 @@
                          @click="$wire.abrirPanelMasivo(ids())" x-bind:disabled="n === 0">
                 Editar en bloque
             </flux:button>
+            @if($puedeBorrar)
+                <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.abrirBorrado(ids())" x-bind:disabled="n === 0">Borrar selección</flux:button>
+            @endif
         </div>
 
         {{-- Escritorio: tabla densa tipo hoja de cálculo, con encabezado y
              columna de índice fijos mientras se hace scroll. --}}
-        <div class="relative hidden max-h-[70vh] overflow-auto md:block"
+        <div class="relative hidden md:block"
              x-ref="hoja" @scroll="cerrarCelda()">
             {{-- Editor flotante: uno solo para toda la tabla.
 
@@ -653,6 +659,11 @@
                                             title="Ver ficha completa" aria-label="Ficha de {{ $especimen['codigoCatalogo'] }}">
                                         <svg class="size-4"><use href="#ico-ficha" /></svg>
                                     </button>
+                                    @if($puedeBorrar)
+                                        <button type="button" class="{{ $btnFila }} text-error" wire:click="abrirBorrado(['{{ $especimen['id'] }}'])" aria-label="Borrar {{ $especimen['codigoCatalogo'] }}" title="Borrar definitivamente">
+                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/></svg>
+                                        </button>
+                                    @endif
                                     <button type="button" class="{{ $btnFila }}"
                                             wire:click="mostrarQr('{{ $especimen['id'] }}')"
                                             wire:loading.attr="disabled"
@@ -716,6 +727,9 @@
                         <flux:button variant="ghost" icon="pencil" wire:click="abrirEditModal('{{ $especimen['id'] }}')">
                             Editar
                         </flux:button>
+                        @if($puedeBorrar)
+                            <flux:button variant="danger" icon="trash" wire:click="abrirBorrado(['{{ $especimen['id'] }}'])" aria-label="Borrar {{ $especimen['codigoCatalogo'] }}">Borrar</flux:button>
+                        @endif
                         <flux:button variant="ghost" icon="qr-code"
                                      wire:click="mostrarQr('{{ $especimen['id'] }}')"
                                      wire:loading.attr="disabled"
@@ -736,11 +750,19 @@
         </div>
 
         <x-inventariogestioncoleccion::paginacion-tabla
+            :continuidad="$continuidad"
             :pagina="$page" :total-paginas="$totalPaginas" :total-items="$totalItems"
             :inicio="$inicio" :fin="$fin" />
     </div>
 
     {{-- ── Modal: Ficha completa ───────────────────────────────────────────── --}}
+    <flux:modal wire:model="borradoAbierto" aria-labelledby="borrado-especimen-titulo" class="w-full max-w-lg">
+        <h2 id="borrado-especimen-titulo" class="hub-section-title">Borrar definitivamente {{ count($borradoIds) }} espécimen(es)</h2>
+        <p class="mt-3 text-sm">Esta acción es irreversible. Los especímenes y sus vínculos de catálogo se eliminarán. Los expedientes, documentos firmados y su historial se conservarán.</p>
+        <ul class="my-4 max-h-48 overflow-auto rounded border border-border p-3 text-sm" aria-label="Especímenes que se borrarán">@foreach($borradoCodigos as $codigo)<li class="break-all">{{ $codigo }}</li>@endforeach</ul>
+        @if($errorMessage)<p role="alert" class="mb-3 text-error">{{ $errorMessage }}</p>@endif
+        <div class="flex flex-wrap justify-end gap-3"><flux:button wire:click="$set('borradoAbierto', false)">Cancelar</flux:button><flux:button variant="danger" wire:click="confirmarBorrado" wire:loading.attr="disabled" wire:target="confirmarBorrado">Eliminar definitivamente</flux:button></div>
+    </flux:modal>
     <flux:modal wire:model="fichaAbierta" class="w-full max-w-5xl">
         @if($fichaAbierta)
             @php

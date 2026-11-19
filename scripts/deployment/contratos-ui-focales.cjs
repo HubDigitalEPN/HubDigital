@@ -360,9 +360,32 @@ definitions.depositos_contenido.sources = definitions.depositos_contenido.source
 definitions.instituciones_unificadas.sources = definitions.instituciones_unificadas.sources.filter(file => file !== 'Modules/InventarioGestionColeccion/routes/web.php');
 
 definitions.publicacion_unificada.checks.push('noReview','contrast');
-definitions.contenidos_unificados.checks.push('contrast');
-definitions.catalogo_alta.checks.push('help','helpFocus','helpFits','errorVisible','errorFocus','createdLink');
-definitions.catalogo_importacion.checks.push('help','helpFocus','helpFits','guide','guideFits','errorVisible','separator','preview');
+definitions.contenidos_unificados.checks.push('contrast','laboratorio','fichas');
+definitions.contenidos_unificados.sources=definitions.contenidos_unificados.sources.filter(file=>!file.endsWith('/configuracion-textos-portal.blade.php'));
+definitions.contenidos_unificados.sources.push('resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php');
+Object.assign(definitions, {
+    portal_editor_visual:{sources:['app/Support/EditorPortal.php','app/Livewire/Administracion/ConfiguracionTextosPortal.php','public/js/portal-editor.js','public/js/textos-sistema.js','resources/views/livewire/administracion/editor-visual-portal.blade.php','resources/views/components/portal-information-text.blade.php'],checks:['realPage','selected','saved','reloaded','restored','fit','noNavigation']},
+    laboratorio_editor:{sources:['app/Livewire/Administracion/ConfiguracionLaboratorio.php','resources/views/livewire/administracion/configuracion-laboratorio.blade.php','public/js/laboratorio-layout.js'],checks:['canvas','textEditor','keyboard','saved','reloaded','restored','fit']},
+    catalogo_borrado:{sources:['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/EliminarEspecimenes.php','Modules/InventarioGestionColeccion/database/migrations/2026_11_18_220000_create_eliminaciones_especimenes.php'],checks:['individual','cancelled','deleted','batch','selectionCleared','fit']},
+});
+for(const id of ['portal_editor_visual','laboratorio_editor','catalogo_borrado'])for(const file of definitions[id].sources)(owner[file]??=[]).push(id);
+for(const file of ['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php']){owner[file].push('catalogo_borrado');contracts[file].push('tests/Feature/EspecimenBorradoDefinitivoTest.php');}
+for(const file of definitions.portal_editor_visual.sources)contracts[file]=['tests/Feature/EditorVisualPortalesTest.php','tests/Feature/PortalTextosAdministracionTest.php'];
+for(const file of definitions.laboratorio_editor.sources)contracts[file]=['tests/Feature/PaginaLaboratorioTest.php'];
+contracts['app/Livewire/Administracion/ConfiguracionLaboratorio.php'].push('tests/Feature/EditorVisualPortalesTest.php');
+contracts['resources/views/livewire/administracion/configuracion-laboratorio.blade.php'].push('tests/Feature/EditorVisualPortalesTest.php');
+owner['app/Support/TextosSistema.php']=['portal_editor_visual','contenidos_unificados'];
+contracts['app/Support/TextosSistema.php']=['tests/Feature/EditorVisualPortalesTest.php','tests/Unit/TextosSistemaFuentesTest.php'];
+for(const file of definitions.catalogo_borrado.sources)contracts[file]=['tests/Feature/EspecimenBorradoDefinitivoTest.php'];
+contracts['config/botones.php'].push('tests/Feature/EspecimenBorradoDefinitivoTest.php');
+contracts['routes/web.php'].push('tests/Feature/EditorVisualPortalesTest.php','tests/Feature/PortalFichasTaxonomicasTest.php','tests/Feature/PaginaLaboratorioTest.php');
+owner['resources/views/portal-inicio.blade.php']=['portal_editor_visual'];
+contracts['resources/views/portal-inicio.blade.php']=['tests/Feature/EditorVisualPortalesTest.php'];
+// La cabecera conserva sus consumidores históricos. El editor es además un contrato propio.
+owner['resources/views/partials/head.blade.php'].push('portal_editor_visual');
+contracts['resources/views/partials/head.blade.php']=['tests/Feature/EditorVisualPortalesTest.php'];
+definitions.catalogo_alta.checks.push('help','helpFocus','helpFits','helpPosition','errorVisible','errorFocus','createdLink');
+definitions.catalogo_importacion.checks.push('help','helpFocus','helpFits','helpPosition','guide','guideFits','errorVisible','separator','preview');
 definitions.catalogo_importacion.sources.push('Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php');
 owner['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php']=['catalogo_importacion'];
 for (const file of ['resources/views/components/catalogo-ayuda.blade.php','Modules/InventarioGestionColeccion/app/Presentation/Support/AyudasCapturaCatalogo.php','resources/js/hub-notifications.js']) owner[file]=['catalogo_alta','catalogo_importacion'];
@@ -372,16 +395,85 @@ for (const file of ['resources/views/components/catalogo-ayuda.blade.php','resou
 contracts['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php'].push('tests/Feature/CatalogoAyudasCapturaTest.php');
 contracts['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php']=['tests/Feature/ImportacionCatalogoMatricesTest.php','tests/Feature/CatalogoAyudasCapturaTest.php'];
 
+// Contratos propios de la edición contextual y de la ventana continua compartida.
+definitions.editor_wizard={sources:['app/Support/VistaPreviaWizard.php','app/Livewire/Administracion/ConfiguracionTextosWizard.php','resources/views/livewire/administracion/configuracion-textos-wizard.blade.php','public/js/portal-editor.js'],checks:['selected','saved','reloaded','restored','steps','inert','apex','fit']};
+definitions.textos_contexto={sources:['app/Support/TextosSistema.php','app/Livewire/Administracion/ConfiguracionTextosSistema.php','resources/views/livewire/administracion/configuracion-textos-sistema.blade.php','public/js/formularios-apex.js'],checks:['apex','aligned','location','saved','reloaded','restored','fit']};
+definitions.grillas_continuas={sources:['app/Livewire/Concerns/WithContinuousGrid.php','app/Support/PaginadorGrillaContinua.php','app/Livewire/Concerns/WithInteractiveGrid.php','public/js/interactive-grid.js','public/css/interactive-grid.css','resources/views/components/grid-frame.blade.php','resources/views/components/interactive-grid.blade.php','resources/views/components/grid-pages.blade.php','resources/views/components/grid-pagination.blade.php','resources/views/components/grid-column-menu.blade.php'],checks:['wheel','keyboard','bounded','previous','menu','sorted','filtered','fit']};
+for(const id of ['editor_wizard','textos_contexto','grillas_continuas'])for(const file of definitions[id].sources)(owner[file]??=[]).push(id);
+for(const file of definitions.editor_wizard.sources)(contracts[file]??=[]).push('tests/Feature/EditorWizardContextoTest.php');
+for(const file of definitions.textos_contexto.sources)(contracts[file]??=[]).push('tests/Feature/EditorWizardContextoTest.php');
+for(const file of definitions.grillas_continuas.sources)(contracts[file]??=[]).push('tests/Feature/GrillasContinuasTest.php');
+for(const name of ['CargosCatalogo','LocalidadesEcuadorCatalogo','InstitucionesCatalogo','GruposAnimalesCatalogo','GestionUsuarios','FuentesRevocacionFirma','FichasTaxonomicasPortal']){
+    const file=`app/Livewire/Administracion/${name}.php`;(owner[file]??=[]).push('grillas_continuas');(contracts[file]??=[]).push('tests/Feature/GrillasContinuasTest.php');
+}
+for(const name of ['EspecimenIndex','TaxonIndex','LocalidadIndex','ExportarEspecimenesGbif']){
+    const file=`Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/${name}.php`;(owner[file]??=[]).push('grillas_continuas');(contracts[file]??=[]).push('tests/Feature/GrillasContinuasTest.php');
+}
+for(const file of ['Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/dataset/exportar-seleccion.blade.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/localidades/index.blade.php','Modules/InventarioGestionColeccion/resources/views/components/paginacion-tabla.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/TablaEspecimenesDivulgados.php','Modules/CatalogoPublico/resources/views/livewire/tabla-especimenes-divulgados.blade.php']){
+    (owner[file]??=[]).push('grillas_continuas');(contracts[file]??=[]).push('tests/Feature/GrillasContinuasTest.php');
+}
+for(const file of ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/RegistrosTaxonExplorador.php','Modules/CatalogoPublico/resources/views/livewire/registros-taxon-explorador.blade.php']){
+    (owner[file]??=[]).push('grillas_continuas');(contracts[file]??=[]).push('tests/Feature/PortalExploradorTaxonomicoTest.php');
+}
+for(const file of ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/ExploraCeldaMapa.php','Modules/CatalogoPublico/resources/views/components/detalle-celda-mapa.blade.php']){
+    (owner[file]??=[]).push('grillas_continuas');(contracts[file]??=[]).push('tests/Feature/PortalCatalogoSeleccionTest.php');
+}
+contracts['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php']=['tests/Feature/PortalChatMatrizDatosTest.php'];
+definitions.menu_curaduria.checks.push('administration');
+definitions.portal_editor_visual.checks.push('immediate','positions');
+definitions.editor_wizard.checks.push('positions','scroll');
+definitions.contenidos_unificados.checks.push('fichaClarity','fichaInfinite','fichaSaved');
+for(const file of ['app/Support/DisposicionContenido.php','public/js/contenido-disposicion.js','public/css/contenidos-editor.css','resources/views/livewire/administracion/partials/herramientas-disposicion.blade.php']){
+    owner[file]=['portal_editor_visual','editor_wizard'];contracts[file]=['tests/Feature/EditorVisualPortalesTest.php','tests/Feature/EditorWizardContextoTest.php'];
+}
+owner['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito.blade.php']=['editor_wizard'];
+contracts['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito.blade.php']=['tests/Feature/EditorWizardContextoTest.php'];
+contracts['app/Support/DisposicionContenido.php']=['tests/Feature/EditorVisualPortalesTest.php','tests/Feature/EditorWizardContextoTest.php'];
+owner['Modules/GestionPrestamosRecepciones/resources/views/components/sum-cell.blade.php']=['editor_wizard'];
+contracts['Modules/GestionPrestamosRecepciones/resources/views/components/sum-cell.blade.php']=['tests/Feature/EditorWizardContextoTest.php'];
+contracts['resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php']=['tests/Feature/PortalFichasTaxonomicasTest.php'];
+owner['public/css/contenidos-editor.css']=['portal_editor_visual','editor_wizard','textos_contexto','contenidos_unificados','laboratorio_editor'];
+
 function inputs(root, id) {
     if (!definitions[id]) throw Error('Contrato UI desconocido.');
     const sources=[...new Set([...definitions[id].sources,...Object.keys(owner).filter(file=>owner[file].includes(id))])];
-    return Object.fromEntries([__filename,path.join(root,'tests/Browser/contratos-ui-focales.mjs'),...sources.map(file=>path.join(root,file)),path.join(root,'public/build/manifest.json')].map(file=>[path.relative(root,file).replaceAll('\\','/'),hash(fs.readFileSync(file))]));
+    return Object.fromEntries([__filename,path.join(root,'tests/Browser/contratos-ui-focales.mjs'),...sources.map(file=>path.join(root,file)),path.join(root,'public/build/manifest.json')].map(file=>[path.relative(root,file).replaceAll('\\','/'),fs.existsSync(file)?hash(fs.readFileSync(file)):'eliminado']));
 }
 function status(root, id) {
     let receipt;try {receipt=JSON.parse(fs.readFileSync(path.join(root,'.local/validation/ui-focal',id+'.json'),'utf8'));} catch {return false;}
-    return receipt.root===fs.realpathSync(root) && receipt.provider==='opera_neon' && receipt.profile==='NeonCodexQA'
+    const valid=receipt.root===fs.realpathSync(root) && receipt.provider==='opera_neon' && receipt.profile==='NeonCodexQA'
         && Number.isFinite(Date.parse(receipt.executed_at)) && definitions[id].checks.every(check=>receipt.checks?.[check]===true)
-        && JSON.stringify(receipt.inputs)===JSON.stringify(inputs(root,id));
+    ;
+    if(!valid)return false;
+    const current=inputs(root,id);if(JSON.stringify(receipt.inputs)===JSON.stringify(current))return true;
+    try{
+        const witness=JSON.parse(fs.readFileSync(path.join(root,'.local/validation/ui-focal/compatibilidad',id+'.json'),'utf8'));
+        return witness.root===fs.realpathSync(root)&&witness.caso===id&&witness.original_executed_at===receipt.executed_at
+            &&witness.receipt_sha256===hash(fs.readFileSync(path.join(root,'.local/validation/ui-focal',id+'.json')))
+            &&witness.current_inputs_sha256===hash(JSON.stringify(current))
+            &&witness.fragment_sha256===hash(runnerFragment(fs.readFileSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs'),'utf8'),id));
+    }catch{return false;}
+}
+function runnerFragment(source,id){
+    source=source.replace(/\r\n/g,'\n');const marks=[...source.matchAll(/^    (?:} else )?if\(caso==='([^']+)'/gm)],index=marks.findIndex(m=>m[1]===id);
+    if(index<0)throw Error('Falta el cuerpo completo del caso UI.');
+    const body=source.slice(marks[index].index,marks[index+1]?.index??source.length);
+    let common=source.slice(0,marks[0].index);
+    // Esta fábrica nueva solo es invocada por los dos editores. No modifica
+    // la ejecución ni las aserciones de los otros recorridos.
+    if(!body.includes('comprobarOrden'))common=common.replace(/    const comprobarOrden=async[\s\S]*?(?=    const comprobarAyudas=)/,'');
+    return common+'\n'+body;
+}
+function preserveCompatible(root,id,originalRunner){
+    const file=path.join(root,'.local/validation/ui-focal',id+'.json'),bytes=fs.readFileSync(file),receipt=JSON.parse(bytes),current=inputs(root,id);
+    if(receipt.root!==fs.realpathSync(root)||receipt.provider!=='opera_neon'||receipt.profile!=='NeonCodexQA'||!Number.isFinite(Date.parse(receipt.executed_at))||!definitions[id].checks.every(c=>receipt.checks[c]===true))throw Error('Falta una aprobación completa original.');
+    if(hash(Buffer.from(originalRunner))!==receipt.inputs['tests/Browser/contratos-ui-focales.mjs'])throw Error('El runner original no coincide con la huella de la ejecución.');
+    const controls=['scripts/deployment/contratos-ui-focales.cjs','tests/Browser/contratos-ui-focales.mjs'];
+    if(Object.entries(current).some(([file,value])=>!controls.includes(file)&&receipt.inputs[file]!==value))throw Error('Cambió una fuente propia o el build de este caso.');
+    const actualRunner=fs.readFileSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs'),'utf8'),fragment=runnerFragment(actualRunner,id);
+    if(fragment!==runnerFragment(originalRunner,id))throw Error('Cambió el cuerpo o una ayuda compartida del recorrido.');
+    const witness={root:fs.realpathSync(root),caso:id,reused_at:new Date().toISOString(),original_executed_at:receipt.executed_at,receipt_sha256:hash(bytes),original_runner_sha256:hash(Buffer.from(originalRunner)),fragment_sha256:hash(fragment),current_inputs_sha256:hash(JSON.stringify(current)),reason:'Mismas fuentes propias, build, cuerpo completo y aserciones; solo cambió el selector u otros recorridos. No se repitió este caso ni se renovó su fecha.'};
+    const dir=path.join(root,'.local/validation/ui-focal/compatibilidad');fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,id+'.json'),JSON.stringify(witness,null,2)+'\n');return witness;
 }
 function verify(root) { for (const id of Object.keys(definitions)) if (!status(root,id)) throw Error(`Falta ejecutar el contrato UI focal ${id} en localhost mediante MCP opera_neon sobre las fuentes/build actuales.`); }
 function approve(root,id,checks,before) {
@@ -391,4 +483,4 @@ function approve(root,id,checks,before) {
     const dir=path.join(root,'.local/validation/ui-focal');fs.mkdirSync(dir,{recursive:true});
     fs.writeFileSync(path.join(dir,id+'.json'),JSON.stringify({root:fs.realpathSync(root),provider:'opera_neon',profile:'NeonCodexQA',executed_at:new Date().toISOString(),checks,inputs:current},null,2)+'\n');
 }
-module.exports={definitions,owner,contracts,inputs,status,verify,approve};
+module.exports={definitions,owner,contracts,inputs,status,verify,approve,preserveCompatible,runnerFragment};

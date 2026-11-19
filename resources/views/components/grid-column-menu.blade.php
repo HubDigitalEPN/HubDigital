@@ -12,7 +12,7 @@
         <label class="hub-ig-dialog-search">Condición<select x-model="columnOperator"><option value="contains">Contiene</option><option value="equals">Es igual a</option><option value="starts">Empieza por</option><option value="notContains">No contiene</option><option value="empty">Sin valor</option></select></label>
         <label class="hub-ig-dialog-search">Buscar en esta columna<input type="search" x-model="columnTerm" maxlength="240" :disabled="columnOperator === 'empty'" autofocus></label>
         <div class="hub-ig-column-buttons"><button type="button" x-on:click="applyColumn()" class="hub-ig-button hub-ig-button-primary">Aplicar</button><button type="button" class="hub-ig-button" x-on:click="applyColumn('', 'contains')">Quitar filtro</button></div>
-        <label class="hub-ig-dialog-search">Valores de esta página<input type="search" x-model="valueSearch" placeholder="Buscar un valor"></label>
+        <label class="hub-ig-dialog-search">Valores cargados<input type="search" x-model="valueSearch" placeholder="Buscar un valor"></label>
         <div class="hub-ig-value-list"><template x-for="value in columnValues" :key="value"><button type="button" x-text="value" x-on:click="applyColumn(value, 'equals')"></button></template><p x-show="columnValues.length === 0">Sin valores disponibles.</p></div>
     </div>
 </dialog>

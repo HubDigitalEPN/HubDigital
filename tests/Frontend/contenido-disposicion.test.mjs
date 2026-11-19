@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+const source=readFileSync(new URL('../../public/js/contenido-disposicion.js',import.meta.url),'utf8');
+function runtime(){const window={};runInNewContext(source,{window,document:{readyState:'loading',addEventListener(){}},location:{reload(){throw Error('No debe recargar al fallar');}}});return window;}
+function tree(){
+    const parent={children:[]};
+    function node(id){return {dataset:{disposicionId:id},parentElement:parent,before(slot){slot.parentElement=parent;parent.children.splice(parent.children.indexOf(this),0,slot);},replaceWith(other){const previous=parent.children.indexOf(other);if(previous>=0)parent.children.splice(previous,1);parent.children.splice(parent.children.indexOf(this),1,other);}};}
+    const a=node('a'),b=node('b'),c=node('c'),fixed=node('fixed');parent.children=[a,fixed,b,c];
+    a.ownerDocument=b.ownerDocument=c.ownerDocument={createComment:()=>node('slot')};return {parent,items:[a,b,c]};
+}
+test('reorganizar conserva nodos valores y objetos ajenos en sus posiciones',()=>{
+    const w=runtime(),g=tree(),original=g.items.slice();w.hubDisposicionContenido.arrange(g,['c','b','a']);
+    assert.deepEqual(g.parent.children.map(n=>n.dataset.disposicionId),['c','fixed','b','a']);
+    assert.ok(original.every(n=>g.parent.children.includes(n)));
+    w.hubDisposicionContenido.arrange(g,['a','b','c']);assert.deepEqual(g.parent.children.map(n=>n.dataset.disposicionId),['a','fixed','b','c']);
+});
+test('una configuración con identidades obsoletas no pierde ni duplica objetos',()=>{
+    const w=runtime(),g=tree();w.hubDisposicionContenido.arrange(g,['unknown','c','c']);
+    assert.deepEqual(g.parent.children.map(n=>n.dataset.disposicionId),['c','fixed','a','b']);
+});
+test('un guardado rechazado conserva el cambio pendiente y la versión anterior',async()=>{
+    const w=runtime(),d=w.editorDisposicionContenido({guardarDisposicion:()=>Promise.reject(Error('conflicto'))},'wizard:0','anterior',{});
+    d.pendiente=true;await d.guardar();assert.equal(d.pendiente,true);assert.equal(d.version,'anterior');assert.equal(d.guardando,false);assert.match(d.mensaje,/No se guardaron/);
+});
+
+test('Cargo pierde solo la compensacion de su posicion original al reorganizar el wizard',()=>{
+    const w=runtime(),g=tree(),values=[];const cargo=g.items[2];cargo.matches=s=>s==='.hub-request-cell--cargo';cargo.style={setProperty:(...args)=>values.push(args)};
+    w.hubDisposicionContenido.arrange(g,['c','a','b']);assert.equal(values.length,0);
+    g.wizard=true;w.hubDisposicionContenido.arrange(g,['c','a','b']);assert.deepEqual(values,[['--hub-cargo-expansion','0rem']]);
+    assert.deepEqual(g.parent.children.map(n=>n.dataset.disposicionId),['c','fixed','a','b']);
+});

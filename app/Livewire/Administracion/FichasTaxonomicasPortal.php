@@ -86,7 +86,7 @@ final class FichasTaxonomicasPortal extends Component
             ->when(trim($this->busqueda) !== '', fn ($q) => $q->where('nombre_cientifico', 'ILIKE', '%'.addcslashes(mb_substr(trim($this->busqueda), 0, 120), '\\%_').'%'));
         if ($disponible) $lista->leftJoin(FichasTaxonomicas::TABLA.' as ficha', 'ficha.taxon_id', '=', 'taxonomia.taxones.id')
             ->addSelect('ficha.foto_ruta', 'ficha.publicada');
-        $lista = $this->ordenarConsultaGrilla($lista, 'nombre_cientifico')->orderBy('id')->paginate($this->filasGrilla());
+        $lista = $this->paginarGrilla($this->ordenarConsultaGrilla($lista, 'nombre_cientifico')->orderBy('id'));
         return view('livewire.administracion.fichas-taxonomicas-portal', [
             'taxones' => $lista, 'disponible' => $disponible,
             'taxon' => $this->taxonId ? DB::table('taxonomia.taxones')->where('id', $this->taxonId)->first(['nombre_cientifico', 'rango']) : null,

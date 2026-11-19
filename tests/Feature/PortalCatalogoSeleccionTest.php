@@ -215,7 +215,7 @@ test('el par de coordenadas públicas define la misma población del portal y co
     $curaduria = Livewire::actingAs($curador)->test(TablaEspecimenesDivulgados::class)
         ->set('busquedaTaxonomia', $f['prefijo'])->set('publicacion', 'curaduria')
         ->assertViewHas('especimenes', fn ($registros) => $registros->total() === 7)
-        ->assertSee('Sin par de coordenadas')->assertSee('revisar fuente')->assertSee('Coordenadas reservadas');
+        ->assertSee('Sin par de coordenadas · revisar')->assertSee('Otras regiones · revisar')->assertSee('Coordenadas reservadas');
     foreach ($excluidos as $codigo) $curaduria->assertSee($codigo);
     $curaduria->set('regionCoordenadas', 'incompletas')->assertViewHas('especimenes', fn ($registros) => $registros->total() === 3);
     $curaduria->set('regionCoordenadas', 'reservadas')->assertViewHas('especimenes', fn ($registros) => $registros->total() === 2);
@@ -429,6 +429,11 @@ test('el detalle de cuadrícula conserva todas las hojas y la tabla pagina seis 
     expect($tercera)->toHaveCount(3)->and(array_intersect([...$primera, ...$segunda], $tercera))->toBe([])
         ->and(count(array_unique([...$primera, ...$segunda, ...$tercera])))->toBe(15);
     expect([...$idsPrimera, ...$idsSegunda, ...$idsTercera])->toEqualCanonicalizing($idsEsperados);
+    $componente->call('paginarCelda',1);
+    $v=$componente->get('gridVentana');
+    $componente->call('cargarGrillaContinua',1,$v['consulta'],$v['hasta']);
+    expect($componente->instance()->detalleCelda['registros'])->toHaveCount(12);
+    $componente->assertDontSee('COLECTOR-RESERVADO-QA');
     $componente->call('volverCelda', 0)->call('cambiarVistaCelda', 'registros')->assertSet('paginaCelda', 1)
         ->call('cerrarCelda')->assertSet('celdaMapa', null);
 });
@@ -497,5 +502,5 @@ test('el modal asocia las fotos y curaduría permite revisar registros públicos
         ->test(\Modules\CatalogoPublico\Presentation\Http\Controllers\TablaEspecimenesDivulgados::class)
         ->set('busquedaTaxonomia', $f['prefijo'])->set('regionCoordenadas', 'otras')
         ->assertSee($f['codigos'][0])->assertDontSee($f['codigos'][1])->assertDontSee($f['codigos'][2])
-        ->assertSee('Coordenadas de otras regiones')->assertSee('Público');
+        ->assertSee('Otras regiones · revisar')->assertSee('Público');
 });

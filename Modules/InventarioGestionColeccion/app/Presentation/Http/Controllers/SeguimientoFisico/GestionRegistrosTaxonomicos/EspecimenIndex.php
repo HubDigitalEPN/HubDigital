@@ -57,6 +57,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Especímenes'])]
 final class EspecimenIndex extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     public bool $gestionarColumnas = false;
     public string $nuevaColumna = '';
     public string $descripcionColumna = '';
@@ -416,6 +417,39 @@ final class EspecimenIndex extends Component
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
+
+    public bool $borradoAbierto = false;
+    #[Locked] public array $borradoIds = [];
+    #[Locked] public array $borradoCodigos = [];
+
+    public function abrirBorrado(array $ids): void
+    {
+        \App\Support\BotonesSistema::autorizar('inventario.eliminar');
+        validator(['ids' => $ids], ['ids' => ['required', 'array'], 'ids.*' => ['uuid']])->validate();
+        $filas = \Illuminate\Support\Facades\DB::table('taxonomia.especimenes')->whereIn('id', array_unique($ids))->orderBy('codigo_catalogo')->get(['id', 'codigo_catalogo']);
+        if ($filas->isEmpty()) { $this->errorMessage = 'No quedan especímenes de esa selección.'; return; }
+        $this->borradoIds = $filas->pluck('id')->all();
+        $this->borradoCodigos = $filas->pluck('codigo_catalogo')->all();
+        $this->errorMessage = null;
+        $this->borradoAbierto = true;
+    }
+
+    public function confirmarBorrado(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\EliminarEspecimenes $servicio): void
+    {
+        \App\Support\BotonesSistema::autorizar('inventario.eliminar');
+        if (!$this->borradoAbierto || !$this->borradoIds) return;
+        try {
+            $ids = $servicio->eliminar($this->borradoIds);
+            if (in_array($this->ultimoCreadoId, $ids, true)) $this->ultimoCreadoId = null;
+            $this->fichaAbierta = $this->showEditModal = false;
+            $this->borradoAbierto = false;
+            $this->borradoIds = $this->borradoCodigos = [];
+            $this->page = 1;
+            $this->successMessage = count($ids).' espécimen(es) borrado(s) definitivamente.';
+            $this->errorMessage = null;
+            $this->dispatch('especimenes-eliminados');
+        } catch (\Throwable $error) { report($error); $this->errorMessage = 'No se pudo borrar la selección. No se aplicó ningún borrado parcial.'; }
+    }
 
     // ── Geocodificación por coordenadas ───────────────────────────────────────
 
@@ -1404,19 +1438,25 @@ final class EspecimenIndex extends Component
         usort($columnasTabla, static fn ($a, $b) => ($a['grupo'] !== 'localidad') <=> ($b['grupo'] !== 'localidad'));
 
         $output = $this->consultarPagina();
-        $offset = ($this->page - 1) * $this->perPage;
+        [$offset,$limite]=$this->rangoGrillaContinua(json_encode($this->construirInput(1),JSON_THROW_ON_ERROR),$output->total,$this->perPage,$this->page);
+        $items=[];
+        for($p=$this->gridVentana['desde'];$p<=$this->gridVentana['hasta'];$p++){
+            $parte=$p===$this->page?$output:app(BuscarEspecimenesHandler::class)->handle($this->construirInput($p));
+            array_push($items,...$parte->items);
+        }
 
-        $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($output->items);
+        $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($items);
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
             'taxones' => $this->taxones,
             'entidades' => $this->entidades,
             'filas' => $filas,
+            'continuidad'=>$this->gridVentana,
             'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],
             'totalPaginas' => max(1, $output->totalPaginas),
             'totalItems' => $output->total,
             'inicio' => $output->total > 0 ? $offset + 1 : 0,
-            'fin' => min($offset + count($output->items), $output->total),
+            'fin' => min($offset + count($items), $output->total),
             'offsetFila' => $offset,
             'columnasRegistro' => $columnas,
             'columnasTabla' => $columnasTabla,

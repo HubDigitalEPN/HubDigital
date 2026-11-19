@@ -13,17 +13,19 @@ use Livewire\Component;
 #[Layout('layouts.app', params: ['title' => 'Textos del sistema'])]
 final class ConfiguracionTextosSistema extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     public string $busqueda = '';
     public string $pantalla = '';
     public int $pagina = 1;
     #[Locked] public string $original = '';
     public string $contenido = '';
     public string $textoAdicional = '';
+    #[Locked] public array $ubicaciones = [];
 
     public function boot(): void { abort_unless(auth()->user()?->esAdministrador(), 403); }
     public function updatedBusqueda(): void { $this->pagina = 1; }
     public function updatedPantalla(): void { $this->pagina = 1; }
-    public function cancelar(): void { $this->original = ''; $this->contenido = ''; }
+    public function cancelar(): void { $this->original = ''; $this->contenido = ''; $this->ubicaciones=[]; }
     public function editar(string $clave): void
     {
         $catalogo = TextosSistema::catalogo();
@@ -31,12 +33,14 @@ final class ConfiguracionTextosSistema extends Component
         $this->original = $catalogo[$clave]['original'] ?? $guardado?->original ?? '';
         abort_if($this->original === '', 404);
         $this->contenido = $guardado?->contenido ?? $this->original;
+        $this->ubicaciones=array_values($catalogo[$clave]['ubicaciones']??[]);
     }
     public function agregar(): void
     {
         $this->validate(['textoAdicional' => ['required', 'string', 'max:5000']]);
         $this->original = TextosSistema::normalizar($this->textoAdicional);
         $this->contenido = TextosSistema::diccionario()[$this->original] ?? $this->original;
+        $this->ubicaciones=array_values(TextosSistema::catalogo()[hash('sha256',$this->original)]['ubicaciones']??[]);
     }
     public function guardar(): void
     {
@@ -58,13 +62,14 @@ final class ConfiguracionTextosSistema extends Component
     public function render()
     {
         $catalogo = TextosSistema::catalogo(); $guardados = TextosSistema::diccionario();
-        foreach ($guardados as $original => $_) $catalogo[hash('sha256', $original)] ??= ['original' => $original, 'pantallas' => ['Adicional' => 'Adicional']];
+        foreach ($guardados as $original => $_) $catalogo[hash('sha256', $original)] ??= ['original' => $original, 'pantallas' => ['Adicional' => 'Adicional'], 'ubicaciones'=>[['pantalla'=>'Texto adicional','campo'=>'Coincidencia exacta incorporada por administración']]];
         $pantallas = [];
         foreach ($catalogo as $fila) foreach ($fila['pantallas'] as $pantalla) $pantallas[$pantalla] = $pantalla;
         ksort($pantallas);
         $filas = array_filter($catalogo, fn ($fila) => ($this->pantalla === '' || in_array($this->pantalla, $fila['pantallas'], true))
-            && ($this->busqueda === '' || str_contains(mb_strtolower($fila['original'].' '.($guardados[$fila['original']] ?? '')), mb_strtolower($this->busqueda))));
+            && ($this->busqueda === '' || str_contains(mb_strtolower($fila['original'].' '.($guardados[$fila['original']] ?? '').' '.json_encode($fila['ubicaciones']??[],JSON_UNESCAPED_UNICODE)), mb_strtolower($this->busqueda))));
         $ultima = max(1, (int) ceil(count($filas) / 40)); $this->pagina = max(1, min($ultima, $this->pagina));
-        return view('livewire.administracion.configuracion-textos-sistema', ['filas' => array_slice($filas, ($this->pagina-1)*40, 40, true), 'pantallas' => $pantallas, 'guardados' => $guardados, 'ultima' => $ultima]);
+        [$offset,$limite]=$this->rangoGrillaContinua(json_encode([$this->pantalla,$this->busqueda]),count($filas),40,$this->pagina);
+        return view('livewire.administracion.configuracion-textos-sistema', ['filas' => array_slice($filas,$offset,$limite,true), 'pantallas' => $pantallas, 'guardados' => $guardados, 'ultima' => $ultima]);
     }
 }

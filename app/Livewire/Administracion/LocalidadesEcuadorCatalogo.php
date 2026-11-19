@@ -127,7 +127,7 @@ final class LocalidadesEcuadorCatalogo extends Component
         }
 
         return view('livewire.administracion.localidades-ecuador-catalogo', [
-            'localidades' => $this->ordenarConsultaGrilla($query, 'nombre')->orderBy('codigo')->paginate($this->filasGrilla()),
+            'localidades' => $this->paginarGrilla($this->ordenarConsultaGrilla($query, 'nombre')->orderBy('codigo')),
             'provincias' => CatalogoTerritorialEcuador::provincias(),
             'nombresProvincias' => array_column(CatalogoTerritorialEcuador::provincias(), 'nombre', 'codigo'),
         ]);

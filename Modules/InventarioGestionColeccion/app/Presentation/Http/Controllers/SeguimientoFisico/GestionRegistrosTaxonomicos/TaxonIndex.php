@@ -21,6 +21,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Taxones'])]
 final class TaxonIndex extends Component
 {
+    use \App\Livewire\Concerns\WithContinuousGrid;
     use TraduceErroresPersistencia;
 
     public array $taxones = [];
@@ -220,14 +221,15 @@ final class TaxonIndex extends Component
         $total = count($filtrados);
         $totalPaginas = $total > 0 ? (int) ceil($total / $this->perPage) : 1;
         $this->page = max(1, min($this->page, $totalPaginas));
-        $offset = ($this->page - 1) * $this->perPage;
+        [$offset,$limite]=$this->rangoGrillaContinua(hash('sha256',json_encode($filtrados)),$total,$this->perPage,$this->page);
 
         return view('inventariogestioncoleccion::admin.taxonomia.taxones.index', [
-            'taxonesPaginados' => array_slice($filtrados, $offset, $this->perPage),
+            'taxonesPaginados' => array_slice($filtrados, $offset, $limite),
+            'continuidad'=>$this->gridVentana,
             'totalPaginas' => $totalPaginas,
             'totalItems' => $total,
             'inicio' => $total > 0 ? $offset + 1 : 0,
-            'fin' => min($offset + $this->perPage, $total),
+            'fin' => min($offset + $limite, $total),
         ]);
     }
 

@@ -25,6 +25,12 @@ test('el menú tiene un único acceso a cada función reorganizada y distingue l
         expect($xpath->query('//nav[@data-flux-sidebar-nav]//ui-disclosure//a[@href="'.route($ruta).'"]')->length)->toBe(1);
     }
     $menu = $xpath->query('//nav[@data-flux-sidebar-nav]')->item(0)->textContent;
+    foreach(['admin.contenidos','divulgacion.asistente'] as $nombre){
+        $enlace=$xpath->query('//nav[@data-flux-sidebar-nav]//ui-disclosure//a[@href="'.route($nombre).'"]')->item(0);
+        expect($enlace)->not->toBeNull();
+        $grupo=$enlace;while($grupo && $grupo->nodeName!=='ui-disclosure')$grupo=$grupo->parentNode;
+        expect($grupo?->textContent)->toContain('Administración');
+    }
     expect($menu)->toContain('Publicación del catálogo', 'Contenidos y textos', 'Revisión documental y actas', 'Recepción física', 'Recordatorios de préstamos')
         ->not->toContain('Control de calidad', 'Centro de revisión', 'Centro de administración', 'Textos de todas las pantallas', 'Divulgar espécimenes');
     expect($xpath->query('//nav[@aria-label="Accesos principales"]//a[text()[contains(., "Buscar")]]')->length)->toBe(0);

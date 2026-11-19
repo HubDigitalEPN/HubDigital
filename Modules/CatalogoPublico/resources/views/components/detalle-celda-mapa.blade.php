@@ -21,7 +21,7 @@
                 <x-grid-frame label="Registros de la localidad" :page-size="$this->registrosPorPaginaCelda" page-size-action="ajustarRegistrosCelda" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
                     <x-catalogopublico::tabla-registros-mapa :registros="$detalle['registros']" :imagenes="$detalle['imagenes']" :total="$detalle['total']" :seleccion="null" :mostrar-titulo="false" />
                     <x-slot:pagination>
-                        @if($detalle['ultima'] > 1 && $vistaCelda === 'registros')<x-grid-pages :page="$detalle['pagina']" :last="$detalle['ultima']" :total="$detalle['total']" :per-page="$this->registrosPorPaginaCelda" action="paginarCelda" label="Registros de la localidad" />@endif
+                        @if($detalle['ultima'] > 1 && $vistaCelda === 'registros')<x-grid-pages :page="$detalle['pagina']" :last="$detalle['ultima']" :total="$detalle['total']" :per-page="$this->registrosPorPaginaCelda" :continuidad="$gridVentana" action="paginarCelda" label="Registros de la localidad" />@endif
                     </x-slot:pagination>
                 </x-grid-frame>
             </div>

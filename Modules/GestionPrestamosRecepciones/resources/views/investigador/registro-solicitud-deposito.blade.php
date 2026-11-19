@@ -111,7 +111,7 @@
         <div>
 
             {{-- Step content --}}
-            <div class="min-w-0 p-4 sm:p-5 lg:p-6" wire:key="paso-{{ $paso }}">
+            <div class="min-w-0 p-4 sm:p-5 lg:p-6" wire:key="paso-{{ $paso }}" data-disposicion-scope="wizard:{{ $paso }}">
                 @if($paso === 0)
                     @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.paso-solicitud')
                 @elseif($paso === 1)

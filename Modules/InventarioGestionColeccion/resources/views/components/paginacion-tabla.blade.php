@@ -1,7 +1,7 @@
-@props(['pagina', 'totalPaginas', 'totalItems', 'inicio', 'fin'])
+@props(['pagina', 'totalPaginas', 'totalItems', 'inicio', 'fin', 'continuidad'=>null])
 
 @if($totalItems > 0)
-<div class="flex items-center justify-between px-4 py-3 border-t border-border">
+<div class="hub-ig-footer flex items-center justify-between px-4 py-3 border-t border-border" @if($continuidad) data-grid-window='@json($continuidad)' @endif>
     <span class="text-xs text-text-secondary">
         Mostrando {{ $inicio }}–{{ $fin }} de {{ $totalItems }} registros
     </span>

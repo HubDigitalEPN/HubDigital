@@ -1,9 +1,9 @@
-@props(['campo', 'detalle' => null, 'selector' => false])
+@props(['campo', 'detalle' => null])
 @php
     $ayuda = $detalle ?? \Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::campo($campo);
     $idAyuda = 'ayuda-catalogo-'.preg_replace('/[^a-zA-Z0-9_-]/', '-', $campo);
 @endphp
-<span x-data class="absolute top-2 z-[3] {{ $selector ? 'end-9' : 'end-2' }}" data-catalogo-ayuda="{{ $campo }}">
+<span x-data class="inline-flex shrink-0 self-start pt-1.5" data-catalogo-ayuda="{{ $campo }}">
     <button type="button" x-on:click="$refs.ayuda.showModal()" aria-haspopup="dialog" aria-controls="{{ $idAyuda }}"
         aria-label="Ayuda: {{ $ayuda['titulo'] }}" title="Ayuda: {{ $ayuda['titulo'] }}"
         class="inline-flex size-7 items-center justify-center rounded-full border border-border bg-surface text-science-blue hover:bg-bg-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-science-blue">

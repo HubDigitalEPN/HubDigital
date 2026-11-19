@@ -43,7 +43,7 @@ html body .hub-ig :is(.hub-ig-search input, select) { min-height: 2.6rem; height
 .hub-ig-actions-panel { position: absolute; z-index: 35; top: calc(100% + .3rem); left: 0; width: 15rem; max-height: 20rem; overflow: auto; border: 1px solid var(--ig-border); background: var(--ig-bg); box-shadow: 0 3px 12px #0002; padding: .65rem; }
 .hub-ig-actions-panel label { display: flex; gap: .5rem; align-items: center; padding: .4rem; font-weight: 400; cursor: pointer; }
 .hub-ig-actions-panel input { accent-color: #056ac8; }
-.hub-ig-scroll { overflow: auto; max-width: 100%; overscroll-behavior: contain; }
+.hub-ig-scroll { overflow: auto; max-width: 100%; max-height: calc(100dvh - 12rem); overscroll-behavior-x: contain; overscroll-behavior-y: auto; touch-action: pan-x pan-y; }
 html body .hub-ig table { width: 100%; min-width: 100%; border-collapse: collapse; table-layout: auto; color: var(--ig-text); font: inherit; }
 html body .hub-ig[data-hub-grid=server] table { min-width: max(100%, calc(var(--ig-visible-columns, 4) * 9rem)); }
 html body .hub-ig thead, html body .hub-ig thead tr { background: var(--ig-bg); color: var(--ig-text); text-transform: none; letter-spacing: normal; }
