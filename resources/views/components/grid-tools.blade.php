@@ -1,16 +1,16 @@
-@props(['pageSizeLabel' => 'Filas por página', 'server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100]])
+@props(['pageSizeLabel' => 'Filas por página', 'server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100], 'columnAction' => null])
 <div class="hub-ig-actions" x-on:click.outside="closeMenu(false)">
     <button type="button" class="hub-ig-button" x-ref="actionsButton" aria-haspopup="menu" :aria-expanded="menuOpen.toString()"
         x-on:click="openMenu()" x-on:keydown.arrow-down.prevent="if (!menuOpen) openMenu()">Acciones <flux:icon name="chevron-down" /></button>
     <div class="hub-ig-menu" x-ref="actionMenu" x-show="menuOpen" x-cloak role="menu" aria-label="Acciones de la grilla" x-on:keydown="menuKey($event)">
         <div data-menu-view="main" x-show="menuView === 'main'">
-            <button type="button" role="menuitem" tabindex="-1" x-on:click="openColumns()"><flux:icon name="table-cells" /><span>Columnas</span><span class="hub-ig-menu-trailing">…</span></button>
+            <button type="button" role="menuitem" tabindex="-1" @if($columnAction) wire:click="{{ $columnAction }}" x-on:click="closeMenu()" @else x-on:click="openColumns()" @endif><flux:icon name="table-cells" /><span>Columnas</span><span class="hub-ig-menu-trailing">…</span></button>
             @if($server || $client)
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="openFilters()"><flux:icon name="funnel" /><span>Filtrar</span><span class="hub-ig-menu-trailing">…</span></button>
                 <button type="button" role="menuitem" tabindex="-1" x-on:click="openSort()"><flux:icon name="arrows-up-down" /><span>Ordenar</span><span class="hub-ig-menu-trailing">…</span></button>
             @endif
             @unless($server || $client)
-                <button type="button" role="menuitem" tabindex="-1" x-on:click="openColumn(0, headers()[0])"><flux:icon name="funnel" /><span>Filtrar columnas de esta página</span><span class="hub-ig-menu-trailing">…</span></button>
+                <button type="button" role="menuitem" tabindex="-1" x-on:click="openColumn(0, headers()[0])"><flux:icon name="funnel" /><span>{{ $columnAction ? 'Filtrar columnas visibles' : 'Filtrar columnas de esta página' }}</span><span class="hub-ig-menu-trailing">…</span></button>
             @endunless
             @if($server || $client || $pageSizeAction)
                 <div class="hub-ig-menu-separator" role="separator"></div>
@@ -47,6 +47,7 @@
     </div>
 </div>
 
+@unless($columnAction)
 <dialog wire:ignore.self class="hub-ig-dialog" x-ref="columnsDialog" :aria-labelledby="$id('grid-columns-title')" x-on:close="$refs.actionsButton.focus()">
     <div class="hub-ig-dialog-heading"><h2 :id="$id('grid-columns-title')">Columnas</h2><button type="button" class="hub-ig-icon-button" x-on:click="$refs.columnsDialog.close()" aria-label="Cerrar columnas"><flux:icon name="x-mark" /></button></div>
     <div class="hub-ig-dialog-body">
@@ -64,6 +65,7 @@
     </div>
     <div class="hub-ig-dialog-footer"><button type="button" class="hub-ig-button" x-on:click="$refs.columnsDialog.close()">Cancelar</button><button type="button" class="hub-ig-button hub-ig-button-primary" x-on:click="applyColumnSelection()">Aplicar</button></div>
 </dialog>
+@endunless
 <x-grid-column-menu />
 @if($server || $client)
     <dialog wire:ignore.self class="hub-ig-dialog" x-ref="filterDialog" :aria-labelledby="$id('grid-filter-title')" x-on:close="$refs.actionsButton.focus()">

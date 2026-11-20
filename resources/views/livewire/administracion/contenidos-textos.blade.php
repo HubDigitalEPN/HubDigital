@@ -5,8 +5,10 @@
                @if($seccion === $id || ($seccion === 'laboratorio' && $id === 'portal')) aria-current="page" @endif
                @class(['inline-flex min-h-11 items-center rounded-lg border px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-science-blue', 'border-blue-navy bg-blue-navy text-white!' => $seccion === $id || ($seccion === 'laboratorio' && $id === 'portal'), 'border-border bg-surface text-blue-navy' => $seccion !== $id && !($seccion === 'laboratorio' && $id === 'portal')])>{{ $nombre }}</a>
         @endforeach
-        @if(in_array($seccion, ['portal', 'laboratorio', 'depositos'], true))
-            <p class="hub-editor-ayuda"><span aria-hidden="true">*</span> Doble clic para modificar un texto o imagen</p>
+        @if(in_array($seccion, ['portal', 'laboratorio', 'depositos', 'fichas'], true))
+            <p class="hub-editor-ayuda font-bold" style="font-size: calc(.7rem + 1pt)">
+                <span aria-hidden="true">*</span> {{ $seccion === 'fichas' ? 'Doble clic en una fila para editar la ficha' : 'Doble clic para modificar un texto o imagen' }}
+            </p>
         @endif
     </nav>
     @if($seccion === 'portal')

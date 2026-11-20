@@ -40,6 +40,47 @@ test('curador y administrador editan fichas de todos los rangos por identidad co
     }
 })->with(['curador', 'administrador']);
 
+test('el administrador cambia el nombre de la ficha conservando la identidad y revierte un guardado con nombre duplicado', function (): void {
+    [$rama, $especimen] = fichaPortalFixture();
+    [$otraRama] = fichaPortalFixture();
+    $id = $rama['especie'];
+    DB::table('taxonomia.taxones')->where('id', $id)->update([
+        'autor' => 'Autor QA', 'anio_descripcion' => 2001, 'epiteto_infraespecifico' => 'ejemplo',
+    ]);
+
+    $panel = Livewire::actingAs(User::factory()->administrador()->create())->test(FichasTaxonomicasPortal::class)
+        ->call('seleccionar', $id)->assertSet('editorFichaAbierto', true)
+        ->set('nombreCientifico', '  Taxonqa corregido  ')->set('descripcion', 'Leyenda inicial')
+        ->set('publicada', true)->call('guardar')->assertHasNoErrors()->assertSet('editorFichaAbierto', false);
+
+    expect(DB::table('taxonomia.taxones')->where('id', $id)->first())->toMatchObject([
+        'nombre_cientifico' => 'Taxonqa corregido', 'padre_id' => $rama['genero'], 'rango' => 'especie',
+        'autor' => 'Autor QA', 'anio_descripcion' => 2001, 'epiteto_infraespecifico' => 'ejemplo',
+    ]);
+    expect(DB::table('taxonomia.especimenes')->where('id', $especimen)->value('taxon_id'))->toBe($id);
+    $this->getJson(route('portal.ficha', ['taxon' => $id]))->assertOk()->assertJsonPath('descripcion', 'Leyenda inicial');
+
+    $duplicado = DB::table('taxonomia.taxones')->where('id', $otraRama['especie'])->value('nombre_cientifico');
+    $panel->call('seleccionar', $id)->set('nombreCientifico', $duplicado)
+        ->set('descripcion', 'No publicar')->call('guardar')->assertHasErrors('nombreCientifico');
+
+    $this->assertDatabaseHas('taxonomia.taxones', ['id' => $id, 'nombre_cientifico' => 'Taxonqa corregido']);
+    $this->assertDatabaseHas(FichasTaxonomicas::TABLA, ['taxon_id' => $id, 'descripcion' => 'Leyenda inicial']);
+});
+
+test('el curador puede abrir la ficha y el servidor impide que cambie el nombre científico', function (): void {
+    [$rama] = fichaPortalFixture();
+    $id = $rama['especie'];
+    $original = DB::table('taxonomia.taxones')->where('id', $id)->value('nombre_cientifico');
+
+    Livewire::actingAs(User::factory()->curador()->create())->test(FichasTaxonomicasPortal::class)
+        ->call('seleccionar', $id)->assertSet('editorFichaAbierto', true)
+        ->assertDontSeeHtml('id="ficha-nombre-cientifico"')->set('nombreCientifico', 'Taxonqa curador')
+        ->call('guardar')->assertForbidden();
+
+    $this->assertDatabaseHas('taxonomia.taxones', ['id' => $id, 'nombre_cientifico' => $original]);
+});
+
 test('la fotografía se comprime y su publicación respeta permisos vigentes del taxón', function (): void {
     [$rama, $especimen] = fichaPortalFixture();
     config(['deposit-storage.driver' => 'local', 'deposit-storage.require_remote' => false]); Storage::fake('local');

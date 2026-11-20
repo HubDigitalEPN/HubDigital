@@ -508,8 +508,15 @@ function approve(root,id,checks,before) {
 definitions.laboratorio_editor.checks.push('reconnected','allPhotos','headerPhoto','inlinePublish','inlineRemove','quiet');
 definitions.editor_wizard.checks.push('portable');
 definitions.portal_editor_visual.checks.push('allSections','fixed','fixedText','inert','photos','mapNotice');
-definitions.ficha_editor_directo={sources:['app/Livewire/Administracion/FichasTaxonomicasPortal.php','resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/FichaTaxonomicaPublica.php','resources/js/portal-taxonomy-branch-viewer.js','public/js/contenido-disposicion.js','public/css/contenidos-editor.css'],checks:['fixedLayout','photo','text','noResize','fit']};
+definitions.ficha_editor_directo={sources:['app/Livewire/Administracion/FichasTaxonomicasPortal.php','resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php','resources/views/livewire/administracion/contenidos-textos.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/FichaTaxonomicaPublica.php','resources/js/portal-taxonomy-branch-viewer.js','public/js/contenido-disposicion.js','public/css/contenidos-editor.css'],checks:['fixedLayout','photo','text','noResize','fit','help','scientificName','wideForm']};
 for(const f of definitions.ficha_editor_directo.sources){owner[f]=[...new Set([...(owner[f]||[]).filter(id=>id!=='grillas_continuas'),'ficha_editor_directo'])];(contracts[f]??=[]).push('tests/Feature/PortalFichasTaxonomicasTest.php');}
+definitions.inventario_continuo={
+    sources:[...definitions.catalogo_alta.sources.slice(0,2),'public/js/interactive-grid.js','public/css/interactive-grid.css',
+        'resources/views/components/grid-frame.blade.php','resources/views/components/grid-tools.blade.php',
+        'resources/views/components/catalogo-excel-menu.blade.php','app/Livewire/Concerns/WithContinuousGrid.php'],
+    checks:['sinPaginacion','scroll','teclado','menu','filtros','columnas','busqueda','restaurado'],
+};
+for(const f of definitions.inventario_continuo.sources){(owner[f]??=[]).push('inventario_continuo');(contracts[f]??=[]).push('tests/Feature/GrillasContinuasTest.php');}
 for(const f of ['app/Support/FotosEditoriales.php','app/Livewire/Concerns/WithFotosEditoriales.php','app/Livewire/Concerns/WithTextosNavegacion.php','app/Support/VistaEditorialInerte.php','app/Http/Controllers/FotoEditorialPortal.php','app/Http/Middleware/CachePublicPortal.php','resources/views/livewire/administracion/partials/foto-editorial.blade.php','resources/views/livewire/administracion/partials/texto-navegacion.blade.php']){
     definitions.portal_editor_visual.sources.push(f);owner[f]=['portal_editor_visual'];contracts[f]=['tests/Feature/EditorPresentacionDirectaTest.php'];
 }

@@ -23,7 +23,12 @@
             }
             this.$watch('hidden', () => this.$nextTick(() => this.applyColumns()));
             // Livewire puede sustituir las celdas al paginar o buscar.
-            this.observer = new MutationObserver(() => { this.installHeaders(); this.applyColumns(); if (client) this.renderClientRows(); else this.renderPageRows(); });
+            this.observer = new MutationObserver(() => {
+                this.installHeaders();
+                this.applyColumns();
+                if (client) this.renderClientRows(); else this.renderPageRows();
+                if (this.root.hasAttribute('data-grid-scroll-only')) this.actualizarConsultaContinua();
+            });
             this.observer.observe(this.root.querySelector('table'), {childList: true, subtree: true});
             this.applyColumns();
             this.$nextTick?.(() => this.instalarScroll());
@@ -58,7 +63,17 @@
                     if(event.cancelable)event.preventDefault();this.cargarContinuidad(direccion);
                 }
             };
-            this.alScroll=()=>{if(this.intencionScroll && this.enBorde(this.intencionScroll)){const direccion=this.intencionScroll;this.intencionScroll=0;if(this.puedeContinuar(direccion))this.cargarContinuidad(direccion);}};
+            const soloScroll = this.root.hasAttribute('data-grid-scroll-only');
+            if (soloScroll) this.actualizarConsultaContinua();
+            this.alScroll = () => {
+                const top = this.superficie.scrollTop;
+                const direccion = this.intencionScroll || (soloScroll ? Math.sign(top - this.posicionScroll) : 0);
+                this.posicionScroll = top;
+                if (direccion && this.enBorde(direccion)) {
+                    this.intencionScroll = 0;
+                    if (this.puedeContinuar(direccion)) this.cargarContinuidad(direccion);
+                }
+            };
             this.alTocar=event=>{this.inicioTacto=event.touches[0]?.clientY;};
             this.alMoverTacto=event=>{
                 this.intencionScroll=Math.sign((this.inicioTacto??0)-(event.touches[0]?.clientY??0));
@@ -81,6 +96,14 @@
             if(typeof ResizeObserver!=='undefined'){this.medidas=new ResizeObserver(this.alMedir);this.medidas.observe(this.root);}
             this.ajustarScroll();
         },
+        actualizarConsultaContinua() {
+            const consulta = this.datosVentana()?.consulta;
+            if (!this.superficie || consulta === this.consultaContinua) return;
+            this.consultaContinua = consulta;
+            this.intencionScroll = 0;
+            this.superficie.scrollTop = this.posicionScroll = 0;
+            this.errorContinuidad = '';
+        },
         ajustarScroll() {
             if(!this.superficie?.isConnected)return;
             const viewport=window.visualViewport?.height||window.innerHeight;
@@ -102,7 +125,11 @@
             if(!this.puedeContinuar(direccion))return;
             this.cargandoContinuidad=true;this.ultimaDireccion=direccion;
             const s=this.superficie,top=s.getBoundingClientRect().top;
-            const ancla=this.dataRows().find(row=>!row.hidden && row.getBoundingClientRect().bottom>top+40);
+            const filas = () => {
+                const movil = this.root.querySelector('[data-grid-mobile]');
+                return movil?.getClientRects().length ? [...movil.querySelectorAll('[data-grid-scroll-row]')] : this.dataRows();
+            };
+            const ancla=filas().find(row=>!row.hidden && row.getBoundingClientRect().bottom>top+40);
             const identidad=ancla?.getAttribute('wire:key')||ancla?.textContent;
             const y=ancla?.getBoundingClientRect().top;let timer;
             try{
@@ -110,8 +137,9 @@
                 if(v)await Promise.race([this.$wire.cargarGrillaContinua(direccion,v.consulta,direccion>0?v.hasta:v.desde),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Tiempo agotado')),45000);})]);
                 else this.cargarClienteContinuo(direccion);
                 await this.$nextTick();
-                const conservada=this.dataRows().find(row=>(row.getAttribute('wire:key')||row.textContent)===identidad);
+                const conservada=filas().find(row=>(row.getAttribute('wire:key')||row.textContent)===identidad);
                 if(conservada && y!==undefined)s.scrollTop+=conservada.getBoundingClientRect().top-y;
+                this.posicionScroll = s.scrollTop;
                 this.ajustarScroll();
             }catch{this.errorContinuidad='No se pudieron cargar más filas. Conservamos las visibles; puedes reintentar.';}
             finally{clearTimeout(timer);this.cargandoContinuidad=false;}
@@ -241,7 +269,7 @@
                 }
                 // x-show termina de revelar el panel en el siguiente frame.
                 // Enfocar antes deja el foco en body, especialmente en móvil.
-                requestAnimationFrame(() => { if (this.menuOpen) { this.positionMenu(); menu.querySelector('button:not([disabled])')?.focus(); } });
+                requestAnimationFrame(() => { if (this.menuOpen) { this.positionMenu(); this.menuItems()[0]?.focus(); } });
             });
         },
         closeMenu(focus = true) { const menu = this.$refs.actionMenu; if (menu?.popover && menu.matches(':popover-open')) menu.hidePopover(); this.menuOpen = false; if (focus) this.$refs.actionsButton.focus(); },
@@ -255,15 +283,18 @@
             this.menuView = view;
             this.$nextTick(() => requestAnimationFrame(() => {if (this.menuOpen) { this.positionMenu(); this.$refs.actionMenu.querySelector('[data-menu-view="' + view + '"] button')?.focus(); }}));
         },
+        menuItems() {
+            return [...this.$refs.actionMenu.querySelectorAll('[role^="menuitem"]:not([disabled]):not([aria-disabled="true"])')].filter(item => item.getClientRects().length);
+        },
         menuKey(event) {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.closeMenu(); return; }
             if (event.key === 'Tab') { this.closeMenu(false); return; }
-            const buttons = [...this.$refs.actionMenu.querySelectorAll('button:not([disabled])')].filter(button => button.getClientRects().length);
-            const position = buttons.indexOf(document.activeElement);
-            const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
-                : event.key === 'ArrowDown' ? (position + 1) % buttons.length
-                : event.key === 'ArrowUp' ? (position - 1 + buttons.length) % buttons.length : null;
-            if (index !== null) { event.preventDefault(); buttons[index]?.focus(); }
+            const items = this.menuItems();
+            const position = items.indexOf(document.activeElement);
+            const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+                : event.key === 'ArrowDown' ? (position + 1) % items.length
+                : event.key === 'ArrowUp' ? (position - 1 + items.length) % items.length : null;
+            if (index !== null) { event.preventDefault(); items[index]?.focus(); }
         },
         openColumns() {
             this.draftHidden = [...this.hidden]; this.columnSearch = ''; this.closeMenu(false); this.$refs.columnsDialog.showModal();

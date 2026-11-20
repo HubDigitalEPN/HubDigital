@@ -110,14 +110,14 @@
 @php
     $puedeBorrar = \App\Support\BotonesSistema::visible('inventario.eliminar');
 @endphp
-<div class="space-y-4 p-4 sm:p-6" x-on:especimenes-eliminados.window="limpiar(); cerrarCelda()"
+<div class="space-y-3 px-4 py-2 sm:px-6" x-on:especimenes-eliminados.window="limpiar(); cerrarCelda()"
      x-data="{
          sel: {},
          get n() { return Object.keys(this.sel).length },
          ids() { return Object.keys(this.sel) },
          marcado(id) { return this.sel[id] === true },
          alternar(id, valor) { if (valor) { this.sel[id] = true } else { delete this.sel[id] } },
-         marcarPagina(lista) { lista.forEach(id => { this.sel[id] = true }) },
+         marcarFilas(lista) { lista.forEach(id => { this.sel[id] = true }) },
          limpiar() { this.sel = {} },
 
          /* Editor de celda flotante.
@@ -172,19 +172,7 @@
 </svg>
 
     {{-- ── Encabezado ──────────────────────────────────────────────────────── --}}
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Especímenes</flux:heading>
-        </div>
-        <div class="flex flex-wrap gap-2">
-            <flux:button icon="eye" variant="ghost" :href="route('divulgacion.index')" wire:navigate>
-                Administrar publicación
-            </flux:button>
-            <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
-                Nuevo espécimen
-            </flux:button>
-        </div>
-    </div>
+    <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Especímenes</flux:heading>
 
     @if($successMessage)
         <flux:callout data-hub-feedback="success" variant="success">
@@ -194,45 +182,17 @@
     @endif
     @if($errorMessage && !$showModal && !$showEditModal)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
-    {{-- ── Barra de herramientas ───────────────────────────────────────────── --}}
-    <div class="rounded-lg border border-border bg-surface shadow-sm">
-
-        <div class="flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
-            {{-- Búsqueda rápida: una sola caja contra códigos, taxón, colector y localidad. --}}
-            <div class="relative flex-1 min-w-0">
-                <flux:icon name="magnifying-glass"
-                           class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-secondary" />
-                <input type="search"
-                       wire:model.live.debounce.400ms="q"
-                       placeholder="Buscar por código, occurrenceID, taxón, colector o localidad…"
-                       aria-label="Búsqueda rápida de especímenes"
-                       class="h-11 w-full rounded-lg border border-border bg-bg-main pl-9 pr-9 text-sm text-text-primary placeholder:text-text-secondary focus:border-science-blue focus:outline-none focus:ring-1 focus:ring-science-blue" />
-                <div wire:loading wire:target="q"
-                     class="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin rounded-full border-2 border-border border-t-science-blue"></div>
+    <flux:modal wire:model="busquedaAbierta" aria-labelledby="inventario-busqueda-titulo" class="w-full max-w-lg">
+        <form wire:submit="buscarRapido" class="space-y-4">
+            <h2 id="inventario-busqueda-titulo" class="hub-section-title">Buscar especímenes</h2>
+            <flux:input type="search" wire:model="consultaRapida" label="Código, occurrenceID, taxón, colector o localidad" autofocus />
+            <flux:error name="consultaRapida" />
+            <div class="flex justify-end gap-2">
+                <flux:modal.close><flux:button>Cancelar</flux:button></flux:modal.close>
+                <flux:button type="submit" variant="primary">Buscar</flux:button>
             </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-                <x-catalogo-excel-menu accion="exportarExcel" />
-                <flux:button icon="funnel" variant="{{ $filtrosAbiertos ? 'filled' : 'ghost' }}"
-                             wire:click="$toggle('filtrosAbiertos')">
-                    Filtros @if(count($filtrosActivos) > 0)<span class="ml-1 rounded-full bg-science-blue px-1.5 text-xs text-white">{{ count($filtrosActivos) }}</span>@endif
-                </flux:button>
-
-                <flux:button icon="view-columns" variant="{{ $panelColumnasAbierto ? 'filled' : 'ghost' }}"
-                             wire:click="$toggle('panelColumnasAbierto')">
-                    Columnas <span class="ml-1 text-text-secondary">{{ count($columnasTabla) }}</span>
-                </flux:button>
-                @if(auth()->user()?->esAdministrador())<flux:button wire:click="$toggle('gestionarColumnas')">Crear o eliminar columnas</flux:button>@endif
-
-                <label class="flex items-center gap-2 text-xs text-text-secondary">
-                    Filas
-                    <select wire:model.live="perPage"
-                            class="h-11 rounded-lg border border-border bg-bg-main px-2 text-sm text-text-primary focus:border-science-blue focus:outline-none">
-                        @foreach($tamanosPagina as $t)<option value="{{ $t }}">{{ $t }}</option>@endforeach
-                    </select>
-                </label>
-            </div>
-        </div>
+        </form>
+    </flux:modal>
 
         {{-- Chips de filtros activos --}}
         @if(count($filtrosActivos) > 0)
@@ -254,8 +214,10 @@
         @endif
 
         {{-- Panel de filtros detallados --}}
-        @if($filtrosAbiertos)
-            <div class="border-t border-border p-4">
+        <flux:modal wire:model="filtrosAbiertos" aria-labelledby="inventario-filtros-titulo" class="w-full max-w-4xl">
+            @if($filtrosAbiertos)
+            <div class="space-y-4">
+                <h2 id="inventario-filtros-titulo" class="hub-section-title">Filtros de especímenes</h2>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <flux:field>
                         <flux:label>Taxón (nombre científico)</flux:label>
@@ -333,22 +295,28 @@
                     </flux:button>
                 </div>
             </div>
-        @endif
+            @endif
+        </flux:modal>
 
-        @if($gestionarColumnas && auth()->user()?->esAdministrador())
-        <section class="hub-panel space-y-4 p-4">
-            <h2 class="hub-section-title">Columnas del catálogo</h2>
+        @if(auth()->user()?->esAdministrador())
+        <flux:modal wire:model="gestionarColumnas" aria-labelledby="inventario-gestionar-columnas-titulo" class="w-full max-w-4xl">
+            @if($gestionarColumnas)
+            <section class="space-y-4">
+            <h2 id="inventario-gestionar-columnas-titulo" class="hub-section-title">Columnas del catálogo</h2>
             <form wire:submit="crearColumna" class="grid gap-3 sm:grid-cols-3"><flux:input wire:model="nuevaColumna" label="Título de la columna"/><flux:input wire:model="descripcionColumna" label="Instrucción de la guía"/><flux:button type="submit" variant="primary">Crear columna</flux:button></form>
 
             <div class="max-h-64 overflow-auto"><ul>@foreach($definicionColumnas as $c)<li class="flex items-center justify-between gap-3 border-b p-2"><span data-copy-preserve>{{ $c['cabecera'] }}</span><flux:button wire:click="eliminarColumna('{{ $c['campo'] }}')" wire:confirm="Se eliminará la columna únicamente si nunca se ha usado. ¿Continuar?">Eliminar si está sin uso</flux:button></li>@endforeach</ul></div>
-        </section>
+            </section>
+            @endif
+        </flux:modal>
         @endif
         {{-- Panel de configuración de columnas --}}
-        @if($panelColumnasAbierto)
-            <div class="space-y-3 border-t border-border p-4">
+        <flux:modal wire:model="panelColumnasAbierto" aria-labelledby="inventario-columnas-titulo" class="w-full max-w-4xl">
+            @if($panelColumnasAbierto)
+            <div class="space-y-3">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <flux:heading size="md" level="2" class="text-text-primary">Configurar columnas</flux:heading>
+                        <flux:heading id="inventario-columnas-titulo" size="md" level="2" class="text-text-primary">Configurar columnas</flux:heading>
 
                     </div>
                     <div class="flex flex-wrap gap-2">
@@ -397,8 +365,8 @@
                     @endforeach
                 </div>
             </div>
-        @endif
-    </div>
+            @endif
+        </flux:modal>
 
     {{-- ── Panel del código QR del espécimen ───────────────────────────────── --}}
     @if($qrUrl)
@@ -484,7 +452,7 @@
              Marcar casillas NO va al servidor. Las casillas usan `wire:model`
              SIN `.live`, así que Livewire actualiza su copia local y las marcas
              viajan de polizón en la siguiente petición que ocurra de todos modos
-             (paginar, ordenar, abrir el panel). Antes cada clic costaba un
+             (cargar filas, ordenar, abrir el panel). Antes cada clic costaba un
              round-trip completo: 5 consultas y ~2 s de espera.
 
              El contador vive en Alpine leyendo el mismo estado, para que la
@@ -495,8 +463,8 @@
                     <span class="font-semibold" x-text="n">0</span> seleccionado(s)
                 </span>
                 <button type="button" class="text-xs text-science-blue underline underline-offset-2"
-                        @click="marcarPagina(@js(array_column($filas, 'id')))">
-                    Marcar los {{ count($filas) }} de esta página
+                        @click="marcarFilas(@js(array_column($filas, 'id')))" @disabled($filas === [])>
+                    Marcar filas cargadas ({{ count($filas) }})
                 </button>
                 <button type="button" x-show="n > 0" x-cloak
                         class="text-xs text-text-secondary underline underline-offset-2 hover:text-error"
@@ -513,10 +481,7 @@
             @endif
         </div>
 
-        {{-- Escritorio: tabla densa tipo hoja de cálculo, con encabezado y
-             columna de índice fijos mientras se hace scroll. --}}
-        <div class="relative hidden md:block"
-             x-ref="hoja" @scroll="cerrarCelda()">
+        <div class="relative" x-ref="hoja" x-on:scroll.capture="cerrarCelda()">
             {{-- Editor flotante: uno solo para toda la tabla.
 
                  El `display` va dentro de este mismo `:style` y NO se usa `x-show`:
@@ -534,7 +499,33 @@
                    @blur="cerrarCelda()"
                    class="absolute z-40 rounded border-2 border-science-blue bg-surface px-2 font-mono text-xs text-text-primary shadow-sm focus:outline-none" />
 
-            <x-grid-frame><table class="w-full border-separate border-spacing-0 font-mono text-xs">
+            <x-grid-frame label="Especímenes" page-size-label="Filas por carga"
+                          :page-size="$perPage" page-size-action="cambiarFilasPorCarga" :page-sizes="$tamanosPagina"
+                          :allow-download="false" column-action="$set('panelColumnasAbierto', true)" :continuous-window="$continuidad">
+                <x-slot:actions>
+                    <button type="button" role="menuitem" tabindex="-1" wire:click="abrirBusqueda" x-on:click="closeMenu()">
+                        <flux:icon name="magnifying-glass" /><span>Buscar</span><span class="hub-ig-menu-trailing">…</span>
+                    </button>
+                    <button type="button" role="menuitem" tabindex="-1" wire:click="$set('filtrosAbiertos', true)" x-on:click="closeMenu()">
+                        <flux:icon name="funnel" /><span>Filtros</span>
+                        @if(count($filtrosActivos) > 0)<span class="hub-ig-menu-hint">{{ count($filtrosActivos) }} activos</span>@endif
+                    </button>
+                    @if(auth()->user()?->esAdministrador())
+                        <button type="button" role="menuitem" tabindex="-1" wire:click="$set('gestionarColumnas', true)" x-on:click="closeMenu()">
+                            <flux:icon name="cog-6-tooth" /><span>Crear o eliminar columnas</span>
+                        </button>
+                    @endif
+                    <x-catalogo-excel-menu accion="exportarExcel" :en-grilla="true" />
+                    <div class="hub-ig-menu-separator" role="separator"></div>
+                    <button type="button" role="menuitem" tabindex="-1" wire:click="abrirModal" x-on:click="closeMenu()">
+                        <flux:icon name="plus" /><span>Nuevo espécimen</span>
+                    </button>
+                    <a href="{{ route('divulgacion.index') }}" wire:navigate role="menuitem" tabindex="-1">
+                        <flux:icon name="eye" /><span>Administrar publicación</span>
+                    </a>
+                </x-slot:actions>
+            <div class="hidden md:block">
+            <table class="w-full border-separate border-spacing-0 font-mono text-xs">
                 <thead>
                     <tr>
                         <th scope="col"
@@ -688,14 +679,14 @@
                         </tr>
                     @endforelse
                 </tbody>
-            </table></x-grid-frame>
-        </div>
+            </table>
+            </div>
 
         {{-- Móvil: tarjetas apiladas con el mismo juego de columnas. --}}
-        <div class="divide-y divide-border md:hidden">
+        <div class="divide-y divide-border md:hidden" data-grid-mobile>
             @forelse($filas as $i => $especimen)
                 @php $marcado = false; @endphp
-                <div wire:key="movil-{{ $especimen['id'] }}"
+                <div wire:key="movil-{{ $especimen['id'] }}" data-grid-scroll-row
                      class="flex flex-col gap-2 p-4 @if($marcado) border-l-4 border-l-error @endif">
                     <div class="flex items-start justify-between gap-2">
                         {{-- Toda la cabecera alterna la casilla: área táctil holgada. --}}
@@ -749,10 +740,8 @@
             @endforelse
         </div>
 
-        <x-inventariogestioncoleccion::paginacion-tabla
-            :continuidad="$continuidad"
-            :pagina="$page" :total-paginas="$totalPaginas" :total-items="$totalItems"
-            :inicio="$inicio" :fin="$fin" />
+            </x-grid-frame>
+        </div>
     </div>
 
     {{-- ── Modal: Ficha completa ───────────────────────────────────────────── --}}

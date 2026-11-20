@@ -1,4 +1,4 @@
-@props(['catalogoUrl' => null, 'iptUrl' => null, 'accion' => null, 'label' => 'Descargar Excel'])
+@props(['catalogoUrl' => null, 'iptUrl' => null, 'accion' => null, 'label' => 'Descargar Excel', 'enGrilla' => false])
 @php
     $opcionesExcel = [];
     foreach (['catalogo' => ['catalogo.completo', 'Descargar todo el catálogo', $catalogoUrl], 'ipt' => ['catalogo.ipt', 'Descargar formato IPT (GBIF)', $iptUrl]] as $perfilExcel => [$permisoExcel, $textoExcel, $urlExcel]) {
@@ -7,7 +7,16 @@
         if ($visibleExcel) $opcionesExcel[] = ['perfil' => $perfilExcel, 'texto' => $textoExcel, 'url' => $urlExcel, 'habilitado' => $habilitadoExcel];
     }
 @endphp
-@if($opcionesExcel !== [])
+@if($enGrilla)
+    @foreach($opcionesExcel as $opcionExcel)
+        <button type="button" role="menuitem" tabindex="-1" @disabled(!$opcionExcel['habilitado'])
+            wire:click="{{ $accion }}('{{ $opcionExcel['perfil'] }}')" wire:loading.attr="disabled" wire:target="{{ $accion }}" x-on:click="closeMenu()">
+            <flux:icon name="arrow-down-tray" />
+            <span>{{ $opcionExcel['perfil'] === 'ipt' ? 'Descargar Excel IPT (GBIF)' : 'Descargar Excel del catálogo' }}</span>
+            @unless($opcionExcel['habilitado'])<span class="hub-ig-menu-hint">Sin permiso de uso</span>@endunless
+        </button>
+    @endforeach
+@elseif($opcionesExcel !== [])
 <div x-data="{ abierto: false }" class="relative inline-block text-left" x-on:keydown.escape.stop="abierto = false; $refs.activador.focus()" x-on:click.outside="abierto = false">
     <button type="button" x-ref="activador" x-on:click="abierto = !abierto; if (abierto) $nextTick(() => $refs.menu.querySelector('[role=menuitem]')?.focus())" x-on:keydown.arrow-down.prevent="abierto = true; $nextTick(() => $refs.menu.querySelector('[role=menuitem]')?.focus())" x-bind:aria-expanded="abierto" aria-haspopup="menu" class="hub-ig-button min-h-11">
         {{ $label }} <span aria-hidden="true">▾</span>

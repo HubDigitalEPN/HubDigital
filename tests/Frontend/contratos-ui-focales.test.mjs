@@ -37,7 +37,7 @@ test('los contratos de depósitos y Pasante seleccionan exclusivamente sus panta
 test('los contratos de alta y taxones no seleccionan recorridos ajenos del catálogo', async () => {
     const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
     for(const id of ['catalogo_alta','catalogo_taxones']) {
-        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),id==='catalogo_alta'?[id,'catalogo_borrado','grillas_continuas']:[id,'grillas_continuas']);
+        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),id==='catalogo_alta'?[id,'catalogo_borrado','grillas_continuas','inventario_continuo']:[id,'grillas_continuas']);
         assert.ok(ui.definitions[id].checks.includes('responsive'));
     }
     assert.deepEqual(impact.focalScope(['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/LectorActualizacionCatalogo.php']),[]);
@@ -57,7 +57,7 @@ test('la pantalla única de instituciones tiene cobertura propia incluso de las 
 test('la reorganización selecciona solo sus espacios canónicos y las pantallas retiradas no requieren DOM inexistente', async () => {
     const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
     for(const id of ['menu_curaduria','publicacion_unificada','contenidos_unificados','catalogo_importacion']) {
-        const propios={menu_curaduria:[id],publicacion_unificada:[id,'grillas_continuas'],contenidos_unificados:[id,'editor_wizard','textos_contexto','ficha_editor_directo'],catalogo_importacion:[id]};
+        const propios={menu_curaduria:[id],publicacion_unificada:[id,'grillas_continuas'],contenidos_unificados:[id,'ficha_editor_directo','editor_wizard','textos_contexto'],catalogo_importacion:[id]};
         assert.deepEqual(impact.focalScope(ui.definitions[id].sources),propios[id]);
         assert.ok(ui.definitions[id].checks.includes('responsive'));
     }
@@ -70,9 +70,9 @@ test('la reorganización selecciona solo sus espacios canónicos y las pantallas
 test('wizard contextual y ventana continua acreditan contratos propios sin ejecutar recorridos históricos', async()=>{
     const {default:impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
     assert.deepEqual(impact.focalScope(['app/Support/VistaPreviaWizard.php']),['editor_wizard']);
-    assert.deepEqual(impact.focalScope(['app/Livewire/Concerns/WithContinuousGrid.php']),['grillas_continuas']);
+    assert.deepEqual(impact.focalScope(['app/Livewire/Concerns/WithContinuousGrid.php']),['grillas_continuas','inventario_continuo']);
     assert.deepEqual(impact.focalScope(['public/js/formularios-apex.js']),['textos_contexto']);
-    for(const id of ['editor_wizard','textos_contexto','grillas_continuas'])assert.ok(ui.definitions[id].checks.length>=6);
+    for(const id of ['editor_wizard','textos_contexto','grillas_continuas','inventario_continuo'])assert.ok(ui.definitions[id].checks.length>=6);
 });
 
 test('conservar UI exige runner original fuentes y cuerpo identicos y no modifica la fecha ni el recibo',()=>{

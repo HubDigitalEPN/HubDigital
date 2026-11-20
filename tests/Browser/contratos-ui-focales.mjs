@@ -2,7 +2,7 @@
 // Inspecciona y opera el DOM real; no sustituye datos, respuestas ni código de la app.
 export async function comprobarUIFocal(caso) {
     const q=selector=>document.querySelector(selector), all=selector=>[...document.querySelectorAll(selector)];
-    const wait=async fn=>{const end=Date.now()+(['portal_editor_visual','laboratorio_editor','catalogo_borrado','editor_wizard','textos_contexto','grillas_continuas','chat_tablas_simples','ficha_editor_directo'].includes(caso)?45000:15000);while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,80));}throw Error('No terminó el estado esperado del contrato '+caso);};
+    const wait=async fn=>{const end=Date.now()+(['portal_editor_visual','laboratorio_editor','catalogo_borrado','editor_wizard','textos_contexto','grillas_continuas','chat_tablas_simples','ficha_editor_directo','inventario_continuo'].includes(caso)?45000:15000);while(Date.now()<end){if(fn())return;await new Promise(r=>setTimeout(r,80));}throw Error('No terminó el estado esperado del contrato '+caso);};
     const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     const recargarFrame=async(iframe,comprobar)=>{const anterior=iframe.contentDocument;iframe.contentWindow.location.reload();await wait(()=>iframe.contentDocument!==anterior && iframe.contentDocument?.readyState==='complete' && comprobar());await frame();};
     if (!['localhost','127.0.0.1'].includes(location.hostname)) throw Error('Solo localhost.');
@@ -13,6 +13,20 @@ export async function comprobarUIFocal(caso) {
     const model=(key,tag='input')=>all(tag).find(x=>x.getAttribute('wire:model')===key);
     const fillModel=(key,value)=>{const el=model(key)||model(key,'textarea');if(!el)throw Error('No existe el campo '+key);const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
     const sinMovimiento = root => !root.querySelector('[data-disposicion-handle],[data-disposicion-editable],[data-publicar-posiciones],[data-restaurar-posiciones],[data-disposicion-resize],.lab-layout-controls,.lab-editor-resize');
+    const abrirAccionesInventario=async()=>{
+        const grid=q('[data-grid-scroll-only]');
+        grid.querySelector('.hub-ig-actions > button').click();
+        await wait(()=>grid.querySelector('.hub-ig-menu')?.getClientRects().length);
+        return grid.querySelector('.hub-ig-menu');
+    };
+    const buscarEnInventario=async texto=>{
+        const menu=await abrirAccionesInventario();
+        menu.querySelector('[wire\\:click="abrirBusqueda"]').click();
+        await wait(()=>q('dialog[open] form[wire\\:submit="buscarRapido"]'));
+        fillModel('consultaRapida',texto);
+        q('dialog[open] form').requestSubmit();
+        await wait(()=>!q('dialog[open]'));
+    };
     const comprobarAyudas=async cantidad=>{
         const botones=all('[data-catalogo-ayuda] > button');
         let textos=botones.length===cantidad,foco=true,ajuste=true,posicion=true;
@@ -187,16 +201,16 @@ export async function comprobarUIFocal(caso) {
         checks.laboratorio=!q('[data-contenidos-textos] > h1') && !!q('[x-data^="laboratorioEditor"]');
         checks.guide=checks.guide&&ayudaVisible();
         [...tabs().querySelectorAll('a')].find(a=>new URL(a.href).searchParams.get('seccion')==='fichas').click();await wait(()=>document.body.textContent.includes('Fichas del explorador taxonómico'));
-        checks.fichas=!q('[data-contenidos-textos] > h1') && document.body.textContent.includes('Editar ficha');
-        checks.guide=checks.guide&&!ayuda();
+        checks.fichas=!q('[data-contenidos-textos] > h1') && !!q('[data-ficha-fila]');
+        checks.guide=checks.guide&&ayuda()?.textContent.trim()==='* Doble clic en una fila para editar la ficha';
         await wait(()=>q('[data-fichas-editor] .hub-ig')?._x_dataStack?.[0]?.superficie);
         const fichaGrid=q('[data-fichas-editor] .hub-ig'),fichaPanel=q('[data-fichas-editor] section[aria-label="Editar ficha"]');
-        checks.fichaClarity=document.body.textContent.includes('1. Busca el taxón') && (innerWidth<1100 || fichaGrid.getBoundingClientRect().width>fichaPanel.getBoundingClientRect().width*1.4);
+        checks.fichaClarity=document.body.textContent.includes('Busca el taxón por nombre') && (innerWidth<1100 || fichaGrid.getBoundingClientRect().width>fichaPanel.getBoundingClientRect().width*1.4);
         const filaInicial=fichaGrid.querySelectorAll('tbody tr').length,scroller=fichaGrid.querySelector('.hub-ig-scroll');
         checks.noActions=!fichaGrid.querySelector('.hub-ig-actions')&&!!fichaGrid.querySelector('tbody button');
         scroller.scrollTop=scroller.scrollHeight;scroller.dispatchEvent(new WheelEvent('wheel',{deltaY:700,bubbles:true,cancelable:true}));
         await wait(()=>q('[data-fichas-editor] .hub-ig')?.querySelectorAll('tbody tr').length>filaInicial);checks.fichaInfinite=!q('[data-fichas-editor] .hub-ig-footer');
-        q('[data-fichas-editor] .hub-ig tbody button').click();await wait(()=>q('[data-ficha-vista]'));doble(q('[data-ficha-vista] p'));await wait(()=>q('dialog[open] #ficha-descripcion'));
+        doble(q('[data-fichas-editor] [data-ficha-fila] td:nth-child(2)'));await wait(()=>q('dialog[open] #ficha-descripcion'));
         const descripcion=q('#ficha-descripcion').value;fillModel('descripcion','Leyenda QA del editor integrado');q('dialog[open] button[type=submit]').click();
         await wait(()=>document.body.textContent.includes('Transacción Efectuada') && q('#ficha-descripcion')?.value==='Leyenda QA del editor integrado');
         doble(q('[data-ficha-vista] p'));await wait(()=>q('dialog[open] #ficha-descripcion'));fillModel('descripcion',descripcion);q('dialog[open] button[type=submit]').click();await wait(()=>q('#ficha-descripcion')?.value===descripcion);checks.fichaSaved=true;
@@ -283,12 +297,20 @@ export async function comprobarUIFocal(caso) {
         const imagen=doc().querySelector('[data-editorial-foto="inicio"]');
         checks.preload=!!imagen && [...doc().querySelectorAll('link[rel=preload][as=image]')].some(link=>link.href===imagen.src);
     } else if(caso==='ficha_editor_directo') {
-        await wait(()=>q('[data-fichas-editor] tbody button'));
-        q('[data-fichas-editor] tbody button').click();await wait(()=>q('[data-ficha-visual]'));
+        await wait(()=>q('[data-fichas-editor] [data-ficha-fila]'));
+        doble(q('[data-ficha-fila] td:nth-child(2)'));
+        await wait(()=>q('dialog[open] #ficha-foto'));
         const root=q('[data-ficha-visual]');
         checks.fixedLayout=sinMovimiento(root)&&!!root.querySelector('[data-ficha-vista] figure, [data-ficha-vista] p');
-        const preview=()=>q('[data-ficha-vista]');doble(preview().querySelector('figure'));await wait(()=>q('dialog[open] #ficha-foto'));
+        const preview=()=>q('[data-ficha-vista]');
         checks.photo=q('dialog[open] input[type=file]').getAttribute('wire:model')==='foto';
+        const ayuda=q('.hub-editor-ayuda');
+        const fuente=getComputedStyle(ayuda);
+        checks.help=ayuda.textContent.includes('Doble clic en una fila') && Number(fuente.fontWeight)>=700
+            && Math.abs(parseFloat(fuente.fontSize)-(.7*parseFloat(getComputedStyle(document.documentElement).fontSize)+4/3))<.1;
+        const dialog=q('dialog[open]');
+        checks.scientificName=q('#ficha-nombre-cientifico')?.value===q('[data-ficha-visual] h2').textContent.trim();
+        checks.wideForm=innerWidth<1100 || dialog.getBoundingClientRect().width>=800 && dialog.scrollHeight<=dialog.clientHeight+1;
         [...q('dialog[open]').querySelectorAll('button')].find(b=>b.textContent.trim()==='Cancelar').click();await wait(()=>!q('dialog[open]'));
         doble(preview().querySelector('p'));await wait(()=>q('dialog[open] #ficha-descripcion'));checks.text=true;
         [...q('dialog[open]').querySelectorAll('button')].find(b=>b.textContent.trim()==='Cancelar').click();await wait(()=>!q('dialog[open]'));
@@ -346,6 +368,43 @@ export async function comprobarUIFocal(caso) {
         await wait(()=>listo()&&!tituloBloque()&&document.body.textContent.includes('Transacción Efectuada'));checks.inlineRemove=true;
         checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         checks.direct=!!agregar()&&!root.querySelector('fieldset')&&sinMovimiento(root);
+    } else if(caso==='inventario_continuo') {
+        const grid=()=>q('[data-grid-scroll-only]');
+        const scroller=()=>grid()?.querySelector('.hub-ig-scroll');
+        const estado=()=>Alpine.$data(grid());
+        await wait(()=>grid() && estado().superficie);
+        const filas=()=>[...grid().querySelectorAll('tbody tr[wire\\:key]')];
+        const inicial=filas().length;
+        checks.sinPaginacion=!grid().querySelector('.hub-ig-footer, .hub-ig-page-button');
+        scroller().scrollTop=scroller().scrollHeight;
+        await wait(()=>filas().length>inicial && !estado().cargandoContinuidad);
+        const ampliado=filas().length;
+        checks.scroll=ampliado>inicial && new Set(filas().map(f=>f.getAttribute('wire:key'))).size===ampliado;
+        scroller().scrollTop=scroller().scrollHeight;
+        scroller().dispatchEvent(new KeyboardEvent('keydown',{key:'PageDown',bubbles:true,cancelable:true}));
+        await wait(()=>filas().length>ampliado && !estado().cargandoContinuidad);
+        checks.teclado=filas().length>ampliado;
+
+        let menu=await abrirAccionesInventario();
+        const accion=texto=>[...menu.querySelectorAll('[role="menuitem"]')].find(e=>e.textContent.trim()===texto);
+        checks.menu=['Columnas','Buscar','Crear o eliminar columnas','Descargar Excel del catálogo','Descargar Excel IPT (GBIF)','Nuevo espécimen','Administrar publicación'].every(texto=>[...menu.querySelectorAll('[role="menuitem"]')].some(e=>e.textContent.replace(/\s+/g,' ').trim().replace(/\s*…$/,'')===texto));
+        const cerrar=async()=>{
+            q('dialog[open]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+            const cerrarBoton=q('dialog[open] [data-flux-modal-close] button') || q('dialog[open] button[aria-label="Close"]');
+            cerrarBoton?.click();
+            await wait(()=>!q('dialog[open]'));
+        };
+        accion('Filtros').click();await wait(()=>q('dialog[open] #inventario-filtros-titulo'));checks.filtros=true;
+        await cerrar();
+        menu=await abrirAccionesInventario();
+        menu.querySelector('[wire\\:click*="panelColumnasAbierto"]').click();
+        await wait(()=>q('dialog[open] #inventario-columnas-titulo'));checks.columnas=true;
+        await cerrar();
+        await buscarEnInventario('SIN_COINCIDENCIA_QA_INVENTARIO');
+        checks.busqueda=filas().length===0 && scroller().scrollTop===0;
+        await buscarEnInventario('');
+        checks.restaurado=filas().length===inicial && estado().datosVentana().desde===1;
+        metrics={inicial,ampliado};
     } else if(caso==='catalogo_borrado') {
         const botones=()=>all('button[aria-label^="Borrar QA-BORRADO-UI-20261118-"]').filter(x=>x.getClientRects().length);
         await wait(()=>botones().length===2);
@@ -354,7 +413,7 @@ export async function comprobarUIFocal(caso) {
         checks.individual=q('dialog[open]').textContent.includes('definitivamente');
         all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();await wait(()=>!q('dialog[open]'));checks.cancelled=botones().length===2;
         botones()[0].click();await wait(()=>q('dialog[open]'));all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && botones().length===1);checks.deleted=true;
-        all('button').find(x=>x.textContent.trim()==='Marcar los 1 de esta página').click();await frame();
+        all('button').find(x=>x.textContent.trim()==='Marcar filas cargadas (1)').click();await frame();
         all('button').find(x=>x.textContent.trim()==='Borrar selección').click();await wait(()=>q('dialog[open]'));
         all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && botones().length===0);
         checks.batch=true;checks.selectionCleared=all('button').find(x=>x.textContent.trim()==='Borrar selección').disabled;
@@ -449,6 +508,7 @@ export async function comprobarUIFocal(caso) {
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         metrics={nombre};
     } else if(caso==='catalogo_alta') {
+        await abrirAccionesInventario();
         await wait(()=>all('button').find(x=>x.textContent.trim()==='Nuevo espécimen'));
         checks.noRevision=!all('th,[role="columnheader"]').some(x=>/Revisión del nombre|Estado revisión|Motivo revisión/.test(x.textContent));
         checks.dateLabels=all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · normalizada')) && all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · original'));
@@ -475,8 +535,7 @@ export async function comprobarUIFocal(caso) {
         checks.createdLink=!!q('dialog[open]');all('dialog[open] button').find(b=>b.getAttribute('wire:click')==='cerrarFicha').click();await wait(()=>!q('dialog[open]'));
         // El alta conserva los filtros previos; buscar la ficha recién creada
         // también comprueba su persistencia cuando no está en la primera página.
-        const buscar=all('input').find(e=>e.getAttribute('wire:model.live.debounce.400ms')==='q');
-        buscar.value=codigo;buscar.dispatchEvent(new Event('input',{bubbles:true}));
+        await buscarEnInventario(codigo);
         const editar=()=>all('button').find(x=>x.getAttribute('aria-label')==='Editar '+codigo);
         await wait(editar);editar().click();await wait(()=>model('editLocalidad3'));
         fillModel('editLocalidad3','PRUEBA QA - sector corregido');

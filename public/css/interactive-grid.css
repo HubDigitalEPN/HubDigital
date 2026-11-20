@@ -80,9 +80,10 @@ body [data-flux-main] .hidden.md\:block:has(.hub-ig) ~ .md\:hidden { display: no
 html body .hub-ig .hub-ig-search input { border-radius: 0; border-right: 0; }
 .hub-ig .hub-ig-search-go { border-radius: 0 2px 2px 0 !important; min-width: 3.2rem; font-weight: 650 !important; }
 .hub-ig-menu { position: absolute; top: calc(100% + .25rem); left: 0; z-index: 40; width: 16.5rem; padding: .3rem 0; border: 1px solid var(--ig-border); border-radius: 2px; background: var(--ig-bg); box-shadow: 0 3px 12px #0003; }
-.hub-ig-menu button { display: flex; align-items: center; gap: .65rem; width: 100%; min-height: 2.25rem; padding: .4rem .8rem; border: 0; border-radius: 0; background: transparent; color: var(--ig-text); text-align: left; font: inherit; cursor: pointer; }
-.hub-ig-menu button:is(:hover, :focus-visible) { background: #e8f0fa; color: #12365b; outline: 0; }
-.hub-ig-menu button > svg, .hub-ig-menu-check { width: 1rem; height: 1rem; flex: none; color: #617182; }
+[data-grid-scroll-only] .hub-ig-menu { max-height: calc(100dvh - 1rem); overflow-y: auto; }
+.hub-ig-menu :is(button, a[role=menuitem]) { display: flex; align-items: center; gap: .65rem; width: 100%; min-height: 2.25rem; padding: .4rem .8rem; border: 0; border-radius: 0; background: transparent; color: var(--ig-text); text-align: left; font: inherit; cursor: pointer; }
+.hub-ig-menu :is(button, a[role=menuitem]):is(:hover, :focus-visible) { background: #e8f0fa; color: #12365b; outline: 0; }
+.hub-ig-menu :is(button, a[role=menuitem]) > svg, .hub-ig-menu-check { width: 1rem; height: 1rem; flex: none; color: #617182; }
 .hub-ig-menu .hub-ig-menu-trailing { display: inline-flex; align-items: center; gap: .35rem; margin-left: auto; color: #647386; }
 .hub-ig-menu-hint { margin-left: auto; color: #647386; font-size: .7rem; }
 .hub-ig-menu-separator { height: 1px; margin-block: .3rem; background: var(--ig-border); }

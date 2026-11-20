@@ -129,7 +129,7 @@ final class EspecimenIndex extends Component
         'fEstado' => 'nullable|string|in:disponible,en_prestamo',
     ];
 
-    /** Campos cuyo cambio invalida la página actual y obliga a volver a la 1. */
+    /** Campos cuyo cambio reinicia la ventana de filas. */
     private const CAMPOS_FILTRO = [
         'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
         'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta', 'fEstado',
@@ -141,7 +141,9 @@ final class EspecimenIndex extends Component
     /** Búsqueda rápida de una sola caja (códigos, taxón, colector, localidad). */
     public string $q = '';
 
-    public int $page = 1;
+    public bool $busquedaAbierta = false;
+
+    public string $consultaRapida = '';
 
     public int $perPage = 50;
 
@@ -444,7 +446,7 @@ final class EspecimenIndex extends Component
             $this->fichaAbierta = $this->showEditModal = false;
             $this->borradoAbierto = false;
             $this->borradoIds = $this->borradoCodigos = [];
-            $this->page = 1;
+            $this->gridVentana = [];
             $this->successMessage = count($ids).' espécimen(es) borrado(s) definitivamente.';
             $this->errorMessage = null;
             $this->dispatch('especimenes-eliminados');
@@ -606,7 +608,7 @@ final class EspecimenIndex extends Component
     public function updated(string $campo): void
     {
         if (in_array($campo, self::CAMPOS_FILTRO, true)) {
-            $this->page = 1;
+            $this->gridVentana = [];
         }
 
         if ($campo === 'perPage' && ! in_array($this->perPage, self::TAMANOS_PAGINA, true)) {
@@ -617,7 +619,23 @@ final class EspecimenIndex extends Component
     public function buscar(): void
     {
         $this->validate(self::REGLAS_FILTROS);
-        $this->page = 1;
+        $this->gridVentana = [];
+        $this->filtrosAbiertos = false;
+    }
+
+    public function abrirBusqueda(): void
+    {
+        $this->consultaRapida = $this->q;
+        $this->resetValidation('consultaRapida');
+        $this->busquedaAbierta = true;
+    }
+
+    public function buscarRapido(): void
+    {
+        $this->validate(['consultaRapida' => self::REGLAS_FILTROS['q']]);
+        $this->q = $this->consultaRapida;
+        $this->gridVentana = [];
+        $this->busquedaAbierta = false;
     }
 
     /** Alterna el orden por una columna (asc → desc → asc). */
@@ -634,22 +652,14 @@ final class EspecimenIndex extends Component
             $this->ordenDireccion = 'asc';
         }
 
-        $this->page = 1;
+        $this->gridVentana = [];
     }
 
-    public function nextPage(): void
+    public function cambiarFilasPorCarga(int $cantidad): void
     {
-        $this->page++;
-    }
-
-    public function prevPage(): void
-    {
-        $this->page = max(1, $this->page - 1);
-    }
-
-    public function goToPage(int $p): void
-    {
-        $this->page = max(1, $p);
+        abort_unless(in_array($cantidad, self::TAMANOS_PAGINA, true), 422);
+        $this->perPage = $cantidad;
+        $this->gridVentana = [];
     }
 
     /** Quita un filtro concreto desde su chip en la barra de filtros activos. */
@@ -660,14 +670,14 @@ final class EspecimenIndex extends Component
         }
 
         $this->reset($campo);
-        $this->page = 1;
+        $this->gridVentana = [];
         $this->resetValidation();
     }
 
     public function limpiar(): void
     {
         $this->reset(
-            'errorMessage', 'successMessage', 'page',
+            'errorMessage', 'successMessage', 'gridVentana',
             'q', 'fTaxon', 'fFamilia', 'fCodigoCatalogo', 'fOccurrenceId', 'fCatalogNumber',
             'fLocalidad', 'fColector', 'fFechaDesde', 'fFechaHasta',
             'fEstado',
@@ -1437,12 +1447,14 @@ final class EspecimenIndex extends Component
 
         usort($columnasTabla, static fn ($a, $b) => ($a['grupo'] !== 'localidad') <=> ($b['grupo'] !== 'localidad'));
 
-        $output = $this->consultarPagina();
-        [$offset,$limite]=$this->rangoGrillaContinua(json_encode($this->construirInput(1),JSON_THROW_ON_ERROR),$output->total,$this->perPage,$this->page);
-        $items=[];
-        for($p=$this->gridVentana['desde'];$p<=$this->gridVentana['hasta'];$p++){
-            $parte=$p===$this->page?$output:app(BuscarEspecimenesHandler::class)->handle($this->construirInput($p));
-            array_push($items,...$parte->items);
+        $handler = app(BuscarEspecimenesHandler::class);
+        $input = $this->construirInput(1);
+        $output = $this->consultarPrimeraPagina($handler, $input);
+        [$offset] = $this->rangoGrillaContinua(json_encode($input, JSON_THROW_ON_ERROR), $output->total, $input->perPage, 1);
+        $items = [];
+        for ($pagina = $this->gridVentana['desde']; $pagina <= $this->gridVentana['hasta']; $pagina++) {
+            $parte = $pagina === 1 ? $output : $handler->handle($this->construirInput($pagina));
+            array_push($items, ...$parte->items);
         }
 
         $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($items);
@@ -1453,10 +1465,7 @@ final class EspecimenIndex extends Component
             'filas' => $filas,
             'continuidad'=>$this->gridVentana,
             'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],
-            'totalPaginas' => max(1, $output->totalPaginas),
             'totalItems' => $output->total,
-            'inicio' => $output->total > 0 ? $offset + 1 : 0,
-            'fin' => min($offset + count($items), $output->total),
             'offsetFila' => $offset,
             'columnasRegistro' => $columnas,
             'columnasTabla' => $columnasTabla,
@@ -1467,28 +1476,14 @@ final class EspecimenIndex extends Component
         ]);
     }
 
-    /**
-     * Consulta la página actual y, si quedó fuera de rango (el conjunto encogió
-     * al filtrar), reencaja la página y vuelve a consultar: solo reencajar
-     * dejaría la tabla vacía aunque el total diga que hay filas.
-     */
-    private function consultarPagina(): BuscarEspecimenesOutput
+    private function consultarPrimeraPagina(BuscarEspecimenesHandler $handler, BuscarEspecimenesInput $input): BuscarEspecimenesOutput
     {
-        $handler = app(BuscarEspecimenesHandler::class);
-
         try {
-            $output = $handler->handle($this->construirInput($this->page));
-
-            if ($this->page > $output->totalPaginas) {
-                $this->page = max(1, $output->totalPaginas);
-                $output = $handler->handle($this->construirInput($this->page));
-            }
-
-            return $output;
+            return $handler->handle($input);
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
 
-            return new BuscarEspecimenesOutput(items: [], total: 0, page: 1, perPage: $this->perPage);
+            return new BuscarEspecimenesOutput(items: [], total: 0, page: 1, perPage: $input->perPage);
         }
     }
 

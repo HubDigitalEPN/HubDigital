@@ -28,9 +28,15 @@ test('inventario y exportacion conservan identidad y seleccion al ampliar la con
     DB::table('taxonomia.especimenes')->insert($filas);
     $usuario=User::factory()->curador()->create();
     $ui=Livewire::actingAs($usuario)->withQueryParams(['q'=>'QA-GRID-'])->test(Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EspecimenIndex::class)->set('perPage',25);
-    $ui->assertViewHas('filas',fn($r)=>count($r)===25);
+    $ui->assertViewHas('filas',fn($r)=>count($r)===25)
+        ->assertSee('Filas por carga')->assertDontSee('Mostrando')->assertDontSeeHtml('wire:click="nextPage"');
     $v=$ui->get('gridVentana');$ui->call('cargarGrillaContinua',1,$v['consulta'],$v['hasta'])->assertViewHas('filas',fn($r)=>count($r)===50);
     $v=$ui->get('gridVentana');$ui->call('cargarGrillaContinua',1,$v['consulta'],$v['hasta'])->assertViewHas('filas',fn($r)=>count($r)===62 && count(array_unique(array_column($r,'id')))===62);
+    $ui->call('cambiarFilasPorCarga', 50)->assertSet('perPage', 50)->assertSet('gridVentana.hasta', 1)
+        ->assertViewHas('filas', fn ($r) => count($r) === 50);
+    $ui->call('abrirBusqueda')->assertSet('consultaRapida', 'QA-GRID-')->assertSet('busquedaAbierta', true)
+        ->set('consultaRapida', 'QA-GRID-061')->call('buscarRapido')->assertSet('busquedaAbierta', false)
+        ->assertSet('gridVentana.hasta', 1)->assertViewHas('filas', fn ($r) => array_column($r, 'id') === [$filas[61]['id']]);
     $exportar=Livewire::actingAs($usuario)->test(Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarEspecimenesGbif::class)->set('fCatalogNumber','QA-GRID-')->call('buscar');
     expect($exportar->get('especimenes'))->toHaveCount(15);
     $exportar->set('seleccionados.'.$filas[0]['id'],true);
