@@ -47,5 +47,6 @@ trait WithFotosEditoriales
         }
         $this->fotoEditorialAbierta = false; $this->fotoEditorial = null;
         $this->dispatch('foto-editorial-publicada');
+        session()->flash('foto-editorial-guardada', 'Transacción Efectuada');
     }
 }

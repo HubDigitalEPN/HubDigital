@@ -313,7 +313,10 @@ try {
     await visible("!document.querySelector('#platform-information-dialog').open");
     await conexion.send('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
     await evaluar('window.scrollTo(0, 0)'); await reposo();
-    assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && ![...document.querySelectorAll('button')].some(b=>b.getAttribute('wire:click')?.startsWith('descargar') || b.getAttribute('x-on:click')==='pdf()')`),'El visitante consulta el catálogo sin controles de exportación ni acceso al panel.');
+    const descargasCuratoriales = '[aria-label="Formato de descarga Excel"], a[href*="/portal/descargas/datos"], a[href*="/portal/descargas/ipt"]';
+    assert.ok(await evaluar(`!document.querySelector('.portal-curator-access') && !document.querySelector(${JSON.stringify(descargasCuratoriales)})`), 'El visitante no tiene controles de exportación curatorial ni acceso al panel.');
+    assert.ok(await evaluar(`Boolean(document.querySelector('#menu-mapa button[data-catalogo-descarga]:enabled') && [...document.querySelectorAll('#menu-mapa button:enabled')].some(b=>b.getAttribute('x-on:click')==='pdf()'))`), 'El visitante puede exportar los resultados públicos del mapa a CSV y PDF.');
+    assert.deepEqual(await evaluar(`Promise.all(['mapa', 'datos', 'ipt'].map(tipo => fetch('/portal/descargas/' + tipo, {headers: {Accept: 'application/json'}}).then(respuesta => respuesta.status)))`), [200, 403, 403], 'El servidor permite las descargas públicas y protege el catálogo completo y el formato IPT.');
     assert.ok(await evaluar(`[...document.querySelectorAll('button')].some(b=>b.getAttribute('x-on:click')==='verRegistros(menuNodo)')`),'El visitante puede consultar los registros del árbol.');
     await conexion.send('Page.navigate',{url:origen+'/login'});
     await visible("document.querySelector('#hub-login-form') && window.Alpine");
@@ -337,7 +340,7 @@ try {
     await conexion.send('Emulation.setDeviceMetricsOverride', {width:1440,height:900,deviceScaleFactor:1,mobile:false});
     await conexion.send('Page.navigate',{url});
     await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && window.Livewire");await reposo();
-    assert.ok(await evaluar(`Boolean(document.querySelector('.portal-curator-access') && document.querySelector('button[data-catalogo-descarga]'))`),'La sesión autorizada habilita exportaciones HTTP y el acceso al panel.');
+    assert.ok(await evaluar(`Boolean(document.querySelector('.portal-curator-access') && document.querySelector('a[data-catalogo-descarga][href*="/portal/descargas/datos"]') && document.querySelector('a[data-catalogo-descarga][href*="/portal/descargas/ipt"]'))`), 'La sesión curatorial habilita el catálogo completo, el formato IPT y el acceso al panel.');
     // CASO apertura-sesion FIN
     }
     async function caso_filtros_graficos() {

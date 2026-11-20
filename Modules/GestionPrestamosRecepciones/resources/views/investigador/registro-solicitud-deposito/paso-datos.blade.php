@@ -1,3 +1,4 @@
+@php $soloEdicionDeTextos = $soloEdicionDeTextos ?? false; @endphp
 <div class="space-y-3">
     <h2 class="text-sm font-semibold text-blue-navy">Datos de la solicitud</h2>
 
@@ -11,26 +12,33 @@
                 <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Nombre
 
                 </dt>
-                <dd class="text-sm text-text-primary">{{ auth()->user()->name }}</dd>
+                @unless($soloEdicionDeTextos)
+                    <dd class="text-sm text-text-primary">{{ auth()->user()->name }}</dd>
+                @endunless
             </div>
-            <div @class(['relative bg-white p-2.5', 'border border-error' => trim($cargoConsultor) === ''])>
-                @if(trim($cargoConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Cargo faltante"></span>@endif
+            <div @class(['relative bg-white p-2.5', 'border border-error' => !$soloEdicionDeTextos && trim($cargoConsultor) === ''])>
+                @if(!$soloEdicionDeTextos && trim($cargoConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Cargo faltante"></span>@endif
                 <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Cargo
 
                 </dt>
-                <dd @class(['text-sm', 'italic text-error' => trim($cargoConsultor) === '', 'text-text-primary' => trim($cargoConsultor) !== ''])>{{ trim($cargoConsultor) === '' ? 'Falta ingresar' : $cargoConsultor }}</dd>
-                <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                @unless($soloEdicionDeTextos)
+                    <dd @class(['text-sm', 'italic text-error' => trim($cargoConsultor) === '', 'text-text-primary' => trim($cargoConsultor) !== ''])>{{ trim($cargoConsultor) === '' ? 'Falta ingresar' : $cargoConsultor }}</dd>
+                    <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                @endunless
             </div>
-            <div @class(['relative bg-white p-2.5', 'border border-error' => trim($institucionConsultor) === ''])>
-                @if(trim($institucionConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Institución faltante"></span>@endif
+            <div @class(['relative bg-white p-2.5', 'border border-error' => !$soloEdicionDeTextos && trim($institucionConsultor) === ''])>
+                @if(!$soloEdicionDeTextos && trim($institucionConsultor) === '')<span class="absolute right-2.5 top-2.5 size-2 rounded-full bg-error" aria-label="Institución faltante"></span>@endif
                 <dt class="flex items-center gap-1 text-xs font-semibold text-text-secondary">Institución
 
                 </dt>
-                <dd @class(['text-sm', 'italic text-error' => trim($institucionConsultor) === '', 'text-text-primary' => trim($institucionConsultor) !== ''])>{{ trim($institucionConsultor) === '' ? 'Falta ingresar' : $institucionConsultor }}</dd>
-                <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                @unless($soloEdicionDeTextos)
+                    <dd @class(['text-sm', 'italic text-error' => trim($institucionConsultor) === '', 'text-text-primary' => trim($institucionConsultor) !== ''])>{{ trim($institucionConsultor) === '' ? 'Falta ingresar' : $institucionConsultor }}</dd>
+                    <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                @endunless
             </div>
         </dl>
     </div>
+    @unless($soloEdicionDeTextos)
     <flux:error name="perfilConsultor" />
 
     {{-- Aviso cuando la extracción automática no pudo completarse --}}
@@ -57,6 +65,7 @@
             <flux:text>El Permiso de Movilización es obligatorio para la provincia de <strong>{{ $provincia }}</strong> pero no fue adjuntado. Regresa al paso anterior para cargarlo.</flux:text>
         </flux:callout>
     @endif
+    @endunless
 
     <div id="datos-manuales" class="space-y-3 scroll-mt-6">
         <h3 class="text-sm font-semibold text-blue-navy">Material</h3>
@@ -92,16 +101,16 @@
                 'N.º Lotes'                => 'Número de lotes en que se agrupan los especímenes para su organización y registro en la colección.',
             ];
 
-            $camposParaMostrar = array_keys($datosExtraidos);
+            $camposParaMostrar = array_keys($soloEdicionDeTextos ? $tooltipsPorCampo : $datosExtraidos);
         @endphp
 
         <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             @foreach($camposParaMostrar as $campo)
                 @php
-                    $esFaltante = in_array($campo, $datosFaltantes);
-                    $valor = $datosExtraidos[$campo] ?? null;
+                    $esFaltante = !$soloEdicionDeTextos && in_array($campo, $datosFaltantes);
+                    $valor = $soloEdicionDeTextos ? null : ($datosExtraidos[$campo] ?? null);
                     $fuente = $fuentesPorCampo[$campo] ?? null;
-                    $esManual = in_array($campo, $datosIngresadosManualmente);
+                    $esManual = !$soloEdicionDeTextos && in_array($campo, $datosIngresadosManualmente);
                 @endphp
 
                 <x-gestionprestamosrecepciones::sum-cell
@@ -110,8 +119,10 @@
                     :fuente="$fuente"
                     :faltante="$esFaltante"
                     :manual="$esManual && !$esFaltante"
+                    :solo-edicion-de-textos="$soloEdicionDeTextos"
                     :ayuda="$tooltipsPorCampo[$campo] ?? null"
                 >
+                    @unless($soloEdicionDeTextos)
                     @if($campo === 'Localidad' && $finalidadActividad !== '')
                         <button type="button" wire:click="volverAPasoCompletado(3)" class="mt-2 text-xs text-science-blue">Cambiar en Origen</button>
                     @elseif($esFaltante)
@@ -131,11 +142,13 @@
                             Editar
                         </button>
                     @endif
+                    @endunless
                 </x-gestionprestamosrecepciones::sum-cell>
             @endforeach
         </div>
     </div>
 
+    @unless($soloEdicionDeTextos)
     <flux:modal name="editar-dato-deposito" class="w-full max-w-md" aria-labelledby="titulo-editor-dato-deposito">
         @if($campoEditorManual !== '')
             <div class="space-y-4">
@@ -167,5 +180,6 @@
             </div>
         @endif
     </flux:modal>
+    @endunless
 
 </div>

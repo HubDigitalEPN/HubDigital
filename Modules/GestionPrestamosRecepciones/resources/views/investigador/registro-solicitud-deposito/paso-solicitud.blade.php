@@ -8,20 +8,20 @@
     @php($oficioCompleto = $solicitudId && ! $solicitudCambiosPendientes)
     @php($pdfGenerado = $this->pdfSolicitudGenerado())
     <div class="hub-request-fields {{ $camposBloqueados ? 'hub-request-fields--locked' : '' }}">
-        <div class="hub-request-cell hub-request-cell--name"><flux:input placeholder=" " wire:model.live.blur="solicitudNombrePermiso" label="Nombre de la persona titular del permiso de colección" maxlength="200" :disabled="$camposBloqueados" required /></div>
+        <div class="hub-request-cell hub-request-cell--name" data-wizard-copy="solicitud.nombre_permiso"><flux:input placeholder=" " wire:model.live.blur="solicitudNombrePermiso" :label="\App\Support\WizardCopy::text('solicitud.nombre_permiso')" maxlength="200" :disabled="$camposBloqueados" required /></div>
         <div class="hub-request-cell hub-request-cell--identification hub-identification-fields">
-            <x-gestionprestamosrecepciones::lov-popup campo="solicitudTipoIdentificacion" label="Tipo de identificación" :valor="$solicitudTipoIdentificacion" :opciones="['cedula' => 'Cédula', 'ruc' => 'RUC', 'pasaporte' => 'Pasaporte']" :disabled="$camposBloqueados" />
-            <flux:input placeholder=" " wire:model.live.blur="solicitudCedula" class:input="hub-field-number" label="Identificación" :inputmode="$solicitudTipoIdentificacion === 'pasaporte' ? 'text' : 'numeric'" :maxlength="$solicitudTipoIdentificacion === 'cedula' ? 10 : ($solicitudTipoIdentificacion === 'ruc' ? 13 : 20)" :disabled="$camposBloqueados" required />
+            <div data-wizard-copy="solicitud.tipo_identificacion"><x-gestionprestamosrecepciones::lov-popup campo="solicitudTipoIdentificacion" :label="\App\Support\WizardCopy::text('solicitud.tipo_identificacion')" :valor="$solicitudTipoIdentificacion" :opciones="['cedula' => 'Cédula', 'ruc' => 'RUC', 'pasaporte' => 'Pasaporte']" :disabled="$camposBloqueados" /></div>
+            <flux:input placeholder=" " wire:model.live.blur="solicitudCedula" class:input="hub-field-number" field:data-wizard-copy="solicitud.identificacion" :label="\App\Support\WizardCopy::text('solicitud.identificacion')" :inputmode="$solicitudTipoIdentificacion === 'pasaporte' ? 'text' : 'numeric'" :maxlength="$solicitudTipoIdentificacion === 'cedula' ? 10 : ($solicitudTipoIdentificacion === 'ruc' ? 13 : 20)" :disabled="$camposBloqueados" required />
         </div>
-        <div class="hub-request-cell hub-request-cell--cargo"><x-gestionprestamosrecepciones::lov-popup campo="solicitudCargo" label="Cargo o posición en el proyecto" :valor="$solicitudCargo" :opciones="$cargosCatalogo" placeholder="Selecciona un cargo" :disabled="$camposBloqueados" /></div>
-        <div class="hub-request-cell hub-request-cell--institution"><x-gestionprestamosrecepciones::lov-popup campo="solicitudInstitucion" label="Empresa o institución" :valor="$solicitudInstitucion" :opciones="$institucionesCatalogo" placeholder="Selecciona una institución" :disabled="$camposBloqueados" /></div>
-        <div class="hub-request-cell hub-request-cell--group"><x-gestionprestamosrecepciones::lov-popup campo="solicitudGrupo" label="Grupo de especímenes a depositar" :valor="$solicitudGrupo" :opciones="config('depositos.grupos_especimenes')" placeholder="Selecciona un grupo" :disabled="$camposBloqueados" /></div>
-        <div class="hub-request-cell hub-request-cell--email"><flux:input placeholder=" " wire:model.live.blur="solicitudCorreo" type="email" label="Correo electrónico" maxlength="250" :disabled="$camposBloqueados" required /></div>
-        <div class="hub-request-cell hub-request-cell--project">
-            <flux:input placeholder=" " wire:model.live.blur="solicitudProyecto" label="Título del proyecto" maxlength="300" :disabled="$camposBloqueados" required />
+        <div class="hub-request-cell hub-request-cell--cargo" data-wizard-copy="solicitud.cargo"><x-gestionprestamosrecepciones::lov-popup campo="solicitudCargo" :label="\App\Support\WizardCopy::text('solicitud.cargo')" :valor="$solicitudCargo" :opciones="$cargosCatalogo" placeholder="Selecciona un cargo" :disabled="$camposBloqueados" /></div>
+        <div class="hub-request-cell hub-request-cell--institution" data-wizard-copy="solicitud.institucion"><x-gestionprestamosrecepciones::lov-popup campo="solicitudInstitucion" :label="\App\Support\WizardCopy::text('solicitud.institucion')" :valor="$solicitudInstitucion" :opciones="$institucionesCatalogo" placeholder="Selecciona una institución" :disabled="$camposBloqueados" /></div>
+        <div class="hub-request-cell hub-request-cell--group" data-wizard-copy="solicitud.grupo"><x-gestionprestamosrecepciones::lov-popup campo="solicitudGrupo" :label="\App\Support\WizardCopy::text('solicitud.grupo')" :valor="$solicitudGrupo" :opciones="config('depositos.grupos_especimenes')" placeholder="Selecciona un grupo" :disabled="$camposBloqueados" /></div>
+        <div class="hub-request-cell hub-request-cell--email" data-wizard-copy="solicitud.correo"><flux:input placeholder=" " wire:model.live.blur="solicitudCorreo" type="email" :label="\App\Support\WizardCopy::text('solicitud.correo')" maxlength="250" :disabled="$camposBloqueados" required /></div>
+        <div class="hub-request-cell hub-request-cell--project" data-wizard-copy="solicitud.proyecto">
+            <flux:input placeholder=" " wire:model.live.blur="solicitudProyecto" :label="\App\Support\WizardCopy::text('solicitud.proyecto')" maxlength="300" :disabled="$camposBloqueados" required />
         </div>
-        <div class="hub-request-cell hub-request-cell--letter">
-            <flux:input placeholder=" " wire:model.live.blur="solicitudOficio" class:input="hub-field-number" label="Número de oficio" maxlength="100" :disabled="$camposBloqueados" required />
+        <div class="hub-request-cell hub-request-cell--letter" data-wizard-copy="solicitud.oficio">
+            <flux:input placeholder=" " wire:model.live.blur="solicitudOficio" class:input="hub-field-number" :label="\App\Support\WizardCopy::text('solicitud.oficio')" maxlength="100" :disabled="$camposBloqueados" required />
         </div>
     </div>
     <flux:modal name="visualizar-pdf-solicitud" wire:model.self="mostrarVistaPdfSolicitud" class="hub-request-pdf-preview">
@@ -95,8 +95,9 @@
         @else
             <flux:button class="ml-auto hub-request-primary" variant="primary" icon-trailing="arrow-right"
                 wire:click="{{ $solicitudFirmada ? 'continuarDesdeSolicitud' : 'generarPdfSolicitud' }}"
+                :data-wizard-copy="$solicitudFirmada ? null : 'solicitud.generar_pdf'"
                 wire:loading.attr="disabled" wire:target="generarPdfSolicitud,continuarDesdeSolicitud">
-                {{ $solicitudFirmada ? 'Ir al paso 2 Trámite' : 'Generar PDF' }}
+                {{ $solicitudFirmada ? 'Ir al paso 2 Trámite' : \App\Support\WizardCopy::text('solicitud.generar_pdf') }}
             </flux:button>
         @endif
     </div>

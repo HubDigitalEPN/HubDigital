@@ -311,6 +311,32 @@ test('un fragmento desconocido del dashboard se informa pendiente y no activa nu
     } finally { assert.equal(path.dirname(temporary), path.resolve(tmpdir())); assert.ok(path.basename(temporary).startsWith('hub-impact-fragment-')); rmSync(temporary, {recursive: true, force: true}); }
 });
 
+test('una corrección aislada del runner histórico selecciona su propio recorrido', () => {
+    const temporary = mkdtempSync(path.join(tmpdir(), 'hub-impact-browser-'));
+    try {
+        const file = 'tests/Browser/portal-livewire.mjs';
+        const fullPath = path.join(temporary, file);
+        const runner = 'const setup = 1;\n' + browser.ids.map(id => `    // CASO ${id} INICIO\n    assert.ok('${id}');\n    // CASO ${id} FIN\n`).join('');
+        const git = (...args) => {
+            const result = spawnSync('git.exe', ['-C', temporary, '-c', 'core.autocrlf=false', ...args], {encoding: 'utf8', windowsHide: true});
+            assert.equal(result.status, 0, result.stderr);
+            return result.stdout.trim();
+        };
+        mkdirSync(path.dirname(fullPath), {recursive: true});
+        writeFileSync(fullPath, runner);
+        git('init', '--quiet', '--object-format=sha1');
+        git('add', '--', file);
+        git('-c', 'user.name=QA', '-c', 'user.email=qa@example.test', 'commit', '--quiet', '-m', 'Runner aprobado');
+        const baseline = {head: git('rev-parse', 'HEAD'), sources: {[file]: browser.hash(runner)}};
+        const scope = {root: temporary, changes: [file], files: {[file]: 'nuevo'}, baseline};
+        writeFileSync(fullPath, runner.replace("assert.ok('apertura-sesion')", "assert.equal('apertura-sesion', 'apertura-sesion')"));
+        assert.deepEqual(impact.browserScope(scope), {cases: ['apertura-sesion'], pending: []});
+        assert.deepEqual(impact.browserScope({...scope, baseline: {...baseline, sources: {[file]: 'distinta'}}}), {cases: [], pending: [file]});
+        writeFileSync(fullPath, runner.replace('const setup = 1;', 'const setup = 2;'));
+        assert.deepEqual(impact.browserScope(scope), {cases: [], pending: [file]});
+    } finally { assert.equal(path.dirname(temporary), path.resolve(tmpdir())); assert.ok(path.basename(temporary).startsWith('hub-impact-browser-')); rmSync(temporary, {recursive: true, force: true}); }
+});
+
 test('los scripts pasan el analisis PowerShell y solo acreditan una vez antes del commit', () => {
     const root = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
     const core = readFileSync(path.join(root, 'scripts/deployment/crear-paquete-oci-core.ps1'), 'utf8');

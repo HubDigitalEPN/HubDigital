@@ -11,9 +11,13 @@
     'plantilla' => null,
     'ayuda' => null,
     'contenidoPorRevisar' => false,
+    'soloEdicionDeTextos' => false,
 ])
 
 <div
+    @if($soloEdicionDeTextos)
+    class="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left rounded-lg border-2 border-dashed border-science-blue/60 bg-science-blue/5 p-3"
+    @else
     {{ $attributes->except('class')->merge(['role' => 'button', 'tabindex' => '0', 'aria-label' => 'Cargar documento: '.$nombre]) }}
     wire:ignore.self
     x-data="{
@@ -83,12 +87,17 @@
         : arrastrando
             ? '!border-science-blue !bg-science-blue/10 border-dashed cursor-pointer group'
             : 'border-dashed cursor-pointer group border-science-blue/60 bg-science-blue/5 hover:border-science-blue hover:bg-science-blue/10'"
+    @endif
 >
     {{-- Icono --}}
     <div class="shrink-0 size-11 rounded-lg border border-border bg-surface flex items-center justify-center shadow-sm">
+        @if($soloEdicionDeTextos)
+        <flux:icon name="arrow-up-tray" class="size-5 text-text-secondary" />
+        @else
         <flux:icon x-show="cargado && archivoEstado === 'valido' && firmaValidada" x-cloak name="document-check" class="size-5 text-success" />
         <flux:icon x-show="cargado && !(archivoEstado === 'valido' && firmaValidada)" x-cloak name="document-text" class="size-5 text-error" />
         <flux:icon x-show="!cargado" name="arrow-up-tray" class="size-5 text-text-secondary group-hover:text-science-blue transition-colors" />
+        @endif
     </div>
 
     {{-- Body --}}
@@ -98,6 +107,7 @@
         </div>
 
         <div class="flex items-center gap-2 mt-1 flex-wrap">
+            @unless($soloEdicionDeTextos)
             <template x-if="cargado && !rechazo">
                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold" x-bind:class="archivoEstado === 'valido' && firmaValidada ? 'bg-success/15 text-success' : (['valido', 'analizando'].includes(archivoEstado) ? 'bg-blue-navy/10 text-blue-navy' : 'bg-error/10 text-error')">
                     <flux:icon x-show="archivoEstado === 'valido' && firmaValidada" name="check" class="size-2.5" />
@@ -155,6 +165,7 @@
                     Haz clic en eliminar para subir otro archivo.
                 @endif
             </span>
+            @endunless
 
             @if(!$cargado)
                 @if($requerido)
@@ -175,6 +186,12 @@
 
         {{-- Enlace a plantilla de ejemplo --}}
         @if($plantilla)
+            @if($soloEdicionDeTextos)
+            <span class="inline-flex items-center gap-1 text-xs text-science-blue mt-1">
+                <flux:icon name="arrow-down-tray" class="size-3" />
+                Descargar ejemplo de referencia
+            </span>
+            @else
             <a
                 x-show="!cargado"
                 href="{{ $plantilla }}"
@@ -185,8 +202,10 @@
                 <flux:icon name="arrow-down-tray" class="size-3" />
                 Descargar ejemplo de referencia
             </a>
+            @endif
         @endif
 
+        @unless($soloEdicionDeTextos)
         <div x-show="nombreArchivo && nombreArchivo.trim().length > 0" x-cloak class="flex items-center gap-1 mt-1">
             <flux:icon name="document-text" class="size-3 text-text-secondary shrink-0" />
             <span x-text="nombreArchivo" class="text-xs font-medium text-text-primary truncate max-w-sm"></span>
@@ -208,8 +227,10 @@
             <strong>Archivo no aceptado</strong>
             <span x-text="rechazo?.mensaje || 'La carga no se completó. Solo se admite un PDF real de hasta 10 MB; cambiar su extensión no modifica el contenido.'"></span>
         </div>
+        @endunless
     </div>
 
+    @unless($soloEdicionDeTextos)
     {{-- Botón eliminar --}}
     <button
         x-show="cargado"
@@ -237,5 +258,6 @@
         x-on:change.capture="const archivo = $event.target.files[0]; if (archivo && !validarTamano(archivo)) { $event.target.value = ''; $event.stopImmediatePropagation() }"
         x-on:change="nombreArchivo = $event.target.files[0]?.name ?? null"
     />
+    @endunless
 
 </div>

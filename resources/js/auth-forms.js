@@ -9,11 +9,16 @@ export function authenticationDestination(data, { successUrl, twoFactorUrl } = {
 }
 
 export async function requestAuthentication(action, body, fetchRequest = fetch) {
+    const signal = AbortSignal.timeout(20000);
     const response = await fetchRequest(action, {
         method: 'POST', body, credentials: 'same-origin', cache: 'no-store',
+        signal,
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     });
-    const data = await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => {
+        signal.throwIfAborted();
+        return {};
+    });
     if (!response.ok) {
         const errors = Object.fromEntries(Object.entries(data.errors || {})
             .map(([field, messages]) => [field, (Array.isArray(messages) ? messages : [messages]).filter(value => typeof value === 'string')]));
@@ -38,7 +43,8 @@ export function bootAuthForms(livewire) {
         const form = event.target;
         if (!form.matches?.('form[data-async-auth]')) return;
         event.preventDefault();
-        if (pending.has(form)) return;
+        const turnstile = form.querySelector('[name="cf-turnstile-response"]');
+        if (pending.has(form) || (turnstile && !turnstile.value)) return;
         pending.add(form);
         const buttons = [...form.querySelectorAll('button[type=submit]')].map(button => ({ button, disabled: button.disabled, text: button.textContent }));
         const feedback = form.querySelector('[data-auth-feedback]');
@@ -59,6 +65,7 @@ export function bootAuthForms(livewire) {
         form.setAttribute('aria-busy', 'true');
         for (const { button } of buttons) { button.disabled = true; button.textContent = 'Validando…'; }
         notify('Validando…');
+        let navigating = false;
         try {
             const result = await requestAuthentication(form.action, new FormData(form));
             if (!result.ok) {
@@ -76,10 +83,6 @@ export function bootAuthForms(livewire) {
                     input.setAttribute('aria-describedby', `${input.getAttribute('aria-describedby') || ''} ${description.id}`.trim());
                 }
                 form.querySelector('[aria-invalid=true]')?.focus();
-                // Turnstile consume su token incluso con una contraseña incorrecta.
-                if (form.querySelector('[name="cf-turnstile-response"]')) {
-                    form.querySelector('[data-turnstile-retry]')?.click();
-                }
                 return;
             }
             if (result.data.csrf) {
@@ -88,13 +91,25 @@ export function bootAuthForms(livewire) {
             }
             const destination = authenticationDestination(result.data, form.dataset, location.origin);
             if (destination) {
+                if (feedback) {
+                    const sessionOpened = form.id === 'hub-login-form' && !result.data.two_factor;
+                    notify(sessionOpened ? 'Sesión iniciada.' : 'Abriendo la página.');
+                    const continueLink = document.createElement('a');
+                    continueLink.href = destination;
+                    continueLink.className = 'text-science-blue underline';
+                    continueLink.textContent = 'Continuar';
+                    feedback.append(' ', continueLink);
+                }
                 if (result.data.message) document.addEventListener('livewire:navigated', () => {
                     showNotification({ message: result.data.message, variant: 'success' });
                 }, { once: true });
                 livewire.navigate(destination);
+                navigating = true;
             } else notify(result.data.message || 'Solicitud completada.');
-        } catch {
-            notify('No se pudo conectar. Revisa tu conexión e intenta nuevamente.', true);
+        } catch (error) {
+            notify(error?.name === 'TimeoutError'
+                ? 'La solicitud tardó demasiado. Intenta nuevamente.'
+                : 'No se pudo conectar. Revisa tu conexión e intenta nuevamente.', true);
         } finally {
             // El valor sólo vive durante esta solicitud; tampoco queda escrito
             // cuando la validación falla o el usuario vuelve con Atrás.
@@ -104,7 +119,14 @@ export function bootAuthForms(livewire) {
             }
             pending.delete(form);
             form.removeAttribute('aria-busy');
-            for (const { button, disabled, text } of buttons) { button.disabled = disabled; button.textContent = text; }
+            if (turnstile && !navigating) {
+                turnstile.value = '';
+                form.dispatchEvent(new CustomEvent('hub-turnstile-consumed', { bubbles: true }));
+            }
+            for (const { button, disabled, text } of buttons) {
+                button.disabled = navigating || (turnstile ? !turnstile.value : disabled);
+                button.textContent = text;
+            }
         }
     }, true);
 }

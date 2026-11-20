@@ -1,4 +1,4 @@
-@props(['tipo', 'datos'])
+@props(['tipo', 'datos', 'editorial' => false])
 @php $indice = \App\Support\PortalCopy::configuration('indices_portal')[$tipo]; @endphp
 <div wire:key="panel-{{ $tipo }}-{{ sha1(json_encode($datos)) }}" class="atlas-panel-tools" x-data="portalPanel(@js($tipo), @js($indice['titulo']), @js($datos))" x-on:keydown.escape="if (abierto) { $event.stopPropagation(); $event.preventDefault(); cerrar() }" x-on:click.outside="abierto = false">
     <button type="button" class="atlas-icon-button" x-ref="boton" aria-haspopup="menu" :aria-expanded="abierto.toString()" aria-controls="menu-{{ $tipo }}" aria-label="Opciones de {{ $indice['titulo'] }}"
@@ -8,7 +8,7 @@
     </button>
     <div id="menu-{{ $tipo }}" class="atlas-menu" x-ref="menu" x-cloak x-show="abierto" role="menu" aria-label="Opciones de {{ $indice['titulo'] }}"
         x-on:keydown.arrow-down.prevent="mover($event)" x-on:keydown.arrow-up.prevent="mover($event)" x-on:keydown.home.prevent="mover($event)" x-on:keydown.end.prevent="mover($event)" x-on:focusout="if (!$el.contains($event.relatedTarget)) abierto = false">
-        @if(\App\Support\DescargasCatalogo::visibles($tipo === 'especies' ? 'catalogo.especies' : 'catalogo.analisis'))
+        @if(!$editorial && \App\Support\DescargasCatalogo::visibles($tipo === 'especies' ? 'catalogo.especies' : 'catalogo.analisis'))
         <button type="button" role="menuitem" @disabled(!\App\Support\DescargasCatalogo::permitidas(boton: $tipo === 'especies' ? 'catalogo.especies' : 'catalogo.analisis')) data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga($tipo))); cerrar()">{{ \App\Support\PortalCopy::text($tipo === 'especies' ? 'catalogo.lista_csv' : 'catalogo.descargar_csv') }}</button>
         @if($tipo === 'mapa')<button type="button" role="menuitem" @disabled(!\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.analisis')) x-on:click="geojson()">{{ \App\Support\PortalCopy::text('catalogo.geojson') }}</button>@endif
         @if($tipo === 'mapa')<button type="button" role="menuitem" @disabled(!\App\Support\DescargasCatalogo::permitidas(boton: 'catalogo.analisis')) x-on:click="pdf()">{{ \App\Support\PortalCopy::text('catalogo.pdf') }}</button>@endif

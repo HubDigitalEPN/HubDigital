@@ -50,7 +50,7 @@ final class ConfiguracionTextosSistema extends Component
             'original' => $this->original, 'contenido' => trim($this->contenido), 'actualizado_por' => auth()->id(), 'updated_at' => now(),
         ]);
         TextosSistema::olvidar();
-        session()->flash('textos-sistema', 'Texto guardado. Se aplica al recargar las pantallas.');
+        session()->flash('textos-sistema', 'Transacción Efectuada');
         $this->original = '';
     }
     public function restaurar(): void

@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 @php($navegacion = static fn (string $clave): string => \App\Support\PortalCopy::text('navegacion.'.$clave))
+@php($vistaEditorial = request()->query('_editor') === '1' && request()->user()?->esCurador())
+@php($mostrarChat = !$vistaEditorial && \App\Support\DisponibilidadChatPortal::habilitado())
 <html lang="es" data-portal-theme="light">
 <head>
     @include('partials.head', ['portalClaro' => true, 'title' => request()->routeIs('portal.catalogo') ? \App\Support\PortalCopy::text('catalogo.titulo_pagina') : $title])
-    @if(request()->routeIs('home'))<link rel="preload" href="{{ asset('images/portal-laboratorio-hero.jpg') }}" as="image" fetchpriority="high">@endif
+    @if(request()->routeIs('home'))<link rel="preload" href="{{ \App\Support\FotosEditoriales::url('inicio') }}" as="image" fetchpriority="high">@endif
     @if(request()->routeIs('portal.catalogo'))<link rel="preload" href="{{ route('portal.pwa-arranque') }}" as="script">@endif
 </head>
 <body class="portal-publico flex min-h-screen flex-col bg-white text-text-primary antialiased">
@@ -26,7 +28,7 @@
             <nav class="hidden h-full min-w-0 items-center gap-0 lg:flex" aria-label="{{ $navegacion('principal') }}">
                 <a href="{{ route('home') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('home') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('inicio') }}</a>
                 <a href="{{ route('laboratorio') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('laboratorio') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('el_laboratorio') }}</a>
-                <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('portal.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('explorar_coleccion') }}</a>
+                <a wire:navigate.hover href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}" @if(request()->routeIs('portal.catalogo')) aria-current="page" @endif class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('portal.catalogo') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('explorar_coleccion') }}</a>
                 <a href="{{ route('depositos.portal') }}" class="inline-flex h-full items-center border-b-2 px-2 text-[clamp(.78rem,1vw,.9rem)] font-semibold transition {{ request()->routeIs('depositos.*') ? 'border-science-blue !text-blue-navy' : 'border-transparent !text-text-secondary hover:!text-blue-navy' }}">{{ $navegacion('depositos') }}</a>
             </nav>
 
@@ -73,7 +75,7 @@
             @endif
 
             <div class="portal-mobile-actions lg:hidden">
-            @if(\App\Support\DisponibilidadChatPortal::habilitado())
+            @if($mostrarChat)
             <button id="portal-chat-mobile-trigger" type="button" class="portal-mobile-chat-button"
                 x-data="{ chatAbierto: false }" x-on:portal-chat-state.window="chatAbierto = $event.detail.abierto"
                 x-on:click="abierto = false; $dispatch('portal-chat-toggle')"
@@ -178,9 +180,11 @@
     </footer>
     @endunless
 
-    <x-platform-footer />
+    @if(!$vistaEditorial || request()->routeIs('home'))
+        <x-platform-footer />
+    @endif
 
-    @if(\App\Support\DisponibilidadChatPortal::habilitado())
+    @if($mostrarChat)
         @livewire(\Modules\CatalogoPublico\Presentation\Http\Controllers\ChatBotWidget::class, ['puedeOcultar' => request()->routeIs('portal.catalogo')])
     @endif
 

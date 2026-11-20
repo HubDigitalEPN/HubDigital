@@ -21,7 +21,8 @@ function fixture({registration = false, api = true, dark = false} = {}) {
     let next = 0;
     const field = {value: ''}, status = {textContent: ''};
     const retry = {hidden: true, dataset: {}, addEventListener(name, callback) { this[name] = callback; }};
-    const form = {querySelector: () => field};
+    const form = {busy: false, querySelector: selector => selector === '[data-hub-turnstile]' ? element : field,
+        getAttribute: () => String(form.busy)};
     const element = {
         isConnected: true, dataset: {sitekey: 'site-key', action: 'turnstile-spin-v2'},
         closest: selector => selector === 'form' || registration && selector === '#hub-register-form' ? form : null,
@@ -41,7 +42,7 @@ function fixture({registration = false, api = true, dark = false} = {}) {
         setTimeout(callback, delay) {const id = ++next; timers.set(id, {callback, delay}); return id;},
         clearTimeout(id) {timers.delete(id);},
     });
-    return {window, element, field, status, retry, events, renders, removed, listeners,
+    return {window, element, field, status, retry, events, renders, removed, listeners, form,
         tick(delay) {for (const [id, timer] of [...timers]) if (timer.delay === delay) {timers.delete(id); timer.callback();}},
     };
 }
@@ -52,6 +53,9 @@ test('el widget se crea una sola vez y transmite el token al POST correcto', () 
         f.window.hubTurnstileReady(); f.listeners.get('DOMContentLoaded')();
         assert.equal(f.renders.length, 1);
         assert.equal(f.renders[0]['response-field'], false);
+        assert.equal(f.renders[0].retry, 'never');
+        assert.equal(f.renders[0]['refresh-expired'], 'manual');
+        assert.equal(f.renders[0]['refresh-timeout'], 'manual');
         f.renders[0].callback('verified-token');
         assert.equal(f.field.value, 'verified-token');
         assert.equal(f.retry.hidden, true);
@@ -92,6 +96,28 @@ test('caducidad error y timeout eliminan cualquier token anterior', () => {
         assert.equal(f.retry.hidden, false);
         assert.equal(f.events.at(-1), 'hub-turnstile-reset');
     }
+});
+
+test('un envío fallido invalida el token y el usuario controla el próximo intento', () => {
+    const f = fixture(); f.window.hubTurnstileReady(); f.renders[0].callback('used-token');
+    f.form.busy = true;
+    f.retry.click();
+    assert.equal(f.renders.length, 1);
+    f.form.busy = false;
+    f.listeners.get('hub-turnstile-consumed')({target: f.form});
+    assert.equal(f.field.value, '');
+    assert.equal(f.element.hidden, true);
+    assert.equal(f.retry.hidden, false);
+    f.renders[0].callback('obsolete-token');
+    assert.equal(f.field.value, '');
+    assert.equal(f.renders.length, 1);
+    f.retry.click();
+    assert.equal(f.element.hidden, false);
+    assert.equal(f.renders.length, 2);
+    f.renders[1]['error-callback']('600010');
+    assert.match(f.status.textContent, /Cloudflare 600010/);
+    assert.equal(f.retry.hidden, false);
+    assert.equal(f.renders.length, 2);
 });
 
 test('una API bloqueada termina la espera con un mensaje y reintento', () => {

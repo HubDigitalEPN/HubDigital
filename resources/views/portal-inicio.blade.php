@@ -13,8 +13,9 @@
                             <span>{{ $descripcionPortada[0] }}</span>@if(isset($descripcionPortada[1])) <span>con la sociedad {{ $descripcionPortada[1] }}</span>@endif
                         </p>
 
-                        <div class="portal-responsive-actions portal-home-actions mt-8">
+                        <div class="portal-responsive-actions portal-home-actions mt-8" data-disposicion-libre="inicio-hero-accion">
                             <a
+                                data-disposicion-objeto
                                 href="{{ route('portal.catalogo', ['vista' => 'mapa']) }}"
                                 class="inline-flex min-h-12 items-center justify-center gap-3 rounded-md bg-science-blue px-5 py-3 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#1266b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-science-blue focus-visible:ring-offset-2"
                             >

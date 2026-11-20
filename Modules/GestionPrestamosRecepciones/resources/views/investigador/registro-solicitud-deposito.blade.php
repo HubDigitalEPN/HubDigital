@@ -92,13 +92,13 @@
             <x-gestionprestamosrecepciones::wizard-stepper
                 accion-navegacion="volverAPasoCompletado"
                 :pasos="[
-                    ['label' => 'Solicitud', 'sub' => 'Firma PDF'],
-                    ['label' => 'Trámite',    'sub' => 'Modalidad'],
-                    ['label' => 'Origen',     'sub' => 'Procedencia'],
-                    ['label' => 'Archivos y firmas', 'sub' => 'Validación'],
-                    ['label' => 'Datos', 'sub' => 'Formulario'],
-                    ['label' => 'Subir datos', 'sub' => 'Excel · Darwin Core'],
-                    ['label' => 'Envío',      'sub' => 'Revisión'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.solicitud'), 'sub' => 'Firma PDF'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.tramite'), 'sub' => 'Modalidad'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.origen'), 'sub' => 'Procedencia'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.documentos'), 'sub' => 'Validación'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.datos'), 'sub' => 'Formulario'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.matriz'), 'sub' => 'Excel · Darwin Core'],
+                    ['label' => \App\Support\WizardCopy::text('pasos.envio'), 'sub' => 'Revisión'],
                 ]"
                 :pasoActual="$this->pasoVisible()"
                 :pasosCompletados="$this->pasosCompletadosVisibles()"
@@ -137,7 +137,7 @@
                 <div>
                     @if($paso > 0 && !$extraccionProcesando)
                         <flux:button variant="ghost" wire:click="retroceder" icon="arrow-left">
-                            Atrás
+                            {{ \App\Support\WizardCopy::text('general.atras') }}
                         </flux:button>
                     @endif
                 </div>

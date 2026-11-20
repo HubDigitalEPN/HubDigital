@@ -18,6 +18,7 @@ $postgresYaActivo = (Get-Service -Name $servicio -ErrorAction Stop).Status -eq '
 $postgresIniciadoPorPaquete = $false
 $basesAisladas = [Collections.Generic.List[string]]::new()
 $prefijoPruebas = 'hd_pkg_' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
+$patronBaseAislada = '^' + [regex]::Escape($prefijoPruebas) + '_(?:browser|[1-4](?:_test_[1-4])?)$'
 $raizProyecto = (Resolve-Path -LiteralPath $Proyecto).Path
 $raizPruebas = Join-Path $raizProyecto ('.local\validation\' + $prefijoPruebas)
 $procesosPruebas = 2
@@ -99,13 +100,6 @@ try {
     if (-not $listo) { throw 'PostgreSQL no quedo listo en 30 segundos.' }
 
     $env:PGPASSWORD = $clave
-    $existe = & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$basePruebas';"
-    if ($LASTEXITCODE -ne 0) { throw "No se pudo consultar la base local $basePruebas." }
-    if ([string]::IsNullOrWhiteSpace([string]$existe)) {
-        & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $basePruebas
-        if ($LASTEXITCODE -ne 0) { throw "No se pudo crear la base local $basePruebas." }
-    }
-
     $env:APP_ENV = 'testing'
     $env:DB_CONNECTION = 'pgsql'
     $env:DB_HOST = '127.0.0.1'
@@ -129,36 +123,102 @@ try {
     try {
         Assert-DirectorioPruebas
         New-Item -ItemType Directory -Path $raizPruebas -Force | Out-Null
-        $copia = Join-Path $raizPruebas 'base.dump'
-        Write-Host "Preparando $procesosPruebas bases temporales aisladas; los casos no modifican la base de localhost..." -ForegroundColor Cyan
-        & (Join-Path $pgBin 'pg_dump.exe') -h 127.0.0.1 -p 5432 -U postgres -d $basePruebas -Fc -f $copia
-        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la copia consistente de PostgreSQL.' }
-        for ($tokenPruebas = 1; $tokenPruebas -le $procesosPruebas; $tokenPruebas++) {
-            $relojBase = [Diagnostics.Stopwatch]::StartNew()
-            Write-Host "Base aislada $tokenPruebas/$procesosPruebas`: creando copia, migraciones y estadisticas..." -ForegroundColor Cyan
-            $baseAislada = $prefijoPruebas + '_' + $tokenPruebas
-            & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $baseAislada
-            if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear una base temporal nueva de pruebas.' }
-            $basesAisladas.Add($baseAislada)
-            & (Join-Path $pgBin 'pg_restore.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseAislada --exit-on-error --no-owner --no-privileges $copia
-            if ($LASTEXITCODE -ne 0) { throw 'No se pudo restaurar la base temporal de pruebas.' }
-            $env:DB_DATABASE = $env:TEST_DB_DATABASE = $baseAislada
-            & $Php artisan migrate --database=pgsql --force --no-interaction
-            if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones en la base temporal.' }
-            # pg_dump/pg_restore no conserva las estadísticas del planificador.
-            # Prepararlas antes de medir las consultas evita planes de una base
-            # recién restaurada, sin ampliar el presupuesto HTTP de producción.
-            & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseAislada --no-psqlrc --set=ON_ERROR_STOP=1 --command='ANALYZE;'
-            if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las estadísticas de la base temporal.' }
-            foreach ($carpeta in @('app\private','framework\cache\data','framework\sessions','framework\views','logs','document-processing')) {
-                New-Item -ItemType Directory -Path (Join-Path $raizPruebas ("worker-$tokenPruebas\" + $carpeta)) -Force | Out-Null
-            }
-            Write-Host ("Base aislada {0}/{1} lista en {2:N1} s." -f $tokenPruebas, $procesosPruebas, $relojBase.Elapsed.TotalSeconds) -ForegroundColor Green
-        }
-        Remove-Item -LiteralPath $copia -Force
-        $env:DB_DATABASE = $env:TEST_DB_DATABASE = $basesAisladas[0]
 
-        if ($ValidarPdfLocal -and (-not $seleccion -or $seleccion.paquete.pdf)) {
+        $validarNavegador = -not $seleccion -or $seleccion.paquete.navegador
+        $validarPdf = $ValidarPdfLocal -and (-not $seleccion -or $seleccion.paquete.pdf)
+        $validarPhp = -not $seleccion -or $seleccion.integral -or @($seleccion.paquete.pruebas_php).Count -gt 0
+
+        # Node necesita el ejecutable nativo: php en PATH puede ser un shim .cmd.
+        $phpNativo = ((& $Php -r 'echo PHP_BINARY;') -join '').Trim()
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $phpNativo -PathType Leaf)) {
+            throw 'No se pudo resolver el ejecutable nativo PHP para las pruebas.'
+        }
+        if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) { throw 'Falta Node para ejecutar los controles seleccionados.' }
+
+        if ($validarNavegador) {
+            foreach ($contrato in @('tests/Browser/portal-livewire.mjs', 'tests/Browser/portal-fixture.php')) {
+                if (-not (Test-Path -LiteralPath (Join-Path $Proyecto $contrato) -PathType Leaf)) {
+                    throw "Falta la prueba obligatoria de navegador del portal: $contrato"
+                }
+            }
+            $baseNavegador = $prefijoPruebas + '_browser'
+            $esquemaNavegador = Join-Path $raizPruebas 'browser-schema.dump'
+            $historialNavegador = Join-Path $raizPruebas 'browser-migrations.dump'
+            Write-Host 'Preparando el esquema local y los datos sinteticos para Opera Neon...' -ForegroundColor Cyan
+            & (Join-Path $pgBin 'pg_dump.exe') -h 127.0.0.1 -p 5432 -U postgres -d $basePruebas --schema-only -Fc -f $esquemaNavegador
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo exportar el esquema local para el navegador.' }
+            # El historial evita reaplicar migraciones sobre la estructura restaurada.
+            & (Join-Path $pgBin 'pg_dump.exe') -h 127.0.0.1 -p 5432 -U postgres -d $basePruebas --data-only --table=public.migrations --strict-names --no-large-objects -Fc -f $historialNavegador
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo exportar el historial de migraciones local.' }
+            & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres --template=template0 $baseNavegador
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear la base aislada del navegador.' }
+            $basesAisladas.Add($baseNavegador)
+            & (Join-Path $pgBin 'pg_restore.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseNavegador --schema-only --exit-on-error --no-owner --no-privileges $esquemaNavegador
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo restaurar el esquema aislado del navegador.' }
+            & (Join-Path $pgBin 'pg_restore.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseNavegador --data-only --exit-on-error --no-owner --no-privileges $historialNavegador
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo restaurar el historial de migraciones del navegador.' }
+            $env:DB_DATABASE = $env:TEST_DB_DATABASE = $baseNavegador
+            $configCacheAnterior = $env:APP_CONFIG_CACHE
+            $urlBaseAnterior = $env:DB_URL
+            try {
+                # Laravel interpreta null como ausencia de URL de conexión.
+                $env:DB_URL = 'null'
+                $env:APP_CONFIG_CACHE = Join-Path $raizPruebas 'browser-config.php'
+                & $phpNativo artisan migrate --database=pgsql --force --no-interaction
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudo migrar la base aislada del navegador.' }
+
+                $casosNavegador = if ($seleccion) { @($seleccion.paquete.navegador_casos) -join ', ' } else { 'todos (sin plan selectivo)' }
+                Write-Host "Probando en Opera Neon solo estos recorridos: $casosNavegador" -ForegroundColor Cyan
+                $argumentosNavegador = @('tests/Browser/portal-livewire.mjs', $phpNativo)
+                if ($PlanImpacto) { $argumentosNavegador += $PlanImpacto }
+                & node.exe @argumentosNavegador
+                if ($LASTEXITCODE -ne 0) { throw 'Fallo la validacion real de tooltip/Livewire o del portal. No se publica main ni se crea el paquete OCI.' }
+            } finally {
+                $env:APP_CONFIG_CACHE = $configCacheAnterior
+                $env:DB_URL = $urlBaseAnterior
+            }
+        } else {
+            Write-Host 'REUTILIZADO: los nueve recorridos Neon conservan evidencia propia compatible; no se abre el navegador.' -ForegroundColor Green
+        }
+
+        if ($validarPdf -or $validarPhp) {
+            $existe = & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$basePruebas';"
+            if ($LASTEXITCODE -ne 0) { throw "No se pudo consultar la base local $basePruebas." }
+            if ([string]::IsNullOrWhiteSpace([string]$existe)) {
+                & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $basePruebas
+                if ($LASTEXITCODE -ne 0) { throw "No se pudo crear la base local $basePruebas." }
+            }
+            $copia = Join-Path $raizPruebas 'base.dump'
+            Write-Host "Preparando $procesosPruebas bases temporales aisladas; los casos no modifican la base de localhost..." -ForegroundColor Cyan
+            & (Join-Path $pgBin 'pg_dump.exe') -h 127.0.0.1 -p 5432 -U postgres -d $basePruebas -Fc -f $copia
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la copia consistente de PostgreSQL.' }
+            for ($tokenPruebas = 1; $tokenPruebas -le $procesosPruebas; $tokenPruebas++) {
+                $relojBase = [Diagnostics.Stopwatch]::StartNew()
+                Write-Host "Base aislada $tokenPruebas/$procesosPruebas`: creando copia, migraciones y estadisticas..." -ForegroundColor Cyan
+                $baseAislada = $prefijoPruebas + '_' + $tokenPruebas
+                & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p 5432 -U postgres $baseAislada
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear una base temporal nueva de pruebas.' }
+                $basesAisladas.Add($baseAislada)
+                & (Join-Path $pgBin 'pg_restore.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseAislada --exit-on-error --no-owner --no-privileges $copia
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudo restaurar la base temporal de pruebas.' }
+                $env:DB_DATABASE = $env:TEST_DB_DATABASE = $baseAislada
+                & $Php artisan migrate --database=pgsql --force --no-interaction
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones en la base temporal.' }
+                # pg_dump/pg_restore no conserva las estadísticas del planificador.
+                # Prepararlas antes de medir las consultas evita planes de una base
+                # recién restaurada, sin ampliar el presupuesto HTTP de producción.
+                & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d $baseAislada --no-psqlrc --set=ON_ERROR_STOP=1 --command='ANALYZE;'
+                if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las estadísticas de la base temporal.' }
+                foreach ($carpeta in @('app\private','framework\cache\data','framework\sessions','framework\views','logs','document-processing')) {
+                    New-Item -ItemType Directory -Path (Join-Path $raizPruebas ("worker-$tokenPruebas\" + $carpeta)) -Force | Out-Null
+                }
+                Write-Host ("Base aislada {0}/{1} lista en {2:N1} s." -f $tokenPruebas, $procesosPruebas, $relojBase.Elapsed.TotalSeconds) -ForegroundColor Green
+            }
+            Remove-Item -LiteralPath $copia -Force
+            $env:DB_DATABASE = $env:TEST_DB_DATABASE = $prefijoPruebas + '_1'
+        }
+
+        if ($validarPdf) {
             # El adaptador PDF consulta esta base aislada. No depende de que el
             # usuario haya iniciado PostgreSQL antes de crear-paquete-oci.
             $appEnvAnterior = $env:APP_ENV
@@ -180,36 +240,13 @@ try {
             }
         } elseif ($ValidarPdfLocal) { Write-Host 'REUTILIZADO: PDF PHP/Java conserva fuentes, vendor, JAR, entorno y aprobacion compatibles.' -ForegroundColor Green }
 
-        # Node necesita el ejecutable nativo: php en PATH puede ser un shim .cmd.
-        # Se resuelve dentro del comando central, sin invocar un shell desde Node.
-        $phpNativo = ((& $Php -r 'echo PHP_BINARY;') -join '').Trim()
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $phpNativo -PathType Leaf)) {
-            throw 'No se pudo resolver el ejecutable nativo PHP para la prueba del navegador.'
-        }
-        foreach ($contrato in @('tests/Browser/portal-livewire.mjs', 'tests/Browser/portal-fixture.php')) {
-            if (-not (Test-Path -LiteralPath (Join-Path $Proyecto $contrato) -PathType Leaf)) {
-                throw "Falta la prueba obligatoria de navegador del portal: $contrato"
-            }
-        }
-        if (-not (Get-Command 'node.exe' -ErrorAction SilentlyContinue)) { throw 'Falta Node para verificar tooltip y Livewire en el navegador real.' }
-        if (-not $seleccion -or $seleccion.paquete.navegador) {
-        $casosNavegador = if ($seleccion) { @($seleccion.paquete.navegador_casos) -join ', ' } else { 'todos (sin plan selectivo)' }
-        Write-Host "Probando en Opera Neon solo estos recorridos: $casosNavegador" -ForegroundColor Cyan
-        $argumentosNavegador = @('tests/Browser/portal-livewire.mjs', $phpNativo)
-        if ($PlanImpacto) { $argumentosNavegador += $PlanImpacto }
-        & node.exe @argumentosNavegador
-        if ($LASTEXITCODE -ne 0) { throw 'Fallo la validacion real de tooltip/Livewire o del portal. No se publica main ni se crea el paquete OCI.' }
-        } else {
-            Write-Host 'REUTILIZADO: los nueve recorridos Neon conservan evidencia propia compatible; no se abre el navegador.' -ForegroundColor Green
-        }
-
         $env:HUBDIGITAL_TEST_DATABASE_PREFIX = $prefijoPruebas
         $env:HUBDIGITAL_TEST_RUNTIME_DIR = $raizPruebas
         $alcancePhp = if (-not $seleccion -or $seleccion.integral) { 'suite PHP completa' } else { "$(@($seleccion.paquete.pruebas_php).Count) archivos PHP relacionados" }
         Write-Host "Ejecutando $alcancePhp en $procesosPruebas procesos con bases y almacenamiento independientes..." -ForegroundColor Cyan
         $observadorPhp = Join-Path $Proyecto 'scripts\deployment\progreso-pruebas-php.cjs'
         if (-not (Test-Path -LiteralPath $observadorPhp -PathType Leaf)) { throw 'Falta el observador de progreso PHP.' }
-        if (-not $seleccion -or $seleccion.integral -or @($seleccion.paquete.pruebas_php).Count -gt 0) {
+        if ($validarPhp) {
             $argumentosObservador = @($observadorPhp, $phpNativo, $Proyecto, $procesosPruebas)
             if ($PlanImpacto) { $argumentosObservador += $PlanImpacto }
             & node.exe @argumentosObservador
@@ -226,12 +263,12 @@ finally {
     $derivadas = & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p 5432 -U postgres -d postgres -tAc "SELECT datname FROM pg_database WHERE datname LIKE '${prefijoPruebas}\_%' ESCAPE '\';"
     if ($LASTEXITCODE -ne 0) { $falloLimpieza = $true }
     foreach ($derivada in $derivadas) {
-        if ($derivada -match ('^' + [regex]::Escape($prefijoPruebas) + '_[1-4](?:_test_[1-4])?$') -and -not $basesAisladas.Contains($derivada)) {
+        if ($derivada -match $patronBaseAislada -and -not $basesAisladas.Contains($derivada)) {
             $basesAisladas.Add($derivada)
         }
     }
     foreach ($baseAislada in $basesAisladas) {
-        if ($baseAislada -notmatch ('^' + [regex]::Escape($prefijoPruebas) + '_[1-4](?:_test_[1-4])?$') -or $baseAislada -eq $basePruebas) {
+        if ($baseAislada -notmatch $patronBaseAislada -or $baseAislada -eq $basePruebas) {
             $falloLimpieza = $true
             Write-Warning 'Se impidió retirar una base que no fue creada por este comando.'
             continue

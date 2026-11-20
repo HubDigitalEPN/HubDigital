@@ -23,10 +23,12 @@ test('una aprobación UI exige todos los controles y huellas idénticas sin reno
 
 test('los contratos de depósitos y Pasante seleccionan exclusivamente sus pantallas propias', async () => {
     const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
-    const ids=['depositos_documento','depositos_firma','depositos_ingreso','depositos_contenido','captura_dwc','depositos_origen','depositos_rechazo','depositos_reintento','depositos_cerrado'];
+    const ids=['depositos_documento','depositos_firma','depositos_ingreso','depositos_contenido','captura_dwc','depositos_origen','depositos_matriz','depositos_rechazo','depositos_reintento','depositos_cerrado'];
     const shared=['depositos_ingreso','depositos_rechazo','depositos_reintento','depositos_cerrado'].sort();
+    const conEditor=['depositos_firma','depositos_origen','depositos_matriz'];
     for(const id of ids) {
-        assert.deepEqual(impact.focalScope(ui.definitions[id].sources).sort(),shared.includes(id) ? shared : id==='depositos_origen'?['depositos_origen','editor_wizard']:[id]);
+        const previstos=shared.includes(id) ? shared : conEditor.includes(id) ? [id,'editor_wizard'] : [id];
+        assert.deepEqual(impact.focalScope(ui.definitions[id].sources).sort(),previstos);
         assert.ok(ui.definitions[id].checks.length>=4);
     }
     assert.deepEqual(impact.focalScope(['tests/Browser/contratos-ui-focales.mjs']),[]);

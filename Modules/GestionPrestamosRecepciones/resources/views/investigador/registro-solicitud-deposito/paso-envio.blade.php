@@ -166,6 +166,10 @@
         </div>
 
         {{-- Resumen de la solicitud --}}
+        @php
+            $soloEdicionDeTextos = $soloEdicionDeTextos ?? false;
+            $declaracion = 'Declaro bajo juramento que la información proporcionada y los documentos cargados son verídicos, y que cumplo con la normativa nacional e institucional vigente para el manejo de especímenes biológicos.';
+        @endphp
         <div class="space-y-2">
             <flux:heading size="sm" level="3">Resumen de la solicitud</flux:heading>
 
@@ -173,35 +177,38 @@
 
                 <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Tipo de trámite</p>
-                    <p class="text-sm font-semibold text-text-primary">{{ $tipoTramite }}</p>
+                    @unless($soloEdicionDeTextos)<p class="text-sm font-semibold text-text-primary">{{ $tipoTramite }}</p>@endunless
                 </div>
 
                 <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Origen</p>
-                    <p class="text-sm font-semibold text-text-primary">{{ $origenRecoleccion }}</p>
-                    @if($situacionRegulatoria && $situacionRegulatoria !== 'Proviene de colección foránea')
-                        <p class="text-xs text-text-secondary">{{ $situacionRegulatoria }}</p>
-                    @endif
+                    @unless($soloEdicionDeTextos)
+                        <p class="text-sm font-semibold text-text-primary">{{ $origenRecoleccion }}</p>
+                        @if($situacionRegulatoria && $situacionRegulatoria !== 'Proviene de colección foránea')
+                            <p class="text-xs text-text-secondary">{{ $situacionRegulatoria }}</p>
+                        @endif
+                    @endunless
                 </div>
 
-                @if($provincia)
+                @if($soloEdicionDeTextos || $provincia)
                     <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                         <p class="text-xs text-text-secondary">Provincia</p>
-                        <p class="text-sm font-semibold text-text-primary">{{ $provincia }}</p>
-                        @if($localidad)
-                            <p class="text-xs text-text-secondary">{{ $localidad }}</p>
-                        @endif
+                        @unless($soloEdicionDeTextos)
+                            <p class="text-sm font-semibold text-text-primary">{{ $provincia }}</p>
+                            @if($localidad)<p class="text-xs text-text-secondary">{{ $localidad }}</p>@endif
+                        @endunless
                     </div>
                 @endif
 
                 <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Solicitante</p>
-                    <p class="text-sm font-semibold text-text-primary">{{ auth()->user()->name }}</p>
+                    @unless($soloEdicionDeTextos)<p class="text-sm font-semibold text-text-primary">{{ auth()->user()->name }}</p>@endunless
                 </div>
 
-                @if(!empty($documentosCargados))
+                @if($soloEdicionDeTextos || !empty($documentosCargados))
                     <div class="hub-send-panel col-span-2 rounded-lg border border-border bg-bg-main p-2 space-y-1">
                         <p class="text-xs text-text-secondary">Documentos adjuntados</p>
+                        @unless($soloEdicionDeTextos)
                         <ul class="space-y-1">
                             @foreach($documentosCargados as $nombre => $ruta)
                                 <li class="flex items-center gap-2 text-sm text-text-primary">
@@ -210,17 +217,20 @@
                                 </li>
                             @endforeach
                         </ul>
+                        @endunless
                     </div>
                 @endif
 
-                @if($matrizCargada && $estadoMatriz)
+                @if($soloEdicionDeTextos || ($matrizCargada && $estadoMatriz))
                     <div class="hub-send-panel col-span-2 rounded-lg border border-border bg-bg-main p-2 space-y-1">
                         <p class="text-xs text-text-secondary">Matriz de especies</p>
+                        @unless($soloEdicionDeTextos)
                         <div class="flex items-center gap-3 flex-wrap">
                             <p class="text-sm font-semibold text-text-primary">{{ $archivoMatrizNombre ?: 'Cargada' }}</p>
                             <x-gestionprestamosrecepciones::matrix-status-badge :estado="$estadoMatriz" />
                         </div>
                         <p class="text-xs text-text-secondary">{{ $totalRegistros }} registro(s)</p>
+                        @endunless
                     </div>
                 @endif
 
@@ -231,16 +241,16 @@
         <div class="hub-send-columns">
         <div class="space-y-2 border-l-2 border-blue-navy/20 bg-[#F8FAFC] px-3 py-2">
             <flux:heading size="sm" level="3">Declaración del solicitante</flux:heading>
-            <flux:checkbox
-                wire:model="declaracionAceptada"
-                label="Declaro bajo juramento que la información proporcionada y los documentos cargados son verídicos, y que cumplo con la normativa nacional e institucional vigente para el manejo de especímenes biológicos."
-            />
+            <div data-wizard-copy="{{ 'literal:'.$declaracion }}">
+                <flux:checkbox wire:model="declaracionAceptada"
+                    :label="\App\Support\TextosSistema::diccionario()[$declaracion] ?? $declaracion" />
+            </div>
             <flux:error name="declaracionAceptada" />
         </div>
 
         <div class="rounded-lg border border-bio-green/30 bg-surface p-3">
             <p class="text-sm font-semibold text-text-primary">Solicitud firmada en el paso 1</p>
-            <a href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" class="mt-2 inline-block text-sm text-science-blue hover:underline">Ver oficio firmado</a>
+            <a @unless($soloEdicionDeTextos) href="{{ route('depositos.solicitud.documento', ['id' => $solicitudId]) }}" target="_blank" @endunless class="mt-2 inline-block text-sm text-science-blue hover:underline">Ver oficio firmado</a>
             <flux:error name="solicitudFirmada" />
         </div>
         </div>

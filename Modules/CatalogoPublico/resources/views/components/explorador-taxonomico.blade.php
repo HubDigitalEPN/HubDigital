@@ -1,6 +1,10 @@
 <dialog id="explorador-taxonomico" class="taxonomy-explorer" x-data="portalExploradorTaxonomico" x-ref="dialogo" wire:ignore
-    aria-labelledby="titulo-explorador-taxonomico" closedby="closerequest" data-endpoint="{{ route('portal.explorador') }}" data-ete-endpoint="{{ route('portal.explorador-dibujo') }}"
-    data-ficha-endpoint="{{ route('portal.ficha', ['taxon' => '__TAXON__']) }}"
+    aria-labelledby="titulo-explorador-taxonomico" closedby="closerequest"
+    @if($arbolEditorial ?? false)
+        open style="position:static;width:100%;max-width:none;height:auto;min-height:24rem;margin:0"
+    @else
+        data-endpoint="{{ route('portal.explorador') }}" data-ete-endpoint="{{ route('portal.explorador-dibujo') }}" data-ficha-endpoint="{{ route('portal.ficha', ['taxon' => '__TAXON__']) }}"
+    @endif
     x-on:abrir-explorador-taxonomico.window="abrir($event.detail?.invocador)"
     x-on:click="if ($event.target === $el && ($event.clientX < $el.getBoundingClientRect().left || $event.clientX > $el.getBoundingClientRect().right || $event.clientY < $el.getBoundingClientRect().top || $event.clientY > $el.getBoundingClientRect().bottom)) cerrar()"
     x-on:portal-taxonomy-updated.window="if (abierto && !buscando) consultar(true, true)"

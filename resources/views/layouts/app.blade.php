@@ -2,6 +2,8 @@
     <flux:main>
         <x-app-breadcrumbs />
         {{ $slot }}
-        <div class="mt-8"><x-platform-footer /></div>
+        @unless(request()->routeIs('admin.contenidos'))
+            <div class="mt-8"><x-platform-footer /></div>
+        @endunless
     </flux:main>
 </x-layouts::app.sidebar>

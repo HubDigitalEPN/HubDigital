@@ -1,8 +1,10 @@
-@props(['registros' => [], 'imagenes' => [], 'total' => 0, 'seleccion' => null, 'contexto' => 'mapa', 'mostrarTitulo' => true, 'ordenable' => false])
+@props(['registros' => [], 'imagenes' => [], 'total' => 0, 'seleccion' => null, 'contexto' => 'mapa', 'mostrarTitulo' => true, 'ordenable' => false, 'editorial' => false])
 
 @php
     // El componente recibe exclusivamente los DTO que ya pasaron aplicarVisibilidad.
-    $columnas = array_column($this->columnasPublicas, 'etiqueta', 'campo');
+    $columnas = $editorial
+        ? ['occurrence_id' => 'catalogNumber', 'scientific_name' => 'scientificName', 'event_date' => 'eventDate']
+        : array_column($this->columnasPublicas, 'etiqueta', 'campo');
     $camposNumericos = ['decimal_latitude', 'decimal_longitude', 'elevation_min_m', 'elevation_max_m', 'individual_count'];
     $camposExtensos = ['locality_inec_reference', 'coordinate_reference', 'type_notes', 'specimen_notes'];
     $etiquetaRegion = $contexto === 'catalogo' ? 'Registros de la colección con desplazamiento horizontal y vertical' : 'Tabla de registros de la ubicación con desplazamiento horizontal y vertical';
@@ -75,7 +77,7 @@
                         @if(isset($columnas['ficha']))<td><button type="button" class="portal-record-open" x-on:click.stop="$wire.abrirFichaRegistro(@js($registro->especimen_id))">Abrir ficha<span class="sr-only"> de {{ $registro->occurrence_id ?: 'registro público' }}</span></button></td>@endif
                     </tr>
                 @empty
-                    <tr><td colspan="{{ max(1, count($columnas)) }}">No hay registros públicos para esta selección.</td></tr>
+                    @unless($editorial)<tr><td colspan="{{ max(1, count($columnas)) }}">No hay registros públicos para esta selección.</td></tr>@endunless
                 @endforelse
             </tbody>
         </table>

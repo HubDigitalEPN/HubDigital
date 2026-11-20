@@ -14,6 +14,7 @@ final class VistaEditorialInerte
         // conviertan en texto visible o rompan el menú móvil.
         $html = preg_replace('~<script\b(?![^>]*\btype=["\x27]application/json["\x27])[^>]*>.*?</script>~si', '', $html);
         $html = preg_replace('~\sx-cloak(?=[\s>])~i', ' hidden', $html);
+        $html = preg_replace('~\swire:loading(?:\.(?:delay|shortest|shorter|short|long|longer|longest|block|inline|inline-block|inline-flex|flex|grid|table))*(?:\s*=\s*(?:"[^"]*"|\x27[^\x27]*\x27))?(?=[\s/>])~i', ' hidden', $html);
         $html = preg_replace('~\s(?:wire:[\w.:-]+|x-[\w.:-]+|@[\w.:-]+|:[\w.:-]+|on\w+)\s*=\s*(?:"[^"]*"|\x27[^\x27]*\x27)~si', '', $html);
         $doc = new \DOMDocument;
         $anterior = libxml_use_internal_errors(true);
@@ -21,6 +22,13 @@ final class VistaEditorialInerte
         finally { libxml_clear_errors(); libxml_use_internal_errors($anterior); }
         $xpath = new \DOMXPath($doc);
         foreach (iterator_to_array($xpath->query('//script[not(@type="application/json")]|//link[@as="script"]|//iframe|//input[@type="hidden"]')) as $nodo) $nodo->parentNode?->removeChild($nodo);
+        foreach ($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " atlas-map-shell ")]') as $mapa) {
+            $aviso = $doc->createElement('p', 'El mapa se muestra en el Explorador público.');
+            $aviso->setAttribute('class', 'atlas-map-message');
+            $aviso->setAttribute('data-mapa-editorial-aviso', '');
+            $mapa->setAttribute('data-copy-preserve', '');
+            $mapa->replaceChildren($aviso);
+        }
         foreach (iterator_to_array($xpath->query('//*')) as $nodo) {
             foreach (iterator_to_array($nodo->attributes) as $atributo) {
                 if (preg_match('/^(?:wire:|x-|on|@|:)/i', $atributo->name) || in_array($atributo->name, ['required', 'aria-required', 'pattern', 'min', 'max', 'minlength', 'maxlength', 'aria-invalid', 'action', 'formaction', 'autofocus'], true)) $nodo->removeAttribute($atributo->name);

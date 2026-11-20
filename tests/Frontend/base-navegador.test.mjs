@@ -21,12 +21,18 @@ function entries(current, target = '/workspace') {
     return Object.fromEntries(browser.ids.map(id => [id, {root: target, status: 'passed', approved_at: new Date(now - 1000).toISOString(),
         inputs: current[id].values, input_sha256: current[id].sha256, provenance: {type: 'case-run-success'}}]));
 }
-test('los nueve cuerpos conservan literalmente sus aserciones y el runner se puede interpretar sin lanzar Neon', () => {
+test('los nueve cuerpos vigentes tienen huellas y aserciones verificadas sin lanzar Neon', () => {
     const parts = browser.runnerParts(runner);
+    // portal-casos.json conserva las huellas de la migración histórica. El
+    // caso revisado exige una ejecución propia sobre sus aserciones vigentes.
+    const revised = {'apertura-sesion': {
+        body_sha256: 'd31d14effa433bd9ae56e60bd0055f54b0d4bf82d0db4bbc6881cdd3e4783acd', assertions: 23,
+    }};
     for (const id of browser.ids) {
         const body = browser.preservedBody(parts.bodies[id]);
-        assert.equal(browser.hash(body), layout.cases[id].body_sha256, id);
-        assert.equal(browser.assertionStatements(body).length, layout.cases[id].assertions, id);
+        const expected = revised[id] ?? layout.cases[id];
+        assert.equal(browser.hash(body), expected.body_sha256, id);
+        assert.equal(browser.assertionStatements(body).length, expected.assertions, id);
     }
     const syntax = spawnSync(process.execPath, ['--check', path.join(root, 'tests/Browser/portal-livewire.mjs')], {encoding: 'utf8', windowsHide: true});
     assert.equal(syntax.status, 0, syntax.stderr);

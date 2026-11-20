@@ -1,7 +1,8 @@
+@if(session('foto-editorial-guardada'))<p data-hub-feedback="success" role="status">{{ session('foto-editorial-guardada') }}</p>@endif
 <flux:modal wire:model="fotoEditorialAbierta" aria-labelledby="foto-editorial-titulo" class="w-full max-w-xl">
     <form wire:submit="guardarFotoEditorial" class="space-y-4" data-copy-preserve>
         <h2 id="foto-editorial-titulo" class="hub-section-title">Cambiar fotografía</h2>
-        <label class="lab-admin-field">Fotografía<input type="file" wire:model="fotoEditorial" accept="image/jpeg,image/png,image/webp,image/avif"></label>
+        <x-editor-foto-input id="foto-editorial-archivo" modelo="fotoEditorial" />
         <p wire:loading wire:target="fotoEditorial" role="status">Cargando fotografía…</p>
         @error('fotoEditorial')<p role="alert" class="text-error">{{ $message }}</p>@enderror
         <flux:textarea wire:model="fotoEditorialAlt" label="Descripción accesible de la fotografía" rows="2" maxlength="500"/>

@@ -1,5 +1,6 @@
-<div class="space-y-5" x-data="{ total: {{ count($documentosRequeridos) }} }">
-    @if(in_array('validando', $firmasElectronicas, true) || in_array('analizando', $validacionArchivos, true))
+@php $soloEdicionDeTextos = $soloEdicionDeTextos ?? false; @endphp
+<div class="space-y-5" @unless($soloEdicionDeTextos) x-data="{ total: {{ count($documentosRequeridos) }} }" @endunless>
+    @if(!$soloEdicionDeTextos && (in_array('validando', $firmasElectronicas, true) || in_array('analizando', $validacionArchivos, true)))
         <span wire:poll.1s="actualizarFirmas" class="sr-only">Comprobando documentos y firmas electrónicas</span>
     @endif
 
@@ -9,7 +10,7 @@
     </div>
 
     {{-- Procesando documentos (polling activo) --}}
-    @if($extraccionProcesando)
+    @if(!$soloEdicionDeTextos && $extraccionProcesando)
         @php $documentosEnRevision = array_intersect_key($documentosCargados, array_fill_keys($documentosRequeridos, true)); @endphp
         <div wire:key="extraccion-poll-{{ $intervaloExtraccion }}" wire:poll.{{ $intervaloExtraccion }}s="verificarExtraccion" class="space-y-4 rounded-xl border border-science-blue/30 bg-science-blue/5 p-6" role="status" aria-live="polite">
             <div class="flex items-center gap-3">
@@ -40,7 +41,7 @@
     @else
 
     {{-- Intervención curatorial activa --}}
-    @if($intervencionCuratoriaActiva)
+    @if(!$soloEdicionDeTextos && $intervencionCuratoriaActiva)
 
         <div wire:key="card-intervencion" class="rounded-xl border border-warning/40 bg-warning/5 p-6 space-y-5">
 
@@ -65,7 +66,7 @@
 
     <div wire:key="formulario-documentos" class="space-y-4">
 
-        @if($estadoValidacionContenido === 'rechazado' || !empty($erroresDocumentales))
+        @if(!$soloEdicionDeTextos && ($estadoValidacionContenido === 'rechazado' || !empty($erroresDocumentales)))
             @php $falloTecnico = in_array($estadoValidacionContenido, ['error_procesamiento', 'error_modelo', 'error_cola'], true); @endphp
             <flux:callout
                 data-hub-feedback="error"
@@ -123,15 +124,18 @@
                     <div>
                         <h3 id="documentos-requeridos-titulo" class="text-sm font-semibold text-blue-navy">Archivos requeridos</h3>
                     </div>
-                    <p class="font-mono text-xs text-text-secondary">{{ count(array_intersect_key($documentosCargados, array_fill_keys($documentosRequeridos, true))) }}/{{ count($documentosRequeridos) }} cargados</p>
+                    @unless($soloEdicionDeTextos)
+                        <p class="font-mono text-xs text-text-secondary">{{ count(array_intersect_key($documentosCargados, array_fill_keys($documentosRequeridos, true))) }}/{{ count($documentosRequeridos) }} cargados</p>
+                    @endunless
                 </div>
                 @foreach($documentosRequeridos as $docNombre)
-                    @php $prop = $this->propiedadParaDocumento($docNombre); @endphp
+                    @php $prop = $soloEdicionDeTextos ? '' : $this->propiedadParaDocumento($docNombre); @endphp
                     <x-gestionprestamosrecepciones::dropzone
                         :nombre="$docNombre"
                         :propiedad="$prop"
                         :requerido="true"
-                        :cargado="isset($documentosCargados[$docNombre])"
+                        :solo-edicion-de-textos="$soloEdicionDeTextos"
+                        :cargado="!$soloEdicionDeTextos && isset($documentosCargados[$docNombre])"
                         :rechazo="$rechazosDocumentos[$docNombre] ?? null"
                         :estado-firma="$firmasElectronicas[$docNombre] ?? null"
                         :estado-archivo="$validacionArchivos[$docNombre] ?? null"
@@ -146,13 +150,13 @@
                     />
                 @endforeach
             </section>
-            @if(array_intersect($firmasElectronicas, ['revocacion_no_comprobable', 'verificacion_no_disponible', 'almacen_incompleto', 'no_verificado', 'validando']) !== [])
+            @if(!$soloEdicionDeTextos && array_intersect($firmasElectronicas, ['revocacion_no_comprobable', 'verificacion_no_disponible', 'almacen_incompleto', 'no_verificado', 'validando']) !== [])
                 <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-xs text-text-primary" role="alert">
 
                     <flux:button size="xs" variant="outline" icon="arrow-path" wire:click="repetirVerificacionFirmas" wire:loading.attr="disabled" wire:target="repetirVerificacionFirmas">Volver a comprobar</flux:button>
                 </div>
             @endif
-        @else
+        @elseif(!$soloEdicionDeTextos)
             <div class="flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-4">
                 <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
                     <flux:icon name="check-circle" class="size-5" />
@@ -174,13 +178,19 @@
 
                 </div>
             </div>
+            @if($soloEdicionDeTextos)
+                <span class="text-sm text-warning" data-wizard-copy="documentos.asistencia_accion">{{ \App\Support\WizardCopy::text('documentos.asistencia_accion') }}</span>
+            @else
             <flux:modal.trigger name="asistencia-depositos">
                 <flux:button variant="outline" size="sm" icon="hand-raised" class="shrink-0 border-warning/40 text-warning hover:bg-warning/10">
                     {{ \App\Support\WizardCopy::text('documentos.asistencia_accion') }}
                 </flux:button>
             </flux:modal.trigger>
+            @endif
         </div>
-        @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.asistencia-modal')
+        @unless($soloEdicionDeTextos)
+            @include('gestionprestamosrecepciones::investigador.registro-solicitud-deposito.asistencia-modal')
+        @endunless
         @endif
 
     </div>{{-- fin wire:key="formulario-documentos" --}}

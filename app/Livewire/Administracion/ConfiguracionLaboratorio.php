@@ -20,7 +20,6 @@ final class ConfiguracionLaboratorio extends Component
     use WithFileUploads, \App\Livewire\Concerns\WithFotosEditoriales, \App\Livewire\Concerns\WithTextosNavegacion;
     public array $textos = [], $alternativos = [], $fotos = [], $restaurarFotos = [];
     public array $bloques = [], $fotosBloques = [], $quitarFotosBloques = [];
-    public array $posiciones = [];
     #[Locked] public string $version = '';
     #[Locked] public string $campoSeleccionado = '';
     public bool $textoAbierto = false;
@@ -59,9 +58,8 @@ final class ConfiguracionLaboratorio extends Component
         $this->fotoAbierta = true;
     }
 
-    public function crearBloqueVisual(float $x, float $y): void
+    public function crearBloqueVisual(): void
     {
-        validator(['x' => $x, 'y' => $y], ['x' => 'numeric|between:0,95', 'y' => 'numeric|between:0,4500'])->validate();
         if (count($this->bloques) >= 30) { $this->addError('bloques', 'Puedes publicar hasta 30 bloques adicionales.'); return; }
         $this->agregarBloque();
         $indice = array_key_last($this->bloques);
@@ -69,18 +67,12 @@ final class ConfiguracionLaboratorio extends Component
         $this->bloqueSeleccionado = $id;
         $this->bloqueNuevo = true;
         $this->bloqueAbierto = true;
-        foreach (['titulo' => 0, 'texto' => 8] as $campo => $desfase) {
-            $this->posiciones['texto-bloque-'.$id.'-'.$campo] = ['x' => $x, 'y' => $y + $desfase, 'ancho' => min(60, 100 - $x), 'alto' => 8, 'fuente' => $campo === 'titulo' ? 2 : 1.25, 'capa' => 0];
-        }
-        $this->posiciones['foto-bloque-'.$id] = ['x' => $x, 'y' => $y + 20, 'ancho' => min(40, 100 - $x), 'alto' => 25, 'fuente' => 1.25, 'capa' => 0];
     }
 
     public function cancelarBloqueVisual(): void
     {
         if ($this->bloqueNuevo) {
-            $id = $this->bloqueSeleccionado;
-            $this->quitarBloque($id);
-            unset($this->posiciones['texto-bloque-'.$id.'-titulo'], $this->posiciones['texto-bloque-'.$id.'-texto'], $this->posiciones['foto-bloque-'.$id]);
+            $this->quitarBloque($this->bloqueSeleccionado);
         }
         $this->bloqueAbierto = $this->bloqueNuevo = false;
     }
@@ -94,7 +86,6 @@ final class ConfiguracionLaboratorio extends Component
     {
         $id = $this->bloqueSeleccionado;
         $this->quitarBloque($id);
-        unset($this->posiciones['texto-bloque-'.$id.'-titulo'], $this->posiciones['texto-bloque-'.$id.'-texto'], $this->posiciones['foto-bloque-'.$id]);
         $this->bloqueAbierto = $this->bloqueNuevo = false;
         $this->dispatch('laboratorio-bloque-retirado', id: $id);
     }
@@ -108,7 +99,6 @@ final class ConfiguracionLaboratorio extends Component
     {
         $datos = $pagina->leer(); $this->textos = $datos['textos']; $this->version = $datos['version'];
         $this->bloques = array_map(fn ($bloque) => array_intersect_key($bloque, array_flip(['id', 'titulo', 'texto', 'alt'])), $datos['bloques']);
-        $this->posiciones = $datos['posiciones'];
         $this->alternativos = [];
         foreach ($datos['fotos'] as $clave => $foto) $this->alternativos[$clave] = $foto['alt'];
     }
@@ -123,14 +113,6 @@ final class ConfiguracionLaboratorio extends Component
     {
         $this->bloques = array_values(array_filter($this->bloques, fn ($bloque) => $bloque['id'] !== $id));
         unset($this->fotosBloques[$id], $this->quitarFotosBloques[$id]);
-    }
-
-    public function moverBloque(string $id, int $direccion): void
-    {
-        if (!in_array($direccion, [-1, 1], true)) return;
-        $origen = array_search($id, array_column($this->bloques, 'id'), true);
-        if ($origen === false || !isset($this->bloques[$origen + $direccion])) return;
-        [$this->bloques[$origen], $this->bloques[$origen + $direccion]] = [$this->bloques[$origen + $direccion], $this->bloques[$origen]];
     }
 
     public function guardar(PaginaLaboratorio $pagina): void
@@ -168,23 +150,51 @@ final class ConfiguracionLaboratorio extends Component
                 if (!empty($this->fotosBloques[$id])) $nuevas['bloque-'.$id] = $pagina->prepararFoto((string) file_get_contents($this->fotosBloques[$id]->getRealPath()));
                 $restaurar['bloque-'.$id] = $this->quitarFotosBloques[$id] ?? false;
             }
-            $pagina->guardar(array_map('trim', array_intersect_key($this->textos, config('pagina-laboratorio.textos'))), $this->alternativos, $nuevas, $restaurar, $this->version, (string) auth()->id(), $this->bloques, $this->posiciones);
+            $pagina->guardar(array_map('trim', array_intersect_key($this->textos, config('pagina-laboratorio.textos'))), $this->alternativos, $nuevas, $restaurar, $this->version, (string) auth()->id(), $this->bloques);
             $this->fotos = $this->restaurarFotos = [];
             $this->fotosBloques = $this->quitarFotosBloques = [];
             $this->mount($pagina);
             $this->textoAbierto = false;
             $this->fotoAbierta = $this->bloqueAbierto = $this->bloqueNuevo = false;
             $this->dispatch('laboratorio-publicado');
-            session()->flash('laboratorio-guardado', 'Página publicada. Los textos y las fotografías ya están actualizados.');
+            session()->flash('laboratorio-guardado', 'Transacción Efectuada');
         } catch (\Illuminate\Validation\ValidationException $error) { throw $error; }
         catch (\Throwable $error) { report($error); $this->addError('fotos', 'No se pudo publicar. El contenido anterior se conserva.'); }
+    }
+
+    public function publicarTextoVisual(string $campo, string $contenido, ?string $complemento, PaginaLaboratorio $pagina): array
+    {
+        abort_unless(array_key_exists($campo, config('pagina-laboratorio.textos')), 422);
+        $anteriores = $this->textos;
+        $this->textos[$campo] = $contenido;
+        $campoComplementario = match ($campo) {
+            'personal_titulo' => 'personal_destacado',
+            'adrian_bio' => 'adrian_especialidad',
+            'contacto_accion' => 'contacto_email',
+            default => null,
+        };
+        if ($campoComplementario !== null && $complemento !== null) {
+            $this->textos[$campoComplementario] = $complemento;
+        }
+
+        $this->resetValidation();
+        try {
+            $this->guardar($pagina);
+        } catch (\Illuminate\Validation\ValidationException $error) {
+            $this->setErrorBag($error->validator->errors());
+        }
+        if ($this->getErrorBag()->isEmpty()) {
+            return ['guardado' => true];
+        }
+
+        $this->textos = $anteriores;
+        return ['error' => $this->getErrorBag()->first()];
     }
 
     public function render(): View
     {
         $indiceFoto = str_starts_with($this->fotoSeleccionada, 'bloque-') ? array_search(substr($this->fotoSeleccionada, 7), array_column($this->bloques, 'id'), true) : false;
         return view('livewire.administracion.configuracion-laboratorio', [
-            'pagina' => app(PaginaLaboratorio::class)->leer(),
             'modeloSeleccionado' => str_starts_with($this->campoSeleccionado, 'bloques.') ? $this->campoSeleccionado : 'textos.'.$this->campoSeleccionado,
             'indiceBloque' => array_search($this->bloqueSeleccionado, array_column($this->bloques, 'id'), true),
             'fotoBloque' => $indiceFoto !== false,

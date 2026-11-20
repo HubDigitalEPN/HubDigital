@@ -13,7 +13,10 @@ final class VistaPreviaWizard
 {
     public static function pasos(): array
     {
-        return [0=>['Solicitud','solicitud','general'],1=>['Trámite','tramite','tramite'],2=>['Origen','origen','origen'],3=>['Archivos y firmas','documentos','documentos'],4=>['Datos','datos','datos'],7=>['Subir datos','matriz','detalle'],8=>['Envío','envio','envio']];
+        $plantillas = [0 => ['solicitud','general'], 1 => ['tramite','tramite'], 2 => ['origen','origen'],
+            3 => ['documentos','documentos'], 4 => ['datos','datos'], 7 => ['matriz','detalle'], 8 => ['envio','envio']];
+
+        return array_map(static fn (array $paso): array => [WizardCopy::text('pasos.'.$paso[0]), ...$paso], $plantillas);
     }
 
     public static function datos(int $paso, string $modalidad): array

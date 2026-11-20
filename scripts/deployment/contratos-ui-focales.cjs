@@ -365,7 +365,7 @@ definitions.contenidos_unificados.sources=definitions.contenidos_unificados.sour
 definitions.contenidos_unificados.sources.push('resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php');
 Object.assign(definitions, {
     portal_editor_visual:{sources:['app/Support/EditorPortal.php','app/Livewire/Administracion/ConfiguracionTextosPortal.php','public/js/portal-editor.js','public/js/textos-sistema.js','resources/views/livewire/administracion/editor-visual-portal.blade.php','resources/views/components/portal-information-text.blade.php'],checks:['realPage','selected','saved','reloaded','restored','fit','noNavigation']},
-    laboratorio_editor:{sources:['app/Livewire/Administracion/ConfiguracionLaboratorio.php','resources/views/livewire/administracion/configuracion-laboratorio.blade.php','public/js/laboratorio-layout.js'],checks:['canvas','textEditor','keyboard','saved','reloaded','restored','fit']},
+    laboratorio_editor:{sources:['app/Livewire/Administracion/ConfiguracionLaboratorio.php','resources/views/livewire/administracion/configuracion-laboratorio.blade.php','public/js/laboratorio-layout.js'],checks:['page','textEditor','fixedLayout','saved','reloaded','restored','fit']},
     catalogo_borrado:{sources:['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/EliminarEspecimenes.php','Modules/InventarioGestionColeccion/database/migrations/2026_11_18_220000_create_eliminaciones_especimenes.php'],checks:['individual','cancelled','deleted','batch','selectionCleared','fit']},
 });
 for(const id of ['portal_editor_visual','laboratorio_editor','catalogo_borrado'])for(const file of definitions[id].sources)(owner[file]??=[]).push(id);
@@ -421,19 +421,32 @@ for(const file of ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/Ex
 }
 contracts['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php']=['tests/Feature/PortalChatMatrizDatosTest.php'];
 definitions.menu_curaduria.checks.push('administration');
-definitions.portal_editor_visual.checks.push('immediate','positions');
-definitions.editor_wizard.checks.push('positions','scroll');
-definitions.contenidos_unificados.checks.push('fichaClarity','fichaInfinite','fichaSaved');
+definitions.portal_editor_visual.checks.push('immediate','fixedLayout','quiet','noOutline','noChat','legalLinks');
+definitions.editor_wizard.checks.push('fixedLayout','scroll','fieldText','stepText','actions','quiet');
+definitions.textos_contexto.checks.push('infinite','noActions');
+definitions.contenidos_unificados.checks.push('fichaClarity','fichaInfinite','fichaSaved','guide','noActions');
 for(const file of ['app/Support/DisposicionContenido.php','public/js/contenido-disposicion.js','public/css/contenidos-editor.css','resources/views/livewire/administracion/partials/herramientas-disposicion.blade.php']){
     owner[file]=['portal_editor_visual','editor_wizard'];contracts[file]=['tests/Feature/EditorVisualPortalesTest.php','tests/Feature/EditorWizardContextoTest.php'];
 }
 owner['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito.blade.php']=['editor_wizard'];
 contracts['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito.blade.php']=['tests/Feature/EditorWizardContextoTest.php'];
+for(const file of ['config/wizard-copy.php', ...['solicitud','origen','documentos','datos','matriz','envio'].map(paso=>`Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-${paso}.blade.php`), 'Modules/GestionPrestamosRecepciones/resources/views/components/dropzone.blade.php']){
+    definitions.editor_wizard.sources.push(file);
+    owner[file]=[...new Set([...(owner[file]||[]),'editor_wizard'])];
+    contracts[file]=[...new Set([...(contracts[file]||[]),'tests/Feature/EditorWizardContextoTest.php'])];
+}
 contracts['app/Support/DisposicionContenido.php']=['tests/Feature/EditorVisualPortalesTest.php','tests/Feature/EditorWizardContextoTest.php'];
 owner['Modules/GestionPrestamosRecepciones/resources/views/components/sum-cell.blade.php']=['editor_wizard'];
 contracts['Modules/GestionPrestamosRecepciones/resources/views/components/sum-cell.blade.php']=['tests/Feature/EditorWizardContextoTest.php'];
 contracts['resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php']=['tests/Feature/PortalFichasTaxonomicasTest.php'];
 owner['public/css/contenidos-editor.css']=['portal_editor_visual','editor_wizard','textos_contexto','contenidos_unificados','laboratorio_editor'];
+definitions.posicion_accion_inicio={
+    sources:['app/Support/DisposicionContenido.php','public/js/contenido-disposicion.js','public/css/contenidos-editor.css','resources/views/portal-inicio.blade.php','resources/views/layouts/portal.blade.php'],
+    checks:['fixedLayout','savedLayout','public','preload'],
+};
+for(const file of definitions.posicion_accion_inicio.sources) {
+    owner[file]=[...new Set([...(owner[file]||[]),'posicion_accion_inicio'])];
+}
 definitions.portal_editor_visual.checks.push('direct');
 definitions.editor_wizard.checks.push('direct','modality');
 definitions.laboratorio_editor.checks.push('photoEditor','inlineCreate','direct');
@@ -470,7 +483,7 @@ function runnerFragment(source,id){
     let common=source.slice(0,marks[0].index);
     // Esta fábrica nueva solo es invocada por los dos editores. No modifica
     // la ejecución ni las aserciones de los otros recorridos.
-    if(!body.includes('comprobarOrden'))common=common.replace(/    const comprobarOrden=async[\s\S]*?(?=    const comprobarAyudas=)/,'');
+    if(!/comprobarOrden|sinMovimiento/.test(body))common=common.replace(/    const (?:comprobarOrden|sinMovimiento)[\s\S]*?(?=    const comprobarAyudas=)/,'');
     return common+'\n'+body;
 }
 function preserveCompatible(root,id,originalRunner){
@@ -492,14 +505,21 @@ function approve(root,id,checks,before) {
     const dir=path.join(root,'.local/validation/ui-focal');fs.mkdirSync(dir,{recursive:true});
     fs.writeFileSync(path.join(dir,id+'.json'),JSON.stringify({root:fs.realpathSync(root),provider:'opera_neon',profile:'NeonCodexQA',executed_at:new Date().toISOString(),checks,inputs:current},null,2)+'\n');
 }
-definitions.laboratorio_editor.checks.push('reconnected','allPhotos','uniform','noResize','headerPhoto','inlinePublish','inlineRemove');
+definitions.laboratorio_editor.checks.push('reconnected','allPhotos','headerPhoto','inlinePublish','inlineRemove','quiet');
 definitions.editor_wizard.checks.push('portable');
-definitions.portal_editor_visual.checks.push('allSections','fixed','fixedText','inert','photos');
-definitions.ficha_editor_directo={sources:['app/Livewire/Administracion/FichasTaxonomicasPortal.php','resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/FichaTaxonomicaPublica.php','resources/js/portal-taxonomy-branch-viewer.js','public/js/contenido-disposicion.js','public/css/contenidos-editor.css'],checks:['move','photo','text','uniform','noResize','fit']};
+definitions.portal_editor_visual.checks.push('allSections','fixed','fixedText','inert','photos','mapNotice');
+definitions.ficha_editor_directo={sources:['app/Livewire/Administracion/FichasTaxonomicasPortal.php','resources/views/livewire/administracion/fichas-taxonomicas-portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/FichaTaxonomicaPublica.php','resources/js/portal-taxonomy-branch-viewer.js','public/js/contenido-disposicion.js','public/css/contenidos-editor.css'],checks:['fixedLayout','photo','text','noResize','fit']};
 for(const f of definitions.ficha_editor_directo.sources){owner[f]=[...new Set([...(owner[f]||[]).filter(id=>id!=='grillas_continuas'),'ficha_editor_directo'])];(contracts[f]??=[]).push('tests/Feature/PortalFichasTaxonomicasTest.php');}
 for(const f of ['app/Support/FotosEditoriales.php','app/Livewire/Concerns/WithFotosEditoriales.php','app/Livewire/Concerns/WithTextosNavegacion.php','app/Support/VistaEditorialInerte.php','app/Http/Controllers/FotoEditorialPortal.php','app/Http/Middleware/CachePublicPortal.php','resources/views/livewire/administracion/partials/foto-editorial.blade.php','resources/views/livewire/administracion/partials/texto-navegacion.blade.php']){
     definitions.portal_editor_visual.sources.push(f);owner[f]=['portal_editor_visual'];contracts[f]=['tests/Feature/EditorPresentacionDirectaTest.php'];
 }
 for(const f of ['resources/views/layouts/portal.blade.php','config/portal-copy.php','routes/web.php']){(contracts[f]??=[]).push('tests/Feature/EditorPresentacionDirectaTest.php');}
+for(const f of ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/PortalCatalogo.php', 'Modules/CatalogoPublico/resources/views/dashboard-coleccion.blade.php',
+    ...['filtro-investigacion','explorador-taxonomico','tabla-registros-mapa','panel-investigacion','menu-analisis'].map(nombre=>`Modules/CatalogoPublico/resources/views/components/${nombre}.blade.php`),
+]) {
+    definitions.portal_editor_visual.sources.push(f);
+    (owner[f]??=[]).push('portal_editor_visual');
+    (contracts[f]??=[]).push('tests/Feature/EditorPresentacionDirectaTest.php');
+}
 owner['public/css/pagina-laboratorio.css']=['laboratorio_editor'];
 module.exports={definitions,owner,contracts,inputs,status,verify,approve,preserveCompatible,runnerFragment};

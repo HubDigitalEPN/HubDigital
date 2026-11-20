@@ -1,11 +1,18 @@
-<div x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}" data-catalogo-historial="{{ json_encode($this->historialCatalogo) }}" x-on:catalogo-estado-url.window="actualizarHistorial($event.detail)" x-on:criterio-retirado.window="$nextTick(() => ($el.querySelector('.collection-active-filters button') || $el.querySelector('.collection-view-switch button'))?.focus({preventScroll: true}))">
+@php
+    $catalogoEditorial = $catalogoEditorial ?? false;
+@endphp
+<div @if($catalogoEditorial) data-catalogo-editorial="{{ $vista }}" @else x-data="portalCatalogo" data-catalogo-seleccion="{{ json_encode($this->seleccionPublicaChat) }}" data-catalogo-historial="{{ json_encode($this->historialCatalogo) }}" x-on:catalogo-estado-url.window="actualizarHistorial($event.detail)" x-on:criterio-retirado.window="$nextTick(() => ($el.querySelector('.collection-active-filters button') || $el.querySelector('.collection-view-switch button'))?.focus({preventScroll: true}))" @endif>
     @php
         $catalogoTexto = static fn (string $clave): string => \App\Support\PortalCopy::text('catalogo.'.$clave);
         $etiquetaConteo = static fn (string $nivel, int $cantidad, string $plural): string => $cantidad === 1 ? (['kingdom' => 'reino', 'phylum' => 'filo', 'class' => 'clase', 'order' => 'orden', 'family' => 'familia', 'genus' => 'género', 'species' => 'especie'][$nivel] ?? $plural) : $plural;
     @endphp
-    @if(\App\Support\DescargasCatalogo::visibles('catalogo.completo') || \App\Support\DescargasCatalogo::visibles('catalogo.ipt'))
+    @if($catalogoEditorial || \App\Support\DescargasCatalogo::visibles('catalogo.completo') || \App\Support\DescargasCatalogo::visibles('catalogo.ipt'))
         <div class="flex flex-wrap items-center justify-end gap-3 border-b border-border bg-surface px-4 py-2">
-            <x-catalogo-excel-menu :catalogo-url="$this->urlDescarga('datos')" :ipt-url="$this->urlDescarga('ipt')" />
+            @if($catalogoEditorial)
+                <button type="button" aria-disabled="true" class="hub-ig-button min-h-11">Descargar Excel <span aria-hidden="true">▾</span></button>
+            @else
+                <x-catalogo-excel-menu :catalogo-url="$this->urlDescarga('datos')" :ipt-url="$this->urlDescarga('ipt')" />
+            @endif
         </div>
     @endif
     @if($avisoSeleccionUrl !== '')<p role="status" class="mx-auto max-w-7xl px-4 py-3 text-sm text-text-secondary">{{ $avisoSeleccionUrl }}</p>@endif
@@ -110,17 +117,18 @@
             :filos="$filosDisponibles"
             :preparaciones="$preparacionesDisponibles" :metodos="$metodosRecoleccionDisponibles"
             :biomas="$biomasDisponibles" :hay-filtros-activos="$hayFiltrosActivos"
-            :aplicados="$this->filtrosAplicados"
+            :aplicados="$catalogoEditorial ? [] : $this->filtrosAplicados" :editorial="$catalogoEditorial"
         />
-        <div class="collection-main" wire:key="catalogo-contenido" wire:loading.attr="inert">
+        {{-- La paginación de fondo no debe quitar el foco al abrir un taxón. --}}
+        <div class="collection-main" wire:key="catalogo-contenido" wire:loading.attr="inert" wire:target.except="cargarMasTarjetas">
     <nav class="collection-view-bar" wire:key="catalogo-vistas" aria-label="Vista de la Colección Biológica">
-        @if(\App\Support\DisponibilidadChatPortal::habilitado())
+        @if(!$catalogoEditorial && \App\Support\DisponibilidadChatPortal::habilitado())
         <button type="button" class="collection-chat-restore" data-chat-restore data-chat-restore-catalogo x-on:click="$dispatch('portal-chat-toggle')" aria-controls="chat-bot-panel" aria-label="Mostrar asistente HubDigital" title="Mostrar asistente">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>
         </button>
         @endif
         <div class="collection-active-filters" role="group" aria-label="Filtros activos de la selección aplicada">
-            @foreach($this->criteriosActivos as $criterio)
+            @foreach(($catalogoEditorial ? [] : $this->criteriosActivos) as $criterio)
                 <button type="button" wire:key="criterio-{{ $criterio['clave'] }}-{{ $criterio['indice'] }}" wire:click="$wire.retirarCriterio(@js($criterio['clave']), {{ $criterio['indice'] }})" wire:loading.attr="disabled"
                     aria-label="Quitar {{ $criterio['etiqueta'] }}: {{ $criterio['valor'] }}">
                     <strong>{{ $criterio['etiqueta'] }}:</strong> {{ $criterio['valor'] }} <span aria-hidden="true">×</span>
@@ -128,16 +136,18 @@
             @endforeach
         </div>
         <div class="collection-view-switch">
-            <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="collection-view-label">Árbol</span></button>
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="collection-view-label">{{ $catalogoTexto('tarjetas') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" x-on:click="$dispatch('abrir-explorador-taxonomico', {invocador: $event.currentTarget})" aria-haspopup="dialog" aria-controls="explorador-taxonomico" @if($catalogoEditorial) data-vista-catalogo="arbol" aria-pressed="{{ $vista === 'arbol' ? 'true' : 'false' }}" @endif aria-label="{{ $catalogoTexto('arbol_taxonomico') }}" title="{{ $catalogoTexto('arbol_taxonomico') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4"/></svg><span class="collection-view-label">Árbol</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('tarjetas')" data-vista-catalogo="tarjetas" aria-label="{{ $catalogoTexto('vista_tarjetas') }}" title="{{ $catalogoTexto('tarjetas') }}" aria-pressed="{{ $vista === 'tarjetas' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="collection-view-label">{{ $catalogoTexto('tarjetas') }}</span></button>
 
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="collection-view-label">{{ $catalogoTexto('registros') }}</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('registros')" data-vista-catalogo="registros" aria-label="{{ $catalogoTexto('vista_registros') }}" title="{{ $catalogoTexto('registros') }}" aria-pressed="{{ $vista === 'registros' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h3m4 0h9M4 12h3m4 0h9M4 18h3m4 0h9"/></svg><span class="collection-view-label">{{ $catalogoTexto('registros') }}</span></button>
 
-            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="collection-view-label">Mapa</span></button>
+            <button type="button" wire:loading.attr="disabled" wire:click="cambiarVista('mapa')" data-vista-catalogo="mapa" aria-label="{{ $catalogoTexto('vista_mapa_analisis') }}" title="{{ $catalogoTexto('mapa_analisis') }}" aria-pressed="{{ $vista === 'mapa' ? 'true' : 'false' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16m6-14v16"/></svg><span class="collection-view-label">Mapa</span></button>
         </div>
     </nav>
 
-    @include('catalogopublico::components.ficha-registro-publico')
+    @unless($catalogoEditorial)
+        @include('catalogopublico::components.ficha-registro-publico')
+    @endunless
     @if($vista === 'mapa')
         @if($errorMapa ?? false)
             <section class="mx-auto max-w-7xl px-4 py-8" aria-labelledby="mapa-error-titulo">
@@ -148,14 +158,18 @@
             </section>
         @else
         @include('catalogopublico::dashboard-coleccion')
-        @include('catalogopublico::components.detalle-celda-mapa')
+        @unless($catalogoEditorial)
+            @include('catalogopublico::components.detalle-celda-mapa')
+        @endunless
         @endif
+    @elseif($vista === 'arbol' && $catalogoEditorial)
+        @include('catalogopublico::components.explorador-taxonomico', ['arbolEditorial' => true])
     @elseif($vista === 'registros')
         <section class="portal-records-paged portal-records-viewport mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8" aria-label="Registros del catálogo"
             x-data="portalRegistrosInfinitos" data-seleccion="{{ $this->claveRegistrosCargados }}" data-paginas="{{ $this->paginasRegistrosCargadas }}" data-hay-mas="{{ $hayMasRegistros ? 'true' : 'false' }}">
             <header class="mb-4"><h1 class="font-display text-2xl font-bold text-blue-navy">{{ $taxonActual !== '' ? 'Registros de '.$taxonActual : \App\Support\PortalCopy::text('catalogo.registros_titulo') }}</h1>
-                <p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</p></header>
-            <x-grid-frame label="Registros del catálogo" page-size-label="Filas por carga" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :page-sizes="[15, 25, 50, 100, 500, 1000]" :allow-download="\App\Support\DescargasCatalogo::permitidas()">
+                @unless($catalogoEditorial)<p class="mt-1 text-sm text-text-secondary">{{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</p>@endunless</header>
+            <x-grid-frame label="Registros del catálogo" page-size-label="Filas por carga" :page-size="$this->registrosPorPagina" page-size-action="ajustarRegistrosPorPagina" :page-sizes="[15, 25, 50, 100, 500, 1000]" :allow-download="!$catalogoEditorial && \App\Support\DescargasCatalogo::permitidas()">
                 <x-slot:search>
                     <form class="hub-ig-search" x-data="{campo: 'filtroCatalogo', texto: ''}" x-on:submit.prevent="$wire.aplicarBusquedaTexto(campo, texto)">
                         <select x-model="campo" aria-label="Columna de búsqueda"><option value="filtroCatalogo">N.º catálogo</option><option value="filtroTaxon">Taxón</option></select>
@@ -168,9 +182,10 @@
                     @if($totalRegistrosVista > 0 && \App\Support\DescargasCatalogo::permitidas())<button type="button" role="menuitem" tabindex="-1" data-catalogo-descarga x-on:click="window.location.assign(@js($this->urlDescarga('resultados'))); closeMenu()"><flux:icon name="arrow-down-tray" /> Descargar resultados CSV</button>@endif
                 </x-slot:actions>
                 <x-slot:reset><button type="button" class="hub-ig-button hub-ig-reset" wire:click="restablecerVistaRegistros" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button></x-slot:reset>
-                <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" :ordenable="true" />
+                <x-catalogopublico::tabla-registros-mapa :registros="$registrosVista" :imagenes="$imagenesRegistrosVista" :total="$totalRegistrosVista" contexto="catalogo" :mostrar-titulo="false" :ordenable="true" :editorial="$catalogoEditorial" />
+                @unless($catalogoEditorial)
                 <x-slot:pagination>
-                    <div class="portal-record-scroll-status" role="status"><span>{{ number_format(count($registrosVista), 0, ',', '.') }} de {{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</span><span x-show="solicitando">Cargando más registros…</span><p x-show="errorCarga" x-text="errorCarga" x-cloak></p><button type="button" x-show="errorCarga" x-cloak x-on:click="cargarMas()">Reintentar carga</button></div>
+                    <div class="portal-record-scroll-status" role="status"><span>{{ number_format(count($registrosVista), 0, ',', '.') }} de {{ number_format($totalRegistrosVista, 0, ',', '.') }} registros</span><span x-cloak x-show="solicitando">Cargando más registros…</span><p x-show="errorCarga" x-text="errorCarga" x-cloak></p><button type="button" x-show="errorCarga" x-cloak x-on:click="cargarMas()">Reintentar carga</button></div>
                     <dialog class="hub-ig-dialog" x-ref="recordSort" aria-label="Ordenar registros" x-on:abrir-orden="columna = $wire.ordenRegistros || 'occurrence_id'; direccion = $wire.direccionRegistros; $el.showModal()" x-data="{columna: @js($this->ordenRegistros ?: 'occurrence_id'), direccion: @js($this->direccionRegistros)}">
                         <form x-on:submit.prevent="await $wire.ordenarRegistros(columna, direccion); $refs.recordSort.close()">
                             <div class="hub-ig-dialog-heading"><h2>Ordenar</h2><button type="button" class="hub-ig-icon-button" x-on:click="$refs.recordSort.close()" aria-label="Cerrar ordenación">×</button></div>
@@ -179,6 +194,7 @@
                         </form>
                     </dialog>
                 </x-slot:pagination>
+                @endunless
             </x-grid-frame>
         </section>
 
@@ -275,7 +291,7 @@
                         ], $especiesActuales));
                     @endphp
                     <div class="mb-4 flex items-center justify-between">
-                        <h1 class="font-display text-xl font-semibold text-blue-navy font-serif italic">
+                        <h1 tabindex="-1" class="font-display text-xl font-semibold text-blue-navy font-serif italic">
                             {{ $taxonActual }}
                         </h1>
                         <span class="text-xs text-text-secondary">
@@ -351,7 +367,7 @@
                 {{-- Lista de especies --}}
                 <div class="flex-1 min-w-0">
                     <div class="mb-4 flex items-center justify-between">
-                        <h1 class="font-display text-xl font-semibold text-blue-navy">
+                        <h1 tabindex="-1" class="font-display text-xl font-semibold text-blue-navy">
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Género</span>
                         </h1>
@@ -413,7 +429,7 @@
                 {{-- Registros de registros --}}
                 <div class="collection-species-content">
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <h1 class="font-display text-xl font-semibold text-blue-navy">
+                        <h1 tabindex="-1" class="font-display text-xl font-semibold text-blue-navy">
                             <span class="font-serif italic">{{ $taxonActual }}</span>
                             <span class="text-base font-normal text-text-secondary">· Especie</span>
                         </h1>
@@ -859,7 +875,7 @@
         <div class="collection-card-pagination" data-card-progress role="status">{{ number_format(min($totalPaginado, $paginaActual * 6), 0, ',', '.') }} de {{ number_format($totalPaginado, 0, ',', '.') }}</div>
         @if($paginaActual < $ultimaPagina)
             <div wire:key="tarjetas-mas-{{ $this->claveTarjetasCargadas }}-{{ $paginaActual }}" class="collection-card-pagination" x-data="hubCardScroll(@js($this->claveTarjetasCargadas), {{ $paginaActual }})">
-                <span x-show="!error" role="status">Cargando más tarjetas…</span>
+                <span x-cloak x-show="!error" role="status">Cargando más tarjetas…</span>
                 <button type="button" x-show="error" x-cloak x-on:click="load()">Reintentar carga de tarjetas</button>
             </div>
         @endif
@@ -868,8 +884,10 @@
         </div>
     </div>
 
-    @include('catalogopublico::components.explorador-taxonomico')
-    <livewire:catalogopublico.registros-taxon-explorador />
+    @unless($catalogoEditorial)
+        @include('catalogopublico::components.explorador-taxonomico')
+        <livewire:catalogopublico.registros-taxon-explorador />
+    @endunless
 
     {{-- Indicador de carga --}}
     <div
@@ -880,7 +898,9 @@
         Cargando…
     </div>
 
-    @include('catalogopublico::components.visor-imagen')
+    @unless($catalogoEditorial)
+        @include('catalogopublico::components.visor-imagen')
+    @endunless
     <dialog class="collection-taxon-dialog" x-ref="ayudaTaxon" wire:ignore.self aria-labelledby="titulo-ayuda-taxon"
         x-on:keydown.escape.stop.prevent="cerrarTaxon()" x-on:cancel.stop.prevent="cerrarTaxon()"
         x-on:close="restaurarTaxon()" x-on:click="if ($event.target === $el) cerrarTaxon()">

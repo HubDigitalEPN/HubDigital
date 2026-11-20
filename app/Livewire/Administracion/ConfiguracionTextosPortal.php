@@ -8,6 +8,7 @@ use App\Support\PortalCopy;
 use App\Support\EditorPortal;
 use App\Support\TextosSistema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -33,8 +34,9 @@ final class ConfiguracionTextosPortal extends Component
         $this->resetValidation();
         $this->claveSeleccionada = $clave;
         $this->originalSeleccionado = config('portal-copy.'.$clave);
-        $this->textoActual = PortalCopy::text($clave);
-        $this->versionTexto = EditorPortal::version($clave);
+        $contenido = DB::table('usuarios.textos_portal')->where('clave', $clave)->value('contenido');
+        $this->textoActual = $contenido ?? $this->originalSeleccionado;
+        $this->versionTexto = hash('sha256', (string) $contenido);
         $this->editorAbierto = true;
         return ['original' => $this->originalSeleccionado, 'texto' => $this->textoActual];
     }
@@ -53,19 +55,42 @@ final class ConfiguracionTextosPortal extends Component
         abort_unless(isset(EditorPortal::paginas()[$pagina]), 422);
         $this->claveSeleccionada = 'editorial.'.$pagina.'.'.$id;
         $this->originalSeleccionado = $original;
-        $guardado = json_decode((string) DB::table('usuarios.textos_portal')->where('clave', $this->claveSeleccionada)->value('contenido'), true);
+        $contenido = DB::table('usuarios.textos_portal')->where('clave', $this->claveSeleccionada)->value('contenido');
+        $guardado = json_decode((string) $contenido, true);
         $this->textoActual = $guardado['texto'] ?? $original;
-        $this->versionTexto = EditorPortal::version($this->claveSeleccionada);
+        $this->versionTexto = hash('sha256', (string) $contenido);
         $this->editorAbierto = true;
         return ['original' => $this->originalSeleccionado, 'texto' => $this->textoActual];
     }
 
     #[\Livewire\Attributes\Renderless]
-    public function guardarDisposicion(array $grupos, string $version): string
+    public function publicarTextoVisual(string $clave, string $textoVisible, string $textoNuevo): array
     {
-        return \App\Support\DisposicionContenido::guardar('portal:'.EditorPortal::pagina($this->grupo), $grupos, $version);
+        $seleccion = str_starts_with($clave, 'literal:')
+            ? $this->seleccionarLiteral(substr($clave, strlen('literal:')))
+            : $this->seleccionarTexto($clave);
+
+        if (isset($seleccion['error'])) {
+            $this->editorAbierto = true;
+            return ['error' => $seleccion['error']];
+        }
+
+        if (!hash_equals($seleccion['texto'], $textoVisible)) {
+            return ['error' => 'Otra persona cambió este texto. Recarga la página antes de volver a editar.'];
+        }
+
+        $this->textoActual = $textoNuevo;
+
+        try {
+            $this->guardarTexto();
+        } catch (ValidationException $error) {
+            return ['error' => $error->errors()['textoActual'][0] ?? $error->getMessage()];
+        }
+
+        return ['guardado' => true];
     }
 
+    #[\Livewire\Attributes\Renderless]
     public function guardarTexto(): void
     {
         abort_unless($this->claveSeleccionada !== '', 422);
@@ -73,12 +98,14 @@ final class ConfiguracionTextosPortal extends Component
         if (in_array($this->claveSeleccionada, ['contacto.email', 'depositos.entrega_contacto'], true)) $reglas[] = 'email';
         $this->validate(['textoActual' => $reglas]);
         $literal = str_starts_with($this->claveSeleccionada, 'editorial.');
-        $contenido = $literal ? json_encode(['original' => $this->originalSeleccionado, 'texto' => trim($this->textoActual)], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) : trim($this->textoActual);
+        $texto = trim($this->textoActual);
+        $contenido = $literal ? json_encode(['original' => $this->originalSeleccionado, 'texto' => $texto], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) : $texto;
         EditorPortal::guardar($this->claveSeleccionada, $contenido, $this->versionTexto);
-        if (!$literal) { [$grupo, $clave] = explode('.', $this->claveSeleccionada, 2); $this->textos[$grupo][$clave] = trim($this->textoActual); }
+        $this->textoActual = $texto;
+        if (!$literal) { [$grupo, $clave] = explode('.', $this->claveSeleccionada, 2); $this->textos[$grupo][$clave] = $texto; }
         $this->editorAbierto = false;
         $this->dispatch('portal-texto-publicado');
-        session()->flash('portal-textos', 'Texto publicado. La vista muestra el contenido guardado en PostgreSQL.');
+        session()->flash('portal-textos', 'Transacción Efectuada');
     }
 
     public function boot(): void
@@ -123,7 +150,7 @@ final class ConfiguracionTextosPortal extends Component
             }
         });
         PortalCopy::forget();
-        session()->flash('portal-textos', 'Textos guardados. Se muestran en el portal al recargar la página.');
+        session()->flash('portal-textos', 'Transacción Efectuada');
     }
 
     public function render(): View
@@ -131,9 +158,16 @@ final class ConfiguracionTextosPortal extends Component
         $grupos = ['inicio' => 'Inicio', 'navegacion' => 'Cabecera y pie de página', 'contacto' => 'Contacto', 'depositos' => 'Portal de depósitos', 'catalogo' => 'Colección Biológica', 'importacion' => 'Importar y actualizar catálogo', 'privacidad' => 'Política de privacidad', 'terminos' => 'Términos de uso', 'licencia' => 'Licencia', 'citar' => 'Cómo citar', 'creditos' => 'Créditos y financiamiento', 'indicadores' => 'Explicaciones de indicadores', 'figuras' => 'Pies de figuras'];
         abort_unless(array_key_exists($this->grupo, $grupos), 422);
         $pagina = EditorPortal::pagina($this->grupo);
-        $vista = isset(EditorPortal::paginas()[$pagina]) ? route(EditorPortal::paginas()[$pagina], ['_editor' => '1']) : null;
+        $parametrosVista = $pagina === 'catalogo' ? ['vista' => 'mapa', '_editor' => '1'] : ['_editor' => '1'];
+        $vista = isset(EditorPortal::paginas()[$pagina]) ? route(EditorPortal::paginas()[$pagina], $parametrosVista) : null;
         $mapa = [];
-        foreach (config('portal-copy', []) as $grupo => $campos) foreach ($campos as $clave => $defecto) $mapa[$grupo.'.'.$clave] = PortalCopy::text($grupo.'.'.$clave);
+        $originales = [];
+        foreach (config('portal-copy', []) as $grupo => $campos) {
+            foreach ($campos as $clave => $defecto) {
+                $originales[$grupo.'.'.$clave] = $defecto;
+                $mapa[$grupo.'.'.$clave] = PortalCopy::text($grupo.'.'.$clave);
+            }
+        }
         foreach (PortalCopy::all() as $clave => $contenido) {
             if (!str_starts_with($clave, 'editorial.'.$pagina.'.')) continue;
             $dato = json_decode($contenido, true);
@@ -144,6 +178,6 @@ final class ConfiguracionTextosPortal extends Component
             $paginasEditor[parse_url(route($ruta), PHP_URL_PATH) ?: '/'] = $id === 'laboratorio'
                 ? route('admin.contenidos', ['seccion' => 'laboratorio']) : $id;
         }
-        return view('livewire.administracion.editor-visual-portal', ['grupos' => $grupos, 'vista' => $vista, 'mapa' => $mapa, 'paginasEditor' => $paginasEditor]);
+        return view('livewire.administracion.editor-visual-portal', ['grupos' => $grupos, 'vista' => $vista, 'mapa' => $mapa, 'originales' => $originales, 'paginasEditor' => $paginasEditor]);
     }
 }

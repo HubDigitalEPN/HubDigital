@@ -137,25 +137,24 @@ test('la edición de fotografías se abre desde su identidad y rechaza elementos
     Livewire::test(ConfiguracionLaboratorio::class)->call('seleccionarFoto', 'foto-bloque-0000000000000000')->assertStatus(422);
 });
 
-test('el lienzo crea contenido en la posición elegida y cancelar retira únicamente el borrador nuevo', function () {
+test('añadir contenido abre un borrador y cancelar retira únicamente ese bloque', function () {
     $ui=Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionLaboratorio::class)
-        ->call('crearBloqueVisual', 20, 150)->assertHasNoErrors()->assertSet('bloqueAbierto', true);
+        ->assertSee('Añadir contenido')->call('crearBloqueVisual')->assertHasNoErrors()->assertSet('bloqueAbierto', true);
     $id=$ui->get('bloqueSeleccionado');
-    expect($ui->get('posiciones')['texto-bloque-'.$id.'-titulo']['x'])->toBe(20.0);
+    expect($ui->get('bloques')[0]['id'])->toBe($id);
     expect(app(PaginaLaboratorio::class)->leer()['bloques'])->toBe([]);
-    $ui->call('cancelarBloqueVisual')->assertSet('bloqueAbierto', false)->assertSet('bloques', [])->assertSet('posiciones', []);
-    $ui->call('crearBloqueVisual', 96, 150)->assertHasErrors('x');
+    $ui->call('cancelarBloqueVisual')->assertSet('bloqueAbierto', false)->assertSet('bloques', []);
 });
 
 test('el contenido creado en contexto publica texto y fotografía y permite editar y retirar el bloque', function () {
     $ui=Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionLaboratorio::class)
-        ->call('crearBloqueVisual', 15, 160)->set('bloques.0.titulo', 'Contenido desde el lienzo')->set('bloques.0.texto', 'Texto científico del laboratorio');
+        ->call('crearBloqueVisual')->set('bloques.0.titulo', 'Contenido adicional')->set('bloques.0.texto', 'Texto científico del laboratorio');
     $id=$ui->get('bloqueSeleccionado');
     $ui->set('fotosBloques.'.$id, UploadedFile::fake()->image('foto-contextual.jpg', 300, 200))->call('guardar')->assertHasNoErrors();
     $pagina=app(PaginaLaboratorio::class)->leer();
-    expect($pagina['bloques'][0]['titulo'])->toBe('Contenido desde el lienzo')
+    expect($pagina['bloques'][0]['titulo'])->toBe('Contenido adicional')
         ->and($pagina['bloques'][0]['foto']['ruta'])->not->toBeNull()
-        ->and($pagina['posiciones']['texto-bloque-'.$id.'-titulo']['x'])->toBe(15);
+        ->and($pagina['posiciones'])->toBe([]);
     $ui->call('seleccionarElemento', 'texto-bloque-'.$id.'-titulo')->assertSet('bloqueAbierto', true)
         ->call('quitarBloqueVisual')->call('guardar')->assertHasNoErrors();
     expect(app(PaginaLaboratorio::class)->leer()['bloques'])->toBe([]);
@@ -193,7 +192,7 @@ test('un editor desactualizado y un archivo no fotográfico no sobrescriben cont
     expect(app(PaginaLaboratorio::class)->leer()['fotos']['adrian']['ruta'])->toBeNull();
 });
 
-test('los bloques adicionales publican texto largo y fotos en el orden elegido y permiten retirarlos', function () {
+test('los bloques adicionales publican texto largo y fotos en el orden de creación y permiten retirarlos', function () {
     $admin = User::factory()->administrador()->create();
     $editor = Livewire::actingAs($admin)->test(ConfiguracionLaboratorio::class)->call('agregarBloque');
     $primero = $editor->get('bloques')[0]['id'];
@@ -203,19 +202,19 @@ test('los bloques adicionales publican texto largo y fotos en el orden elegido y
         ->set('textos.adrian_bio', str_repeat('Biología de Formicidae. ', 300))->call('agregarBloque');
     $segundo = $editor->get('bloques')[1]['id'];
     $editor->set('bloques.1.titulo', 'Actividades de investigación')->set('bloques.1.texto', 'Trabajo de campo y nuevas publicaciones.')
-        ->call('moverBloque', $segundo, -1)->call('guardar')->assertHasNoErrors();
+        ->call('guardar')->assertHasNoErrors();
     $publicado = app(PaginaLaboratorio::class)->leer();
-    expect(array_column($publicado['bloques'], 'id'))->toBe([$segundo, $primero]);
+    expect(array_column($publicado['bloques'], 'id'))->toBe([$primero, $segundo]);
     expect($publicado['textos']['adrian_bio'])->toBe(trim(str_repeat('Biología de Formicidae. ', 300)));
-    $foto = $publicado['bloques'][1]['foto'];
+    $foto = $publicado['bloques'][0]['foto'];
     $url = route('laboratorio.foto', ['foto' => 'bloque-'.$primero, 'hash' => $foto['sha256']]);
     $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/webp');
-    $this->get(route('laboratorio'))->assertOk()->assertSeeInOrder(['Actividades de investigación', 'Galería del laboratorio'])
+    $this->get(route('laboratorio'))->assertOk()->assertSeeInOrder(['Galería del laboratorio', 'Actividades de investigación'])
         ->assertSee('Leer más')->assertSee('FINAL-DEL-TEXTO')->assertSee('<script>no ejecutar</script>')->assertDontSee('<script>no ejecutar</script>', false);
     // El formulario no puede sustituir la ruta de una foto ya publicada.
-    $editor->set('bloques.1.foto', ['ruta' => 'otra/carpeta.webp', 'sha256' => str_repeat('a', 64)])
-        ->set('bloques.1.texto', 'Descripción actualizada')->call('guardar')->assertHasNoErrors();
-    expect(app(PaginaLaboratorio::class)->leer()['bloques'][1]['foto']['sha256'])->toBe($foto['sha256']);
+    $editor->set('bloques.0.foto', ['ruta' => 'otra/carpeta.webp', 'sha256' => str_repeat('a', 64)])
+        ->set('bloques.0.texto', 'Descripción actualizada')->call('guardar')->assertHasNoErrors();
+    expect(app(PaginaLaboratorio::class)->leer()['bloques'][0]['foto']['sha256'])->toBe($foto['sha256']);
     $editor->set('quitarFotosBloques.'.$primero, true)->call('guardar')->assertHasNoErrors();
     $this->get($url)->assertNotFound();
     $editor->call('quitarBloque', $primero)->call('guardar')->assertHasNoErrors();
@@ -245,15 +244,19 @@ test('leer más muestra inicialmente trescientas palabras y conserva el resto', 
     expect($largo)->toContain('<details', '301 302 303 304 305');
 });
 
-test('la posición libre se publica se valida y permite volver a la composición original', function () {
+test('editar el texto del laboratorio conserva la composición ya publicada', function () {
     $admin = User::factory()->administrador()->create();
     $p = ['x' => 5, 'y' => 4, 'ancho' => 70, 'alto' => 12, 'fuente' => 2.2, 'capa' => 1];
+    DB::table('usuarios.textos_portal')->insert([
+        'clave' => PaginaLaboratorio::CLAVE, 'contenido' => json_encode(['posiciones' => ['texto-titulo' => $p]], JSON_THROW_ON_ERROR),
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
     $editor = Livewire::actingAs($admin)->test(ConfiguracionLaboratorio::class)
-        ->set('posiciones', ['texto-titulo' => $p])->call('guardar')->assertHasNoErrors();
-    expect(app(PaginaLaboratorio::class)->leer()['posiciones']['texto-titulo']['x'])->toBe(5);
-    $this->get(route('laboratorio'))->assertOk()->assertSee('data-lab-free', false)->assertSee('left:5%', false);
-    $editor->set('posiciones.texto-titulo.x', 90)->call('guardar')->assertHasErrors('posiciones');
-    expect(app(PaginaLaboratorio::class)->leer()['posiciones']['texto-titulo']['x'])->toBe(5);
-    $editor->set('posiciones', [])->call('guardar')->assertHasNoErrors();
-    $this->get(route('laboratorio'))->assertOk()->assertSee('lab-staff-grid', false)->assertDontSee('data-lab-free', false);
+        ->call('seleccionarElemento', 'texto-titulo')->assertDontSee('Restaurar composición original')
+        ->call('publicarTextoVisual', 'titulo', 'Laboratorio con composición previa', null)->assertHasNoErrors();
+    expect(property_exists(ConfiguracionLaboratorio::class, 'posiciones'))->toBeFalse()
+        ->and(method_exists(ConfiguracionLaboratorio::class, 'moverBloque'))->toBeFalse()
+        ->and(app(PaginaLaboratorio::class)->leer()['posiciones']['texto-titulo']['x'])->toBe(5);
+    $this->get(route('laboratorio'))->assertOk()->assertSee('data-lab-free', false)->assertSee('left:5%', false)
+        ->assertSee('Laboratorio con composición previa');
 });

@@ -1,4 +1,4 @@
-@props(['filos' => [], 'preparaciones' => [], 'metodos' => [], 'biomas' => [], 'hayFiltrosActivos' => false, 'aplicados' => []])
+@props(['filos' => [], 'preparaciones' => [], 'metodos' => [], 'biomas' => [], 'hayFiltrosActivos' => false, 'aplicados' => [], 'editorial' => false])
 @php
     $filtroTexto = static fn (string $clave): string => \App\Support\PortalCopy::text('catalogo.'.$clave);
     $activo = static function (string $campo) use ($aplicados): bool {
@@ -19,6 +19,9 @@
         @if($errors->any())<p data-hub-feedback="error" class="research-filter-error" role="alert">{{ $errors->first() }}</p>@endif
         <x-catalogopublico::busqueda-predictiva campo="filtroCatalogo" :etiqueta="$filtroTexto('numero_catalogo')" :placeholder="$filtroTexto('catalogo_placeholder')" :maxlength="240" :activo="$activo('filtroCatalogo')" />
         <x-catalogopublico::busqueda-predictiva campo="filtroTaxon" :etiqueta="$filtroTexto('taxon')" :placeholder="$filtroTexto('taxon_placeholder')" :activo="$activo('filtroTaxon')" />
+        @if($editorial)
+            <fieldset><legend>{{ $filtroTexto('filo') }}</legend></fieldset>
+        @else
         @php($panelFilos = $this->arbolFiloPanel)
         <fieldset @class(['research-filter-active' => $activo('filtroFilos') || $activo('filtroTaxonId') || $activo('filtroTaxonIds')]) wire:key="panel-filos" x-data="portalFiltroFilo(@js($panelFilos), @js(route('portal.filos')))" x-on:filos-panel-actualizados="actualizar($event.detail)">
             <legend>{{ $filtroTexto('filo') }}</legend>
@@ -39,6 +42,7 @@
             </div>
 
         </fieldset>
+        @endif
 
         @if(($aplicados['filtroLatMin'] ?? '') !== ($aplicados['filtroLatMax'] ?? '') || ($aplicados['filtroLonMin'] ?? '') !== ($aplicados['filtroLonMax'] ?? ''))<p class="research-filter-active research-filter-note">Área seleccionada en el mapa</p>@endif
         @if($activo('filtroFechaDesde') || $activo('filtroFechaHasta'))<p class="research-filter-active research-filter-note">Periodo: {{ $aplicados['filtroFechaDesde'] ?? '' }} — {{ $aplicados['filtroFechaHasta'] ?? '' }}</p>@endif

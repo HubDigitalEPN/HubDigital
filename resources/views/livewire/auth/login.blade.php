@@ -70,6 +70,7 @@
         <flux:button
             type="submit"
             variant="primary"
+            :disabled="config('services.turnstile.enabled')"
             x-bind:disabled="!turnstileVerified"
             class="mt-1 w-full bg-science-blue! border-science-blue! hover:bg-science-blue/90! text-white! font-semibold disabled:cursor-not-allowed disabled:opacity-45"
         >

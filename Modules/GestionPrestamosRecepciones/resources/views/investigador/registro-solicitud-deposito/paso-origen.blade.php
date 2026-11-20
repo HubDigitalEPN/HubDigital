@@ -4,8 +4,9 @@
 
     </div>
 
-    <flux:select id="finalidad-actividad" wire:model.live="finalidadActividad" label="Finalidad de la actividad" required>
-        <flux:select.option value="">Selecciona una finalidad</flux:select.option>
+    <flux:select id="finalidad-actividad" wire:model.live="finalidadActividad" :label="\App\Support\WizardCopy::text('origen.finalidad')"
+        label:data-wizard-copy="origen.finalidad" field:data-wizard-copy="origen.finalidad_placeholder" required>
+        <flux:select.option value="">{{ \App\Support\WizardCopy::text('origen.finalidad_placeholder') }}</flux:select.option>
         <flux:select.option value="Investigación">Investigación</flux:select.option>
         <flux:select.option value="Consultoría">Consultoría</flux:select.option>
     </flux:select>

@@ -21,8 +21,8 @@ test('editar un texto visual actualiza PostgreSQL y el portal sin reescribir los
     $usuario=User::factory()->curador()->create();
     $otro=PortalCopy::text('inicio.hero_descripcion');
     Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)
-        ->call('seleccionarTexto','inicio.hero_titulo')->assertSet('editorAbierto',true)
-        ->set('textoActual','Título editorial QA')->call('guardarTexto')->assertHasNoErrors()->assertSet('editorAbierto',false);
+        ->call('publicarTextoVisual','inicio.hero_titulo',PortalCopy::text('inicio.hero_titulo'),' Título editorial QA ')
+        ->assertReturned(['guardado'=>true])->assertHasNoErrors()->assertSet('editorAbierto',false)->assertSet('textoActual','Título editorial QA');
     expect(DB::table('usuarios.textos_portal')->where('clave','inicio.hero_titulo')->value('contenido'))->toBe('Título editorial QA')
         ->and(PortalCopy::text('inicio.hero_descripcion'))->toBe($otro);
     $this->get('/')->assertOk()->assertSee('Título editorial QA');
@@ -30,17 +30,20 @@ test('editar un texto visual actualiza PostgreSQL y el portal sin reescribir los
 
 test('una edicion concurrente no se sobrescribe con el formulario abierto', function (): void {
     $usuario=User::factory()->curador()->create();
-    $panel=Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)->call('seleccionarTexto','inicio.hero_titulo');
+    $visible=PortalCopy::text('inicio.hero_titulo');
+    $panel=Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class);
     DB::table('usuarios.textos_portal')->updateOrInsert(['clave'=>'inicio.hero_titulo'],['contenido'=>'Edición concurrente QA','updated_at'=>now()]);
-    $panel->set('textoActual','Valor desactualizado')->call('guardarTexto')->assertHasErrors('textoActual');
+    $panel->call('publicarTextoVisual','inicio.hero_titulo',$visible,'Valor desactualizado')
+        ->assertReturned(fn (array $resultado): bool => isset($resultado['error']))->assertSet('editorAbierto',true);
     expect(DB::table('usuarios.textos_portal')->where('clave','inicio.hero_titulo')->value('contenido'))->toBe('Edición concurrente QA');
 });
 
 test('los literales editoriales se guardan por portal y no se interpretan como HTML', function (): void {
     $usuario=User::factory()->curador()->create();
     $original='Leer más';
-    Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)->call('seleccionarLiteral',$original)
-        ->set('textoActual','Texto <script>QA</script>')->call('guardarTexto')->assertHasNoErrors();
+    Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)
+        ->call('publicarTextoVisual','literal:'.$original,$original,'Texto <script>QA</script>')
+        ->assertReturned(['guardado'=>true])->assertHasNoErrors();
     $clave='editorial.inicio.'.hash('sha256',$original);
     expect(json_decode(DB::table('usuarios.textos_portal')->where('clave',$clave)->value('contenido'),true)['texto'])->toBe('Texto <script>QA</script>');
     $html=$this->get('/')->getContent();
@@ -50,8 +53,12 @@ test('los literales editoriales se guardan por portal y no se interpretan como H
 
 test('el editor rechaza claves internas y datos que no proceden del inventario editorial', function (): void {
     $usuario=User::factory()->curador()->create();
-    Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)->call('seleccionarTexto','database.password')->assertStatus(422);
-    Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)->call('seleccionarLiteral','QA-DATO-CIENTIFICO-'.\Illuminate\Support\Str::uuid())->assertHasErrors('textoActual')->assertSet('editorAbierto',false);
+    Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)
+        ->call('publicarTextoVisual','database.password','Variable','Texto de prueba')->assertStatus(422);
+    $variable='QA-DATO-CIENTIFICO-'.\Illuminate\Support\Str::uuid();
+    Livewire::actingAs($usuario)->test(ConfiguracionTextosPortal::class)
+        ->call('publicarTextoVisual','literal:'.$variable,$variable,'Texto de prueba')
+        ->assertReturned(fn (array $resultado): bool => isset($resultado['error']))->assertHasErrors('textoActual')->assertSet('editorAbierto',true);
 });
 
 test('todos los grupos de contenido editorial tienen campos y los portales tienen ruta real', function (): void {
@@ -62,16 +69,23 @@ test('todos los grupos de contenido editorial tienen campos y los portales tiene
     }
 });
 
-test('el orden editorial se publica por pagina y rechaza selectores permisos ajenos y versiones desactualizadas', function (): void {
+test('editar texto conserva las posiciones ya publicadas del portal', function (): void {
     $this->actingAs(User::factory()->curador()->create());
-    $clave=\App\Support\DisposicionContenido::clave('portal:inicio');$version=EditorPortal::version($clave);
-    $orden=['g-1234567890abcdef'=>['i-1111111111111111','i-2222222222222222']];
-    Livewire::test(ConfiguracionTextosPortal::class)->call('guardarDisposicion',$orden,$version)->assertHasNoErrors();
-    expect(\App\Support\DisposicionContenido::leer('portal:inicio'))->toBe($orden)
+    $clave = \App\Support\DisposicionContenido::clave('portal:inicio');
+    $ubicacion = [
+        'g-1234567890abcdef' => ['i-1111111111111111', 'i-2222222222222222'],
+        'posiciones' => ['inicio-hero-accion' => 65, 'i-1111111111111111' => ['x' => 45, 'y' => -25]],
+    ];
+    DB::table('usuarios.textos_portal')->updateOrInsert(['clave' => $clave], ['contenido' => json_encode($ubicacion, JSON_THROW_ON_ERROR), 'updated_at' => now()]);
+    PortalCopy::forget();
+    expect(method_exists(ConfiguracionTextosPortal::class, 'guardarDisposicion'))->toBeFalse();
+    $editor = Livewire::test(ConfiguracionTextosPortal::class)
+        ->assertDontSee('Cargando el texto guardado')->assertDontSee('Publicar posiciones');
+    $editor->call('publicarTextoVisual', 'inicio.hero_titulo', PortalCopy::text('inicio.hero_titulo'), 'Título con la composición publicada')
+        ->assertReturned(['guardado'=>true])->assertHasNoErrors();
+    expect(\App\Support\DisposicionContenido::leer('portal:inicio'))->toBe($ubicacion)
         ->and(\App\Support\DisposicionContenido::leer('portal:depositos'))->toBe([]);
-    $this->get('/')->assertOk()->assertSee('disposicion-contenido-datos')->assertSee('g-1234567890abcdef');
-    Livewire::test(ConfiguracionTextosPortal::class)->call('guardarDisposicion',[],$version)->assertHasErrors('textoActual');
-    Livewire::test(ConfiguracionTextosPortal::class)->call('guardarDisposicion',['body'=>['<script>']],EditorPortal::version($clave))->assertHasErrors();
+    $this->get('/')->assertOk()->assertSee('data-disposicion-libre="inicio-hero-accion"', false)->assertSee('"inicio-hero-accion":65', false);
     Livewire::actingAs(User::factory()->depositante()->create())->test(ConfiguracionTextosPortal::class)->assertForbidden();
 });
 

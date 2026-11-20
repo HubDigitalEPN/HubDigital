@@ -2,8 +2,8 @@
     $resumen = $datosMapa['resumen'];
     $dashboardTexto = static fn (string $clave): string => \App\Support\PortalCopy::text('catalogo.'.$clave);
     $total = max(1, (int) $resumen['registros']);
-    $territorio = $this->territorioPanel;
-    $provinciasSeleccionadas = $this->filtrosAplicados['filtroProvincias'];
+    $territorio = $catalogoEditorial ? [] : $this->territorioPanel;
+    $provinciasSeleccionadas = $catalogoEditorial ? [] : $this->filtrosAplicados['filtroProvincias'];
     $porLocalidad = $provinciasSeleccionadas !== [];
     $tituloTerritorio = $dashboardTexto($porLocalidad ? 'localidades' : 'provincias');
     $maxProvincia = max([1, ...array_map(static fn ($fila) => (int) $fila['registros'], $territorio)]);
@@ -16,10 +16,10 @@
     <div class="atlas-stage">
         <section x-ref="panelMapa" class="atlas-panel atlas-map-panel" :class="{'atlas-map-maximized': maximizado}" x-on:keydown.escape.window="if (maximizado && !$event.defaultPrevented && !document.querySelector('dialog[open]') && document.querySelector('#chat-bot-trigger')?.getAttribute('aria-expanded') !== 'true' && !$event.target.closest('#chat-bot-panel')) minimizar()" aria-label="Mapa de registros públicos">
             <header class="atlas-panel-header atlas-map-tools">
-                <h1 class="atlas-map-title">Distribución de Registros <small class="atlas-collection-count">({{ number_format((int) $resumen['registros'], 0, ',', '.') }} registros)</small></h1>
+                <h1 class="atlas-map-title">Distribución de Registros @unless($catalogoEditorial)<small class="atlas-collection-count">({{ number_format((int) $resumen['registros'], 0, ',', '.') }} registros)</small>@endunless</h1>
                 <div class="atlas-map-actions">
                     <button type="button" class="atlas-icon-button" x-ref="maximizar" x-on:click="alternarTamano()" :aria-label="maximizado ? @js($dashboardTexto('minimizar_mapa')) : @js($dashboardTexto('maximizar_mapa'))" :title="maximizado ? @js($dashboardTexto('minimizar_mapa')) : @js($dashboardTexto('maximizar_mapa'))" :aria-pressed="maximizado.toString()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path x-show="!maximizado" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path x-show="maximizado" d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button>
-                    <x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" />
+                    <x-catalogopublico::menu-analisis tipo="mapa" :datos="$datosMapa['mapa']" :editorial="$catalogoEditorial" />
                 </div>
             </header>
             <div class="atlas-map-shell">
@@ -31,7 +31,7 @@
         </section>
 
         <section class="atlas-panel atlas-taxa-panel" wire:key="grafico-filos-{{ sha1(json_encode($datosMapa['filos'])) }}" aria-labelledby="titulo-filos" x-data="portalGrafico('filos', @js($datosMapa['filos']), @js($dashboardTexto('composicion')))" x-on:alternar-tipo-grafico="alternar($event.detail)">
-            <div class="atlas-panel-header"><div><h2 id="titulo-filos">{{ $dashboardTexto('composicion') }}</h2></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" /></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-filos">{{ $dashboardTexto('composicion') }}</h2></div><x-catalogopublico::menu-analisis tipo="filos" :datos="$datosMapa['filos']" :editorial="$catalogoEditorial" /></div>
             <x-catalogopublico::grafico-panel :titulo="$dashboardTexto('composicion')" />
             <div class="atlas-taxon-body" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['filos'] as $filo => $cantidad)
@@ -66,7 +66,7 @@
         <section class="atlas-panel" wire:key="grafico-riqueza-{{ sha1(json_encode([$territorio, $provinciasSeleccionadas])) }}" aria-labelledby="titulo-riqueza" x-data="portalGrafico('riqueza', @js(array_slice($territorio, 0, 10)), @js($tituloTerritorio))" x-on:alternar-tipo-grafico="alternar($event.detail)">
             <div class="atlas-panel-header"><div><div class="atlas-territory-heading"><h2 id="titulo-riqueza" tabindex="-1">{{ $tituloTerritorio }}</h2>
                 @if($porLocalidad)<button type="button" class="atlas-territory-back" wire:click="volverProvincias" wire:loading.attr="disabled" aria-label="{{ $dashboardTexto('volver_provincias') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6M4 12h16"/></svg></button>@endif
-            </div></div><x-catalogopublico::menu-analisis tipo="riqueza" :datos="$territorio" /></div>
+            </div></div><x-catalogopublico::menu-analisis tipo="riqueza" :datos="$territorio" :editorial="$catalogoEditorial" /></div>
             <x-catalogopublico::grafico-panel :titulo="$tituloTerritorio" />
 
             <div x-data="{busquedaLocalidad: '', normalizar(valor) { return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' '); }}" x-show="modo === 'barras' || tablaAbierta">
@@ -85,7 +85,7 @@
             <x-catalogopublico::figura-panel tipo="riqueza" />
         </section>
         <section class="atlas-panel" wire:key="grafico-decadas-{{ sha1(json_encode($datosMapa['decadas'])) }}" aria-labelledby="titulo-decadas" x-data="portalGrafico('decadas', @js($datosMapa['decadas']), @js($dashboardTexto('cobertura_temporal')))" x-on:alternar-tipo-grafico="alternar($event.detail)">
-            <div class="atlas-panel-header"><div><h2 id="titulo-decadas">{{ $dashboardTexto('cobertura_temporal') }}</h2></div><x-catalogopublico::menu-analisis tipo="decadas" :datos="$datosMapa['decadas']" /></div>
+            <div class="atlas-panel-header"><div><h2 id="titulo-decadas">{{ $dashboardTexto('cobertura_temporal') }}</h2></div><x-catalogopublico::menu-analisis tipo="decadas" :datos="$datosMapa['decadas']" :editorial="$catalogoEditorial" /></div>
             <x-catalogopublico::grafico-panel :titulo="$dashboardTexto('cobertura_temporal')" />
             <div class="atlas-ranked-chart atlas-ranked-chart--time" x-show="modo === 'barras' || tablaAbierta">
                 @forelse($datosMapa['decadas'] as $fila)

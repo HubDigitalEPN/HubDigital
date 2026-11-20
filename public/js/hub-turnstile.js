@@ -17,6 +17,14 @@
         element.setAttribute('aria-busy', token || retry ? 'false' : 'true');
         window.dispatchEvent(new CustomEvent(eventName(element, !!token)));
     }
+    function remove(element) {
+        const entry = widgets.get(element);
+        widgets.delete(element);
+        if (entry) {
+            clearTimeout(entry.timer);
+            if (entry.id !== null) window.turnstile?.remove(entry.id);
+        }
+    }
     function render(element) {
         if (widgets.has(element)) return;
         if (!window.turnstile?.render) {
@@ -30,6 +38,7 @@
             return;
         }
         clearTimeout(apiTimers.get(element)); apiTimers.delete(element);
+        element.hidden = false;
         state(element, '', 'Verificando la seguridad…');
         const entry = {id: null, timer: null};
         widgets.set(element, entry);
@@ -42,10 +51,17 @@
             entry.id = window.turnstile.render(element, {
                 sitekey: element.dataset.sitekey, action: element.dataset.action,
                 theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light', size: 'flexible', 'response-field': false,
+                retry: 'never', 'refresh-expired': 'manual', 'refresh-timeout': 'manual',
                 callback: token => finish(token, 'Verificación completada.', false),
+                'before-interactive-callback': () => finish('', 'Completa el desafío de Cloudflare para continuar.', false),
                 'expired-callback': () => finish('', 'La verificación venció. Vuelve a verificar.', true),
-                'error-callback': () => { finish('', 'No se pudo completar la verificación. Revisa tu conexión y reintenta.', true); return true; },
+                'error-callback': code => {
+                    const reference = /^\d{6}$/.test(code) ? ` (Cloudflare ${code})` : '';
+                    finish('', `No se pudo completar la verificación. Revisa tu conexión y reintenta.${reference}`, true);
+                    return true;
+                },
                 'timeout-callback': () => finish('', 'Se agotó el tiempo de verificación. Vuelve a verificar.', true),
+                'unsupported-callback': () => finish('', 'Cloudflare no pudo verificar este navegador. Si persiste, solicita asistencia.', true),
             });
         } catch {
             widgets.delete(element);
@@ -60,8 +76,8 @@
             if (button && !button.dataset.bound) {
                 button.dataset.bound = 'true';
                 button.addEventListener('click', () => {
-                    const entry = widgets.get(element);
-                    if (entry) { clearTimeout(entry.timer); if (entry.id !== null) window.turnstile?.remove(entry.id); widgets.delete(element); }
+                    if (element.closest('form')?.getAttribute('aria-busy') === 'true') return;
+                    remove(element);
                     if (window.turnstile?.render) render(element);
                     else {
                         render(element);
@@ -82,9 +98,15 @@
     window.hubTurnstileReady = scan;
     document.addEventListener('DOMContentLoaded', scan);
     document.addEventListener('livewire:navigated', scan);
+    document.addEventListener('hub-turnstile-consumed', ({target: form}) => {
+        const element = form.querySelector('[data-hub-turnstile]');
+        if (!element) return;
+        remove(element);
+        element.hidden = true;
+        state(element, '', 'Vuelve a verificar antes de enviar el formulario.', true);
+    });
     document.addEventListener('livewire:navigating', () => {
-        for (const entry of widgets.values()) { clearTimeout(entry.timer); if (entry.id !== null) window.turnstile?.remove(entry.id); }
-        widgets.clear();
+        for (const element of widgets.keys()) remove(element);
         for (const timer of apiTimers.values()) clearTimeout(timer);
         apiTimers.clear();
     });

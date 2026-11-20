@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 const source=readFileSync(new URL('../../public/js/contenido-disposicion.js',import.meta.url),'utf8');
-function runtime(){const window={};runInNewContext(source,{window,document:{readyState:'loading',addEventListener(){}},location:{reload(){throw Error('No debe recargar al fallar');}}});return window;}
+function runtime(){const window={};runInNewContext(source,{window,document:{readyState:'loading',addEventListener(){}},getComputedStyle:()=>({display:'block'})});return window;}
 function tree(){
     const parent={children:[]};
     function node(id){return {dataset:{disposicionId:id},parentElement:parent,before(slot){slot.parentElement=parent;parent.children.splice(parent.children.indexOf(this),0,slot);},replaceWith(other){const previous=parent.children.indexOf(other);if(previous>=0)parent.children.splice(previous,1);parent.children.splice(parent.children.indexOf(this),1,other);}};}
@@ -20,9 +20,22 @@ test('una configuración con identidades obsoletas no pierde ni duplica objetos'
     const w=runtime(),g=tree();w.hubDisposicionContenido.arrange(g,['unknown','c','c']);
     assert.deepEqual(g.parent.children.map(n=>n.dataset.disposicionId),['c','fixed','a','b']);
 });
-test('un guardado rechazado conserva el cambio pendiente y la versión anterior',async()=>{
-    const w=runtime(),d=w.editorDisposicionContenido({guardarDisposicion:()=>Promise.reject(Error('conflicto'))},'wizard:0','anterior',{});
-    d.pendiente=true;await d.guardar();assert.equal(d.pendiente,true);assert.equal(d.version,'anterior');assert.equal(d.guardando,false);assert.match(d.mensaje,/No se guardaron/);
+test('la vista aplica la posición publicada desde su documento sin controles de movimiento', () => {
+    const w = runtime(), estilos = new Map();
+    const posicion = {dataset: {disposicionLibre: 'inicio-hero-accion'}, style: {
+        setProperty: (nombre, valor) => estilos.set(nombre, valor),
+        removeProperty: nombre => estilos.delete(nombre),
+    }};
+    const root = {
+        children: [],
+        closest: () => null,
+        querySelectorAll: selector => selector === '[data-disposicion-libre]' ? [posicion] : [],
+        ownerDocument: {getElementById: id => id === 'disposicion-contenido-datos'
+            ? {textContent: '{"portal.inicio":{"posiciones":{"inicio-hero-accion":20}}}'} : null},
+    };
+    w.hubDisposicionContenido.aplicarGuardada(root, 'portal:inicio');
+    assert.equal(estilos.get('--hub-posicion-horizontal'), '20%');
+    assert.equal(w.editorDisposicionContenido, undefined);
 });
 
 test('Cargo pierde solo la compensacion de su posicion original al reorganizar el wizard',()=>{

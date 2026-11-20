@@ -5,30 +5,51 @@ import {runInNewContext} from 'node:vm';
 
 const source = readFileSync(new URL('../../public/js/laboratorio-layout.js', import.meta.url), 'utf8');
 
-test('el editor conserva un mapa serializable y limita geometría antes de sincronizar', () => {
-    const window = {}, calls = [];
-    runInNewContext(source, {window, document: {addEventListener() {}}});
-    const editor = window.laboratorioEditor({set(...args) {calls.push(args);}}, [], {foto: {tipo: 'foto'}});
-    editor.posiciones.foto = {x: 95, y: -10, ancho: 40, alto: 0, fuente: 20, capa: 22};
-    editor.seleccion = 'foto'; editor.pintar = () => {};
-    editor.cambiar();
-    assert.deepEqual(JSON.parse(JSON.stringify(editor.posiciones)), {foto: {x: 60, y: 0, ancho: 40, alto: 1, fuente: 8, capa: 20}});
-    assert.equal(calls[0][0], 'posiciones'); assert.equal(calls[0][2], false);
-    assert.equal(calls[0][1].foto.x, 60);
-    editor.restaurar();
-    assert.deepEqual(JSON.parse(JSON.stringify(editor.posiciones)), {});
-    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1))), ['posiciones', {}, false]);
+test('la maqueta del laboratorio conserva su DOM y abre textos y fotos por doble clic o Intro', () => {
+    const calls = [], events = {}, window = {prepararPortalEditorial() {}};
+    const elemento = id => ({dataset: {labElement: id}, closest(selector) {return selector === '[data-lab-element]' ? this : null;}});
+    const titulo = elemento('texto-titulo'), foto = elemento('foto-adrian'), article = {dataset: {}};
+    const doc = {
+        querySelector(selector) {return selector === '.lab-page' ? article : null;},
+        querySelectorAll(selector) {return selector === '[data-lab-free]' ? [] : [titulo, foto];},
+        addEventListener(name, handler) {events[name] = handler;},
+    };
+    runInNewContext(source, {window, document: {addEventListener() {}}, clearTimeout});
+    const editor = window.laboratorioEditor({
+        textos: {titulo: 'El Laboratorio'},
+        seleccionarElemento: id => calls.push(['texto', id]),
+        seleccionarFoto: id => calls.push(['foto', id]),
+    });
+    const modales = [];
+    editor.$flux = {modal: nombre => ({show: () => modales.push(nombre)})};
+    const frame = {contentDocument: doc, inert: true, style: {}};
+    editor.$refs = {vista: frame};
+    editor.iniciar();
+    const activar = (target, key) => ({target, key, preventDefault() {}, stopImmediatePropagation() {}});
+    events.dblclick(activar(titulo));
+    events.keydown(activar(foto, 'Enter'));
+    events.keydown(activar(foto, 'ArrowRight'));
+    assert.equal(editor.textoLocal, 'El Laboratorio');
+    assert.deepEqual(modales, ['laboratorio-texto-inmediato']);
+    assert.deepEqual(calls, [['foto', 'foto-adrian']]);
+    assert.deepEqual(Object.keys(events).sort(), ['click', 'dblclick', 'keydown', 'submit']);
+    assert.equal(titulo.tabIndex, 0);
+    assert.equal(foto.tabIndex, 0);
+    assert.equal(article.dataset.labEditorReady, 'true');
+    assert.equal(frame.inert, false);
+    assert.equal(editor.posiciones, undefined);
 });
 
 test('leer más desplaza los elementos inferiores y móvil usa altura automática', () => {
-    const events = {}, window = {innerWidth: 1200, addEventListener(name, fn) {events[name] = fn;}};
+    const events = {}, window = {innerWidth: 1200, addEventListener(name, fn) {events[name] = fn;}, ResizeObserver: class {observe() {}}};
     const item = (y, height) => ({dataset: {labY: y}, style: {}, offsetHeight: height,
         get offsetTop() {return Number.parseFloat(this.style.top) || 0;}, hasAttribute() {return false;},
         querySelector() {return this.open || false;}, getBoundingClientRect() {return {bottom: this.offsetTop + this.offsetHeight};}});
     const text = item(0, 100), photo = item(20, 100);
-    const canvas = {isConnected: true, dataset: {}, style: {}, children: [text, photo], clientWidth: 1000,
-        closest() {return null;}, addEventListener(name, fn) {events[name] = fn;}, getBoundingClientRect() {return {top: 0};}};
-    runInNewContext(source, {window, document: {querySelectorAll() {return [canvas];}, addEventListener(name, fn) {events[name] = fn;}}, ResizeObserver: class {observe() {}}});
+    const document = {defaultView: window, querySelectorAll() {return [canvas];}, addEventListener(name, fn) {events[name] = fn;}};
+    const canvas = {isConnected: true, dataset: {}, style: {}, children: [text, photo], clientWidth: 1000, ownerDocument: document,
+        addEventListener(name, fn) {events[name] = fn;}, getBoundingClientRect() {return {top: 0};}};
+    runInNewContext(source, {window, document});
     events.DOMContentLoaded(); assert.equal(photo.style.top, '200px');
     text.open = true; text.offsetHeight = 180; events.toggle();
     assert.equal(photo.style.top, '280px'); assert.equal(canvas.style.height, '412px');

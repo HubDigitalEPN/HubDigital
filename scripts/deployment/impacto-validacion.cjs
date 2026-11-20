@@ -263,13 +263,25 @@ function writeJson(filename, value) {
     finally { fs.rmSync(temp, {force: true}); }
 }
 
-function browserScope({root, files, changes, entries = {}}) {
+function browserScope({root, files, changes, entries = {}, baseline}) {
     const selected = new Set(), pending = [];
     for (const file of changes) {
         // Estos contratos nuevos se comprueban por MCP Neon sobre las fuentes
         // exactas; no convierten los nueve recorridos previos en ejecutados.
         if (fs.existsSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs')) && Object.hasOwn(focalUI.owner,file)) continue;
         if (!/^(resources\/(js|css)\/|Modules\/[^/]+\/resources\/|public\/images\/|tests\/Browser\/)|PortalCatalogo\.php$/.test(file)) continue;
+        if (file === 'tests/Browser/portal-livewire.mjs') {
+            try {
+                if (!/^[a-f0-9]{40}$/.test(baseline?.head || '')) throw new Error('Falta el commit de la base aprobada.');
+                const original = spawnSync('git.exe', ['-C', root, 'show', `${baseline.head}:${file}`], {windowsHide: true});
+                if (original.status !== 0 || digest(original.stdout) !== baseline.sources?.[file]) throw new Error('La fuente de Git no coincide con el runner aprobado.');
+                const before = browserCases.runnerParts(original.stdout.toString('utf8').replaceAll('\r\n', '\n'));
+                const after = browserCases.runnerParts(fs.readFileSync(path.join(root, file), 'utf8').replaceAll('\r\n', '\n'));
+                if (before.common !== after.common) throw new Error('Cambió la preparación compartida del navegador.');
+                for (const id of browserCases.ids) if (before.bodies[id] !== after.bodies[id]) selected.add(id);
+            } catch { pending.push(file); }
+            continue;
+        }
         const own = browserCases.directCases(file);
         if (own && own.length < browserCases.ids.length) { for (const id of own) selected.add(id); continue; }
         if (/PortalCatalogo\.php$|resources\/js\/portal-dashboard\.js$/.test(file) && files[file] !== 'eliminado') {
@@ -319,9 +331,17 @@ function pdfPlanDecision(selected, decision) {
 
 function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     const force = plan.forced_integral === true;
+    const validation = path.join(root, '.local/validation');
     let entries = {};
-    try { entries = JSON.parse(fs.readFileSync(path.join(root, '.local/validation/base-navegador.json'), 'utf8')).cases; } catch { /* La base maestra conserva la aprobacion previa. */ }
-    const scope = force ? {cases: browserCases.ids, pending: []} : browserScope({root, files, changes: plan.changes, entries});
+    try { entries = JSON.parse(fs.readFileSync(path.join(validation, 'base-navegador.json'), 'utf8')).cases; } catch { /* La base maestra conserva la aprobacion previa. */ }
+    let baseline;
+    if (!force && plan.changes.includes('tests/Browser/portal-livewire.mjs')) {
+        try {
+            const approved = JSON.parse(fs.readFileSync(path.join(validation, 'base-integral.json'), 'utf8'));
+            if (digest(JSON.stringify(approved)) === plan.baseline_sha256) baseline = approved;
+        } catch { /* browserScope informa la falta de la fuente aprobada. */ }
+    }
+    const scope = force ? {cases: browserCases.ids, pending: []} : browserScope({root, files, changes: plan.changes, entries, baseline});
     plan.pendientes = [...new Set([...(plan.pendientes || []), ...scope.pending])];
     plan.navegador = browserCases.loadPlan({root, sources: files, runtime, environment,
         dependencies: {}, force, onlyCases: force ? undefined : scope.cases});

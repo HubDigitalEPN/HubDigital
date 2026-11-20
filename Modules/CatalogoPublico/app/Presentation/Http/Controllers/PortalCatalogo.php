@@ -239,6 +239,13 @@ final class PortalCatalogo extends Component
 
     public function mount(): void
     {
+        if ($this->esVistaEditorial()) {
+            $vista = request()->query('vista', 'tarjetas');
+            $this->vista = in_array($vista, ['mapa', 'tarjetas', 'registros', 'arbol'], true) ? $vista : 'tarjetas';
+
+            return;
+        }
+
         $this->aplicarEstadoUrl($this->estadoInicialUrl !== [] ? $this->estadoInicialUrl : request()->query());
         $this->validarSeleccionUrl();
         $paginaSolicitada = $this->pagina;
@@ -414,6 +421,8 @@ final class PortalCatalogo extends Component
 
     public function rendered(View $view, string $html): void
     {
+        if ($this->esVistaEditorial()) return;
+
         // Render ya resolvió la página; SupportEvents captura antes del hook dehydrate del componente.
         $this->dispatch('catalogo-estado-url', estado: $this->estadoParaUrl(), restauracion: $this->restauracionHistorial, version: $this->versionNavegacion);
     }
@@ -1378,12 +1387,34 @@ final class PortalCatalogo extends Component
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
+    private function esVistaEditorial(): bool
+    {
+        return request()->isMethod('GET') && request()->routeIs('portal.catalogo')
+            && request()->query('_editor') === '1' && request()->user()?->esCurador();
+    }
+
+    private function renderEditorial(): View
+    {
+        return view('catalogopublico::livewire.portal-catalogo', [
+            'catalogoEditorial' => true,
+            'hayFiltrosActivos' => false,
+            'filosDisponibles' => [], 'preparacionesDisponibles' => [], 'metodosRecoleccionDisponibles' => [], 'biomasDisponibles' => [],
+            'datosMapa' => ['resumen' => ['registros' => 0], 'mapa' => [], 'filos' => [], 'decadas' => [], 'estacionalidad' => [], 'altitud' => [], 'metodos' => []],
+            'claveFiltrosMapa' => 'editorial',
+            'nivelActual' => '', 'taxonActual' => '', 'nivelExplorar' => '', 'ruta' => [], 'hijos' => [], 'totalTarjetas' => 0,
+            'nivelesNavegacion' => self::NIVEL_ETIQUETA,
+            'registrosVista' => [], 'imagenesRegistrosVista' => [], 'totalRegistrosVista' => 0, 'hayMasRegistros' => false,
+        ]);
+    }
+
     public function render(
         ConstruirArbolTaxonomicoHandler $handler,
         ProveedorEspecimenesPort $proveedor,
         EspecimenDivulgableRepositoryInterface $repoDivulgable,
         ConsultarGaleriaTaxonHandler $galeriaHandler,
     ): View {
+        if ($this->esVistaEditorial()) return $this->renderEditorial();
+
         $filtros = $this->filtrosActuales();
         if ($this->vista === 'tarjetas') {
             $clave = $this->claveSeleccionTarjetas();
@@ -1391,17 +1422,15 @@ final class PortalCatalogo extends Component
             $this->claveTarjetasCargadas = $clave;
         }
         $datosMapa = null;
-        $errorMapa = false;
         if ($this->vista === 'mapa') {
+            $errorMapa = false;
             try {
                 $datosMapa = app(PortalEstadisticas::class)->datosParaVista($this->filtrosAnalisis($filtros), ! $filtros->estaVacio() || $this->taxon !== '');
             } catch (ConsultaMapaNoDisponible $error) {
                 report($error);
                 $errorMapa = true;
             }
-        }
 
-        if ($this->vista === 'mapa') {
             return view('catalogopublico::livewire.portal-catalogo', [
                 'datosMapa' => $datosMapa,
                 'errorMapa' => $errorMapa,
