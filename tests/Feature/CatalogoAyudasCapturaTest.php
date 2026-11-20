@@ -18,28 +18,28 @@ beforeEach(function (): void {
 });
 
 test('cada campo del alta tiene nombre accesible ayuda con ejemplo y enlace a su error', function (): void {
-    $ui = Livewire::actingAs(User::factory()->curador()->create())->withQueryParams(['q'=>'QA-AYUDA-'])->test(EspecimenIndex::class)->call('abrirModal');
+    $ui = Livewire::actingAs(User::factory()->curador()->create())->withQueryParams(['q'=>'QA-AYUDA-'])->test(EspecimenIndex::class)->set('showModal',true);
     $doc = new DOMDocument;
     @$doc->loadHTML('<?xml encoding="UTF-8">'.$ui->html());
     $xpath = new DOMXPath($doc);
     $campos = $xpath->query('//*[@data-catalogo-campo]');
-    expect($campos->length)->toBe(27);
+    expect($campos->length)->toBe(26);
     expect($ui->snapshot['data'])->not->toHaveKeys(['taxones', 'entidades']);
     foreach ($campos as $campo) {
         $modelo = $campo->getAttribute('data-catalogo-campo');
-        expect($xpath->query('.//button[@aria-haspopup="dialog"]', $campo)->length)->toBe(1);
+        expect($xpath->query('.//*[@data-catalogo-ayuda]/button[@aria-haspopup="dialog"]', $campo)->length)->toBe(1);
         $control = $xpath->query('.//*[@id="captura-'.$modelo.'"]', $campo)->item(0);
         expect($control)->not->toBeNull();
         expect($xpath->query('.//*[@data-catalogo-control-fila]/*[@data-catalogo-control]', $campo)->length)->toBe(1);
         expect($xpath->query('.//*[@data-catalogo-control]//*[@data-catalogo-ayuda]', $campo)->length)->toBe(0);
         expect($xpath->query('.//*[@data-catalogo-control-fila]/*[@data-catalogo-ayuda="'.$modelo.'"]', $campo)->length)->toBe(1);
-        $dialogo = $xpath->query('.//dialog', $campo)->item(0);
+        $dialogo = $xpath->query('.//*[@data-catalogo-ayuda]/dialog', $campo)->item(0);
         expect($dialogo->textContent)->toContain('Ejemplo:', 'Cerrar ayuda');
     }
-    $ui->call('registrarEspecimen')->assertHasErrors(['codigoCatalogo','taxonId','colector'])
+    $ui->call('registrarEspecimen')->assertHasErrors(['taxonId','colector'])
         ->assertSee('La ficha no se guardó')->assertSee('El campo Colector es obligatorio.')
         ->assertSee('href="#captura-colector"', false);
-    $ui->assertViewHas('taxones', fn ($taxones) => count($taxones) > 0);
+    $ui->call('buscarOpcionesCaptura', 'taxonId')->assertReturned(fn (array $datos) => count($datos['opciones']) > 0 && count($datos['opciones']) <= 25);
     expect($ui->snapshot['data'])->not->toHaveKeys(['taxones', 'entidades']);
 });
 
@@ -48,11 +48,13 @@ test('un taxón inactivo no aparece en el alta y tampoco se admite enviando su i
     expect($id)->not->toBeNull();
     DB::table('taxonomia.taxones')->where('id',$id)->update(['estado'=>'inactivo']);
     $codigo = 'QA-INACTIVO-'.Str::uuid();
-    $ui = Livewire::actingAs(User::factory()->curador()->create())->withQueryParams(['q'=>$codigo])->test(EspecimenIndex::class)->call('abrirModal');
-    $ui->assertViewHas('taxones', fn ($taxones) => !in_array($id, array_column($taxones, 'id'), true));
-    $ui->update(updates:['codigoCatalogo'=>$codigo,'taxonId'=>$id,'fechaColecta'=>'2026-11-17','colector'=>'QA sintético'])
+    $ui = Livewire::actingAs(User::factory()->curador()->create())->withQueryParams(['q'=>$codigo])->test(EspecimenIndex::class)->set('showModal',true);
+    $nombre = DB::table('taxonomia.taxones')->where('id', $id)->value('nombre_cientifico');
+    $ui->call('buscarOpcionesCaptura', 'taxonId', $nombre)
+        ->assertReturned(fn (array $datos) => !in_array($id, array_column($datos['opciones'], 'valor'), true));
+    $ui->update(updates:['occurrenceId'=>$codigo,'taxonId'=>$id,'fechaColecta'=>'2026-11-17','colector'=>'QA sintético'])
         ->call('registrarEspecimen')->assertHasErrors('taxonId')->assertSet('showModal',true);
-    expect(DB::table('taxonomia.especimenes')->where('codigo_catalogo',$codigo)->exists())->toBeFalse();
+    expect(DB::table('taxonomia.especimenes')->where('occurrence_id',$codigo)->exists())->toBeFalse();
 });
 
 test('la carga reconoce el separador de una cabecera inequívoca y conserva el cambio manual', function (string $separador, string $opcion): void {

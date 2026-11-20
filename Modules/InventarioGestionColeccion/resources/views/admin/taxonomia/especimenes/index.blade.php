@@ -76,22 +76,8 @@
         return $t === '' ? $vacio : e($t);
     };
 
-    /** Alineación a la derecha para columnas numéricas, como en una hoja de cálculo. */
     $clavesNumericas = ['decimalLatitude', 'decimalLongitude', 'elevationMinM', 'elevationMaxM',
                         'individualCount', 'filaOrigenExcel', 'latLonMaxError'];
-
-    /**
-     * Botones de fila de la tabla densa. Se usan botones nativos con iconos de un
-     * sprite en lugar de <flux:button>: cada uno de esos arrastra ~1,2 KB de
-     * clases, y con cientos de filas eso dominaba el peso de la página. Las
-     * tarjetas móviles sí conservan <flux:button> (área táctil ≥44 px).
-     */
-    $btnFila = 'inline-flex size-7 items-center justify-center rounded border border-border '
-             . 'text-text-secondary transition-colors hover:bg-science-blue/10 hover:text-science-blue';
-
-    /** Triángulo de aviso: mismo tamaño que el resto, en color de advertencia. */
-    $btnAviso = 'inline-flex size-7 items-center justify-center rounded border border-warning '
-              . 'bg-warning/10 text-warning transition-colors hover:bg-warning/20';
 @endphp
 
 {{-- La selección vive ÍNTEGRAMENTE en el navegador y solo se envía al servidor
@@ -119,6 +105,53 @@
          alternar(id, valor) { if (valor) { this.sel[id] = true } else { delete this.sel[id] } },
          marcarFilas(lista) { lista.forEach(id => { this.sel[id] = true }) },
          limpiar() { this.sel = {} },
+         altaLimpia: true,
+         abrirAlta() {
+             const dialogo = this.$refs.altaEspecimen.querySelector('dialog');
+             const fecha = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
+             for (const campo of dialogo.querySelectorAll('[data-catalogo-campo]')) {
+                 const modelo = campo.dataset.catalogoCampo;
+                 $wire.$set(modelo, modelo === 'fechaColecta' ? fecha : '', false);
+             }
+             $wire.$set('ubicacionDetectada', null, false);
+             $wire.$set('geoMensaje', null, false);
+             $wire.$set('showModal', true, false);
+             this.altaLimpia = true;
+             dialogo.querySelectorAll('[aria-invalid=true]').forEach(control => control.removeAttribute('aria-invalid'));
+             dialogo.showModal();
+         },
+         menuFila: {},
+         abrirMenuFila(invocador, id) {
+             const menu = this.$refs.accionesFila;
+             if (this.menuFila.invocador === invocador) { this.cerrarMenuFila(); return; }
+             this.menuFila = {invocador, id};
+             if (!menu.matches(':popover-open')) menu.showPopover();
+             const caja = invocador.getBoundingClientRect();
+             menu.style.left = Math.max(8, Math.min(caja.left, innerWidth - menu.offsetWidth - 8)) + 'px';
+             menu.style.top = Math.max(8, Math.min(caja.bottom + 4, innerHeight - menu.offsetHeight - 8)) + 'px';
+             menu.querySelector('button').focus({preventScroll: true});
+         },
+         cerrarMenuFila(enfocar = true) {
+             const menu = this.$refs.accionesFila;
+             if (!menu?.matches(':popover-open')) return;
+             const invocador = this.menuFila.invocador;
+             menu.hidePopover();
+             this.menuFila = {};
+             if (enfocar) invocador?.focus({preventScroll: true});
+         },
+         teclaMenuFila(evento) {
+             if (evento.key === 'Escape') { evento.preventDefault(); this.cerrarMenuFila(); return; }
+             if (evento.key === 'Tab') { this.cerrarMenuFila(); return; }
+             const botones = Array.from(this.$refs.accionesFila.querySelectorAll('button'));
+             const i = botones.indexOf(document.activeElement);
+             const destino = {ArrowDown: (i + 1) % botones.length, ArrowUp: (i + botones.length - 1) % botones.length, Home: 0, End: botones.length - 1}[evento.key];
+             if (destino !== undefined) { evento.preventDefault(); botones[destino].focus(); }
+         },
+         ejecutarAccionFila(accion) {
+             const id = this.menuFila.id;
+             this.cerrarMenuFila();
+             if (id) $wire[accion](accion === 'abrirBorrado' ? [id] : id);
+         },
 
          /* Editor de celda flotante.
 
@@ -149,37 +182,18 @@
              if (id) { $wire.guardarCelda(id, clave, valor) }
          },
      }"
-     @seleccion-aplicada.window="limpiar()">
-{{-- Sprite de iconos: se define una vez y cada fila lo referencia con <use>. --}}
-<svg class="hidden" aria-hidden="true" focusable="false">
-    <symbol id="ico-ficha" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </symbol>
-    <symbol id="ico-aviso" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-    </symbol>
-    <symbol id="ico-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-    </symbol>
-    <symbol id="ico-qr" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-3.75A1.125 1.125 0 013.75 8.625v-3.75zm10.5 0c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-3.75a1.125 1.125 0 01-1.125-1.125v-3.75zm-10.5 10.5c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-3.75a1.125 1.125 0 01-1.125-1.125v-3.75zM13.5 14.25h2.25v2.25H13.5zm4.5 0h2.25v2.25H18zm-4.5 4.5h2.25V21H13.5zm4.5 0h2.25V21H18z" />
-    </symbol>
-</svg>
-
+     @seleccion-aplicada.window="limpiar()" x-on:ver-ultimo-especimen="$wire.abrirFicha($event.detail.id)">
     {{-- ── Encabezado ──────────────────────────────────────────────────────── --}}
     <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Especímenes</flux:heading>
 
+    @island(name: 'alta-especimen', always: true)
     @if($successMessage)
         <flux:callout data-hub-feedback="success" variant="success">
             {{ $successMessage }}
-            @if($ultimoCreadoId)<flux:button size="sm" variant="ghost" wire:click="abrirFicha('{{ $ultimoCreadoId }}')">Ver última ficha creada</flux:button>@endif
+            @if($ultimoCreadoId)<flux:button size="sm" variant="ghost" x-on:click="$dispatch('ver-ultimo-especimen', {id: $wire.ultimoCreadoId})">Ver última ficha creada</flux:button>@endif
         </flux:callout>
     @endif
+    @endisland
     @if($errorMessage && !$showModal && !$showEditModal)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <flux:modal wire:model="busquedaAbierta" aria-labelledby="inventario-busqueda-titulo" class="w-full max-w-lg">
@@ -447,41 +461,7 @@
             </div>
         </div>
 
-        {{-- Barra de selección.
-
-             Marcar casillas NO va al servidor. Las casillas usan `wire:model`
-             SIN `.live`, así que Livewire actualiza su copia local y las marcas
-             viajan de polizón en la siguiente petición que ocurra de todos modos
-             (cargar filas, ordenar, abrir el panel). Antes cada clic costaba un
-             round-trip completo: 5 consultas y ~2 s de espera.
-
-             El contador vive en Alpine leyendo el mismo estado, para que la
-             cifra reaccione al instante sin preguntar al servidor. --}}
-        <div class="flex flex-col gap-3 border-b border-border bg-science-blue/5 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-wrap items-center gap-3 text-sm">
-                <span class="text-text-primary">
-                    <span class="font-semibold" x-text="n">0</span> seleccionado(s)
-                </span>
-                <button type="button" class="text-xs text-science-blue underline underline-offset-2"
-                        @click="marcarFilas(@js(array_column($filas, 'id')))" @disabled($filas === [])>
-                    Marcar filas cargadas ({{ count($filas) }})
-                </button>
-                <button type="button" x-show="n > 0" x-cloak
-                        class="text-xs text-text-secondary underline underline-offset-2 hover:text-error"
-                        @click="limpiar()">
-                    Quitar selección
-                </button>
-            </div>
-            <flux:button size="sm" variant="primary" icon="pencil-square"
-                         @click="$wire.abrirPanelMasivo(ids())" x-bind:disabled="n === 0">
-                Editar en bloque
-            </flux:button>
-            @if($puedeBorrar)
-                <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.abrirBorrado(ids())" x-bind:disabled="n === 0">Borrar selección</flux:button>
-            @endif
-        </div>
-
-        <div class="relative" x-ref="hoja" x-on:scroll.capture="cerrarCelda()">
+        <div class="relative" x-ref="hoja" x-on:scroll.capture="cerrarCelda(); cerrarMenuFila(false)">
             {{-- Editor flotante: uno solo para toda la tabla.
 
                  El `display` va dentro de este mismo `:style` y NO se usa `x-show`:
@@ -503,6 +483,21 @@
                           :page-size="$perPage" page-size-action="cambiarFilasPorCarga" :page-sizes="$tamanosPagina"
                           :allow-download="false" column-action="$set('panelColumnasAbierto', true)" :continuous-window="$continuidad">
                 <x-slot:actions>
+                    <button type="button" role="menuitem" tabindex="-1" @click="marcarFilas(@js(array_column($filas, 'id'))); closeMenu()" @disabled($filas === [])>
+                        <flux:icon name="check" /><span>Marcar filas cargadas ({{ count($filas) }})</span>
+                    </button>
+                    <button type="button" role="menuitem" tabindex="-1" @click="limpiar(); closeMenu()" :disabled="n === 0">
+                        <flux:icon name="x-mark" /><span>Quitar selección</span>
+                    </button>
+                    <button type="button" role="menuitem" tabindex="-1" @click="closeMenu(); $wire.abrirPanelMasivo(ids())" :disabled="n === 0">
+                        <flux:icon name="pencil-square" /><span>Editar en bloque</span><span class="hub-ig-menu-hint" x-text="n || ''"></span>
+                    </button>
+                    @if($puedeBorrar)
+                        <button type="button" role="menuitem" tabindex="-1" @click="closeMenu(); $wire.abrirBorrado(ids())" :disabled="n === 0">
+                            <flux:icon name="trash" /><span>Borrar selección</span>
+                        </button>
+                    @endif
+                    <div class="hub-ig-menu-separator" role="separator"></div>
                     <button type="button" role="menuitem" tabindex="-1" wire:click="abrirBusqueda" x-on:click="closeMenu()">
                         <flux:icon name="magnifying-glass" /><span>Buscar</span><span class="hub-ig-menu-trailing">…</span>
                     </button>
@@ -517,7 +512,7 @@
                     @endif
                     <x-catalogo-excel-menu accion="exportarExcel" :en-grilla="true" />
                     <div class="hub-ig-menu-separator" role="separator"></div>
-                    <button type="button" role="menuitem" tabindex="-1" wire:click="abrirModal" x-on:click="closeMenu()">
+                    <button type="button" role="menuitem" tabindex="-1" x-on:click="closeMenu(); abrirAlta()">
                         <flux:icon name="plus" /><span>Nuevo espécimen</span>
                     </button>
                     <a href="{{ route('divulgacion.index') }}" wire:navigate role="menuitem" tabindex="-1">
@@ -529,11 +524,11 @@
                 <thead>
                     <tr>
                         <th scope="col"
-                            class="sticky left-0 top-0 z-30 w-10 border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 font-sans font-medium text-white">
-                            <span class="sr-only">Seleccionar</span>
+                            class="sticky left-0 top-0 z-30 w-16 border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 font-sans font-medium text-white">
+                            <span class="sr-only">Acciones y selección</span>
                         </th>
                         <th scope="col"
-                            class="sticky left-10 top-0 z-30 w-12 border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 text-right font-sans font-medium text-white">
+                            class="sticky left-16 top-0 z-30 w-12 border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 text-right font-sans font-medium text-white">
                             #
                         </th>
                         @foreach($columnasTabla as $col)
@@ -567,29 +562,25 @@
                                 @endif
                             </th>
                         @endforeach
-                        <th scope="col"
-                            class="sticky right-0 top-0 z-30 border-b border-l border-blue-navy/40 bg-blue-navy px-2 py-2 text-left font-sans font-medium text-white">
-                            Acciones
-                        </th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($filas as $i => $especimen)
                         @php
 
-                            $marcado = false;
                             $fondo = $i % 2 === 0 ? 'bg-surface' : 'bg-bg-main';
                         @endphp
                         <tr wire:key="fila-{{ $especimen['id'] }}" class="group">
-                            <td class="sticky left-0 z-10 border-b border-r border-border px-2 py-1
-                                       {{ $fondo }} group-hover:bg-science-blue/10
-                                       @if($marcado) border-l-4 border-l-error @endif">
-                                <input type="checkbox" class="size-4 rounded border-border"
-                                       :checked="marcado('{{ $especimen['id'] }}')"
-                                       @change="alternar('{{ $especimen['id'] }}', $event.target.checked)"
-                                       aria-label="Seleccionar {{ $especimen['codigoCatalogo'] }}" />
+                            <td class="sticky left-0 z-10 w-16 border-b border-r border-border px-1 py-1 {{ $fondo }} group-hover:bg-science-blue/10">
+                                <div class="flex items-center gap-1">
+                                    @include('inventariogestioncoleccion::admin.taxonomia.especimenes.boton-acciones-fila')
+                                    <input type="checkbox" class="size-4 rounded border-border"
+                                           :checked="marcado('{{ $especimen['id'] }}')"
+                                           @change="alternar('{{ $especimen['id'] }}', $event.target.checked)"
+                                           aria-label="Seleccionar {{ $especimen['codigoCatalogo'] }}" />
+                                </div>
                             </td>
-                            <td class="sticky left-10 z-10 border-b border-r border-border px-2 py-1 text-right text-text-secondary
+                            <td class="sticky left-16 z-10 border-b border-r border-border px-2 py-1 text-right text-text-secondary
                                        {{ $fondo }} group-hover:bg-science-blue/10">
                                 {{ $offsetFila + $i + 1 }}
                             </td>
@@ -628,45 +619,10 @@
                                     @endif
                                 </td>
                             @endforeach
-                            <td class="sticky right-0 z-10 whitespace-nowrap border-b border-l border-border px-2 py-1
-                                       {{ $fondo }} group-hover:bg-science-blue/10">
-                                <div class="flex items-center gap-1">
-                                    {{-- Un triángulo por problema detectado, cada uno hacia donde ese
-                                         problema se arregla. El title lleva el motivo literal para que
-                                         el curador sepa qué pasa sin abrir nada. --}}
-                                    {{-- Editar está disponible en cualquier estado: `actualizar()` solo
-                                         toca metadatos curatoriales (localidad, colector, fecha, geo…),
-                                         nunca la circulación del ejemplar. Condicionarlo a 'disponible'
-                                         escondía la acción sin que ninguna regla de dominio lo pidiera y
-                                         dejaba sin salida a los especímenes 'observado' que vuelven de
-                                         un préstamo con novedad. --}}
-                                    <button type="button" class="{{ $btnFila }}"
-                                            wire:click="abrirEditModal('{{ $especimen['id'] }}')"
-                                            title="Editar" aria-label="Editar {{ $especimen['codigoCatalogo'] }}">
-                                        <svg class="size-4"><use href="#ico-pencil" /></svg>
-                                    </button>
-                                    <button type="button" class="{{ $btnFila }}"
-                                            wire:click="abrirFicha('{{ $especimen['id'] }}')"
-                                            title="Ver ficha completa" aria-label="Ficha de {{ $especimen['codigoCatalogo'] }}">
-                                        <svg class="size-4"><use href="#ico-ficha" /></svg>
-                                    </button>
-                                    @if($puedeBorrar)
-                                        <button type="button" class="{{ $btnFila }} text-error" wire:click="abrirBorrado(['{{ $especimen['id'] }}'])" aria-label="Borrar {{ $especimen['codigoCatalogo'] }}" title="Borrar definitivamente">
-                                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6"/></svg>
-                                        </button>
-                                    @endif
-                                    <button type="button" class="{{ $btnFila }}"
-                                            wire:click="mostrarQr('{{ $especimen['id'] }}')"
-                                            wire:loading.attr="disabled"
-                                            title="Código QR" aria-label="Código QR de {{ $especimen['codigoCatalogo'] }}">
-                                        <svg class="size-4"><use href="#ico-qr" /></svg>
-                                    </button>
-                                </div>
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ count($columnasTabla) + 3 }}" class="px-4 py-10 text-center font-sans text-sm text-text-secondary">
+                            <td colspan="{{ count($columnasTabla) + 2 }}" class="px-4 py-10 text-center font-sans text-sm text-text-secondary">
                                 @if(count($filtrosActivos) > 0)
                                     Ningún espécimen coincide con estos filtros.
                                     <button type="button" wire:click="limpiar" class="ml-1 underline underline-offset-2 hover:text-science-blue">
@@ -685,10 +641,10 @@
         {{-- Móvil: tarjetas apiladas con el mismo juego de columnas. --}}
         <div class="divide-y divide-border md:hidden" data-grid-mobile>
             @forelse($filas as $i => $especimen)
-                @php $marcado = false; @endphp
                 <div wire:key="movil-{{ $especimen['id'] }}" data-grid-scroll-row
-                     class="flex flex-col gap-2 p-4 @if($marcado) border-l-4 border-l-error @endif">
-                    <div class="flex items-start justify-between gap-2">
+                     class="flex flex-col gap-2 p-4">
+                    <div class="flex items-start gap-2">
+                        @include('inventariogestioncoleccion::admin.taxonomia.especimenes.boton-acciones-fila')
                         {{-- Toda la cabecera alterna la casilla: área táctil holgada. --}}
                         <label class="flex min-w-0 cursor-pointer items-start gap-3 py-1">
                             <input type="checkbox" class="mt-0.5 size-5 rounded border-border"
@@ -711,23 +667,6 @@
                         </x-inventariogestioncoleccion::seguimiento-fisico.campo-movil>
                     @endforeach
 
-                    <div class="flex flex-wrap gap-2 pt-2">
-                        <flux:button variant="ghost" icon="eye" wire:click="abrirFicha('{{ $especimen['id'] }}')">
-                            Ver ficha
-                        </flux:button>
-                        <flux:button variant="ghost" icon="pencil" wire:click="abrirEditModal('{{ $especimen['id'] }}')">
-                            Editar
-                        </flux:button>
-                        @if($puedeBorrar)
-                            <flux:button variant="danger" icon="trash" wire:click="abrirBorrado(['{{ $especimen['id'] }}'])" aria-label="Borrar {{ $especimen['codigoCatalogo'] }}">Borrar</flux:button>
-                        @endif
-                        <flux:button variant="ghost" icon="qr-code"
-                                     wire:click="mostrarQr('{{ $especimen['id'] }}')"
-                                     wire:loading.attr="disabled"
-                                     wire:target="mostrarQr('{{ $especimen['id'] }}')">
-                            Código QR
-                        </flux:button>
-                    </div>
                 </div>
             @empty
                 <div class="p-6 text-center text-sm text-text-secondary">
@@ -740,6 +679,16 @@
             @endforelse
         </div>
 
+            <div popover="auto" class="hub-ig-menu" x-ref="accionesFila" role="menu" aria-label="Acciones del espécimen"
+                 data-especimen-acciones-fila @toggle="if ($event.newState === 'closed') menuFila = {}"
+                 @keydown="teclaMenuFila($event)">
+                <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirEditModal')"><flux:icon name="pencil" /> Editar</button>
+                <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirFicha')"><flux:icon name="eye" /> Ver ficha</button>
+                @if($puedeBorrar)
+                    <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirBorrado')"><flux:icon name="trash" /> Borrar definitivamente</button>
+                @endif
+                <button type="button" role="menuitem" @click="ejecutarAccionFila('mostrarQr')"><flux:icon name="qr-code" /> Código QR</button>
+            </div>
             </x-grid-frame>
         </div>
     </div>
@@ -1034,31 +983,28 @@
     </flux:modal>
 
     {{-- ── Modal: Registrar ────────────────────────────────────────────────── --}}
-    {{-- El cuerpo solo existe con el modal abierto: el desplegable de taxones
-         ronda las 4.000 opciones y montarlo siempre pesaba ~1 MB por render. --}}
-    <flux:modal wire:model="showModal" aria-labelledby="alta-especimen-titulo" class="w-full max-w-4xl">
-        @if($showModal)
-        <div class="space-y-4 p-1" data-hub-inline-feedback>
+    @island(name: 'alta-especimen', always: true)
+    <flux:modal name="alta-especimen" x-ref="altaEspecimen" x-on:close="$wire.$set('showModal', false, false)"
+                aria-labelledby="alta-especimen-titulo" class="w-full max-w-7xl">
+        <div class="space-y-4 p-1" data-hub-inline-feedback
+             x-bind:class="altaLimpia && '[&_[data-flux-error]]:hidden! [&_[data-catalogo-resumen-errores]]:hidden!'">
             <flux:heading id="alta-especimen-titulo" size="lg" class="text-text-primary">Nuevo espécimen</flux:heading>
-            <p class="text-sm text-text-secondary">Los campos con * son obligatorios. Abre el icono de ayuda de cada campo para consultar su significado, formato y ejemplo.</p>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <x-catalogo-campo campo="codigoCatalogo" />
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <x-catalogo-campo campo="fechaColecta" />
                 <x-catalogo-campo campo="occurrenceId" />
                 <x-catalogo-campo campo="catalogNumber" />
                 <x-catalogo-campo campo="oldCode" />
                 <x-catalogo-campo campo="cardexLiquidCollectionCode" />
+                <x-catalogo-campo campo="taxonId" :valor="$taxonId" placeholder="Selecciona un taxón" lista />
             </div>
-            <x-catalogo-campo campo="taxonId" :opciones="$taxones" />
-
-            <x-catalogo-campo campo="localidad" />
-            <x-catalogo-campo campo="localidad2" />
-            <x-catalogo-campo campo="localidad3" />
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <x-catalogo-campo campo="country" />
-                <x-catalogo-campo campo="stateProvince" />
-                <x-catalogo-campo campo="municipality" />
-                <x-catalogo-campo campo="localityName" />
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <x-catalogo-campo campo="localidad" :valor="$localidad" lista admite-texto />
+                <x-catalogo-campo campo="localidad2" :valor="$localidad2" lista admite-texto />
+                <x-catalogo-campo campo="localidad3" :valor="$localidad3" lista admite-texto />
+                <x-catalogo-campo campo="country" :valor="$country" lista admite-texto />
+                <x-catalogo-campo campo="stateProvince" :valor="$stateProvince" lista admite-texto />
+                <x-catalogo-campo campo="municipality" :valor="$municipality" lista admite-texto />
+                <x-catalogo-campo campo="localityName" :valor="$localityName" lista admite-texto />
                 <x-catalogo-campo campo="decimalLatitude" />
                 <x-catalogo-campo campo="decimalLongitude" />
                 <x-catalogo-campo campo="geodeticDatum" />
@@ -1071,16 +1017,14 @@
                     <span wire:loading.remove wire:target="detectarUbicacion">Detectar por coordenadas</span>
                     <span wire:loading wire:target="detectarUbicacion">Detectando…</span>
                 </flux:button>
-                @if($geoMensaje)<p class="text-xs text-warning">{{ $geoMensaje }}</p>@endif
-                @if($ubicacionDetectada)
-                    <p class="text-xs text-text-secondary">
-                        <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
-                        Ubicación detectada: <span class="text-text-primary">{{ $ubicacionDetectada }}</span>
-                    </p>
-                @endif
+                <p class="text-xs text-warning" x-cloak x-show="$wire.geoMensaje" x-text="$wire.geoMensaje"></p>
+                <p class="text-xs text-text-secondary" x-cloak x-show="$wire.ubicacionDetectada">
+                    <flux:icon name="map-pin" class="inline size-3.5 -mt-0.5 text-science-blue" />
+                    Ubicación detectada: <span class="text-text-primary" x-text="$wire.ubicacionDetectada"></span>
+                </p>
             </div>
             <x-catalogo-campo campo="colector" />
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <x-catalogo-campo campo="individualCount" />
                 <x-catalogo-campo campo="preparations" />
                 <x-catalogo-campo campo="disposition" />
@@ -1089,19 +1033,19 @@
                 <x-catalogo-campo campo="habitat" />
             </div>
             <x-catalogo-campo campo="specimenNotes" />
-            <x-catalogo-campo campo="entidadDepositanteId" :opciones="$entidades" />
+            <x-catalogo-campo campo="entidadDepositanteId" :valor="$entidadDepositanteId" placeholder="Sin entidad depositante" lista />
             <x-catalogo-errores :mensaje="$errorMessage" />
             <div class="flex justify-end gap-3 pt-2">
-                <flux:button variant="ghost" wire:click="$set('showModal', false)">Cancelar</flux:button>
-                <flux:button variant="primary" wire:click="registrarEspecimen"
+                <flux:modal.close><flux:button variant="ghost">Cancelar</flux:button></flux:modal.close>
+                <flux:button variant="primary" wire:click="registrarEspecimen" x-on:click="altaLimpia = false"
                              wire:loading.attr="disabled" wire:target="registrarEspecimen">
                     <span wire:loading.remove wire:target="registrarEspecimen">Registrar</span>
                     <span wire:loading wire:target="registrarEspecimen">Registrando…</span>
                 </flux:button>
             </div>
         </div>
-        @endif
     </flux:modal>
+    @endisland
 
     {{-- ── Modal: Editar ───────────────────────────────────────────────────── --}}
     <flux:modal wire:model="showEditModal" aria-labelledby="edicion-especimen-titulo" class="w-full max-w-4xl">
@@ -1110,14 +1054,14 @@
             <flux:heading id="edicion-especimen-titulo" size="lg" class="text-text-primary">Editar espécimen</flux:heading>
             <p class="text-sm text-text-secondary">Conserva los datos de la etiqueta. Una ficha histórica puede mantener vacíos los datos que se desconocen.</p>
 
-            <x-catalogo-campo campo="editLocalidad" />
-            <x-catalogo-campo campo="editLocalidad2" />
-            <x-catalogo-campo campo="editLocalidad3" />
+            <x-catalogo-campo campo="editLocalidad" :valor="$editLocalidad" lista admite-texto />
+            <x-catalogo-campo campo="editLocalidad2" :valor="$editLocalidad2" lista admite-texto />
+            <x-catalogo-campo campo="editLocalidad3" :valor="$editLocalidad3" lista admite-texto />
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <x-catalogo-campo campo="editCountry" />
-                <x-catalogo-campo campo="editStateProvince" />
-                <x-catalogo-campo campo="editMunicipality" />
-                <x-catalogo-campo campo="editLocalityName" />
+                <x-catalogo-campo campo="editCountry" :valor="$editCountry" lista admite-texto />
+                <x-catalogo-campo campo="editStateProvince" :valor="$editStateProvince" lista admite-texto />
+                <x-catalogo-campo campo="editMunicipality" :valor="$editMunicipality" lista admite-texto />
+                <x-catalogo-campo campo="editLocalityName" :valor="$editLocalityName" lista admite-texto />
                 <x-catalogo-campo campo="editDecimalLatitude" />
                 <x-catalogo-campo campo="editDecimalLongitude" />
                 <x-catalogo-campo campo="editGeodeticDatum" />
@@ -1148,7 +1092,7 @@
                 <x-catalogo-campo campo="editHabitat" />
             </div>
             <x-catalogo-campo campo="editSpecimenNotes" />
-            <x-catalogo-campo campo="editEntidadDepositanteId" :opciones="$entidades" />
+            <x-catalogo-campo campo="editEntidadDepositanteId" :valor="$editEntidadDepositanteId" :opciones="$this->opcionCapturaSeleccionada('editEntidadDepositanteId')" placeholder="Sin entidad depositante" lista />
             <x-catalogo-errores :mensaje="$errorMessage" />
             <div class="flex justify-end gap-3 pt-2">
                 <flux:button variant="ghost" wire:click="$set('showEditModal', false)">Cancelar</flux:button>

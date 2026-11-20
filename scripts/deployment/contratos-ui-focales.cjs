@@ -354,6 +354,7 @@ for(const file of definitions.catalogo_importacion.sources) owner[file]=['catalo
 owner['Modules/GestionPrestamosRecepciones/resources/views/investigador/portal-depositos.blade.php']=['contenidos_unificados'];
 owner['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ConfiguracionColumnasIndex.php']=['menu_curaduria'];
 definitions.catalogo_alta.checks.push('noRevision');
+definitions.catalogo_alta.checks.push('openWithoutRequest','empty','lovs','freeText','saveWithoutReload','generated','rowMenuLeft');
 
 // Los encabezados y rutas comunes tienen cobertura de navegación propia.
 definitions.depositos_contenido.sources = definitions.depositos_contenido.sources.filter(file => file !== 'Modules/GestionPrestamosRecepciones/resources/views/curador/bandeja-depositos.blade.php');
@@ -391,6 +392,11 @@ definitions.catalogo_importacion.sources.push('Modules/InventarioGestionColeccio
 owner['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ActualizarCatalogoIndex.php']=['catalogo_importacion'];
 for (const file of ['resources/views/components/catalogo-ayuda.blade.php','Modules/InventarioGestionColeccion/app/Presentation/Support/AyudasCapturaCatalogo.php','resources/js/hub-notifications.js']) owner[file]=['catalogo_alta','catalogo_importacion'];
 for (const file of ['resources/views/components/catalogo-campo.blade.php','resources/views/components/catalogo-errores.blade.php']) owner[file]=['catalogo_alta'];
+const specimenRowMenu='Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/boton-acciones-fila.blade.php';
+definitions.catalogo_alta.sources.push(specimenRowMenu,'resources/views/components/catalogo-campo.blade.php',
+    'Modules/GestionPrestamosRecepciones/resources/views/components/lov-popup.blade.php','public/js/lov-origen.js','resources/js/hubdigital-lov.js');
+definitions.catalogo_borrado.sources.push(specimenRowMenu);
+owner[specimenRowMenu]=['catalogo_alta','catalogo_borrado'];
 owner['resources/views/components/catalogo-guia-columnas.blade.php']=['catalogo_importacion'];
 for (const file of ['resources/views/components/catalogo-ayuda.blade.php','resources/views/components/catalogo-campo.blade.php','resources/views/components/catalogo-errores.blade.php','resources/views/components/catalogo-guia-columnas.blade.php','Modules/InventarioGestionColeccion/app/Presentation/Support/AyudasCapturaCatalogo.php']) contracts[file]=['tests/Feature/CatalogoAyudasCapturaTest.php'];
 contracts['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php'].push('tests/Feature/CatalogoAyudasCapturaTest.php');

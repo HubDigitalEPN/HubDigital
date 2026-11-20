@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\Ports\GeocodificadorInversoPort;
@@ -23,8 +26,6 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ge
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\GenerarCodigoQr\GenerarCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEdicionesMasivas\ListarEdicionesMasivasHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEdicionesMasivas\ListarEdicionesMasivasInput;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarEntidadesDepositantes\ListarEntidadesDepositantesHandler;
-use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ListarTaxones\ListarTaxonesHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerCodigoQr\ObtenerCodigoQrHandler;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerCodigoQr\ObtenerCodigoQrInput;
 use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\ObtenerFichaEspecimen\ObtenerFichaEspecimenHandler;
@@ -262,15 +263,6 @@ final class EspecimenIndex extends Component
 
     #[Locked]
     public ?string $ultimoCreadoId = null;
-
-    // Opciones de presentación: nunca forman parte del estado editable de Livewire.
-    // Comparar miles de opciones en el navegador bloquea cada actualización.
-    protected array $taxones = [];
-
-    protected array $entidades = [];
-
-    #[Rule('required|string|max:100')]
-    public string $codigoCatalogo = '';
 
     #[Rule('nullable|string|max:120')]
     public string $occurrenceId = '';
@@ -687,87 +679,63 @@ final class EspecimenIndex extends Component
 
     // ── Catálogos de los formularios ──────────────────────────────────────────
 
-    /**
-     * Los desplegables de taxón y entidad se cargan al abrir un modal, no al
-     * montar. El de taxones ronda las 4.000 opciones: tenerlo siempre montado
-     * añadía ~1 MB de HTML a cada render de la hoja y viajaba además en el
-     * estado del componente en cada interacción (búsqueda, orden, paginación).
-     */
-    private function cargarCatalogosFormulario(bool $conTaxones): void
+    #[Renderless]
+    public function buscarOpcionesCaptura(string $campo, string $busqueda = '', int $pagina = 0): array
     {
-        $this->cargarProtegido(function () use ($conTaxones) {
-            if ($conTaxones && $this->taxones === []) {
-                $this->taxones = array_map(
-                    fn ($t) => ['id' => $t->id, 'label' => "{$t->nombreCientifico} ({$t->rango})"],
-                    array_values(array_filter(app(ListarTaxonesHandler::class)->handle()->items, static fn ($taxon) => $taxon->estado === 'activo')),
-                );
-            }
+        abort_unless($this->showModal || $this->showEditModal, 404);
 
-            if ($this->entidades === []) {
-                $this->entidades = array_map(
-                    fn ($e) => ['id' => $e->id, 'label' => $e->nombre],
-                    app(ListarEntidadesDepositantesHandler::class)->handle()->items,
-                );
-            }
-        });
+        $clave = str_starts_with($campo, 'edit') ? lcfirst(substr($campo, 4)) : $campo;
+        $limite = 25;
+        $pagina = max(0, min($pagina, 199));
+        $texto = trim(mb_substr($busqueda, 0, 500));
+        $patron = '%'.addcslashes($texto, '\\%_').'%';
+
+        if ($clave === 'taxonId') {
+            $consulta = DB::table('taxonomia.taxones')->where('estado', 'activo')
+                ->selectRaw("id as valor, concat(nombre_cientifico, ' (', rango, ')') as etiqueta")
+                ->when($texto !== '', fn ($q) => $q->whereLike('nombre_cientifico', $patron))
+                ->orderBy('nombre_cientifico')->orderBy('id');
+        } elseif ($clave === 'entidadDepositanteId') {
+            $consulta = DB::table('taxonomia.entidades_depositantes')->select('id as valor', 'nombre as etiqueta')
+                ->when($texto !== '', fn ($q) => $q->whereLike('nombre', $patron))
+                ->orderBy('nombre')->orderBy('id');
+        } else {
+            $columna = match ($clave) {
+                'localidad' => 'CASE WHEN localidad_desglosada THEN localidad_area ELSE localidad END',
+                'localidad2', 'localidad3', 'country', 'municipality' => $clave,
+                'stateProvince' => 'state_province',
+                'localityName' => 'locality_name',
+                default => abort(404),
+            };
+            $origen = DB::table('taxonomia.especimenes')->selectRaw("$columna as valor");
+            $consulta = DB::query()->fromSub($origen, 'ubicaciones')->select('valor', 'valor as etiqueta')
+                ->whereNotNull('valor')->whereNotIn('valor', ['', '.', '—'])
+                ->when($texto !== '', fn ($q) => $q->whereLike('valor', $patron))
+                ->distinct()->orderBy('valor');
+        }
+
+        $opciones = $consulta->offset($pagina * $limite)->limit($limite + 1)->get();
+
+        return [
+            'opciones' => $opciones->take($limite)->values()->all(),
+            'hayMas' => $pagina < 199 && $opciones->count() > $limite,
+        ];
     }
 
-    /** Al cerrar el modal se sueltan los catálogos para que no sigan en el payload. */
-    public function updatedShowModal(mixed $valor): void
+    public function opcionCapturaSeleccionada(string $campo): array
     {
-        if (! $valor) {
-            $this->taxones = $this->entidades = [];
+        abort_unless($campo === 'editEntidadDepositanteId', 404);
+        $id = $this->editEntidadDepositanteId;
+        if (! Str::isUuid($id)) {
+            return [];
         }
-    }
 
-    public function updatedShowEditModal(mixed $valor): void
-    {
-        if (! $valor) {
-            $this->entidades = [];
-        }
+        $etiqueta = DB::table('taxonomia.entidades_depositantes')->where('id', $id)->value('nombre');
+
+        return $etiqueta === null ? [] : [$id => $etiqueta];
     }
 
     // ── Registro ──────────────────────────────────────────────────────────────
-
-    public function abrirModal(): void
-    {
-        $this->cargarCatalogosFormulario(conTaxones: true);
-
-        $this->reset(
-            'codigoCatalogo',
-            'occurrenceId',
-            'catalogNumber',
-            'oldCode',
-            'cardexLiquidCollectionCode',
-            'taxonId',
-            'localidad',
-            'localidad2',
-            'localidad3',
-            'colector',
-            'entidadDepositanteId',
-            'individualCount',
-            'preparations',
-            'disposition',
-            'occurrenceStatus',
-            'specimenNotes',
-            'country',
-            'stateProvince',
-            'municipality',
-            'localityName',
-            'decimalLatitude',
-            'decimalLongitude',
-            'geodeticDatum',
-            'elevationMinM',
-            'biome',
-            'habitat',
-            'errorMessage',
-            'ubicacionDetectada',
-            'geoMensaje',
-        );
-        $this->resetValidation();
-        $this->fechaColecta = now('America/Guayaquil')->format('Y-m-d');
-        $this->showModal = true;
-    }
 
     public function registrarEspecimen(RegistrarEspecimenHandler $handler): void
     {
@@ -786,7 +754,7 @@ final class EspecimenIndex extends Component
 
         try {
             $registrado = $handler->handle(new RegistrarEspecimenInput(
-                codigoCatalogo: $this->codigoCatalogo,
+                codigoCatalogo: 'MEPN-INV-'.Str::ulid(),
                 taxonId: $this->taxonId,
                 localidad: $this->localidad,
                 localidad2: $this->nullableString($this->localidad2),
@@ -817,11 +785,9 @@ final class EspecimenIndex extends Component
 
             $this->showModal = false;
             $this->ultimoCreadoId = (string) $registrado->id;
-            // El cierre programático no dispara `updatedShowModal`, así que aquí
-            // se sueltan los catálogos a mano.
-            $this->taxones = $this->entidades = [];
-            $this->successMessage = "Especímen '{$this->codigoCatalogo}' registrado correctamente.";
+            $this->successMessage = "Espécimen '{$registrado->codigoCatalogo}' registrado correctamente.";
             $this->errorMessage = null;
+            $this->dispatch('modal-close', name: 'alta-especimen');
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
         }
@@ -848,8 +814,6 @@ final class EspecimenIndex extends Component
 
             return;
         }
-
-        $this->cargarCatalogosFormulario(conTaxones: false);
 
         $e = $ficha->ficha;
 
@@ -924,7 +888,6 @@ final class EspecimenIndex extends Component
             ));
 
             $this->showEditModal = false;
-            $this->entidades = [];
             $this->successMessage = 'Especímen actualizado correctamente.';
             $this->errorMessage = null;
         } catch (\Throwable $e) {
@@ -1426,9 +1389,6 @@ final class EspecimenIndex extends Component
 
     public function render(ResolverPrioridadColumnas $resolver): View
     {
-        if ($this->showModal || $this->showEditModal) {
-            $this->cargarCatalogosFormulario(conTaxones: $this->showModal);
-        }
         $columnas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->presentar($resolver->aplicar('especimenes', self::columnasGestion()));
         $extras = array_column(app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->personalizadas(), 'campo');
         foreach ($extras as $extra) if (!in_array($extra, $this->ordenColumnas, true)) { $this->ordenColumnas[] = $extra; $this->columnasVisibles[] = $extra; }
@@ -1460,8 +1420,6 @@ final class EspecimenIndex extends Component
         $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($items);
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
-            'taxones' => $this->taxones,
-            'entidades' => $this->entidades,
             'filas' => $filas,
             'continuidad'=>$this->gridVentana,
             'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],

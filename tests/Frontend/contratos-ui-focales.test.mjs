@@ -34,10 +34,10 @@ test('los contratos de depósitos y Pasante seleccionan exclusivamente sus panta
     assert.deepEqual(impact.focalScope(['tests/Browser/contratos-ui-focales.mjs']),[]);
 });
 
-test('los contratos de alta y taxones no seleccionan recorridos ajenos del catálogo', async () => {
+test('alta y taxones seleccionan el inventario afectado y los consumidores del popup compartido', async () => {
     const {default: impact}=await import('../../scripts/deployment/impacto-validacion.cjs');
     for(const id of ['catalogo_alta','catalogo_taxones']) {
-        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),id==='catalogo_alta'?[id,'catalogo_borrado','grillas_continuas','inventario_continuo']:[id,'grillas_continuas']);
+        assert.deepEqual(impact.focalScope(ui.definitions[id].sources),id==='catalogo_alta'?[id,'catalogo_borrado','grillas_continuas','inventario_continuo','depositos_selector_anidado']:[id,'grillas_continuas']);
         assert.ok(ui.definitions[id].checks.includes('responsive'));
     }
     assert.deepEqual(impact.focalScope(['Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/LectorActualizacionCatalogo.php']),[]);

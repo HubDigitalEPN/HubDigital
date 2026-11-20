@@ -406,17 +406,26 @@ export async function comprobarUIFocal(caso) {
         checks.restaurado=filas().length===inicial && estado().datosVentana().desde===1;
         metrics={inicial,ampliado};
     } else if(caso==='catalogo_borrado') {
-        const botones=()=>all('button[aria-label^="Borrar QA-BORRADO-UI-20261118-"]').filter(x=>x.getClientRects().length);
-        await wait(()=>botones().length===2);
-        if(!botones().every(b=>/^Borrar QA-BORRADO-UI-20261118-[AB]$/.test(b.getAttribute('aria-label'))))throw Error('Fixture de borrado no acotado');
-        const codigo=botones()[0].getAttribute('aria-label').slice(7);botones()[0].click();await wait(()=>q('dialog[open]')?.textContent.includes(codigo));
+        const filas=()=>all('[data-especimen-menu-fila]').filter(x=>x.getClientRects().length && /^QA-BORRADO-UI-20261118-[AB]$/.test(x.dataset.codigo));
+        const borrarFila=async ()=>{
+            const fila=filas()[0], codigo=fila.dataset.codigo;
+            fila.click();
+            const menu=()=>q('[data-especimen-acciones-fila]:popover-open');
+            await wait(menu);
+            [...menu().querySelectorAll('button')].find(x=>x.textContent.trim()==='Borrar definitivamente').click();
+            await wait(()=>q('dialog[open]')?.textContent.includes(codigo));
+        };
+        await wait(()=>filas().length===2);
+        await borrarFila();
         checks.individual=q('dialog[open]').textContent.includes('definitivamente');
-        all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();await wait(()=>!q('dialog[open]'));checks.cancelled=botones().length===2;
-        botones()[0].click();await wait(()=>q('dialog[open]'));all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && botones().length===1);checks.deleted=true;
-        all('button').find(x=>x.textContent.trim()==='Marcar filas cargadas (1)').click();await frame();
-        all('button').find(x=>x.textContent.trim()==='Borrar selección').click();await wait(()=>q('dialog[open]'));
-        all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && botones().length===0);
-        checks.batch=true;checks.selectionCleared=all('button').find(x=>x.textContent.trim()==='Borrar selección').disabled;
+        all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();await wait(()=>!q('dialog[open]'));checks.cancelled=filas().length===2;
+        await borrarFila();
+        all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && filas().length===1);checks.deleted=true;
+        [...(await abrirAccionesInventario()).querySelectorAll('button')].find(x=>x.textContent.trim()==='Marcar filas cargadas (1)').click();
+        const borrar=menu=>[...menu.querySelectorAll('button')].find(x=>x.textContent.trim()==='Borrar selección');
+        borrar(await abrirAccionesInventario()).click();await wait(()=>q('dialog[open]'));
+        all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && filas().length===0);
+        checks.batch=true;checks.selectionCleared=borrar(await abrirAccionesInventario()).disabled;
         checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='instituciones_unificadas') {
         await wait(()=>q('[data-directorio-instituciones]'));
@@ -508,43 +517,81 @@ export async function comprobarUIFocal(caso) {
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         metrics={nombre};
     } else if(caso==='catalogo_alta') {
-        await abrirAccionesInventario();
-        await wait(()=>all('button').find(x=>x.textContent.trim()==='Nuevo espécimen'));
+        const botonLista=campo=>document.getElementById('captura-'+campo);
+        const alta=()=>q('dialog[data-modal="alta-especimen"]');
+        const peticiones=()=>performance.getEntriesByType('resource').filter(r=>new URL(r.name).pathname.endsWith('/update') && r.name.includes('/livewire')).length;
+        const menu=await abrirAccionesInventario();
+        const nuevo=[...menu.querySelectorAll('button')].find(x=>x.textContent.trim()==='Nuevo espécimen');
+        const grid=q('[data-grid-scroll-only]'), scroll=grid.querySelector('.hub-ig-scroll');
+        const antes=peticiones(), inicio=performance.now();
+        nuevo.click();
+        checks.open=alta().open;
+        const aperturaMs=performance.now()-inicio;
+        await frame();
+        checks.openWithoutRequest=peticiones()===antes;
         checks.noRevision=!all('th,[role="columnheader"]').some(x=>/Revisión del nombre|Estado revisión|Motivo revisión/.test(x.textContent));
         checks.dateLabels=all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · normalizada')) && all('th,[role="columnheader"]').some(x=>x.textContent.includes('eventDate · original'));
-        all('button').find(x=>x.textContent.trim()==='Nuevo espécimen').click();
-        await wait(()=>model('codigoCatalogo'));
-        checks.open=!!q('dialog[open]');
         checks.ecuador=model('fechaColecta').value===new Intl.DateTimeFormat('en-CA',{timeZone:'America/Guayaquil',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-        const ayuda=await comprobarAyudas(27);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
-        const codigo='QA-UI-CATALOGO-'+Date.now();
-        const taxon=model('taxonId','select');taxon.value=[...taxon.options].find(o=>o.value)?.value;taxon.dispatchEvent(new Event('change',{bubbles:true}));
-        fillModel('codigoCatalogo',codigo);fillModel('fechaColecta','2026-11-10');fillModel('colector','PRUEBA QA - Colector ficticio');
+        checks.empty=!q('#captura-codigoCatalogo') && !alta().textContent.includes('Los campos con *')
+            && !model('colector').value && botonLista('taxonId').textContent.includes('Selecciona un taxón');
+        checks.lovs=['taxonId','localidad','localidad2','localidad3','country','stateProvince','municipality','localityName']
+            .every(campo=>botonLista(campo)?.matches('button[role="combobox"]'));
+        const ayuda=await comprobarAyudas(26);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
+        const popup=campo=>document.getElementById('lov-'+campo+'-dialogo');
+        botonLista('taxonId').click();
+        await wait(()=>popup('taxonId')?.querySelector('button[role="option"]:enabled'));
+        const opcionTaxon=popup('taxonId').querySelector('button[role="option"]:enabled'), nombreTaxon=opcionTaxon.textContent;
+        opcionTaxon.click();await wait(()=>!popup('taxonId')?.open && botonLista('taxonId').textContent.includes(nombreTaxon));
+        const usarTexto=async(campo,valor)=>{
+            botonLista(campo).click();await wait(()=>popup(campo)?.open);
+            const input=popup(campo).querySelector('input[type=search]');
+            input.value=valor;input.dispatchEvent(new Event('input',{bubbles:true}));
+            const usar=()=>[...popup(campo).querySelectorAll('button')].find(x=>x.textContent.trim()==='Usar texto ingresado' && x.getClientRects().length);
+            await wait(usar);usar().click();await wait(()=>!popup(campo)?.open);await frame();
+        };
+        const marca='QA-UI-CATALOGO-'+Date.now();
+        await usarTexto('localidad3',marca+' sector');
+        checks.freeText=botonLista('localidad3').textContent.includes(marca+' sector');
+        fillModel('occurrenceId',marca);fillModel('fechaColecta','2026-11-10');fillModel('colector','PRUEBA QA - Colector ficticio');
         fillModel('decimalLatitude','91');fillModel('decimalLongitude','-78.47');fillModel('individualCount','-1');
-        const registrar=()=>all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='registrarEspecimen');
+        const registrar=()=>alta().querySelector('button[wire\\:click="registrarEspecimen"]');
         registrar().click();await wait(()=>model('decimalLatitude')?.getAttribute('aria-invalid')==='true' && model('individualCount')?.getAttribute('aria-invalid')==='true');
         checks.invalid=true;
-        await new Promise(resolve=>setTimeout(resolve,4500));
         checks.errorVisible=['decimalLatitude','individualCount'].every(campo=>{const field=model(campo)?.closest('[data-catalogo-campo]');return [...(field?.querySelectorAll('[data-flux-error]')||[])].some(e=>e.textContent.trim() && e.getClientRects().length && !e.hidden);});
-        const enlace=q('[data-catalogo-resumen-errores] a[href="#captura-decimalLatitude"]');enlace?.click();
+        const enlace=alta().querySelector('[data-catalogo-resumen-errores] a[href="#captura-decimalLatitude"]');enlace?.click();
         checks.errorFocus=document.activeElement===model('decimalLatitude');
-        checks.labels=all('dialog[open] input,dialog[open] select,dialog[open] textarea').filter(x=>x.type!=='hidden').every(x=>x.labels?.length>0 || !!x.getAttribute('aria-label') || x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim()));
+        checks.labels=[...alta().querySelectorAll('input,select,textarea')].filter(x=>x.type!=='hidden').every(x=>x.labels?.length>0 || !!x.getAttribute('aria-label') || x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim()));
+        checks.responsive=alta().scrollWidth<=alta().clientWidth+1 && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         fillModel('decimalLatitude','-0.09');fillModel('individualCount','5');fillModel('specimenNotes','PRUEBA QA. SIN MATERIAL REAL. NO DIVULGAR.');
-        registrar().click();await wait(()=>!q('dialog[open]') && document.body.textContent.includes(codigo));await frame();checks.saved=true;
-        const creada=all('button').find(b=>b.textContent.trim()==='Ver última ficha creada');creada?.click();await wait(()=>q('dialog[open]')?.textContent.includes(codigo));
+        const filasAntes=[...scroll.querySelectorAll('tr[wire\\:key]')], scrollAntes=scroll.scrollTop, peticionesAntes=peticiones();
+        registrar().click();
+        const creada=()=>all('button').find(b=>b.textContent.trim()==='Ver última ficha creada');
+        await wait(()=>!alta().open && creada());await frame();
+        checks.saved=true;
+        checks.saveWithoutReload=peticiones()===peticionesAntes+1 && grid.querySelector('.hub-ig-scroll')===scroll
+            && filasAntes.every((fila,i)=>scroll.querySelectorAll('tr[wire\\:key]')[i]===fila) && scroll.scrollTop===scrollAntes;
+        const codigo=q('[data-hub-feedback="success"]').textContent.match(/MEPN-INV-[0-9A-Z]{26}/)?.[0];
+        checks.generated=!!codigo;
+        creada().click();await wait(()=>q('dialog[open]')?.textContent.includes(codigo));
         checks.createdLink=!!q('dialog[open]');all('dialog[open] button').find(b=>b.getAttribute('wire:click')==='cerrarFicha').click();await wait(()=>!q('dialog[open]'));
-        // El alta conserva los filtros previos; buscar la ficha recién creada
-        // también comprueba su persistencia cuando no está en la primera página.
         await buscarEnInventario(codigo);
-        const editar=()=>all('button').find(x=>x.getAttribute('aria-label')==='Editar '+codigo);
-        await wait(editar);editar().click();await wait(()=>model('editLocalidad3'));
-        fillModel('editLocalidad3','PRUEBA QA - sector corregido');
+        const fila=()=>all('[data-especimen-menu-fila]').find(x=>x.dataset.codigo===codigo && x.getClientRects().length);
+        const editar=async()=>{
+            await wait(fila);fila().click();
+            const menuFila=()=>q('[data-especimen-acciones-fila]:popover-open');
+            await wait(menuFila);
+            [...menuFila().querySelectorAll('button')].find(x=>x.textContent.trim()==='Editar').click();
+            await wait(()=>botonLista('editLocalidad3')?.checkVisibility());
+        };
+        await wait(fila);
+        checks.rowMenuLeft=fila().closest('tr')?.firstElementChild?.contains(fila()) ?? true;
+        const sectorCorregido=marca+' sector corregido';
+        await editar();await usarTexto('editLocalidad3',sectorCorregido);
         all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='actualizarEspecimen').click();
-        await wait(()=>!q('dialog[open]'));await frame();editar().click();await wait(()=>q('dialog[open]') && model('editLocalidad3'));
-        checks.edited=model('editLocalidad3').value==='PRUEBA QA - sector corregido';
-        const dialog=q('dialog[open]');checks.responsive=dialog.scrollWidth<=dialog.clientWidth+1 && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+        await wait(()=>!q('dialog[open]'));await frame();await editar();
+        checks.edited=botonLista('editLocalidad3').textContent.includes(sectorCorregido);
         all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();
-        metrics={codigo,taxon:taxon?.value};
+        metrics={codigo,aperturaMs};
     } else if(caso==='laboratorio') {
         await wait(()=>q('[data-lab-personal]'));
         const nav=all('nav[aria-label="Navegación principal"] a').map(x=>x.textContent.trim());
