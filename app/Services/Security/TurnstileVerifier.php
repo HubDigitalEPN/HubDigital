@@ -3,9 +3,9 @@
 namespace App\Services\Security;
 
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class TurnstileVerifier
@@ -53,19 +53,15 @@ final class TurnstileVerifier
             return;
         }
 
-        try {
-            $result = Http::asForm()
-                ->acceptJson()
-                ->connectTimeout(3)
-                ->timeout(8)
-                ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-                    'secret' => $secret,
-                    'response' => $token,
-                    'remoteip' => $request->ip(),
-                ])
-                ->throw()
-                ->json();
-        } catch (ConnectionException|RequestException) {
+        $result = $this->siteverify([
+            'secret' => $secret,
+            'response' => $token,
+            'remoteip' => $request->ip(),
+            // El mismo intento de acceso puede repetir la consulta a Cloudflare sin consumir otro token.
+            'idempotency_key' => (string) Str::uuid(),
+        ]);
+
+        if ($result === null) {
             $this->reject($operation, 'No fue posible validar que eres una persona. Intenta nuevamente.');
         }
 
@@ -76,6 +72,35 @@ final class TurnstileVerifier
         }
 
         $request->attributes->set(self::VALIDACION_PETICION, $huella);
+    }
+
+    private function siteverify(array $payload): ?array
+    {
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            try {
+                $response = Http::asForm()
+                    ->acceptJson()
+                    ->connectTimeout(3)
+                    ->timeout(8)
+                    ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $payload);
+            } catch (ConnectionException) {
+                continue;
+            }
+
+            if ($response->serverError() || $response->status() === 408) {
+                continue;
+            }
+
+            $result = $response->successful() ? $response->json() : null;
+            if (is_array($result) && ($result['success'] ?? false) !== true
+                && in_array('internal-error', (array) ($result['error-codes'] ?? []), true)) {
+                continue;
+            }
+
+            return is_array($result) ? $result : null;
+        }
+
+        return null;
     }
 
     private function reject(string $operation, ?string $message = null): never

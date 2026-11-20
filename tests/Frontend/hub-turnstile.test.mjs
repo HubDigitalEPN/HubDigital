@@ -73,12 +73,34 @@ test('la verificación usa el tema de la aplicación sin recurrir al del sistema
     }
 });
 
-test('una verificación lenta ofrece reintento y nunca habilita el envío sin token', () => {
+test('una verificación lenta mantiene el desafío activo en acceso y registro', () => {
+    for (const registration of [false, true]) {
+        const f = fixture({registration});
+        f.window.hubTurnstileReady();
+        const initialEvents = f.events.length;
+        f.tick(10000);
+        assert.match(f.status.textContent, /sigue en curso/);
+        assert.equal(f.retry.hidden, true);
+        assert.equal(f.field.value, '');
+        assert.equal(f.events.length, initialEvents);
+        f.retry.click();
+        assert.deepEqual(f.removed, []);
+        assert.equal(f.renders.length, 1);
+        f.renders[0].callback('verified-token');
+        f.tick(35000);
+        assert.equal(f.field.value, 'verified-token');
+        assert.equal(f.retry.hidden, true);
+    }
+});
+
+test('45 segundos sin respuesta permiten reiniciar manualmente el desafío', () => {
     const f = fixture(); f.window.hubTurnstileReady(); f.tick(10000);
-    assert.match(f.status.textContent, /tardando/);
+    f.tick(35000);
+    assert.match(f.status.textContent, /no ha respondido/);
     assert.equal(f.retry.hidden, false);
     assert.equal(f.field.value, '');
     assert.equal(f.events.at(-1), 'hub-turnstile-reset');
+    assert.deepEqual(f.removed, []);
     f.retry.click();
     assert.deepEqual(f.removed, ['widget-1']);
     assert.equal(f.renders.length, 2);
@@ -86,6 +108,17 @@ test('una verificación lenta ofrece reintento y nunca habilita el envío sin to
     assert.equal(f.field.value, '');
     f.renders[1].callback('fresh-token');
     assert.equal(f.field.value, 'fresh-token');
+});
+
+test('un desafío que pide interacción conserva la espera de Cloudflare', () => {
+    const f = fixture(); f.window.hubTurnstileReady(); f.tick(10000);
+    f.renders[0]['before-interactive-callback']();
+    f.tick(35000);
+    assert.match(f.status.textContent, /Completa el desafío/);
+    assert.equal(f.retry.hidden, true);
+    assert.deepEqual(f.removed, []);
+    f.renders[0]['timeout-callback']();
+    assert.equal(f.retry.hidden, false);
 });
 
 test('caducidad error y timeout eliminan cualquier token anterior', () => {
@@ -100,10 +133,6 @@ test('caducidad error y timeout eliminan cualquier token anterior', () => {
 
 test('un envío fallido invalida el token y el usuario controla el próximo intento', () => {
     const f = fixture(); f.window.hubTurnstileReady(); f.renders[0].callback('used-token');
-    f.form.busy = true;
-    f.retry.click();
-    assert.equal(f.renders.length, 1);
-    f.form.busy = false;
     f.listeners.get('hub-turnstile-consumed')({target: f.form});
     assert.equal(f.field.value, '');
     assert.equal(f.element.hidden, true);
@@ -111,6 +140,10 @@ test('un envío fallido invalida el token y el usuario controla el próximo inte
     f.renders[0].callback('obsolete-token');
     assert.equal(f.field.value, '');
     assert.equal(f.renders.length, 1);
+    f.form.busy = true;
+    f.retry.click();
+    assert.equal(f.renders.length, 1);
+    f.form.busy = false;
     f.retry.click();
     assert.equal(f.element.hidden, false);
     assert.equal(f.renders.length, 2);

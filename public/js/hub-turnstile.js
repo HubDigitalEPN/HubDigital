@@ -3,15 +3,20 @@
     window.hubTurnstileInstalled = true;
     const widgets = new Map();
     const apiTimers = new Map();
+    const slowChallengeMs = 10000;
+    const challengeRecoveryMs = 45000;
     const eventName = (element, passed) => element.closest('#hub-register-form')
         ? `hub-register-turnstile-${passed ? 'passed' : 'reset'}`
         : `hub-turnstile-${passed ? 'passed' : 'reset'}`;
+    function setMessage(element, message) {
+        const status = element.parentElement?.querySelector('[data-turnstile-status]');
+        if (status) status.textContent = message;
+    }
     function state(element, token = '', message = '', retry = false) {
         const form = element.closest('form');
         const field = form?.querySelector('[name="cf-turnstile-response"]');
         if (field) field.value = token;
-        const status = element.parentElement.querySelector('[data-turnstile-status]');
-        if (status) status.textContent = message;
+        setMessage(element, message);
         const button = element.parentElement.querySelector('[data-turnstile-retry]');
         if (button) button.hidden = !retry;
         element.setAttribute('aria-busy', token || retry ? 'false' : 'true');
@@ -42,11 +47,16 @@
         state(element, '', 'Verificando la seguridad…');
         const entry = {id: null, timer: null};
         widgets.set(element, entry);
-        entry.timer = setTimeout(() => state(element, '', 'La verificación está tardando más de lo habitual. Puedes reintentar.', true), 10000);
         const finish = (token, message, retry) => {
             if (widgets.get(element) !== entry || !element.isConnected) return;
             clearTimeout(entry.timer); state(element, token, message, retry);
         };
+        entry.timer = setTimeout(() => {
+            setMessage(element, 'La verificación de seguridad sigue en curso.');
+            entry.timer = setTimeout(() => {
+                finish('', 'La verificación no ha respondido. Puedes reintentar.', true);
+            }, challengeRecoveryMs - slowChallengeMs);
+        }, slowChallengeMs);
         try {
             entry.id = window.turnstile.render(element, {
                 sitekey: element.dataset.sitekey, action: element.dataset.action,
@@ -76,7 +86,7 @@
             if (button && !button.dataset.bound) {
                 button.dataset.bound = 'true';
                 button.addEventListener('click', () => {
-                    if (element.closest('form')?.getAttribute('aria-busy') === 'true') return;
+                    if (button.hidden || element.closest('form')?.getAttribute('aria-busy') === 'true') return;
                     remove(element);
                     if (window.turnstile?.render) render(element);
                     else {
