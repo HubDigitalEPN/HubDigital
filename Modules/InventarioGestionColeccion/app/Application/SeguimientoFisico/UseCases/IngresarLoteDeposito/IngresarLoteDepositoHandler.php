@@ -100,7 +100,7 @@ final class IngresarLoteDepositoHandler
                 occurrenceId: $mapeada->occurrenceId,
                 catalogNumber: $mapeada->catalogNumber,
                 oldCode: $mapeada->oldCode,
-                cardexLiquidCollectionCode: $mapeada->cardexLiquidCollectionCode,
+                cardexLiquidCollectionCode: $mapeada->cardexLiquidCollectionCode ?? $input->numeroSolicitud,
                 individualCount: $mapeada->individualCount,
                 preparations: $mapeada->preparations,
                 disposition: $mapeada->disposition,
@@ -133,6 +133,8 @@ final class IngresarLoteDepositoHandler
                 dnaNotes: $mapeada->dnaNotes,
                 occurrenceRemarks: $mapeada->occurrenceRemarks,
                 taxonomicNotes: $mapeada->taxonomicNotes,
+                researchPermit: $input->permisoRecoleccion ?? $mapeada->researchPermit,
+                transportPermit: $input->permisoMovilizacion ?? $mapeada->transportPermit,
                 actaRecepcion: $input->actaRecepcion,
                 // filaOrigenExcel se deja deliberadamente en null: tiene un índice ÚNICO
                 // en toda la tabla y pertenece al importador del catálogo, que ya ocupa

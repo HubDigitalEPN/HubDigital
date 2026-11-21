@@ -576,8 +576,19 @@ final class RegistroSolicitudDeposito extends Component
         $this->invalidarProgresoOrigen();
     }
 
+    public function registrarLocalidadOrigen(string $nombre): void
+    {
+        abort_unless($this->paso === 2 && SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->whereIn('estado', [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value])->exists(), 403);
+        $this->seleccionarLocalidadOrigen(CatalogoLocalidadesEcuador::registrarDeclarada($this->provincia, $nombre));
+    }
+
     public function updatedFinalidadActividad(): void
     {
+        if ($this->finalidadActividad === 'Consultoría') {
+            $this->situacionRegulatoria = 'Posee permisos del MAE';
+        }
         $this->invalidarProgresoOrigen();
     }
 
@@ -615,7 +626,10 @@ final class RegistroSolicitudDeposito extends Component
         $this->localidadOrigenCodigo = $localidad;
         $this->localidad = CatalogoLocalidadesEcuador::buscar($provincia, $localidad)?->nombre ?? '';
         $this->finalidadActividad = $finalidad;
-        $this->situacionRegulatoria = $situacion;
+        // Consultoría no presenta opciones de situación en el formulario.
+        $this->situacionRegulatoria = $situacion === '' && $finalidad === 'Consultoría'
+            ? 'Posee permisos del MAE'
+            : $situacion;
         $this->guardarPasoDos(
             app(DeterminarDocumentacionRequeridaHandler::class),
             app(ActualizarOrigenSolicitudDepositoHandler::class),
@@ -674,6 +688,9 @@ final class RegistroSolicitudDeposito extends Component
         $this->provincia = $model->provincia_origen ?? '';
         $this->localidadOrigenCodigo = $model->localidad_origen_codigo ?? '';
         $this->finalidadActividad = $model->finalidad_actividad ?? '';
+        if ($this->finalidadActividad === 'Consultoría' && $pasoGuardado <= 2) {
+            $this->situacionRegulatoria = 'Posee permisos del MAE';
+        }
         $this->localidad = (string) ($model->localidad ?? '');
 
         // Paso 3 data
@@ -1373,7 +1390,7 @@ final class RegistroSolicitudDeposito extends Component
             $rules['provincia'] = ['required', 'string', Rule::in(array_column(CatalogoTerritorialEcuador::provincias(), 'nombre'))];
             $rules['localidad'] = 'required|string|max:'.CatalogoLocalidadesDeposito::MAXIMO_CARACTERES;
             $rules['localidadOrigenCodigo'] = 'required|string|max:100';
-            $messages['localidad.required'] = 'Selecciona una localidad del catálogo INEC. Si falta, solicita su alta al administrador.';
+            $messages['localidad.required'] = 'Selecciona o registra una localidad de la provincia.';
             $messages['provincia.required'] = 'Selecciona la provincia de recolección.';
         }
 
@@ -2547,8 +2564,10 @@ final class RegistroSolicitudDeposito extends Component
         if ($this->archivoMatriz === null) {
             return;
         }
-        abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
-            ->where('investigador_id', (string) auth()->id())->exists(), 403);
+        $expediente = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+            ->where('investigador_id', (string) auth()->id())
+            ->whereIn('estado', [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value])->first();
+        abort_unless($expediente, 403);
 
         try {
             $this->validate(
@@ -2571,7 +2590,10 @@ final class RegistroSolicitudDeposito extends Component
         // El caso de uso valida antes de sustituir el agregado en transacción.
         // Nunca borrar la matriz anterior por seleccionar otro archivo.
         try {
-            $parseado = $this->parsearXlsx($this->archivoMatriz);
+            $parseado = app(LectorMatrizDeposito::class)->leer($this->archivoMatriz->getRealPath(), [
+                'researchPermit' => (string) ($expediente->nro_permiso_recoleccion ?: 'No aplica — expediente justificado'),
+                'transportPermit' => (string) ($expediente->nro_permiso_movilizacion ?: 'No aplica — expediente justificado'),
+            ]);
         } catch (\DomainException $error) {
             $this->rechazarMatriz($error->getMessage());
 
@@ -3013,14 +3035,6 @@ final class RegistroSolicitudDeposito extends Component
         }
     }
 
-    /**
-     * @return array{campos: string[], registros: array<int, array<string, mixed>>}
-     */
-    private function parsearXlsx(mixed $archivo): array
-    {
-        return app(LectorMatrizDeposito::class)->leer($archivo->getRealPath());
-    }
-
     private function rechazarMatriz(string $mensaje): void
     {
         $this->errorMatriz = $mensaje;
@@ -3032,28 +3046,28 @@ final class RegistroSolicitudDeposito extends Component
      */
     public function eliminarMatriz(): void
     {
-        if ($this->matrizId) {
-            MatrizEspeciesEloquentModel::where('id', $this->matrizId)
-                ->where('solicitud_id', $this->solicitudId)
-                ->delete();
+        if ($this->matrizId === null || $this->solicitudId === null) {
+            return;
         }
 
-        $this->archivoMatriz = null;
-        $this->archivoMatrizNombre = '';
-        $this->matrizCargada = false;
-        $this->matrizId = null;
-        $this->fuenteMatriz = 'manual';
-        $this->estadoMatriz = '';
-        $this->errorMatriz = '';
-        $this->totalRegistros = 0;
-        $this->camposDwCPresentes = [];
-        $this->camposDwCCriticos = [];
-        $this->camposDwCRecomendados = [];
-        $this->camposDwCRecomendadosFaltantes = [];
-        $this->registrosMatriz = [];
-        $this->estadosRegistros = [];
-        $this->validacionTipograficaAplicada = false;
-        $this->persistirEstadoWizard();
+        DB::transaction(function (): void {
+            $solicitud = SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
+                ->where('investigador_id', (string) auth()->id())->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($solicitud->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true), 409);
+            abort_unless($solicitud->matriz_id === $this->matrizId, 409);
+
+            MatrizEspeciesEloquentModel::whereKey($this->matrizId)->where('solicitud_id', $solicitud->id)->delete();
+
+            $this->reset([
+                'archivoMatriz', 'archivoMatrizNombre', 'matrizCargada', 'matrizId', 'fuenteMatriz', 'estadoMatriz',
+                'errorMatriz', 'totalRegistros', 'camposDwCPresentes', 'camposDwCCriticos', 'camposDwCRecomendados',
+                'camposDwCRecomendadosFaltantes', 'camposObligatoriosVacios', 'registrosMatriz', 'estadosRegistros',
+                'registrosNativos', 'registroNativo', 'busquedaTaxon', 'taxonSeleccionado', 'validacionTipograficaAplicada',
+            ]);
+            $this->pasosCompletados = array_values(array_diff($this->pasosCompletados, [7, 8]));
+            $this->persistirEstadoWizard();
+        });
+        $this->mostrarToast('Excel eliminado de la solicitud.', 'success');
     }
 
     public function aceptarSugerencia(string $registroId, string $especieCorregida): void

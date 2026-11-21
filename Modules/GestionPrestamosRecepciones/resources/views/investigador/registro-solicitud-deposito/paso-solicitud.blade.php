@@ -52,6 +52,9 @@
         wire:key="estado-pdf-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}">
         @if($solicitudFirmada)
             <button type="button" data-ver-documento-firmado class="mr-auto text-sm font-semibold text-science-blue underline focus-visible:outline-2" wire:click="visualizarPdfSolicitud" wire:loading.attr="disabled">Ver documento firmado</button>
+        @elseif($oficioCompleto && $pdfGenerado)
+            <flux:button class="mr-auto" icon="document-magnifying-glass" wire:click="visualizarPdfSolicitud"
+                wire:loading.attr="disabled" wire:target="visualizarPdfSolicitud">Visualizar PDF</flux:button>
         @endif
         @if($oficioCompleto && $pdfGenerado && !$solicitudFirmada)
                 <div wire:key="firma-solicitud-{{ $solicitudId }}-{{ $solicitudDocumentoVersion }}" x-data="hubDigitalFirmador({uploadUrl: @js(route('depositos.solicitud.firmar', ['id' => $solicitudId])), originalUrl: @js(route('depositos.solicitud.documento', ['id' => $solicitudId, 'original' => 1])), statusUrl: @js(route('depositos.solicitud.estado-firma', ['id' => $solicitudId])), documentId: @js($solicitudId), documentVersion: {{ $solicitudDocumentoVersion }}, originalPrepared: true, onSigned: () => $wire.confirmarSolicitudFirmada()})" x-on:keydown.escape.window="if (dialogo) cerrarDialogo()">
@@ -72,15 +75,36 @@
                             <p x-show="metodo === 'token'" class="text-xs text-text-secondary">Conecta tu token y abre el conector HubDigital en este equipo. <a href="{{ route('depositos.firmador.token.kit') }}" class="underline text-science-blue">Descargar conector USB</a></p>
                             <flux:field x-show="metodo === 'archivo'">
                                 <flux:label for="certificado-solicitud">Archivo del certificado (.p12 o .pfx)</flux:label>
-                                <div data-flux-input class="relative">
-                                <input id="certificado-solicitud" x-ref="certificado" type="file" accept=".p12,.pfx,application/x-pkcs12" class="hub-certificate-input block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" x-bind:disabled="estado === 'procesando'" required />
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                    <div class="inline-flex rounded-lg focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-science-blue">
+                                        <input id="certificado-solicitud" x-ref="certificado" type="file" class="sr-only"
+                                            accept=".p12,.pfx,application/x-pkcs12" aria-describedby="certificado-solicitud-seleccion"
+                                            x-bind:disabled="estado === 'procesando'" x-on:change="nombreCertificado = $event.target.files[0]?.name ?? ''" required />
+                                        <label for="certificado-solicitud" class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold shadow-sm hover:border-science-blue hover:bg-bg-main"
+                                            x-bind:class="{ 'pointer-events-none opacity-50': estado === 'procesando' }">
+                                            <flux:icon name="paper-clip" class="size-4 shrink-0" aria-hidden="true" />
+                                            Elegir certificado
+                                        </label>
+                                    </div>
+                                    <span id="certificado-solicitud-seleccion" role="status" aria-atomic="true" class="min-w-0 break-all text-sm text-text-secondary"
+                                        x-text="nombreCertificado || 'Ningún archivo seleccionado'">Ningún archivo seleccionado</span>
                                 </div>
                             </flux:field>
                             <flux:field x-show="metodo === 'token' && tokenCertificados.length > 1">
                                 <flux:label for="token-certificado">Certificado del token</flux:label>
                                 <select id="token-certificado" x-model="tokenAlias" class="w-full rounded border border-border p-2" x-bind:disabled="estado === 'procesando'"><option value="">Selecciona un certificado</option><template x-for="cert in tokenCertificados" :key="cert.alias"><option :value="cert.alias" x-text="cert.nombre"></option></template></select>
                             </flux:field>
-                            <flux:input x-ref="clave" type="password" autocomplete="off" label="Clave del certificado o PIN del token" x-bind:disabled="estado === 'procesando'" x-bind:aria-invalid="Boolean(error).toString()" aria-describedby="error-firma-solicitud" required />
+                            <div class="relative">
+                                <flux:input id="clave-firma-solicitud" x-ref="clave" type="password" x-bind:type="claveVisible ? 'text' : 'password'"
+                                    autocomplete="off" label="Clave del certificado o PIN del token" class:input="pr-12"
+                                    x-bind:disabled="estado === 'procesando'" x-bind:aria-invalid="Boolean(error).toString()" aria-describedby="error-firma-solicitud" required />
+                                <button type="button" class="absolute bottom-0 right-0 flex size-11 cursor-pointer items-center justify-center text-text-secondary"
+                                    x-on:click="claveVisible = !claveVisible" x-bind:disabled="estado === 'procesando'"
+                                    x-bind:aria-label="claveVisible ? 'Ocultar clave' : 'Mostrar clave'" aria-controls="clave-firma-solicitud">
+                                    <flux:icon name="eye" class="size-5" x-show="!claveVisible" aria-hidden="true" />
+                                    <flux:icon name="eye-slash" class="size-5" x-show="claveVisible" x-cloak aria-hidden="true" />
+                                </button>
+                            </div>
 
                             <div class="flex flex-wrap items-center justify-end gap-2">
                                 <flux:button variant="ghost" x-on:click="cerrarDialogo()" x-bind:disabled="estado === 'procesando'">Cancelar</flux:button>

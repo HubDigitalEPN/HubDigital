@@ -17,6 +17,7 @@ use Livewire\WithPagination;
 #[Title('Fuentes de revocación de firmas')]
 final class FuentesRevocacionFirma extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use WithInteractiveGrid;
     use WithPagination;
 
@@ -109,6 +110,7 @@ final class FuentesRevocacionFirma extends Component
             DB::table('recepciones.fuentes_revocacion_firma')->insert(['codigo' => $this->codigo, 'created_at' => now()] + $datos);
         }
         $this->modal('fuente-revocacion-editor')->close();
+        $this->actualizarGrillaCatalogos();
         session()->flash('fuente-guardada', 'La política de revocación quedó guardada.');
     }
 
@@ -118,6 +120,7 @@ final class FuentesRevocacionFirma extends Component
         abort_unless($fila, 404);
         DB::table('recepciones.fuentes_revocacion_firma')->where('codigo', $codigo)
             ->update(['activo' => ! $fila->activo, 'updated_at' => now()]);
+        $this->actualizarGrillaCatalogos();
     }
 
     public function render(): View

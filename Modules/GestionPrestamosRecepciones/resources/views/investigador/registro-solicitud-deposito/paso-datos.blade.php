@@ -13,7 +13,7 @@
 
                 </dt>
                 @unless($soloEdicionDeTextos)
-                    <dd class="text-sm text-text-primary">{{ auth()->user()->name }}</dd>
+                    <dd class="text-sm text-text-primary">{{ $solicitudNombrePermiso }}</dd>
                 @endunless
             </div>
             <div @class(['relative bg-white p-2.5', 'border border-error' => !$soloEdicionDeTextos && trim($cargoConsultor) === ''])>
@@ -23,7 +23,7 @@
                 </dt>
                 @unless($soloEdicionDeTextos)
                     <dd @class(['text-sm', 'italic text-error' => trim($cargoConsultor) === '', 'text-text-primary' => trim($cargoConsultor) !== ''])>{{ trim($cargoConsultor) === '' ? 'Falta ingresar' : $cargoConsultor }}</dd>
-                    <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                    <button type="button" wire:click="abrirEditorManual('Cargo')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue after:absolute after:inset-0"><flux:icon name="pencil-square" class="size-3" />{{ trim($cargoConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
                 @endunless
             </div>
             <div @class(['relative bg-white p-2.5', 'border border-error' => !$soloEdicionDeTextos && trim($institucionConsultor) === ''])>
@@ -33,7 +33,7 @@
                 </dt>
                 @unless($soloEdicionDeTextos)
                     <dd @class(['text-sm', 'italic text-error' => trim($institucionConsultor) === '', 'text-text-primary' => trim($institucionConsultor) !== ''])>{{ trim($institucionConsultor) === '' ? 'Falta ingresar' : $institucionConsultor }}</dd>
-                    <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
+                    <button type="button" wire:click="abrirEditorManual('Institución')" class="mt-1 flex cursor-pointer items-center gap-1 text-xs text-science-blue after:absolute after:inset-0"><flux:icon name="pencil-square" class="size-3" />{{ trim($institucionConsultor) === '' ? 'Ingresar manualmente' : 'Editar' }}</button>
                 @endunless
             </div>
         </dl>
@@ -124,11 +124,11 @@
                 >
                     @unless($soloEdicionDeTextos)
                     @if($campo === 'Localidad' && $finalidadActividad !== '')
-                        <button type="button" wire:click="volverAPasoCompletado(3)" class="mt-2 text-xs text-science-blue">Cambiar en Origen</button>
+                        <button type="button" wire:click="volverAPasoCompletado(3)" class="mt-2 cursor-pointer text-xs text-science-blue after:absolute after:inset-0">Cambiar en Origen</button>
                     @elseif($esFaltante)
                         <button
                             type="button" wire:click="abrirEditorManual('{{ $campo }}')"
-                            class="mt-2 flex items-center gap-1 text-xs font-medium text-science-blue hover:text-science-blue/70 transition-colors cursor-pointer"
+                            class="mt-2 flex items-center gap-1 text-xs font-medium text-science-blue hover:text-science-blue/70 transition-colors cursor-pointer after:absolute after:inset-0"
                         >
                             <flux:icon name="pencil-square" class="size-3" />
                             Ingresar manualmente
@@ -136,7 +136,7 @@
                     @else
                         <button
                             type="button" wire:click="abrirEditorManual('{{ $campo }}')"
-                            class="mt-2 flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                            class="mt-2 flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer after:absolute after:inset-0"
                         >
                             <flux:icon name="pencil-square" class="size-3" />
                             Editar

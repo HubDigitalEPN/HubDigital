@@ -2,17 +2,14 @@
 
 use App\Http\Controllers\AdminBootstrapController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\RedirigirTablaCatalogo;
 use App\Http\Controllers\VersionPortalController;
 use App\Livewire\ActivarRol;
 use App\Livewire\Administracion\ContenidosTextos;
 use App\Livewire\Administracion\ConfiguracionSistema;
 use App\Livewire\Administracion\ConfiguracionExpediente;
-use App\Livewire\Administracion\InstitucionesCatalogo;
-use App\Livewire\Administracion\CargosCatalogo;
-use App\Livewire\Administracion\LocalidadesEcuadorCatalogo;
-use App\Livewire\Administracion\GruposAnimalesCatalogo;
-use App\Livewire\Administracion\FuentesRevocacionFirma;
 use App\Livewire\Administracion\GestionUsuarios;
+use App\Livewire\Administracion\TablasCatalogos;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
 
@@ -54,21 +51,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.siglas-expedientes');
     Route::get('/administracion/contenidos', ContenidosTextos::class)
         ->middleware('role:curador')->name('admin.contenidos');
-    Route::get('/administracion/formato-ipt', \App\Livewire\Administracion\ConfiguracionFormatoIpt::class)
+    Route::get('/administracion/formato-ipt', RedirigirTablaCatalogo::class)
+        ->defaults('tablaCatalogo', 'formato-ipt')->defaults('destinoCatalogo', 'admin.matrices')
         ->middleware('role:admin')->name('admin.formato-ipt');
     Route::get('/administracion/contenidos/fichas/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)
         ->whereUuid('taxon')->middleware('role:curador')->name('admin.ficha-foto');
-    Route::get('/administracion/instituciones', InstitucionesCatalogo::class)
-        ->middleware('role:curador')
-        ->name('admin.instituciones');
-    Route::get('/administracion/cargos', CargosCatalogo::class)
-        ->middleware('role:curador')->name('admin.cargos');
-    Route::get('/administracion/localidades', LocalidadesEcuadorCatalogo::class)
-        ->middleware('role:admin')->name('admin.localidades');
-    Route::get('/administracion/grupos-animales', GruposAnimalesCatalogo::class)
-        ->name('admin.grupos-animales');
-    Route::get('/administracion/fuentes-revocacion', FuentesRevocacionFirma::class)
-        ->name('admin.fuentes-revocacion');
+    Route::get('/administracion/catalogos', TablasCatalogos::class)
+        ->middleware('role:curador')->name('admin.catalogos');
+    Route::get('/administracion/matrices', TablasCatalogos::class)
+        ->middleware('role:curador')->name('admin.matrices');
+    foreach (['instituciones', 'cargos', 'grupos-animales', 'fuentes-revocacion'] as $catalogo) {
+        Route::get('/administracion/'.$catalogo, RedirigirTablaCatalogo::class)
+            ->defaults('tablaCatalogo', $catalogo)->middleware('role:curador')->name('admin.'.$catalogo);
+    }
+    Route::get('/administracion/localidades', RedirigirTablaCatalogo::class)
+        ->defaults('tablaCatalogo', 'localidades-ecuador')->middleware('role:admin')->name('admin.localidades');
     Route::prefix('pwa')->name('pwa.')->group(function (): void {
         Route::get('/configuracion', [PushSubscriptionController::class, 'configuration'])
             ->name('configuration');

@@ -291,7 +291,7 @@ final class EspecimenIndex extends Component
     #[Rule('required|date_format:Y-m-d')]
     public string $fechaColecta = '';
 
-    #[Rule('required|string|max:255')]
+    #[Rule('nullable|string|max:255')]
     public string $colector = '';
 
     public string $entidadDepositanteId = '';
@@ -742,8 +742,12 @@ final class EspecimenIndex extends Component
         // Validar todos los datos de alta antes de convertirlos. Un cast a int
         // o float no debe convertir texto o fracciones en datos científicos.
         // Las reglas de edición pertenecen a otro modal, normalmente vacío.
-        $reglas = array_filter($this->getRules(), static fn (string $campo): bool => !str_starts_with($campo, 'edit'), ARRAY_FILTER_USE_KEY);
-        $this->validate($reglas + ['entidadDepositanteId' => 'nullable|uuid']);
+        $reglasBase = $this->getRules() + ['entidadDepositanteId' => 'nullable|uuid'];
+        $reglas = [];
+        foreach (app(\Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo::class)->campos() as $campo => $configuracion) {
+            $reglas[$campo] = preg_replace('/^(?:required|nullable)\|/', $configuracion['obligatorio'] ? 'required|' : 'nullable|', $reglasBase[$campo]);
+        }
+        $this->validate($reglas);
 
         $taxon = app(\Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Repositories\TaxonRepositoryInterface::class)
             ->buscarPorId(\Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\ValueObjects\TaxonId::desde($this->taxonId));
@@ -762,10 +766,8 @@ final class EspecimenIndex extends Component
                 fechaColecta: $this->fechaColecta,
                 colector: $this->colector,
                 entidadDepositanteId: $this->entidadDepositanteId !== '' ? $this->entidadDepositanteId : null,
-                occurrenceId: $this->nullableString($this->occurrenceId),
-                catalogNumber: $this->nullableString($this->catalogNumber),
+                occurrenceId: 'urn:uuid:'.Str::uuid(),
                 oldCode: $this->nullableString($this->oldCode),
-                cardexLiquidCollectionCode: $this->nullableString($this->cardexLiquidCollectionCode),
                 individualCount: $this->nullableInt($this->individualCount),
                 preparations: $this->nullableString($this->preparations),
                 disposition: $this->nullableString($this->disposition),
@@ -795,7 +797,10 @@ final class EspecimenIndex extends Component
 
     protected function validationAttributes(): array
     {
-        return \Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::atributosValidacion();
+        return array_replace(
+            \Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::atributosValidacion(),
+            array_map(static fn (array $campo): string => $campo['etiqueta'], app(\Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo::class)->campos()),
+        );
     }
 
     // ── Edición ───────────────────────────────────────────────────────────────

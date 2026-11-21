@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {createHash, randomUUID} = require('node:crypto');
 const ids = ['apertura-sesion', 'filtros-graficos', 'tooltip-livewire', 'arbol-diversidad', 'modales-mapa', 'tabla-paginacion', 'fotografias', 'administracion-importacion', 'pdf-siete-figuras'];
+const transportAdmin = 'tests/Browser/portal-neon-administracion.mjs';
 const hash = value => createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');
 const days = 7;
 const shared = /^(composer\.(json|lock)|package(-lock)?\.json|modules_statuses\.json|bootstrap\/|config\/|routes\/|app\/(Models\/User|Enums\/Rol|Http\/Middleware|Providers|Support\/(Botones|DescargasCatalogo)))|(^|\/)(Auth|Authentication|Authorization|Policies|Permissions|Roles|Permisos|migrations|Providers|Middleware|routes|config)\/|(^|\/)(Rol|Role|Permission|Permiso|BotonesRbac)[^/]*\.php$|(^|\/)package(-lock)?\.json$/i;
@@ -30,7 +31,7 @@ function closure(files, graph) {
 function directCases(file) {
     if (shared.test(file)) return ids;
     if (/resources\/views\/layouts\/|resources\/views\/portal-informacion|app\/Support\/PortalCopy|resources\/js\/(auth-forms|manual-password|portal-theme)|resources\/views\/livewire\/auth\//.test(file)) return ['apertura-sesion'];
-    if (/portal-dashboard-export|figura-panel|grafico-panel|figura|portal-estadisticas/.test(file)) return ['pdf-siete-figuras', 'filtros-graficos'];
+    if (/portal-dashboard-export|figura-panel|grafico-panel|(?:^|[/_-])figuras?(?:[/_.-]|$)|portal-estadisticas/.test(file)) return ['pdf-siete-figuras', 'filtros-graficos'];
     if (/portal-(chart|charts|search|phylum)|filtro-(investigacion|catalogo)|busqueda-predictiva/.test(file)) return ['filtros-graficos', 'tooltip-livewire'];
     if (/portal-(taxonomy|tree|ete|phylotree|mdd)|explorador-taxonomico|rama-arbol|nodo-arbol|Dendrograma|Diversidad|ArbolTaxonomico|portal_ete/.test(file)) return ['arbol-diversidad', 'modales-mapa'];
     if (/portal-(photo|photos)|fotografia|Fotografia|Fotografias|Referencia(Taxonomica|Visual)|Ilustracion|ayuda-taxon|galeria|images\//.test(file)) return ['fotografias'];
@@ -69,7 +70,9 @@ function fragments(file, text) {
 }
 function runnerParts(runner) {
     const bodies = {};
+    const scopedBlocks = [...runner.matchAll(/^[ ]*\/\/ NEON QA ADMIN INICIO\n[\s\S]*?^[ ]*\/\/ NEON QA ADMIN FIN\n/gm)];
     let common = runner;
+    for (const [block] of scopedBlocks) common = common.replace(block, '');
     for (const id of ids) {
         const start = `    // CASO ${id} INICIO\n`, end = `    // CASO ${id} FIN\n`;
         const a = runner.indexOf(start), b = runner.indexOf(end);
@@ -77,7 +80,7 @@ function runnerParts(runner) {
         bodies[id] = runner.slice(a + start.length, b);
         common = common.replace(bodies[id], `<cuerpo:${id}>\n`);
     }
-    return {bodies, common};
+    return {bodies, common, adminTransport: scopedBlocks.map(([block]) => block).join('\n')};
 }
 function preservedBody(body) { return body.replace(/    \/\/ PREPARACION ADICIONAL INICIO\n[\s\S]*?    \/\/ PREPARACION ADICIONAL FIN\n/g, ''); }
 function inputs({root, sources, contents, environment, runtime, dependencies = {}}) {
@@ -90,6 +93,10 @@ function inputs({root, sources, contents, environment, runtime, dependencies = {
         result[id]['test:contrato'] = hash(layout.cases[id]);
         result[id]['test:fixture'] = sources['tests/Browser/portal-fixture.php'];
         result[id]['entorno'] = environment; result[id]['vendor'] = runtime?.per_root?.vendor || 'ausente';
+    }
+    if (parts.adminTransport) {
+        result['administracion-importacion']['test:preparacion-neon-qa'] = hash(parts.adminTransport);
+        result['administracion-importacion'][transportAdmin] = sources[transportAdmin];
     }
     for (const file of Object.keys(sources).sort()) {
         if (infrastructureOnly.test(file) || (!functional.test(file) && !shared.test(file))) continue;
@@ -237,6 +244,9 @@ function assertCaseUnchanged(root, plan, id) {
     const layout = JSON.parse(fs.readFileSync(path.join(root, 'tests/Browser/portal-casos.json'), 'utf8'));
     const tests = {'test:cuerpo': hash(parts.bodies[id]), 'test:preparacion': hash(parts.common),
         'test:contrato': hash(layout.cases[id]), 'test:fixture': hash(fs.readFileSync(path.join(root, 'tests/Browser/portal-fixture.php')))};
+    if (id === 'administracion-importacion' && parts.adminTransport) {
+        tests['test:preparacion-neon-qa'] = hash(parts.adminTransport);
+    }
     const loaded = new Map();
     for (const [key, approved] of Object.entries(expected)) {
         if (['entorno', 'vendor'].includes(key)) continue;

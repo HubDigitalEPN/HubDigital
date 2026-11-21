@@ -76,24 +76,27 @@ test('el mapa se sustituye por un aviso solo dentro del editor del explorador', 
 test('el laboratorio se integra al portal sin pestaña duplicada y la cabecera mantiene sus elementos fijos', function () {
     $this->actingAs(User::factory()->administrador()->create());
     $this->get(route('admin.contenidos'))->assertOk()->assertDontSee('El Laboratorio: estructura y fotos')
-        ->assertSee('<p class="hub-editor-ayuda"><span aria-hidden="true">*</span> Doble clic para modificar un texto o imagen</p>', false);
+        ->assertSee('class="hub-editor-ayuda font-bold"', false)
+        ->assertSee('font-size: calc(.7rem + 1pt)', false)
+        ->assertSee('<span aria-hidden="true">*</span> Doble clic para modificar un texto o imagen', false);
     $this->get(route('admin.contenidos', ['seccion' => 'laboratorio']))->assertOk()->assertSeeLivewire(ConfiguracionLaboratorio::class);
     $html = $this->get(route('home', ['_editor' => '1']))->getContent();
     expect(substr_count($html, 'data-editor-fixed'))->toBe(2);
     expect($html)->toContain('data-portal-copy="navegacion.institucion"', 'data-portal-copy="navegacion.panel_curador"', 'data-editor-no-text');
 });
 
-test('la ayuda de doble clic solo aparece en las vistas de edición visual', function () {
+test('la ayuda de doble clic corresponde a la acción disponible en cada pestaña', function () {
     $this->actingAs(User::factory()->administrador()->create());
 
     foreach (['portal', 'laboratorio', 'depositos'] as $seccion) {
         $this->get(route('admin.contenidos', ['seccion' => $seccion]))->assertOk()
             ->assertSee('Doble clic para modificar un texto o imagen');
     }
-    foreach (['fichas', 'sistema'] as $seccion) {
-        $this->get(route('admin.contenidos', ['seccion' => $seccion]))->assertOk()
-            ->assertDontSee('hub-editor-ayuda', false);
-    }
+    $this->get(route('admin.contenidos', ['seccion' => 'fichas']))->assertOk()
+        ->assertSee('Doble clic en una fila para editar la ficha')
+        ->assertDontSee('Doble clic para modificar un texto o imagen');
+    $this->get(route('admin.contenidos', ['seccion' => 'sistema']))->assertOk()
+        ->assertDontSee('hub-editor-ayuda', false);
 });
 
 test('el asistente se reserva para el portal fuera de la vista previa editorial', function () {

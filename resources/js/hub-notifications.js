@@ -52,7 +52,8 @@ export function showNotification({ message, title, variant = 'info', id, action,
     close.textContent = '×';
     let timer;
     const dismiss = () => { clearTimeout(timer); toast.remove(); };
-    const start = () => { clearTimeout(timer); timer = window.setTimeout(dismiss, NOTIFICATION_DURATION); };
+    const readingTime = Math.max(NOTIFICATION_DURATION, 1000 + text.split(/\s+/u).length * 300);
+    const start = () => { clearTimeout(timer); timer = window.setTimeout(dismiss, readingTime); };
     close.addEventListener('click', dismiss);
     // Permite leer o usar una acción sin que desaparezca bajo el puntero o el foco.
     toast.addEventListener('mouseenter', () => clearTimeout(timer));

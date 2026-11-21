@@ -7,6 +7,7 @@ namespace App\Support;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /** Localidades censales del INEC y altas administradas por provincia. */
 final class CatalogoLocalidadesEcuador
@@ -79,6 +80,34 @@ final class CatalogoLocalidadesEcuador
     public static function etiqueta(object $fila): string
     {
         return implode(' · ', array_filter([$fila->nombre, $fila->parroquia, $fila->canton]));
+    }
+
+    public static function registrarDeclarada(string $provincia, string $nombre): string
+    {
+        $codigoProvincia = self::codigoProvincia($provincia);
+        $nombre = trim(preg_replace('/\s+/u', ' ', $nombre) ?? '');
+        $normalizado = self::normalizar($nombre);
+        if ($codigoProvincia === null || mb_strlen($nombre) < 2 || mb_strlen($nombre) > 120 || ! preg_match('/\pL/u', $nombre)) {
+            throw ValidationException::withMessages(['localidad' => 'Selecciona una provincia e ingresa un nombre de localidad válido.']);
+        }
+
+        return DB::transaction(function () use ($provincia, $codigoProvincia, $nombre, $normalizado): string {
+            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', ['localidad-declarada:'.$codigoProvincia.':'.$normalizado]);
+            $existente = self::consulta($provincia, $nombre)->where('activo', true)->orderBy('codigo')
+                ->get(['nombre', 'codigo'])->first(fn (object $fila): bool => self::normalizar($fila->nombre) === $normalizado);
+            if ($existente !== null) {
+                return (string) $existente->codigo;
+            }
+
+            $codigo = 'DEP-'.Str::uuid();
+            DB::table(self::TABLA)->insert([
+                'codigo' => $codigo, 'provincia_codigo' => $codigoProvincia, 'nombre' => $nombre,
+                'busqueda' => $normalizado, 'fuente' => 'Localidad declarada en una solicitud de depósito',
+                'activo' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return $codigo;
+        });
     }
 
     public static function normalizar(string $texto): string

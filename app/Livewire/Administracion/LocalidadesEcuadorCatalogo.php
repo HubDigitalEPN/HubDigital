@@ -21,6 +21,7 @@ use Livewire\WithPagination;
 #[Title('Localidades de Ecuador')]
 final class LocalidadesEcuadorCatalogo extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use WithInteractiveGrid;
     use WithPagination;
 
@@ -102,6 +103,7 @@ final class LocalidadesEcuadorCatalogo extends Component
             }
         });
         $this->modal('localidad-ecuador-editor')->close();
+        $this->actualizarGrillaCatalogos();
         session()->flash('localidad-guardada', 'La localidad está disponible en la lista del paso 2.');
     }
 
@@ -113,6 +115,7 @@ final class LocalidadesEcuadorCatalogo extends Component
             DB::table(CatalogoLocalidadesEcuador::TABLA)->where('codigo', $codigo)
                 ->update(['activo' => ! $fila->activo, 'updated_at' => now()]);
         });
+        $this->actualizarGrillaCatalogos();
     }
 
     public function render(): View

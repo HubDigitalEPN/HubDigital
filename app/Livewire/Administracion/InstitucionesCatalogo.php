@@ -22,6 +22,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Title('Instituciones y depositantes')]
 final class InstitucionesCatalogo extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use WithInteractiveGrid;
     use WithPagination;
     use TraduceErroresPersistencia;
@@ -85,6 +86,7 @@ final class InstitucionesCatalogo extends Component
             'nombre'=>$this->nombre,'tipo'=>$this->tipo,'contacto'=>trim($this->contacto),
             'solicitudes'=>$this->usarEnSolicitudes,'coleccion'=>$this->usarEnColeccion]);
         $this->modal('institucion-editor')->close();
+        $this->actualizarGrillaCatalogos();
         $this->busqueda=$nombre; $this->resetPage();
         session()->flash('institucion-guardada','Institución o depositante guardado.');
     }
@@ -93,6 +95,7 @@ final class InstitucionesCatalogo extends Component
     {
         $fila=DB::table('usuarios.instituciones_catalogo')->find($id); abort_unless($fila,404);
         DB::table('usuarios.instituciones_catalogo')->where('id',$id)->update(['activo'=>!$fila->activo,'updated_at'=>now()]);
+        $this->actualizarGrillaCatalogos();
     }
 
     public function generarActa(string $id, GenerarActaEntregaHandler $handler): void
@@ -106,6 +109,9 @@ final class InstitucionesCatalogo extends Component
 
     public function render(): View
     {
+        if ($this->soloEditorCatalogo) {
+            return view('livewire.administracion.instituciones-catalogo');
+        }
         $query=app(DirectorioInstituciones::class)->consulta();
         if (trim($this->busqueda)!=='') $query->where('nombre','ilike','%'.trim($this->busqueda).'%');
         return view('livewire.administracion.instituciones-catalogo',[

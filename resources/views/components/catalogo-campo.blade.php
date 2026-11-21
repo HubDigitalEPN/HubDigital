@@ -18,7 +18,7 @@
             @foreach($opciones as $opcion)<option value="{{ $opcion['id'] }}">{{ $opcion['label'] }}</option>@endforeach
         </flux:select>
     @elseif($ayuda['tipo'] === 'textarea')
-        <flux:textarea wire:model="{{ $campo }}" id="captura-{{ $campo }}" :maxlength="$ayuda['maxlength']" />
+        <flux:textarea wire:model="{{ $campo }}" id="captura-{{ $campo }}" :maxlength="$ayuda['maxlength']" :aria-required="$ayuda['obligatorio'] ? 'true' : 'false'" />
     @else
         <flux:input wire:model="{{ $campo }}" id="captura-{{ $campo }}" :type="$ayuda['tipo']" :maxlength="$ayuda['maxlength']" :inputmode="$ayuda['inputmode']" :aria-required="$ayuda['obligatorio'] ? 'true' : 'false'" />
     @endif

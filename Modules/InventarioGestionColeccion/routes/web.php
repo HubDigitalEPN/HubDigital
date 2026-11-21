@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\RedirigirTablaCatalogo;
 use Illuminate\Support\Facades\Route;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DatasetConfigForm;
@@ -10,9 +11,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\EtiquetadoQrIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ExportarDwcController;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ActualizarCatalogoIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ResolverQrController;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
 
 Route::middleware(['web', 'auth', 'verified', 'role:curador'])
     ->prefix('inventario')
@@ -20,14 +19,15 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
     ->group(function () {
         Route::prefix('taxonomia')->name('taxonomia.')->group(function () {
 
-            Route::get('/taxones', TaxonIndex::class)->name('taxones');
+            Route::get('/taxones', RedirigirTablaCatalogo::class)->defaults('tablaCatalogo', 'taxones')->name('taxones');
 
-            Route::get('/localidades', LocalidadIndex::class)->name('localidades');
+            Route::get('/localidades', RedirigirTablaCatalogo::class)->defaults('tablaCatalogo', 'localidades-coleccion')->name('localidades');
 
             Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
             Route::get('/importar', ActualizarCatalogoIndex::class)->name('importar');
             Route::get('/importar/plantilla', DescargarPlantillaImportController::class)->name('importar.plantilla');
-            Route::get('/importar/plantilla/configurar', \Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionPlantillaCatalogoIndex::class)->name('importar.plantilla.configurar');
+            Route::get('/importar/plantilla/configurar', RedirigirTablaCatalogo::class)
+                ->defaults('tablaCatalogo', 'plantilla-catalogo')->defaults('destinoCatalogo', 'admin.matrices')->name('importar.plantilla.configurar');
             Route::get('/importar/{importacion}/original', \Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarOriginalImportacionController::class)->whereUuid('importacion')->name('importar.original');
             Route::get('/etiquetas', EtiquetadoQrIndex::class)->name('etiquetas');
 

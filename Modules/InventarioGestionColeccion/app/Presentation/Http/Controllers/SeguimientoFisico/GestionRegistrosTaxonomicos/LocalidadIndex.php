@@ -23,6 +23,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Localidades'])]
 final class LocalidadIndex extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use \App\Livewire\Concerns\WithContinuousGrid;
     use TraduceErroresPersistencia;
 
@@ -120,6 +121,11 @@ final class LocalidadIndex extends Component
 
     public ?string $errorMessage = null;
 
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->esCurador(), 403);
+    }
+
     public function mount(ListarLocalidadesHandler $handler): void
     {
         $this->rangos = RangoLocalidad::valoresAceptados();
@@ -171,6 +177,7 @@ final class LocalidadIndex extends Component
             $this->cargarSelectorPadres();
             $this->showModal = false;
             $this->successMessage = 'Localidad registrada correctamente.';
+            $this->actualizarGrillaCatalogos();
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -225,6 +232,7 @@ final class LocalidadIndex extends Component
             $this->cargarSelectorPadres();
             $this->showEditModal = false;
             $this->successMessage = 'Localidad actualizada correctamente.';
+            $this->actualizarGrillaCatalogos();
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

@@ -23,3 +23,21 @@ test('el color aumenta de amarillo hacia rojo según registros sin alterar geome
     assert.ok(verde(1) > verde(10) && verde(10) > verde(100) && verde(100) > verde(1000));
     assert.equal(colorCantidadRegistros(NaN), colorCantidadRegistros(1));
 });
+
+test('el campo principal muestra los resultados y permite vaciar el filtro ya aplicado', async () => {
+    const busqueda = crearBusquedaUniversal();
+    const cambios = [];
+    busqueda.$wire = {
+        filtroUniversal: 'anterior',
+        buscarUniversal: async texto => ({filas: [{id: texto}], pagina: 1, hay_mas: false}),
+        aplicarUniversal: async (...args) => cambios.push(args),
+    };
+    busqueda.texto = ' Pichincha ';
+    await busqueda.buscarTexto();
+    assert.equal(busqueda.abierto, true);
+    assert.equal(busqueda.filas[0].id, 'Pichincha');
+    busqueda.texto = '';
+    await busqueda.buscarTexto();
+    assert.equal(busqueda.abierto, false);
+    assert.deepEqual(cambios, [['', '']]);
+});

@@ -1,7 +1,8 @@
-<div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6" data-directorio-instituciones>
+<div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6" data-directorio-instituciones @if($soloEditorCatalogo) wire:init="iniciarEditorCatalogo" @endif>
+    @unless($soloEditorCatalogo)
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <flux:heading size="xl" level="1">Instituciones y depositantes</flux:heading>
+            <flux:heading size="xl" level="2">Instituciones y depositantes</flux:heading>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nueva">Nueva institución o depositante</flux:button>
     </div>
@@ -9,8 +10,6 @@
     @if(session('institucion-guardada'))
         <div class="rounded-lg border border-science-blue/30 bg-science-blue/5 px-3 py-2 text-sm text-text-primary">{{ session('institucion-guardada') }}</div>
     @endif
-
-    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
     <x-interactive-grid :rows="$instituciones" label="Instituciones y depositantes" :columns="['Nombre', 'Tipo', 'Contacto', 'Solicitudes', 'Colección', 'Acciones']">
         <thead><tr><x-grid-heading field="nombre">Nombre</x-grid-heading><x-grid-heading field="tipo">Tipo</x-grid-heading><x-grid-heading field="contacto">Contacto</x-grid-heading><x-grid-heading field="estado">Solicitudes</x-grid-heading><x-grid-heading field="coleccion">Colección</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
@@ -48,6 +47,8 @@
         </div>
     </section>
 
+    @endunless
+    @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
     <flux:modal name="institucion-editor" class="w-full max-w-md">
         <div class="space-y-4">
             <div>

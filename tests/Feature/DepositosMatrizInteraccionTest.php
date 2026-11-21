@@ -9,7 +9,7 @@ test('la etiqueta del Excel conserva su identidad editorial y el selector real s
     $rotulo = 'Tabla Darwin Core (.xlsx)';
     $clave = 'literal:'.$rotulo;
     $editor = view($vista, ['matrizId' => null, 'soloEdicionDeTextos' => true])->render();
-    expect($editor)->toContain('data-wizard-copy="'.$clave.'"', $rotulo, 'Elegir archivo Excel', 'Ningún archivo seleccionado')
+    expect($editor)->toContain('data-wizard-copy="'.$clave.'"', $rotulo, 'Arrastra un Excel (.xlsx)')
         ->not->toContain('type="file"', 'wire:model="archivoMatriz"');
     expect(\App\Support\TextosSistema::catalogo()[hash('sha256', $rotulo)]['original'] ?? null)->toBe($rotulo);
 
@@ -22,8 +22,8 @@ test('la etiqueta del Excel conserva su identidad editorial y el selector real s
         ->and($campo->getAttribute('accept'))->toBe('.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         ->and($campo->getAttribute('aria-labelledby'))->toBe('matriz-dwc-etiqueta matriz-dwc-accion')
         ->and($campo->getAttribute('aria-describedby'))->toBe('matriz-dwc-seleccion')
-        ->and($campo->getAttribute('x-on:change'))->toContain('files[0]?.name')
         ->and($x->query('//label[@for="matriz-dwc" and contains(., "Elegir archivo Excel")]')->length)->toBe(1);
+    expect($operativo->saveHTML())->toContain('x-on:drop.prevent', 'x-on:dragover.prevent');
 });
 
 test('el oficio describe la matriz del expediente y conserva la redaccion historica firmada', function (): void {
@@ -31,7 +31,12 @@ test('el oficio describe la matriz del expediente y conserva la redaccion histor
         'solicitud_cargo' => 'Investigador', 'solicitud_grupo' => 'Invertebrados terrestres',
         'solicitud_proyecto' => 'PRUEBA QA - SIMULACION SIN ENTREGA REAL'];
     $texto = \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar($solicitud);
-    expect($texto)->toContain('matriz adjunta al expediente de HubDigital', 'Prueba qa - simulacion sin entrega real')->not->toContain('Google Drive');
+    expect($texto)->toContain('matriz adjunta al expediente', 'Prueba qa - simulacion sin entrega real')->not->toContain('HubDigital', 'Google Drive');
+    $clase = \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::class;
+    $plantilla = config('wizard-copy.solicitud.texto_pdf');
+    expect($clase::marcadoresValidos($plantilla))->toBeTrue()
+        ->and($clase::marcadoresValidos(str_replace('{identificacion}', '', $plantilla)))->toBeFalse()
+        ->and($clase::redactar($solicitud, 'Oficio institucional. '.$plantilla))->toStartWith('Oficio institucional. Yo, Titular QA');
     $solicitud->solicitud_texto = 'Redacción histórica conservada';
     expect(\Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar($solicitud))
         ->toBe('Redacción histórica conservada');
@@ -55,4 +60,5 @@ test('los botones renderizados de la matriz conservan argumentos ejecutables y e
     expect($acciones)->toContain("mantenerNombreOriginal('{$id}')")
         ->and(implode('|', $acciones))->toContain('aceptarSugerencia(', '\\u0027', '\\u003C')->not->toContain('@js', '<script>')
         ->and($dom->getElementsByTagName('script')->length)->toBe(0);
+    expect($acciones)->toContain('eliminarMatriz');
 });

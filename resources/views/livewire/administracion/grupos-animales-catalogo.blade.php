@@ -1,7 +1,8 @@
-<div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6">
+<div class="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6" @if($soloEditorCatalogo) wire:init="iniciarEditorCatalogo" @endif>
+    @unless($soloEditorCatalogo)
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <flux:heading size="xl" level="1">Grupos animales</flux:heading>
+            <flux:heading size="xl" level="2">Grupos animales</flux:heading>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="nuevo">Nuevo grupo</flux:button>
     </div>
@@ -19,6 +20,7 @@
         </tbody>
     </x-interactive-grid>
 
+    @endunless
     <flux:modal name="grupo-animal-editor" class="w-full max-w-md">
         <div class="space-y-3">
             <flux:heading size="lg">{{ $editandoCodigo ? 'Editar grupo' : 'Nuevo grupo' }}</flux:heading>

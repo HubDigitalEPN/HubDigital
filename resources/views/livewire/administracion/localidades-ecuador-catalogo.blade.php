@@ -1,6 +1,7 @@
-<div class="hub-workspace space-y-6 p-4 sm:p-6">
+<div class="hub-workspace space-y-6 p-4 sm:p-6" @if($soloEditorCatalogo) wire:init="iniciarEditorCatalogo" @endif>
+    @unless($soloEditorCatalogo)
     <header class="flex flex-wrap items-end justify-between gap-4">
-        <div><h1 class="hub-page-title">Localidades de Ecuador</h1></div>
+        <div><h2 class="hub-page-title">Localidades de Ecuador</h2></div>
         <flux:button wire:click="nueva" variant="primary" icon="plus">Nueva localidad</flux:button>
     </header>
     @if(session('localidad-guardada'))<p data-hub-feedback="success" role="status" class="rounded-lg bg-success/10 p-3 text-sm text-success">{{ session('localidad-guardada') }}</p>@endif
@@ -22,6 +23,7 @@
                 @empty<tr><td colspan="5" class="p-5 text-text-secondary">No hay localidades para esta búsqueda.</td></tr>@endforelse
             </tbody>
     </x-interactive-grid>
+    @endunless
     <flux:modal name="localidad-ecuador-editor" class="md:w-[32rem]">
         <form wire:submit="guardar" class="space-y-4">
             <flux:heading size="lg">{{ $editandoCodigo ? 'Editar localidad' : 'Nueva localidad' }}</flux:heading>

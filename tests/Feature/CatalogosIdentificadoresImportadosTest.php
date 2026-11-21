@@ -27,9 +27,9 @@ test('curaduría puede listar taxones y localidades con UUID v5 sin perder sus r
     $taxones = collect(app(ListarTaxonesHandler::class)->handle()->items);
     expect($taxones->firstWhere('id', $taxonHijo)->padreId)->toBe($taxonPadre)
         ->and($taxones->firstWhere('id', $taxonHijo)->padreNombre)->toBe($prefijo.'-familia');
-    $this->get('/inventario/taxonomia/taxones')->assertOk()
+    $this->get(route('admin.catalogos', ['tabla' => 'taxones']))->assertOk()
         ->assertDontSeeText('TaxonId inválido');
-    $this->get('/inventario/taxonomia/localidades')->assertOk()
+    $this->get(route('admin.catalogos', ['tabla' => 'localidades-coleccion']))->assertOk()
         ->assertSeeText($prefijo.'-provincia')->assertSeeText($prefijo.'-sitio')
         ->assertDontSeeText('LocalidadId inválido');
 });

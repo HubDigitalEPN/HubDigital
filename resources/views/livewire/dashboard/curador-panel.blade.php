@@ -82,8 +82,8 @@
             <div class="hub-curator-metrics hub-curator-metrics--four">
                 <a href="{{ route('inventario.taxonomia.especimenes') }}" wire:navigate><strong>{{ number_format($colEspecimenes, 0, ',', '.') }}</strong><span>Registros</span></a>
                 <a href="{{ route('prestamos.curador.depositos') }}" wire:navigate><strong>{{ number_format($depLotesRecibidos, 0, ',', '.') }}</strong><span>Lotes recibidos</span></a>
-                <a href="{{ route('inventario.taxonomia.localidades') }}" wire:navigate><strong>{{ number_format($colLocalidades, 0, ',', '.') }}</strong><span>Localidades</span></a>
-                <a href="{{ route('inventario.taxonomia.taxones') }}" wire:navigate><strong>{{ number_format($colTaxones, 0, ',', '.') }}</strong><span>Taxones</span></a>
+                <a href="{{ route('admin.catalogos', ['tabla' => 'localidades-coleccion']) }}" wire:navigate><strong>{{ number_format($colLocalidades, 0, ',', '.') }}</strong><span>Localidades</span></a>
+                <a href="{{ route('admin.catalogos', ['tabla' => 'taxones']) }}" wire:navigate><strong>{{ number_format($colTaxones, 0, ',', '.') }}</strong><span>Taxones</span></a>
             </div>
         </section>
         <section class="hub-curator-card hub-curator-card--summary" aria-labelledby="prestamos-title">

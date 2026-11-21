@@ -73,6 +73,21 @@ test('un 422 muestra la contraseña incorrecta, limpia la clave y conserva el ce
     ui.state.cerrarDialogo();
     assert.equal(ui.certificate.value, '');
 });
+test('cerrar el firmador borra el nombre seleccionado y vuelve a ocultar la clave', () => {
+    const ui = signer(() => { throw new Error('Cerrar no debe llamar al servidor'); });
+    ui.state.abrirDialogo();
+    ui.state.claveVisible = true;
+    ui.state.nombreCertificado = ui.certificate.value;
+
+    ui.state.cerrarDialogo();
+
+    assert.equal(ui.state.claveVisible, false);
+    assert.equal(ui.state.nombreCertificado, '');
+    assert.equal(ui.credentials.value, '');
+    assert.equal(ui.certificate.value, '');
+    assert.equal(ui.state.dialogo, false);
+});
+
 test('un PDF ya generado evita preparaciones repetidas al montar y abrir el firmador', () => {
     const ui = signer(() => { throw new Error('No debe volver a descargar ni generar el original'); }, {originalUrl: '/original', originalPrepared: true});
     ui.state.init(); ui.state.abrirDialogo();

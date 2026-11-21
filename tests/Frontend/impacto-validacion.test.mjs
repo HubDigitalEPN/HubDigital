@@ -311,6 +311,11 @@ test('un fragmento desconocido del dashboard se informa pendiente y no activa nu
     } finally { assert.equal(path.dirname(temporary), path.resolve(tmpdir())); assert.ok(path.basename(temporary).startsWith('hub-impact-fragment-')); rmSync(temporary, {recursive: true, force: true}); }
 });
 
+test('la configuración de matrices se clasifica como administración y no como figuras del portal', () => {
+    assert.deepEqual(browser.directCases('Modules/GestionPrestamosRecepciones/resources/views/curador/configuracion-matriz.blade.php'), ['administracion-importacion']);
+    assert.deepEqual(browser.directCases('Modules/CatalogoPublico/resources/views/components/figura-panel.blade.php'), ['pdf-siete-figuras', 'filtros-graficos']);
+});
+
 test('una corrección aislada del runner histórico selecciona su propio recorrido', () => {
     const temporary = mkdtempSync(path.join(tmpdir(), 'hub-impact-browser-'));
     try {

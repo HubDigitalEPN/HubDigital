@@ -21,6 +21,7 @@ use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Seguimiento
 #[Layout('layouts.app', params: ['title' => 'Taxones'])]
 final class TaxonIndex extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use \App\Livewire\Concerns\WithContinuousGrid;
     use TraduceErroresPersistencia;
 
@@ -75,6 +76,11 @@ final class TaxonIndex extends Component
 
     public ?string $errorMessage = null;
 
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->esCurador(), 403);
+    }
+
     public function mount(ListarTaxonesHandler $handler): void
     {
         $this->rangos = array_column(RangoTaxonomico::cases(), 'value');
@@ -111,6 +117,7 @@ final class TaxonIndex extends Component
             $this->busqueda = $this->nombreCientifico;
             $this->showModal = false;
             $this->successMessage = 'Taxón registrado correctamente.';
+            $this->actualizarGrillaCatalogos();
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -155,6 +162,7 @@ final class TaxonIndex extends Component
             $this->busqueda = $this->editNombreCientifico;
             $this->showEditModal = false;
             $this->successMessage = 'Taxón actualizado correctamente.';
+            $this->actualizarGrillaCatalogos();
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);
@@ -170,6 +178,7 @@ final class TaxonIndex extends Component
             $desactivarHandler->handle(new DesactivarTaxonInput(taxonId: $id));
             $this->cargarTaxones($listarHandler);
             $this->successMessage = 'Taxón desactivado correctamente.';
+            $this->actualizarGrillaCatalogos();
             $this->errorMessage = null;
         } catch (\Throwable $e) {
             $this->errorMessage = $this->traducirErrorParaUsuario($e);

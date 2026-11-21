@@ -189,6 +189,24 @@ final class MatrizEspecies
         }
     }
 
+    public function incorporarPermisosDelExpediente(?string $recoleccion, ?string $movilizacion): bool
+    {
+        $recoleccion = trim($recoleccion ?? '') ?: 'No aplica — expediente justificado';
+        $movilizacion = trim($movilizacion ?? '') ?: 'No aplica — expediente justificado';
+        $cambio = false;
+        foreach ($this->registros as $registro) {
+            $cambio = $registro->incorporarPermisos($recoleccion, $movilizacion) || $cambio;
+        }
+        foreach (['researchPermit', 'transportPermit'] as $campo) {
+            if (! isset($this->camposDwCPresentes[$campo])) {
+                $this->camposDwCPresentes[$campo] = true;
+                $cambio = true;
+            }
+        }
+
+        return $cambio;
+    }
+
     /**
      * Agrega un registro de espécimen a la matriz.
      * Para Donaciones, los registros inician como ValidadoTecnicamente.

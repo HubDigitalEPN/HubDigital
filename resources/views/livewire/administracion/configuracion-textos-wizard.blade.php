@@ -16,6 +16,9 @@
             <button type="button" data-wizard-paso="{{ $id }}" data-wizard-copy="pasos.{{ $paso[1] }}" aria-keyshortcuts="F2" x-bind:aria-current="pasoActivo === {{ $id }} ? 'step' : null" @if($id===$pasoEditor) aria-current="step" @endif><span aria-hidden="true">{{ $loop->iteration }}</span>{{ $paso[0] }}</button>
         @endforeach
     </nav>
+    <div x-show="pasoActivo === 0" x-cloak>
+        <flux:button type="button" icon="document-text" x-on:click="editar('solicitud.texto_pdf')">Editar texto del oficio PDF</flux:button>
+    </div>
     <section wire:key="wizard-opciones-texto" x-show="opciones.length" x-cloak class="hub-panel p-3" aria-label="Elegir ubicación del texto del wizard"><p>Este texto tiene varias ubicaciones. Selecciona la que deseas cambiar.</p>@foreach($mapa as $clave=>$valor)<button type="button" x-show="opciones.includes(@js($clave))" x-on:click="editar(@js($clave))" class="block min-h-11 p-2 text-left underline">{{ str_starts_with($clave,'literal:')?'Texto compartido del sistema':ucfirst(explode('.',$clave)[0]).' · '.str_replace('_',' ',explode('.',$clave)[1]) }}: {{ \Illuminate\Support\Str::limit($valor,100) }}</button>@endforeach</section>
     <section wire:key="wizard-vista-textos" class="hub-panel hub-editor-scroll p-4" tabindex="0" aria-label="Vista previa del wizard" data-wizard-vista x-ref="vistaWizard" x-on:click.capture="clic($event)" x-on:dblclick.capture="seleccionar($event)" x-on:keydown.capture="teclado($event)" x-on:submit.capture.prevent.stop>
         <div class="hub-transactional-ui hub-depositos-ui space-y-3">
@@ -48,6 +51,7 @@
         <form x-on:submit.prevent="publicarTexto()" class="space-y-4" data-copy-preserve><h2 id="wizard-editar-titulo" class="hub-section-title">Editar texto del formulario</h2>
             <p class="text-sm"><strong>Ubicación:</strong> Formulario de depósitos → <span x-text="mapa[claveLocal.startsWith('pasos.') ? claveLocal : clavesPorPaso[pasoActivo]]"></span> → <span x-text="claveLocal?.startsWith('literal:') ? 'Texto compartido del sistema' : (claveLocal || '').replaceAll(/[._]/g, ' ')"></span></p>
             <p x-show="claveLocal?.startsWith('literal:')" class="rounded border border-border p-3 text-sm">Este texto se comparte con otras pantallas. El cambio se aplica a todas sus apariciones iguales; las ubicaciones se pueden consultar en «Textos generales del sistema».</p>
+            <p x-show="claveLocal === 'solicitud.texto_pdf'" class="text-sm text-text-secondary">Conserva los marcadores entre llaves. El oficio los sustituye por los datos de la solicitud.</p>
             <p role="alert" x-show="errorSeleccion" x-text="errorSeleccion"></p>
             <p class="whitespace-pre-line text-sm"><strong>Original:</strong> <span x-text="originalLocal"></span></p>
             <label wire:ignore class="grid gap-2 text-sm font-semibold">Texto que verá el solicitante<textarea x-model="textoLocal" x-bind:disabled="publicando" rows="5" maxlength="1000" required class="w-full rounded border border-border bg-surface p-3"></textarea></label>

@@ -78,6 +78,8 @@ final class InventarioIngresoColeccionAdapter implements IngresoColeccionPort
             actaRecepcion: $lote !== null ? (string) $lote->codigoQR() : $numero,
             estadoCustodia: $estadoColeccion,
             filas: $filas,
+            permisoRecoleccion: $solicitud->nroPermisoRecoleccion(),
+            permisoMovilizacion: $solicitud->nroPermisoMovilizacion(),
         ));
 
         return new ResultadoIngresoColeccion(

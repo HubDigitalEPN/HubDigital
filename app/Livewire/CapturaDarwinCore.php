@@ -14,6 +14,7 @@ use Livewire\Component;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo;
+use Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo;
 
 /** Captura limitada: lista blanca recalculada en servidor en cada guardado. */
 #[Layout('layouts.app', params: ['title' => 'Captura Darwin Core'])]
@@ -32,17 +33,20 @@ final class CapturaDarwinCore extends Component
     public function campos(): array
     {
         $plantilla = array_column(app(ConfiguracionPlantillaCatalogo::class)->leer()['columnas'], null, 'campo');
+        $configuracion = app(ConfiguracionCapturaCatalogo::class)->campos();
         $columnas = Schema::getColumnListing('taxonomia.especimenes');
         $campos = [];
         foreach (RegistroColumnasEspecimen::todas() as $col) {
-            if (!$col['nombreDwC'] || $col['nombreDwC'] === 'occurrenceID') continue;
+            if (! $col['nombreDwC'] || in_array($col['clave'], ['occurrenceId', 'catalogNumber', 'cardexLiquidCollectionCode'], true)) continue;
             $config = $plantilla[ColumnasCatalogo::campo($col['clave'])] ?? null;
             if ($config && (($config['requisito_guia'] ?? '') === 'interno' || $config['requisito'] === 'uso-interno' || str_contains(mb_strtolower($config['cabecera']), 'uso interno'))) continue;
             $db = $col['clave'] === 'taxonNombre' ? 'taxon_verbatim' : Str::snake($col['clave']);
             if (!in_array($db, $columnas, true)) continue;
             // Dos nombres de presentación no crean dos editores para el mismo dato.
             if (in_array($db, array_column($campos, 'db'), true)) continue;
-            $campos[$col['clave']] = ['db' => $db, 'etiqueta' => $col['nombreDwC'].' · '.$col['etiqueta']];
+            $ajuste = $configuracion[$col['clave']] ?? null;
+            $campos[$col['clave']] = ['db' => $db, 'etiqueta' => $col['nombreDwC'].' · '.($ajuste['etiqueta'] ?? $col['etiqueta']),
+                'obligatorio' => $col['clave'] === 'taxonNombre' || ($ajuste['obligatorio'] ?? false)];
         }
         return $campos;
     }
@@ -52,6 +56,9 @@ final class CapturaDarwinCore extends Component
         $this->reset('id', 'datos', 'mensaje');
         $this->resetValidation();
         foreach ($this->campos() as $clave => $campo) $this->datos[$clave] = '';
+        if (array_key_exists('fechaColecta', $this->datos)) {
+            $this->datos['fechaColecta'] = now('America/Guayaquil')->toDateString();
+        }
     }
 
     public function seleccionar(string $id): void
@@ -78,7 +85,11 @@ final class CapturaDarwinCore extends Component
         $reglas['datos.individualCount'] = 'nullable|integer|min:0';
         $reglas['datos.fechaColecta'] = 'nullable|date_format:Y-m-d';
         if (!$this->id) {
-            foreach (['taxonNombre', 'colector'] as $clave) $reglas['datos.'.$clave] = 'required|string|max:255';
+            foreach ($campos as $clave => $campo) {
+                if ($campo['obligatorio']) {
+                    $reglas['datos.'.$clave] = preg_replace('/^nullable\|/', 'required|', $reglas['datos.'.$clave]);
+                }
+            }
         }
         $this->validate($reglas);
         DB::transaction(function () use ($campos): void {
@@ -107,7 +118,7 @@ final class CapturaDarwinCore extends Component
                 DB::table('taxonomia.especimenes')->insert([
                     'id' => $id, 'codigo_catalogo' => 'CAP-'.strtoupper(str_replace('-', '', $id)),
                     'occurrence_id' => 'urn:uuid:'.$id, 'localidad' => $valores['locality_name'] ?? '',
-                    'fecha_colecta' => $valores['fecha_colecta'] ?? null, 'colector' => $valores['colector'],
+                    'fecha_colecta' => $valores['fecha_colecta'] ?? null, 'colector' => $valores['colector'] ?? '',
                     'estado' => 'disponible', 'estado_revision' => 'pendiente',
                     'motivo_revision' => 'Registro de captura Darwin Core pendiente de revisión curatorial.',
                     'created_at' => now(), 'updated_at' => now(), ...$valores,

@@ -15,6 +15,10 @@ const php = process.argv[2];
 const planPath = process.argv[3];
 const planBrowser = planPath ? JSON.parse(readFileSync(planPath, 'utf8')).navegador : null;
 const seleccionados = planBrowser?.ejecutar || browserEvidence.ids;
+// NEON QA ADMIN INICIO
+const neonAdministracion = seleccionados.length === 1 && seleccionados[0] === 'administracion-importacion'
+    ? await import('./portal-neon-administracion.mjs') : null;
+// NEON QA ADMIN FIN
 assert.ok(seleccionados.length > 0 && seleccionados.every(id => browserEvidence.ids.includes(id)), 'Selección de casos del navegador inválida.');
 const estadoCasos = planBrowser ? browserEvidence.prepareRun(proyecto, planBrowser) : null;
 assert.ok(php, 'Falta el ejecutable PHP del paquete.');
@@ -67,6 +71,13 @@ async function esperar(calcular, descripcion, limite = 60000) {
     throw new Error(`No se completó: ${descripcion}`);
 }
 function abrirProceso(programa, args, opciones = {}) {
+    // NEON QA ADMIN INICIO
+    if (neonAdministracion && programa === php && args[0] === '-S') {
+        // El servidor integrado de Windows impone 30 s; usar el mismo
+        // límite PHP de la VM. Los plazos del recorrido siguen vigentes.
+        args = ['-d', 'max_execution_time=120', ...args];
+    }
+    // NEON QA ADMIN FIN
     const proceso = spawn(programa, args, {stdio: 'ignore', windowsHide: true, ...opciones});
     let error;
     proceso.on('error', fallo => { error = fallo; });
@@ -114,11 +125,26 @@ try {
         LARAVEL_STORAGE_PATH: almacenamiento, VIEW_COMPILED_PATH: path.join(almacenamiento, 'framework/views'),
         HUBDIGITAL_TEMPORARY_DIRECTORY: path.join(almacenamiento, 'document-processing'),
         APP_CONFIG_CACHE: path.join(temporal, 'config.php'), APP_ROUTES_CACHE: path.join(temporal, 'routes.php')};
+    // NEON QA ADMIN INICIO
+    if (neonAdministracion) {
+        entorno.SESSION_COOKIE = 'hubdigital_browser_' + token;
+        // Laravel solo reconoce / y \ como prefijos absolutos de caché.
+        // En Windows, resolver desde el proyecto evita anteponerlo a C:\.
+        entorno.APP_CONFIG_CACHE = path.relative(proyecto, entorno.APP_CONFIG_CACHE);
+        entorno.APP_ROUTES_CACHE = path.relative(proyecto, entorno.APP_ROUTES_CACHE);
+        for (const tarea of ['config:cache', 'route:cache']) {
+            execFileSync(php, ['artisan', tarea, '--no-interaction'], {cwd:proyecto, env:entorno, timeout:60000, stdio:'inherit'});
+        }
+    }
+    // NEON QA ADMIN FIN
     // Produccion prepara las vistas con optimize antes de servir peticiones.
     // Compilarlas en este storage aislado evita gastar el limite HTTP de PHP
     // en el primer arranque frio de Blade en Windows. No cambia los plazos.
     execFileSync(php, ['artisan', 'view:cache', '--no-interaction'], {cwd: proyecto, env: entorno, stdio: 'pipe'});
     const respuestaFixture = execFileSync(php, ['tests/Browser/portal-fixture.php', 'crear', token, fixture], {cwd: proyecto, env: entorno, encoding: 'utf8'});
+    // NEON QA ADMIN INICIO
+    neonAdministracion?.prepararMatrizAdministracion(php, proyecto, entorno);
+    // NEON QA ADMIN FIN
     let datos;
     try { datos = JSON.parse(respuestaFixture); }
     catch (error) { throw new Error(`No se pudo preparar el fixture del navegador: ${respuestaFixture}`, {cause: error}); }
@@ -127,6 +153,15 @@ try {
     const motorETE = abrirProceso(pythonETE, [path.join(proyecto, 'resources/python/portal_ete/server.py'), '--port', String(puertoETE)], {cwd: proyecto, env: {...entorno, QT_QPA_PLATFORM: 'offscreen'}});
     await esperar(async () => { motorETE.comprobar(); try { return (await obtenerLocal(`http://127.0.0.1:${puertoETE}/health`)).ok; } catch {return false;} }, 'Arranque de ETE');
     const servidor = abrirProceso(php, ['-S', `127.0.0.1:${puertoPhp}`, path.join(proyecto, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], {cwd: path.join(proyecto, 'public'), env: entorno});
+    // NEON QA ADMIN INICIO
+    if (neonAdministracion) {
+        await esperar(async () => {
+            servidor.comprobar();
+            try { return (await obtenerLocal(origen+'/login')).ok; } catch { return false; }
+        }, 'arranque del servidor aislado para Neon QA');
+        conexion = await neonAdministracion.iniciarNeonAdministracion(origen, excepciones, erroresLivewire, peticiones);
+    } else {
+    // NEON QA ADMIN FIN
     const chrome = abrirProceso(navegador, ['--headless=new', `--remote-debugging-port=${puertoChrome}`, '--remote-debugging-address=127.0.0.1', `--user-data-dir=${path.join(temporal, 'perfil')}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank']);
     procesoNavegador = chrome.proceso;
     const objetivos = await esperar(async () => {
@@ -139,6 +174,9 @@ try {
         } catch { return null; }
     }, 'arranque del navegador');
     conexion = await cdp(objetivos.webSocketDebuggerUrl);
+    // NEON QA ADMIN INICIO
+    }
+    // NEON QA ADMIN FIN
     let totalPeticiones = 0;
     const detallesPeticiones = new Map();
     conexion.on('Runtime.exceptionThrown', ({exceptionDetails}) => excepciones.push(exceptionDetails.exception?.description || exceptionDetails.text));
@@ -185,6 +223,11 @@ try {
     const sinErrores = () => { assert.deepEqual(excepciones, [], 'Una excepción JavaScript interrumpió el recorrido.'); assert.deepEqual(erroresLivewire, [], 'Una actualización Livewire falló.'); };
     const reposo = async () => {
         await demora(300);
+        // NEON QA ADMIN INICIO
+        if (neonAdministracion) {
+            await esperar(async () => { await evaluar('true'); return peticiones.size === 0; }, 'peticiones Livewire de Neon QA');
+        }
+        // NEON QA ADMIN FIN
         // La respuesta de red puede terminar antes de que Livewire retire inert
         // o concluya el ajuste de filas iniciado por ResizeObserver. La cámara
         // también debe terminar antes de comprobar el rango que quedó visible.
@@ -1024,12 +1067,22 @@ try {
     }
     async function caso_administracion_importacion() {
     // CASO administracion-importacion INICIO
-    await conexion.send('Page.navigate',{url:origen+'/prestamos/curador/matriz-columnas'});
-    await visible("document.querySelector('[data-matriz-config] .hub-ig tbody tr')");await reposo();
-    assert.equal(await evaluar("document.querySelectorAll('[data-matriz-config] .hub-ig tbody tr').length"),106);
-    await evaluar("(() => {const i=document.querySelector('input[placeholder=\"Nombre, cabecera, alias o requisito\"]');i.value='dateDetermined';i.dispatchEvent(new Event('input',{bubbles:true}));})()");
-    await visible("document.querySelectorAll('[data-matriz-config] .hub-ig tbody tr').length===1");await reposo();
-    await evaluar("document.querySelector('[data-matriz-config] .hub-ig tbody button').click()");
+    await conexion.send('Page.navigate',{url:origen+'/administracion/matrices?tabla=matriz-depositos'});
+    const grillaMatriz = "document.querySelector('[data-registros-catalogos]')";
+    const ventanaMatriz = 'window.Alpine.$data('+grillaMatriz+').datosVentana()';
+    const filasMatriz = grillaMatriz+".querySelectorAll('[data-catalogo-fila=matriz-depositos]')";
+    await visible(grillaMatriz+'?._x_dataStack && '+filasMatriz+'.length');await reposo();
+    const columnasMatriz = new Set();
+    for (let pagina = 1; pagina <= Math.ceil(106 / 15); pagina++) {
+        for (const clave of await evaluar("[..."+filasMatriz+"].map(fila => fila.getAttribute('wire:key'))")) columnasMatriz.add(clave);
+        if ((await evaluar(ventanaMatriz)).paginas === pagina) break;
+        await evaluar("(() => {const scroll="+grillaMatriz+".querySelector('.hub-ig-scroll');scroll.scrollTop=scroll.scrollHeight;scroll.dispatchEvent(new WheelEvent('wheel',{deltaY:160,bubbles:true,cancelable:true}));})()");
+        await visible(ventanaMatriz+'.hasta === '+(pagina+1));await reposo();
+    }
+    assert.equal(columnasMatriz.size,106);
+    await evaluar("(() => {const i="+grillaMatriz+".querySelector('input[type=search]');i.value='dateDetermined';i.dispatchEvent(new Event('input',{bubbles:true}));i.closest('form').requestSubmit();})()");
+    await visible(filasMatriz+".length===1 && "+filasMatriz+"[0].textContent.includes('dateDetermined')");await reposo();
+    await evaluar(filasMatriz+"[0].querySelector('button').click()");
     await visible("Boolean(document.querySelector('[data-matriz-config] dialog[open]'))");await reposo();
     assert.ok(await evaluar("document.querySelector('[data-matriz-config] dialog[open]').contains(document.activeElement)"),'Editar una columna lleva el foco al formulario modal del curador.');
     await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
@@ -1044,9 +1097,14 @@ try {
     assert.ok(await evaluar("Boolean(document.querySelector('[aria-label=\"Historial de matrices\"].hub-ig'))"));
     const matrizConflicto = path.join(temporal, 'matriz-columnas-conflicto.csv');
     writeFileSync(matrizConflicto,'occurrenceID,catalogNumber,catalogNumber\nQA-BROWSER-MATRIZ,CAT-UNO,CAT-DOS\n','utf8');
-    const docMatriz = await conexion.send('DOM.getDocument');
-    const inputMatriz = await conexion.send('DOM.querySelector',{nodeId:docMatriz.root.nodeId,selector:'input[type=file]'});
-    await conexion.send('DOM.setFileInputFiles',{nodeId:inputMatriz.nodeId,files:[matrizConflicto]});await reposo();
+    if (neonAdministracion) {
+        await conexion.subirMatriz(matrizConflicto);
+    } else {
+        const docMatriz = await conexion.send('DOM.getDocument');
+        const inputMatriz = await conexion.send('DOM.querySelector',{nodeId:docMatriz.root.nodeId,selector:'input[type=file]'});
+        await conexion.send('DOM.setFileInputFiles',{nodeId:inputMatriz.nodeId,files:[matrizConflicto]});
+    }
+    await reposo();
     await visible("!([...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').disabled)");
     await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').click()");
     await visible("[...document.querySelectorAll('[role=alert]')].some(e=>e.textContent.includes('Fila 2') && e.textContent.includes('catalogNumber'))");await reposo();

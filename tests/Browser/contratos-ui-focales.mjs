@@ -161,12 +161,15 @@ export async function comprobarUIFocal(caso) {
         const logical=[...sidebar.querySelectorAll('ui-disclosure a')];
         const paths=['/divulgacion','/administracion/contenidos','/prestamos/curador/depositos','/prestamos/receptor/depositos'];
         checks.unique=paths.every(path=>logical.filter(a=>new URL(a.href).pathname===path).length===1);
-        checks.administration=['/administracion/contenidos','/divulgacion/asistente'].every(path=>{const links=logical.filter(a=>new URL(a.href).pathname===path);return links.length===1 && links[0].closest('ui-disclosure')?.textContent.includes('Administración');});
+        checks.administration=['/administracion/catalogos','/administracion/matrices','/administracion/usuarios','/administracion/contenidos'].every(path=>{const links=logical.filter(a=>new URL(a.href).pathname===path);return links.length===1 && links[0].closest('ui-disclosure')?.textContent.includes('Administración');});
         checks.retired=!all('a').some(a=>/\/(?:administracion\/(?:textos-(?:portal|depositos|sistema))|divulgacion\/sincronizar|inventario\/taxonomia\/(?:revision|muestras|[^/]+\/revision|especimenes\/duplicados))$/.test(new URL(a.href).pathname));
         checks.labels=['Revisión documental y actas','Recepción física','Recordatorios de préstamos','Publicación del catálogo','Contenidos y textos'].every(text=>sidebar.textContent.includes(text)) && !sidebar.textContent.includes('Control de calidad');
         const shortcuts=q('nav[aria-label="Accesos principales"]');
         checks.shortcuts=!!shortcuts && ![...shortcuts.querySelectorAll('a')].some(a=>a.textContent.trim()==='Buscar') && [...shortcuts.querySelectorAll('a')].filter(a=>new URL(a.href).pathname==='/inventario/taxonomia/especimenes').length===1;
-        checks.locality=!!all('section[aria-labelledby="coleccion-title"] a').find(a=>a.textContent.includes('Localidades') && new URL(a.href).pathname==='/inventario/taxonomia/localidades');
+        checks.locality=!!all('section[aria-labelledby="coleccion-title"] a').find(a=>{
+            const enlace=new URL(a.href);
+            return a.textContent.includes('Localidades') && enlace.pathname==='/administracion/catalogos' && enlace.searchParams.get('tabla')==='localidades-coleccion';
+        });
         const account=all('[data-flux-sidebar] a').find(a=>a.getAttribute('aria-label')==='Mi cuenta');
         account.click();await wait(()=>q('dialog[open]'));
         checks.account=q('dialog[open]').textContent.includes('Configuración de cuenta');
@@ -427,31 +430,63 @@ export async function comprobarUIFocal(caso) {
         all('dialog[open] button').find(x=>x.textContent.trim()==='Eliminar definitivamente').click();await wait(()=>!q('dialog[open]') && filas().length===0);
         checks.batch=true;checks.selectionCleared=borrar(await abrirAccionesInventario()).disabled;
         checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
+    } else if(caso==='tablas_catalogos') {
+        const selector=()=>q('#selector-tabla-catalogo');
+        const tabla=()=>q('[data-registros-catalogos]');
+        const menu=all('nav[data-flux-sidebar-nav] ui-disclosure a');
+        await wait(()=>selector() && tabla());
+        const entrar=async valor=>{
+            selector().value=valor;
+            selector().dispatchEvent(new Event('change',{bubbles:true}));
+            await wait(()=>q('[data-tabla-catalogo]')?.dataset.tablaCatalogo===valor);
+        };
+        if(selector().value!=='') await entrar('');
+        const etiqueta=selector().getAttribute('aria-labelledby')?.split(/\s+/).map(id=>document.getElementById(id)?.textContent.trim()).join(' ');
+        const opciones=[...selector().options].map(o=>o.value);
+        checks.menu=['catalogos','matrices','usuarios','contenidos'].every(p=>menu.filter(a=>new URL(a.href).pathname==='/administracion/'+p).length===1);
+        checks.selector=etiqueta==='Catálogo' && opciones.includes('') && ['asistente','botones','cargos','columnas','sistema','instituciones','taxones','fuentes-revocacion','grupos-animales','localidades-ecuador','localidades-coleccion','siglas-expedientes','gbif'].every(k=>opciones.includes(k))
+            && !opciones.includes('usuarios') && !opciones.includes('matriz-depositos');
+        const original=tabla();
+        checks.editors=new Set(all('[data-catalogo-fila]').map(fila=>fila.dataset.catalogoFila)).size>1 && all('[data-registros-catalogos]').length===1;
+        await entrar('cargos');
+        checks.navigation=original===tabla() && location.pathname==='/administracion/catalogos'
+            && all('[data-catalogo-fila]').every(fila=>fila.dataset.catalogoFila==='cargos');
+        const fila=q('[data-catalogo-fila="cargos"]');
+        fila.querySelector('button').click();
+        await wait(()=>q('dialog[open] input[wire\\:model="nombre"]'));
+        checks.action=q('dialog[open]').textContent.includes('Editar cargo') && !q('dialog[open] table');
+        all('dialog[open] button').find(b=>b.textContent.trim()==='Cancelar').click();
+        await wait(()=>!q('dialog[open]'));
+        checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='instituciones_unificadas') {
-        await wait(()=>q('[data-directorio-instituciones]'));
-        checks.canonical=location.pathname==='/administracion/instituciones';
-        const canonico='/administracion/instituciones',antiguo='/inventario/taxonomia/entidades-depositantes';
+        await wait(()=>q('[data-registros-catalogos]'));
+        checks.canonical=location.pathname==='/administracion/catalogos' && q('[data-tabla-catalogo]')?.dataset.tablaCatalogo==='instituciones';
+        const canonico='/administracion/catalogos',antiguo='/inventario/taxonomia/entidades-depositantes';
         const enlaces=selector=>all(selector).filter(x=>new URL(x.href).pathname===canonico);
         checks.menu=enlaces('nav[data-flux-sidebar-nav] ui-disclosure a').length===1 && enlaces('nav[data-flux-sidebar-nav] ui-menu a').length===1 && !all('nav[data-flux-sidebar-nav] a').some(x=>new URL(x.href).pathname===antiguo);
+        const abrirNuevo=async()=>{
+            all('button').find(x=>x.textContent.trim()==='Nuevo registro').click();
+            await wait(()=>q('dialog[open]') && model('nombre'));
+        };
         const nombre='PRUEBA QA LOCAL INSTITUCION '+Date.now(),contacto='Contacto ficticio QA; sin actividad real';
-        all('button').find(x=>x.getAttribute('wire:click')==='nueva').click();await wait(()=>q('dialog[open]') && model('nombre'));
+        await abrirNuevo();
         checks.labels=all('dialog[open] input,dialog[open] select').filter(x=>x.type!=='hidden').every(x=>x.labels?.length>0 || !!x.getAttribute('aria-label') || x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim()));
         fillModel('nombre',nombre);fillModel('contacto',contacto);
         all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='guardar').click();
-        const filas=()=>all('[data-institucion-id]').filter(x=>x.textContent.includes(nombre));
+        const filas=()=>all('[data-catalogo-fila="instituciones"]').filter(x=>x.textContent.includes(nombre));
         await wait(()=>!q('dialog[open]') && filas().length===1);
         checks.saved=filas()[0].textContent.includes(contacto) && (filas()[0].textContent.match(/Disponible/g)||[]).length===2;
-        checks.acta=!!filas()[0].querySelector('button[wire\\:click^="generarActa"]');
-        filas()[0].querySelector('button[wire\\:click^="editarDirectorio"]').click();await wait(()=>q('dialog[open]') && model('contacto')?.value===contacto);
+        checks.acta=[...filas()[0].querySelectorAll('button')].some(b=>b.textContent.trim()==='Generar acta');
+        [...filas()[0].querySelectorAll('button')].find(b=>b.textContent.trim()==='Editar').click();await wait(()=>q('dialog[open]') && model('contacto')?.value===contacto);
         const coleccion=q('dialog[open] ui-checkbox[wire\\:model="usarEnColeccion"]');
         const conservaReferencia=!!coleccion && (coleccion.hasAttribute('disabled') || coleccion.getAttribute('aria-disabled')==='true');
         fillModel('contacto',contacto+'; edición verificada');
         all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='guardar').click();
         await wait(()=>!q('dialog[open]') && filas()[0]?.textContent.includes('edición verificada'));checks.edited=conservaReferencia;
-        filas()[0].querySelector('button[wire\\:click^="cambiarEstado"]').click();
+        [...filas()[0].querySelectorAll('button')].find(b=>b.textContent.trim()==='Desactivar').click();
         await wait(()=>filas()[0]?.textContent.includes('Desactivado'));
-        checks.disabled=filas()[0].textContent.includes('Disponible') && !!filas()[0].querySelector('button[wire\\:click^="generarActa"]');
-        all('button').find(x=>x.getAttribute('wire:click')==='nueva').click();await wait(()=>q('dialog[open]') && model('nombre'));
+        checks.disabled=filas()[0].textContent.includes('Disponible') && [...filas()[0].querySelectorAll('button')].some(b=>b.textContent.trim()==='Generar acta');
+        await abrirNuevo();
         fillModel('nombre',nombre.toLowerCase());
         all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='guardar').click();
         await wait(()=>model('nombre')?.getAttribute('aria-invalid')==='true');
@@ -492,27 +527,29 @@ export async function comprobarUIFocal(caso) {
         metrics={columnas:cuantas,archivo:nombre,soloValidacion:true};
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='catalogo_taxones') {
-        const campoBusqueda=()=>all('input').find(x=>x.getAttribute('wire:model.live.debounce.300ms')==='busqueda');
-        const buscar=valor=>{const el=campoBusqueda();el.value=valor;el.dispatchEvent(new Event('input',{bubbles:true}));};
+        const campoBusqueda=()=>q('[data-registros-catalogos] input[wire\\:model="busqueda"]');
+        const buscar=valor=>{const el=campoBusqueda();el.value=valor;el.dispatchEvent(new Event('input',{bubbles:true}));el.closest('form').requestSubmit();};
         const nombre='Dolichoderus qaprueba'+Date.now().toString().replace(/\d/g,n=>'abcdefghij'[Number(n)]);
-        all('button').find(x=>x.textContent.trim()==='Nuevo taxón').click();await wait(()=>q('dialog[open]'));
+        all('button').find(x=>x.textContent.trim()==='Nuevo registro').click();
+        await wait(()=>model('padreId','select') && q('dialog[open]'));
         const padre=model('padreId','select'),opcion=[...padre.options].find(x=>x.textContent==='Dolichoderus (genero)');
         checks.parents=!!opcion && padre.options.length>2;
         padre.value=opcion.value;padre.dispatchEvent(new Event('change',{bubbles:true}));
         const rango=model('rango','select');rango.value='especie';rango.dispatchEvent(new Event('change',{bubbles:true}));
         fillModel('nombreCientifico',nombre);fillModel('autor','PRUEBA QA - SIN ESPECIE REAL');
         all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='registrarTaxon').click();
-        await wait(()=>!q('dialog[open]') && campoBusqueda()?.value===nombre);
-        const filas=()=>all('[data-taxon-id]').filter(x=>x.getClientRects().length && x.textContent.includes(nombre));await wait(()=>filas().length===1);
+        await wait(()=>!q('dialog[open]'));
+        buscar(nombre);
+        const filas=()=>all('[data-catalogo-fila="taxones"]').filter(x=>x.getClientRects().length && x.textContent.includes(nombre));await wait(()=>filas().length===1);
         checks.created=true;checks.search=filas().length===1;
-        filas()[0].querySelector('button[wire\\:click^="abrirEditModal"]').click();await wait(()=>q('dialog[open]') && model('editAutor'));
+        [...filas()[0].querySelectorAll('button')].find(b=>b.textContent.trim()==='Editar').click();await wait(()=>q('dialog[open]') && model('editAutor'));
         fillModel('editAutor','PRUEBA QA - EDICION VERIFICADA');
         all('dialog[open] button').find(x=>x.getAttribute('wire:click')==='actualizarTaxon').click();
         await wait(()=>!q('dialog[open]') && filas()[0]?.textContent.includes('EDICION VERIFICADA'));checks.edited=true;
         // El MCP atiende la confirmación nativa de este taxón sintético.
-        filas()[0].querySelector('button[wire\\:click^="desactivarTaxon"]').click();
+        [...filas()[0].querySelectorAll('button')].find(b=>b.textContent.trim()==='Desactivar').click();
         await wait(()=>filas()[0]?.textContent.includes('Inactivo'));checks.inactive=true;
-        buscar('SIN_COINCIDENCIA_QA');await wait(()=>document.body.textContent.includes('No hay taxones que coincidan con la búsqueda.'));checks.empty=true;
+        buscar('SIN_COINCIDENCIA_QA');await wait(()=>document.body.textContent.includes('No hay registros para esta búsqueda.'));checks.empty=true;
         buscar(nombre);await wait(()=>filas().length===1);
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         metrics={nombre};
@@ -536,7 +573,7 @@ export async function comprobarUIFocal(caso) {
             && !model('colector').value && botonLista('taxonId').textContent.includes('Selecciona un taxón');
         checks.lovs=['taxonId','localidad','localidad2','localidad3','country','stateProvince','municipality','localityName']
             .every(campo=>botonLista(campo)?.matches('button[role="combobox"]'));
-        const ayuda=await comprobarAyudas(26);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
+        const ayuda=await comprobarAyudas(23);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
         const popup=campo=>document.getElementById('lov-'+campo+'-dialogo');
         botonLista('taxonId').click();
         await wait(()=>popup('taxonId')?.querySelector('button[role="option"]:enabled'));
@@ -552,7 +589,7 @@ export async function comprobarUIFocal(caso) {
         const marca='QA-UI-CATALOGO-'+Date.now();
         await usarTexto('localidad3',marca+' sector');
         checks.freeText=botonLista('localidad3').textContent.includes(marca+' sector');
-        fillModel('occurrenceId',marca);fillModel('fechaColecta','2026-11-10');fillModel('colector','PRUEBA QA - Colector ficticio');
+        fillModel('fechaColecta','2026-11-10');fillModel('colector','PRUEBA QA - Colector ficticio');
         fillModel('decimalLatitude','91');fillModel('decimalLongitude','-78.47');fillModel('individualCount','-1');
         const registrar=()=>alta().querySelector('button[wire\\:click="registrarEspecimen"]');
         registrar().click();await wait(()=>model('decimalLatitude')?.getAttribute('aria-invalid')==='true' && model('individualCount')?.getAttribute('aria-invalid')==='true');
@@ -751,9 +788,9 @@ export async function comprobarUIFocal(caso) {
         await wait(()=>q('#finalidad-actividad'));
         const purpose=q('#finalidad-actividad');
         purpose.value='Consultoría';purpose.dispatchEvent(new Event('change',{bubbles:true}));
-        await wait(()=>q('[data-situacion="Sin permisos del MAE"]')?.disabled);
+        await wait(()=>!q('[data-situacion]') && document.body.textContent.includes('La consultoría requiere permisos'));
         checks.purpose=[...purpose.options].some(x=>x.value==='Investigación') && [...purpose.options].some(x=>x.value==='Consultoría');
-        checks.policy=q('[data-situacion="Sin permisos del MAE"]').disabled;
+        checks.policy=!q('[data-situacion]') && document.body.textContent.includes('La consultoría requiere permisos de recolección y movilización.');
         checks.required=purpose.required && q('#lov-localidadOrigenCodigo-boton')?.getAttribute('aria-required')==='true';
         q('#lov-localidadOrigenCodigo-boton').click();await wait(()=>q('#lov-localidadOrigenCodigo-dialogo[open]'));
         const search=q('#lov-localidadOrigenCodigo-buscar');search.value='QA ARQ INEC';search.dispatchEvent(new Event('input',{bubbles:true}));
@@ -763,7 +800,6 @@ export async function comprobarUIFocal(caso) {
         await frame();
         checks.inec=q('#localidad-recoleccion').value.startsWith('QA-ARQ-UI') && q('#lov-localidadOrigenCodigo-valor').textContent.includes('QA ARQ INEC');
         checks.focus=document.activeElement?.id==='lov-localidadOrigenCodigo-boton';
-        q('[data-situacion="Posee permisos del MAE"]').click();await wait(()=>q('[data-situacion="Posee permisos del MAE"]')?.getAttribute('aria-pressed')==='true');
         q('[data-origen-continuar]').click();await wait(()=>!q('#finalidad-actividad') && document.body.textContent.includes('Copia de la autorización'));
         checks.saved=true;
     } else if(caso==='depositos_rechazo') {

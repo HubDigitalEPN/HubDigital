@@ -1,5 +1,6 @@
-<div class="space-y-5 p-4 sm:p-6" data-matriz-config x-data
+<div class="space-y-5 p-4 sm:p-6" data-matriz-config x-data @if($soloEditorCatalogo) wire:init="iniciarEditorCatalogo" @endif
     x-effect="if ($wire.editando) $nextTick(() => requestAnimationFrame(() => document.getElementById($wire.campoAnterior === null ? 'matriz-campo-dwc' : 'matriz-cabecera-excel')?.focus({ preventScroll: true })))">
+    @unless($soloEditorCatalogo)
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div><flux:heading size="xl" level="1">Columnas de la matriz de depósito</flux:heading></div>
         <flux:button wire:click="editar" variant="primary" icon="plus">Nueva columna</flux:button>
@@ -18,6 +19,7 @@
             </table>
         </div>
     </x-grid-frame>
+    @endunless
     <flux:modal name="matriz-columna" wire:model="editando" class="w-full max-w-2xl">
         <form wire:submit="guardar" class="space-y-4">
             <flux:heading size="lg">{{ $campoAnterior === null ? 'Nueva columna' : 'Editar columna' }}</flux:heading>
@@ -28,6 +30,7 @@
                 <flux:select wire:model="columna.formato" label="Formato"><option value="texto">Texto o número</option><option value="fecha">Fecha</option></flux:select>
             </div>
             <flux:textarea wire:model="columna.descripcion" label="Descripción" rows="3" />
+            <flux:checkbox wire:model="columna.plantilla_depositante" label="Incluir en la plantilla Excel del depositante" />
             <fieldset class="grid gap-4 sm:grid-cols-2"><legend class="mb-2 text-sm font-semibold">Excepción al requisito obligatorio (opcional)</legend><flux:input wire:model="columna.excepcion_campo" label="Campo de la condición" /><flux:input wire:model="columna.excepcion_valor" label="No exigir cuando sea igual a" /></fieldset>
             <div class="flex justify-end gap-3"><flux:button type="button" wire:click="$set('editando', false)">Cancelar</flux:button><flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="guardar">Guardar columna</flux:button></div>
         </form>

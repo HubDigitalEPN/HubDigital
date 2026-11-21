@@ -86,7 +86,7 @@ final class AyudaContextualPortal
             ]);
         }
         if (preg_match('/como.*filtr|pasos.*filtr/', $normal) && preg_match('/provincia/', $normal) && preg_match('/metodo/', $normal)) {
-            return $salida('Abre Filtros de investigación y usa Búsqueda universal: escribe la provincia y el código o texto del método, pulsa la lupa y luego Buscar. Selecciona un ejemplar o aplica todos los resultados. Las palabras se combinan y la selección actualiza mapa, árbol, tarjetas y registros. El resumen permite retirar los criterios; cambiar de vista conserva la selección.', 'portal.filtros', [
+            return $salida('Abre Filtros de investigación y usa Búsqueda universal: escribe la provincia y el código o texto del método y pulsa la lupa. Selecciona un ejemplar o aplica todos los resultados desde el panel. Las palabras se combinan y la selección actualiza mapa, árbol, tarjetas y registros. El resumen permite retirar los criterios; cambiar de vista conserva la selección.', 'portal.filtros', [
                 ['label' => 'Abrir selección aplicada', 'url' => $enlace('registros')],
             ]);
         }

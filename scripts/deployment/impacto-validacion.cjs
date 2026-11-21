@@ -79,6 +79,7 @@ function selectPlan({files, baseline, runtime, root, head, environment, dependen
         // El cuerpo DOM nuevo tiene contratos MCP propios, exigidos de nuevo
         // por refreshRuntimePlan/assertCoverage antes de acreditar el plan.
         if (f === 'tests/Browser/contratos-ui-focales.mjs' && Object.hasOwn(focalUI.owner, f)) return false;
+        if (f === 'tests/Browser/portal-neon-administracion.mjs') return false;
         if (/\.md$|\.(json|sh|sh\.template)$/.test(f) || java && f.startsWith('tools/pdf-signature/') || pdf && f === 'deploy/oracle/scripts/verify-deposit-pdf.php') return false;
         if (selectedTests.has(f) || (fileDependencies[f] || []).some(test => selectedTests.has(test))) return false;
         if (frontend.includes(projectOf(f)) && /(^|\/)resources\//.test(f)) return false;
@@ -270,6 +271,10 @@ function browserScope({root, files, changes, entries = {}, baseline}) {
         // exactas; no convierten los nueve recorridos previos en ejecutados.
         if (fs.existsSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs')) && Object.hasOwn(focalUI.owner,file)) continue;
         if (!/^(resources\/(js|css)\/|Modules\/[^/]+\/resources\/|public\/images\/|tests\/Browser\/)|PortalCatalogo\.php$/.test(file)) continue;
+        if (file === 'tests/Browser/portal-neon-administracion.mjs') {
+            selected.add('administracion-importacion');
+            continue;
+        }
         if (file === 'tests/Browser/portal-livewire.mjs') {
             try {
                 if (!/^[a-f0-9]{40}$/.test(baseline?.head || '')) throw new Error('Falta el commit de la base aprobada.');
@@ -278,6 +283,7 @@ function browserScope({root, files, changes, entries = {}, baseline}) {
                 const before = browserCases.runnerParts(original.stdout.toString('utf8').replaceAll('\r\n', '\n'));
                 const after = browserCases.runnerParts(fs.readFileSync(path.join(root, file), 'utf8').replaceAll('\r\n', '\n'));
                 if (before.common !== after.common) throw new Error('Cambió la preparación compartida del navegador.');
+                if (before.adminTransport !== after.adminTransport) selected.add('administracion-importacion');
                 for (const id of browserCases.ids) if (before.bodies[id] !== after.bodies[id]) selected.add(id);
             } catch { pending.push(file); }
             continue;

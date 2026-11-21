@@ -21,5 +21,7 @@ final readonly class IngresarLoteDepositoInput
         public string $estadoCustodia,
         public array $filas,
         public ?string $entidadDepositanteId = null,
+        public ?string $permisoRecoleccion = null,
+        public ?string $permisoMovilizacion = null,
     ) {}
 }

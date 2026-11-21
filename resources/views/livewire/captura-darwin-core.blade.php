@@ -8,7 +8,7 @@
             @if($mensaje)<p role="status" class="mb-3 text-bio-green">{{ $mensaje }}</p>@endif
             @if($datos !== [])
                 <form wire:submit="guardar" class="space-y-4"><h2 class="font-semibold">{{ $id ? 'Editar datos del registro' : 'Nuevo registro' }}</h2><div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                @foreach($campos as $clave => $campo)<flux:input wire:model="datos.{{ $clave }}" :label="$campo['etiqueta']" :type="$clave === 'fechaColecta' ? 'date' : 'text'" />@endforeach
+                @foreach($campos as $clave => $campo)<flux:input wire:model="datos.{{ $clave }}" :label="$campo['etiqueta']" :type="$clave === 'fechaColecta' ? 'date' : 'text'" :required="!$id && $campo['obligatorio']" />@endforeach
                 </div><flux:button type="submit" variant="primary" wire:loading.attr="disabled">Guardar datos</flux:button></form>
             @else<p>Selecciona un registro o crea uno nuevo.</p>@endif
         </div>

@@ -17,7 +17,7 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDep
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ActualizacionCatalogo;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Jobs\ProcesarActualizacionCatalogo;
 
-#[Layout('layouts.portal', params: ['title' => 'Importar y actualizar catálogo'])]
+#[Layout('layouts.app', params: ['title' => 'Importar y actualizar catálogo'])]
 class ActualizarCatalogoIndex extends Component
 {
     use WithFileUploads;

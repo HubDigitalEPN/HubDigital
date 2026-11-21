@@ -1,4 +1,4 @@
-@props(['campo', 'label', 'opciones' => [], 'valor' => '', 'placeholder' => 'Selecciona una opción', 'required' => true, 'disabled' => false, 'accion' => null, 'busquedaRemota' => null, 'contexto' => '', 'inputId' => null, 'busquedaPorCampo' => false, 'admiteTexto' => false, 'maxBusqueda' => 120, 'controlId' => null])
+@props(['campo', 'label', 'opciones' => [], 'valor' => '', 'placeholder' => 'Selecciona una opción', 'required' => true, 'disabled' => false, 'accion' => null, 'busquedaRemota' => null, 'contexto' => '', 'inputId' => null, 'busquedaPorCampo' => false, 'admiteTexto' => false, 'accionAlta' => null, 'maxBusqueda' => 120, 'controlId' => null])
 @php
     $valores = [];
     foreach ($opciones as $claveOpcion => $etiqueta) {
@@ -9,7 +9,7 @@
     $etiquetaActual = collect($valores)->firstWhere('valor', $valor)['etiqueta'] ?? ($admiteTexto && $valor !== '' ? $valor : $placeholder);
 @endphp
 <div data-flux-field class="hub-lov-field" wire:key="{{ $idLov }}-{{ substr(hash('sha256', json_encode([$valores, $contexto])), 0, 12) }}-{{ $disabled ? 'bloqueado' : 'editable' }}"
-    x-data="{{ $accion || $busquedaRemota ? 'hubDigitalOriginLov' : 'hubDigitalLov' }}({campo: @js($campo), opciones: @js($valores), placeholder: @js($placeholder), disabled: @js($disabled), accion: @js($accion), busquedaRemota: @js($busquedaRemota), busquedaPorCampo: @js($busquedaPorCampo), admiteTexto: @js($admiteTexto), maxBusqueda: @js($maxBusqueda), permiteVaciar: @js($busquedaPorCampo && ! $required)})"
+    x-data="{{ $accion || $busquedaRemota ? 'hubDigitalOriginLov' : 'hubDigitalLov' }}({campo: @js($campo), opciones: @js($valores), placeholder: @js($placeholder), disabled: @js($disabled), accion: @js($accion), busquedaRemota: @js($busquedaRemota), busquedaPorCampo: @js($busquedaPorCampo), admiteTexto: @js($admiteTexto), accionAlta: @js($accionAlta), maxBusqueda: @js($maxBusqueda), permiteVaciar: @js($busquedaPorCampo && ! $required)})"
     x-bind:class="{'hub-lov-field--empty': !valor}"
     x-on:keydown.escape.window="if (abierto) cerrar()">
     <label for="{{ $idBoton }}" id="{{ $idLov }}-label" class="hub-lov-label" title="{{ $label }}">{{ $label }}</label>
@@ -59,6 +59,8 @@
                 @endif
                 @if($admiteTexto)
                     <button type="button" x-show="puedeUsarTexto()" x-on:click="escoger(busqueda.trim(), true)">Usar texto ingresado</button>
+                @elseif($accionAlta)
+                    <button type="button" x-show="puedeUsarTexto()" x-on:click="escoger(busqueda.trim(), true)">Registrar localidad</button>
                 @endif
                 <button type="button" x-on:click="mostrarMas()" x-bind:disabled="{{ $busquedaRemota ? 'cargando || !hayMas' : 'visibles.length >= filtradas.length' }}">Mostrar más</button>
             </div>

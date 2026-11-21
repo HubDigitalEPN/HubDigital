@@ -45,6 +45,7 @@ function crearContenidoParaColeccion(bool $validado = true): Solicitud
 
 test('el ingreso usa las cantidades e identificaciones constatadas conserva metadatos e idempotencia', function (): void {
     $s = crearContenidoParaColeccion();
+    $s->forceFill(['nro_permiso_recoleccion' => 'PERMISO-QA-REC-01', 'nro_permiso_movilizacion' => 'PERMISO-QA-MOV-02'])->save();
     $puerto = app(IngresoColeccionPort::class);
     expect($puerto->ingresarLote($s->id, 'Temporal')->especimenesCreados)->toBe(2);
     $filas = DB::table('taxonomia.especimenes')->where('acta_recepcion', $s->numero)->get();
@@ -54,6 +55,11 @@ test('el ingreso usa las cantidades e identificaciones constatadas conserva meta
         ->and($asociada->specimen_notes)->toContain('Nota original conservada.', 'SIN MATERIAL REAL');
     $adicional = $filas->firstWhere('taxon_verbatim', 'Camponotus sp. QA');
     expect($adicional->decimal_latitude)->toBeNull()->and($adicional->estado_revision)->toBe('pendiente');
+    foreach ([$asociada, $adicional] as $especimen) {
+        expect($especimen->research_permit)->toBe('PERMISO-QA-REC-01')
+            ->and($especimen->transport_permit)->toBe('PERMISO-QA-MOV-02')
+            ->and($especimen->cardex_liquid_collection_code)->toBe($s->numero);
+    }
     $repetido = $puerto->ingresarLote($s->id, 'Temporal');
     expect($repetido->especimenesCreados)->toBe(0)->and($repetido->omitidosPorDuplicado)->toBe(2)
         ->and($puerto->resumenDeLote($s->id)->especimenesEnColeccion)->toBe(2);

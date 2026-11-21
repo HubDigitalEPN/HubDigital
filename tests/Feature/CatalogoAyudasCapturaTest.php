@@ -23,7 +23,7 @@ test('cada campo del alta tiene nombre accesible ayuda con ejemplo y enlace a su
     @$doc->loadHTML('<?xml encoding="UTF-8">'.$ui->html());
     $xpath = new DOMXPath($doc);
     $campos = $xpath->query('//*[@data-catalogo-campo]');
-    expect($campos->length)->toBe(26);
+    expect($campos->length)->toBe(23);
     expect($ui->snapshot['data'])->not->toHaveKeys(['taxones', 'entidades']);
     foreach ($campos as $campo) {
         $modelo = $campo->getAttribute('data-catalogo-campo');

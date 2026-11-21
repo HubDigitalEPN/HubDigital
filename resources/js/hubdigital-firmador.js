@@ -5,6 +5,8 @@ window.hubDigitalFirmador = (config) => ({
     progreso: '',
     error: '',
     metodo: 'archivo',
+    nombreCertificado: '',
+    claveVisible: false,
     tokenAlias: '',
     tokenCertificados: [],
     peticionId: null,
@@ -199,11 +201,13 @@ window.hubDigitalFirmador = (config) => ({
 
     limpiarClave() {
         if (this.$refs.clave) this.$refs.clave.value = '';
+        this.claveVisible = false;
     },
 
     limpiarCamposCredenciales() {
         this.limpiarClave();
         if (this.$refs.certificado) this.$refs.certificado.value = '';
+        this.nombreCertificado = '';
     },
 
     mensajeSeguro(error) {

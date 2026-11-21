@@ -25,7 +25,7 @@ test('el menú tiene un único acceso a cada función reorganizada y distingue l
         expect($xpath->query('//nav[@data-flux-sidebar-nav]//ui-disclosure//a[@href="'.route($ruta).'"]')->length)->toBe(1);
     }
     $menu = $xpath->query('//nav[@data-flux-sidebar-nav]')->item(0)->textContent;
-    foreach(['admin.contenidos','divulgacion.asistente'] as $nombre){
+    foreach(['admin.catalogos','admin.matrices','admin.usuarios','admin.contenidos'] as $nombre){
         $enlace=$xpath->query('//nav[@data-flux-sidebar-nav]//ui-disclosure//a[@href="'.route($nombre).'"]')->item(0);
         expect($enlace)->not->toBeNull();
         $grupo=$enlace;while($grupo && $grupo->nodeName!=='ui-disclosure')$grupo=$grupo->parentNode;
@@ -34,7 +34,10 @@ test('el menú tiene un único acceso a cada función reorganizada y distingue l
     expect($menu)->toContain('Publicación del catálogo', 'Contenidos y textos', 'Revisión documental y actas', 'Recepción física', 'Recordatorios de préstamos')
         ->not->toContain('Control de calidad', 'Centro de revisión', 'Centro de administración', 'Textos de todas las pantallas', 'Divulgar espécimenes');
     expect($xpath->query('//nav[@aria-label="Accesos principales"]//a[text()[contains(., "Buscar")]]')->length)->toBe(0);
-    expect($xpath->query('//section[@aria-labelledby="coleccion-title"]//a[@href="'.route('inventario.taxonomia.localidades').'"]')->length)->toBe(1);
+    expect($xpath->query('//section[@aria-labelledby="coleccion-title"]//a[@href="'.route('admin.catalogos', ['tabla' => 'localidades-coleccion']).'"]')->length)->toBe(1);
+    foreach (['admin.instituciones', 'admin.cargos', 'admin.grupos-animales', 'admin.fuentes-revocacion', 'admin.localidades', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades'] as $rutaAnterior) {
+        expect($xpath->query('//nav[@data-flux-sidebar-nav]//a[@href="'.route($rutaAnterior).'"]')->length)->toBe(0);
+    }
 })->with(['curador', 'administrador']);
 
 test('las rutas retiradas no conservan pantallas ni redirecciones', function (): void {

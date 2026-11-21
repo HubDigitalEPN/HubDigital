@@ -187,7 +187,8 @@ test('el paso de carga sustituye el formulario por Excel y conserva la matriz an
     expect($modelo->fresh()->extraccion_metadatos['matriz_fuente'])->toBe('excel');
     $componente->set('archivoMatriz', $subida([['scientificName' => 'Atta cephalotes']]))
         ->assertDispatched('show-toast', fn ($evento, $datos) => $datos['variant'] === 'error' && str_contains($datos['message'], 'obligatorios'))
-        ->assertDontSee('Campos obligatorios sin completar')->assertDontSee('Carga rechazada')
+        ->assertSee('Campos obligatorios sin completar')->assertDontSee('Carga rechazada')
+        ->assertSeeHtml('<p role="alert" class="text-sm text-error">Campos obligatorios sin completar')
         ->call('guardarPasoCinco')->assertSet('paso', 7)->assertSet('matrizId', $matriz);
     expect($componente->get('errorMatriz'))->not->toBe('');
     expect(RegistroEspecimenEloquentModel::where('matriz_id', $matriz)->count())->toBe(1);

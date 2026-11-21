@@ -10,9 +10,10 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort;
 
-#[Layout('layouts.portal', params: ['title' => 'Columnas de la matriz de depósito'])]
+#[Layout('layouts.app', params: ['title' => 'Columnas de la matriz de depósito'])]
 final class ConfiguracionMatrizDeposito extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     public string $busqueda = '';
     public bool $editando = false;
     #[Locked]
@@ -33,7 +34,8 @@ final class ConfiguracionMatrizDeposito extends Component
         abort_if($campo !== null && $existente === null, 404);
         $this->campoAnterior = $campo;
         $this->columna = $existente ?? ['campo' => '', 'cabecera' => '', 'alias' => [], 'requisito' => 'opcional',
-            'descripcion' => '', 'formato' => 'texto', 'excepcion_campo' => '', 'excepcion_valor' => ''];
+            'descripcion' => '', 'formato' => 'texto', 'excepcion_campo' => '', 'excepcion_valor' => '', 'plantilla_depositante' => true];
+        $this->columna['plantilla_depositante'] ??= true;
         $this->aliasTexto = implode(', ', $this->columna['alias']);
         $this->resetValidation();
         $this->editando = true;
@@ -50,10 +52,11 @@ final class ConfiguracionMatrizDeposito extends Component
             'columna.descripcion' => ['nullable', 'string', 'max:4000'],
             'columna.excepcion_campo' => ['nullable', 'string', 'max:160'],
             'columna.excepcion_valor' => ['nullable', 'string', 'max:160'],
+            'columna.plantilla_depositante' => ['required', 'boolean'],
             'aliasTexto' => ['nullable', 'string', 'max:2000'],
         ]);
         $columna = array_map(static fn ($v) => is_string($v) ? trim($v) : $v,
-            array_intersect_key($this->columna, array_flip(['campo', 'cabecera', 'requisito', 'descripcion', 'formato', 'excepcion_campo', 'excepcion_valor'])));
+            array_intersect_key($this->columna, array_flip(['campo', 'cabecera', 'requisito', 'descripcion', 'formato', 'excepcion_campo', 'excepcion_valor', 'plantilla_depositante'])));
         if ($this->campoAnterior !== null) $columna['campo'] = $this->campoAnterior;
         $columna['alias'] = array_values(array_unique(array_filter(array_map('trim', explode(',', $this->aliasTexto)))));
         try {
@@ -63,6 +66,7 @@ final class ConfiguracionMatrizDeposito extends Component
             return;
         }
         $this->editando = false;
+        $this->actualizarGrillaCatalogos();
         $this->dispatch('show-toast', message: 'Columna guardada. Las siguientes cargas usarán esta configuración.', variant: 'success');
     }
 

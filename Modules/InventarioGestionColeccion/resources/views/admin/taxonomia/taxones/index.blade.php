@@ -1,6 +1,7 @@
-<div class="space-y-6 p-4 sm:p-6">
+<div class="space-y-6 p-4 sm:p-6" @if($soloEditorCatalogo) wire:init="iniciarEditorCatalogo" @endif>
+    @unless($soloEditorCatalogo)
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">Taxones</flux:heading>
+        <flux:heading size="xl" level="2" class="font-display text-blue-navy font-bold">Taxones</flux:heading>
         <flux:button icon="plus" variant="primary" wire:click="abrirModal" class="w-full sm:w-auto">
             Nuevo taxón
         </flux:button>
@@ -110,6 +111,7 @@
     </div>
 
     {{-- Modal: Registrar taxón --}}
+    @endunless
     <flux:modal wire:model="showModal" class="w-full max-w-lg">
         <div class="space-y-4 p-1">
             <flux:heading size="lg" class="text-text-primary">Nuevo taxón</flux:heading>

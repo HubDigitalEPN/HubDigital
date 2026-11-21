@@ -283,6 +283,17 @@ final class RegistroEspecimen
         return $this->datosDwC;
     }
 
+    public function incorporarPermisos(string $recoleccion, string $movilizacion): bool
+    {
+        $nuevo = array_replace($this->datosDwC, ['researchPermit' => $recoleccion, 'transportPermit' => $movilizacion]);
+        if ($nuevo === $this->datosDwC) {
+            return false;
+        }
+        $this->datosDwC = $nuevo;
+
+        return true;
+    }
+
     /** @return list<array{campo: string, original: mixed, normalizado: mixed}> */
     public function normalizaciones(): array
     {

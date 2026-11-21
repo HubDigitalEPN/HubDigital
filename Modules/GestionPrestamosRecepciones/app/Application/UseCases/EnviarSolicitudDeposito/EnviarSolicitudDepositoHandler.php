@@ -94,6 +94,10 @@ final class EnviarSolicitudDepositoHandler
             }
 
             $solicitud->avanzarARevisionCuraduria();
+            if ($solicitud->finalidadActividad() !== null
+                && $matriz->incorporarPermisosDelExpediente($solicitud->nroPermisoRecoleccion(), $solicitud->nroPermisoMovilizacion())) {
+                $this->matrizRepo->guardar($matriz);
+            }
             $this->repo->guardar($solicitud);
             foreach ($solicitud->pullEvents() as $event) {
                 $this->eventPublisher->publish($event);

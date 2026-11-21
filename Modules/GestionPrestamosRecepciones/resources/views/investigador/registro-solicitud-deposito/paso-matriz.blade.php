@@ -7,33 +7,12 @@
     <flux:field class="space-y-2">
         @php($rotuloMatriz = 'Tabla Darwin Core (.xlsx)')
         <flux:label id="matriz-dwc-etiqueta" for="matriz-dwc" data-wizard-copy="literal:{{ $rotuloMatriz }}">{{ $rotuloMatriz }}</flux:label>
-        @if($soloEdicionDeTextos ?? false)
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span aria-disabled="true" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-text-secondary">
-                    <flux:icon name="paper-clip" class="size-4 shrink-0" aria-hidden="true" />
-                    Elegir archivo Excel
-                </span>
-                <span class="text-sm text-text-secondary">Ningún archivo seleccionado</span>
-            </div>
-        @else
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2" x-data="{ nombre: '' }"
-                x-init="$watch(() => $wire.$get('archivoMatriz'), archivo => { if (archivo == null || archivo === '') nombre = '' })">
-                <div class="inline-flex rounded-lg focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-science-blue">
-                    <input id="matriz-dwc" type="file" class="sr-only" wire:model="archivoMatriz"
-                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        aria-labelledby="matriz-dwc-etiqueta matriz-dwc-accion" aria-describedby="matriz-dwc-seleccion"
-                        x-on:change="nombre = $event.target.files[0]?.name ?? ''"
-                        x-on:livewire-upload-error="nombre = ''" x-on:livewire-upload-cancel="nombre = ''" />
-                    <label id="matriz-dwc-accion" for="matriz-dwc" class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-text-primary shadow-sm hover:border-science-blue hover:bg-bg-main">
-                        <flux:icon name="paper-clip" class="size-4 shrink-0" aria-hidden="true" />
-                        Elegir archivo Excel
-                    </label>
-                </div>
-                <span id="matriz-dwc-seleccion" role="status" aria-atomic="true" class="min-w-0 break-all text-sm text-text-secondary"
-                    x-text="nombre || 'Ningún archivo seleccionado'">Ningún archivo seleccionado</span>
-            </div>
-            <p wire:loading wire:target="archivoMatriz" role="status" class="text-sm text-science-blue">Cargando y validando el Excel…</p>
-        @endif
+        <x-gestionprestamosrecepciones::dropzone-matriz
+            propiedad="archivoMatriz"
+            :cargado="$matrizId !== null"
+            :archivo-nombre="$archivoMatrizNombre ?? null"
+            :error="$errorMatriz ?? null"
+            :solo-edicion-de-textos="$soloEdicionDeTextos ?? false" />
     </flux:field>
     @if($matrizId)
         <div class="rounded border border-border bg-surface p-4">

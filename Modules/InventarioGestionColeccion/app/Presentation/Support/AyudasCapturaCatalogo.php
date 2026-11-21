@@ -45,15 +45,21 @@ final class AyudasCapturaCatalogo
         $edicion = str_starts_with($modelo, 'edit');
         $clave = $edicion ? lcfirst(substr($modelo, 4)) : $modelo;
         $datos = self::campos()[$clave] ?? throw new \InvalidArgumentException('Campo de captura sin ayuda: '.$modelo);
+        $configuracion = $edicion ? null : (app(ConfiguracionCapturaCatalogo::class)->campos()[$clave] ?? null);
+        $regla = $datos[3];
+        if ($configuracion !== null) {
+            $regla = preg_replace('/^(?:Obligatorio(?: en el alta)?|Opcional)\. /u',
+                $configuracion['obligatorio'] ? 'Obligatorio. ' : 'Opcional. ', $regla) ?? $regla;
+        }
         $maximos = ['codigoCatalogo'=>100, 'occurrenceId'=>120, 'catalogNumber'=>120, 'oldCode'=>120,
             'cardexLiquidCollectionCode'=>120, 'localidad'=>255, 'localidad2'=>255, 'localidad3'=>500,
             'country'=>120, 'stateProvince'=>120, 'municipality'=>120, 'localityName'=>500, 'colector'=>255,
             'preparations'=>120, 'disposition'=>120, 'occurrenceStatus'=>120, 'geodeticDatum'=>60,
             'biome'=>120, 'habitat'=>255];
-        return ['titulo'=>$datos[0], 'descripcion'=>$datos[1], 'ejemplo'=>$datos[2],
+        return ['titulo'=>$configuracion['etiqueta'] ?? $datos[0], 'descripcion'=>$datos[1], 'ejemplo'=>$datos[2],
             'regla'=>$edicion && in_array($clave, ['fechaColecta','colector'], true)
-                ? 'Opcional al editar una ficha histórica. No es necesario inventar un dato ausente.' : $datos[3],
-            'obligatorio'=>!$edicion && in_array($clave, ['codigoCatalogo','taxonId','fechaColecta','colector'], true),
+                ? 'Opcional al editar una ficha histórica. No es necesario inventar un dato ausente.' : $regla,
+            'obligatorio'=>$configuracion['obligatorio'] ?? (!$edicion && $clave === 'codigoCatalogo'),
             'tipo'=>$clave === 'fechaColecta' ? 'date' : ($clave === 'specimenNotes' ? 'textarea' : (in_array($clave, ['taxonId','entidadDepositanteId'], true) ? 'select' : 'text')),
             'maxlength'=>$edicion && $clave === 'specimenNotes' ? 5000 : ($maximos[$clave] ?? null),
             'inputmode'=>$clave === 'individualCount' ? 'numeric' : (in_array($clave, ['decimalLatitude','decimalLongitude','elevationMinM'], true) ? 'decimal' : null)];

@@ -111,7 +111,12 @@ if ! curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-de
     echo 'ETE no está disponible; no se activa el portal.' >&2
     exit 1
 fi
-if ! systemctl restart php8.4-fpm nginx; then
+if [[ "${deployment_hostname}" == labinvepn.org && -f /etc/nginx/snippets/ingram-cotizador.conf ]]; then
+    if ! systemctl restart php8.4-fpm || ! systemctl reload-or-restart nginx; then
+        echo 'Fallo al reiniciar FPM o recargar nginx; la release queda en mantenimiento y no se inician escritores.' >&2
+        exit 1
+    fi
+elif ! systemctl restart php8.4-fpm nginx; then
     echo 'Fallo al reiniciar FPM o nginx; la release queda en mantenimiento y no se inician escritores.' >&2
     exit 1
 fi

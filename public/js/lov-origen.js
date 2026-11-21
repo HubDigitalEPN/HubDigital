@@ -17,7 +17,8 @@ window.hubDigitalOriginLov = config => {
         pagina: 0, peticion: 0, temporizador: null,
         puedeUsarTexto() {
             const texto = this.busqueda.trim();
-            return config.admiteTexto && !this.cargando && !this.errorBusqueda && !!texto
+            if (config.accionAlta && (texto.length < 2 || this.resultados.length > 0)) return false;
+            return (config.admiteTexto || config.accionAlta) && !this.cargando && !this.errorBusqueda && !!texto
                 && texto.length <= config.maxBusqueda && !this.resultados.some(opcion => opcion.valor === texto);
         },
         abrir() {
@@ -87,7 +88,8 @@ window.hubDigitalOriginLov = config => {
             if (config.disabled || this.cargando || !permitido) return;
             this.cerrar();
             try {
-                if (config.accion) await this.$wire.$call(config.accion, valor);
+                if (textoLibre && config.accionAlta) await this.$wire.$call(config.accionAlta, valor);
+                else if (config.accion) await this.$wire.$call(config.accion, valor);
                 else await this.$wire.$set(config.campo, valor, !config.busquedaPorCampo);
                 await this.$nextTick();
             } catch {

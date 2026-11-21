@@ -18,6 +18,7 @@ use Livewire\WithPagination;
 #[Title('Cargos de depositantes')]
 final class CargosCatalogo extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use WithInteractiveGrid;
     use WithPagination;
 
@@ -80,6 +81,7 @@ final class CargosCatalogo extends Component
         }
 
         $this->modal('cargo-editor')->close();
+        $this->actualizarGrillaCatalogos();
         session()->flash('cargo-guardado', 'El cargo está disponible para los depositantes.');
     }
 
@@ -89,6 +91,7 @@ final class CargosCatalogo extends Component
         abort_unless($fila, 404);
         DB::table('usuarios.cargos_catalogo')->where('id', $id)
             ->update(['activo' => ! $fila->activo, 'updated_at' => now()]);
+        $this->actualizarGrillaCatalogos();
     }
 
     public function render(): View

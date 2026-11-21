@@ -13,6 +13,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito;
 
 #[Layout('layouts.app')]
 #[Title('Textos del asistente de depositos')]
@@ -43,6 +44,9 @@ final class ConfiguracionTextosWizard extends Component
         }
 
         $textoNuevo = trim($textoNuevo);
+        if ($clave === TextoSolicitudDeposito::PLANTILLA && ! TextoSolicitudDeposito::marcadoresValidos($textoNuevo)) {
+            return ['error' => 'Conserva los marcadores del oficio entre llaves.'];
+        }
         $tabla = $literal ? 'usuarios.textos_sistema' : 'usuarios.textos_wizard';
         $guardado = DB::transaction(function () use ($literal, $original, $id, $tabla, $textoVisible, $textoNuevo): bool {
             DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', ['wizard-editor:'.($literal ? 'sistema:' : '').$id]);
@@ -91,6 +95,12 @@ final class ConfiguracionTextosWizard extends Component
     {
         abort_unless(auth()->user()?->esAdministrador(), 403);
         $this->validate(['textos' => ['required', 'array'], 'textos.*' => ['required', 'array'], 'textos.*.*' => ['required', 'string', 'max:1000']]);
+        $plantilla = $this->textos['solicitud']['texto_pdf'] ?? config('wizard-copy.'.TextoSolicitudDeposito::PLANTILLA);
+        if (! TextoSolicitudDeposito::marcadoresValidos($plantilla)) {
+            $this->addError('textos.solicitud.texto_pdf', 'Conserva los marcadores del oficio entre llaves.');
+
+            return;
+        }
 
         DB::transaction(function (): void {
             foreach (config('wizard-copy', []) as $grupo => $campos) {

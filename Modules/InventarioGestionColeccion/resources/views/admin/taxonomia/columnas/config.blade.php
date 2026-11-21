@@ -29,6 +29,24 @@
     @if($successMessage)<flux:callout data-hub-feedback="success" variant="success">{{ $successMessage }}</flux:callout>@endif
     @if($errorMessage)<flux:callout data-hub-feedback="danger" variant="danger">{{ $errorMessage }}</flux:callout>@endif
 
+    <details class="rounded-lg border border-border bg-surface p-4 shadow-sm">
+        <summary class="cursor-pointer font-semibold text-blue-navy">Formulario de nuevo espécimen</summary>
+        <form wire:submit="guardarCamposCaptura" class="mt-4 space-y-3">
+            @foreach($camposCaptura as $clave => $campo)
+                <div wire:key="captura-config-{{ $clave }}" class="grid items-center gap-2 sm:grid-cols-[1fr_2fr_9rem]">
+                    <span class="text-sm">{{ \Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::campos()[$clave][0] }}</span>
+                    <flux:input wire:model="camposCaptura.{{ $clave }}.etiqueta" aria-label="Etiqueta de {{ $clave }}" maxlength="120" />
+                    @if(in_array($clave, \Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo::OBLIGATORIOS_FIJOS, true))
+                        <span class="text-sm font-semibold">Obligatorio</span>
+                    @else
+                        <flux:checkbox wire:model="camposCaptura.{{ $clave }}.obligatorio" label="Obligatorio" />
+                    @endif
+                </div>
+            @endforeach
+            <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="guardarCamposCaptura">Guardar campos del formulario</flux:button>
+        </form>
+    </details>
+
     <section class="rounded-lg border border-border bg-surface p-4 shadow-sm" aria-labelledby="columnas-portal-titulo">
         <flux:heading id="columnas-portal-titulo" size="lg" level="2">Columnas del portal público</flux:heading>
 

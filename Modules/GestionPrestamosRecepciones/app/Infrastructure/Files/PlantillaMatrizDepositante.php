@@ -23,6 +23,12 @@ final class PlantillaMatrizDepositante
         // conservando los identificadores internos y su posición.
         $columnas = array_values(array_filter($this->esquemas->leer()['columnas'],
             static fn (array $columna): bool => $columna['plantilla_depositante'] ?? in_array($columna['campo'], $camposBase, true)));
+        $incluidas = array_column($columnas, 'campo');
+        foreach (array_reverse($camposBase, true) as $i => $campo) {
+            if (! in_array($campo, $incluidas, true)) {
+                $hoja->removeColumnByIndex($i + 1);
+            }
+        }
         foreach ($columnas as $i => $columna) {
             $hoja->setCellValueExplicit([$i + 1, 1], $columna['cabecera'], DataType::TYPE_STRING);
             // Conservar el texto enriquecido de la guía original cuando no cambió.
@@ -30,6 +36,10 @@ final class PlantillaMatrizDepositante
                 $hoja->setCellValueExplicit([$i + 1, 3], $columna['descripcion'], DataType::TYPE_STRING);
             }
             $color = match ($columna['requisito']) { 'obligatorio' => 'FFFFC000', 'recomendado' => 'FFFFFF00', default => 'FFFFFFFF' };
+            if (in_array($columna['campo'], ['researchPermit', 'transportPermit'], true)) {
+                $hoja->setCellValueExplicit([$i + 1, 3], 'Se completa con el permiso registrado en el expediente.', DataType::TYPE_STRING);
+                $color = 'FFFFFFFF';
+            }
             $hoja->getStyle([$i + 1, 1])->getFill()->setFillType('solid')->getStartColor()->setARGB($color);
         }
         $hoja->freezePane('A2');

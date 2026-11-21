@@ -98,6 +98,13 @@ test('el foco permite leer y ejecutar la acción antes de reanudar el cierre', (
     assert.equal(ui.notices().length, 0);
 });
 
+test('un aviso extenso permanece disponible durante el tiempo de lectura', () => {
+    const ui = browser();
+    ui.showNotification({ message: Array.from({length: 20}, () => 'palabra').join(' '), variant: 'warning' });
+    ui.advance(6999); assert.equal(ui.notices().length, 1);
+    ui.advance(1); assert.equal(ui.notices().length, 0);
+});
+
 test('los eventos existentes comparten un presentador sin abrir los avisos anteriores', () => {
     const ui = browser(); ui.boot();
     for (const name of ['show-toast', 'toast', 'domain-error']) {

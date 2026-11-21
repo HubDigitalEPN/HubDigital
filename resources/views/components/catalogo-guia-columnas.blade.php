@@ -1,8 +1,9 @@
 @props(['columnas'])
-<div x-data="{ busqueda: '' }">
-    <button type="button" x-on:click="$refs.guia.showModal()" aria-haspopup="dialog" aria-controls="guia-columnas-catalogo" class="hub-ig-button max-w-full whitespace-normal! text-left">
-        <flux:icon name="question-mark-circle" class="size-5" /> Ayuda de las columnas de la matriz
-    </button>
+<div x-data="{ busqueda: '' }" class="min-w-0">
+    <flux:button icon="question-mark-circle" x-on:click="$refs.guia.showModal()" aria-haspopup="dialog"
+        aria-controls="guia-columnas-catalogo" class="max-w-full whitespace-normal! text-left">
+        Ayuda de las columnas de la matriz
+    </flux:button>
     <dialog x-ref="guia" id="guia-columnas-catalogo" aria-labelledby="guia-columnas-catalogo-titulo" wire:ignore.self
         x-on:click="if ($event.target === $refs.guia) $refs.guia.close()"
         class="fixed inset-0 m-auto max-h-[80vh] w-[min(56rem,calc(100vw-2rem))] overflow-auto rounded-lg border border-border bg-surface p-5 text-text-primary shadow-xl backdrop:bg-blue-navy/30">

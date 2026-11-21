@@ -13,6 +13,7 @@ use Modules\InventarioGestionColeccion\Application\SeguimientoFisico\UseCases\Ac
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\RegistroColumnasEspecimen;
 use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\ResolverPrioridadColumnas;
 use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\Concerns\TraduceErroresPersistencia;
+use Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo;
 
 #[Layout('layouts.app', params: ['title' => 'Configurar columnas'])]
 final class ConfiguracionColumnasIndex extends Component
@@ -26,6 +27,8 @@ final class ConfiguracionColumnasIndex extends Component
 
     public array $columnasPublicas = [];
 
+    public array $camposCaptura = [];
+
     public ?string $successMessage = null;
 
     public ?string $errorMessage = null;
@@ -34,6 +37,20 @@ final class ConfiguracionColumnasIndex extends Component
     {
         $this->autorizarColumnasPublicas();
         $this->recargar($resolver);
+        $this->camposCaptura = app(ConfiguracionCapturaCatalogo::class)->campos();
+    }
+
+    public function guardarCamposCaptura(ConfiguracionCapturaCatalogo $configuracion): void
+    {
+        $this->autorizarColumnasPublicas();
+        $this->validate([
+            'camposCaptura.*.etiqueta' => 'required|string|max:120',
+            'camposCaptura.*.obligatorio' => 'required|boolean',
+        ]);
+        $configuracion->guardar($this->camposCaptura, (string) auth()->id());
+        $this->camposCaptura = $configuracion->campos();
+        $this->successMessage = 'Configuración del formulario de especímenes guardada.';
+        $this->errorMessage = null;
     }
 
     public function recargar(ResolverPrioridadColumnas $resolver): void

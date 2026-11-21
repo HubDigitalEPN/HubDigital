@@ -36,14 +36,14 @@ test('el alta rechaza datos opcionales invalidos antes de persistir', function (
     expect($taxon)->not->toBeNull();
     Livewire::actingAs(User::factory()->curador()->create())->withQueryParams(['q' => $codigo])->test(EspecimenIndex::class)
         ->update(updates: ['taxonId' => $taxon, 'fechaColecta' => '2026-11-10',
-            'colector' => 'QA sintetico', 'showModal' => true, 'occurrenceId' => $codigo, $campo => $valor])
+            'colector' => 'QA sintetico', 'showModal' => true, 'specimenNotes' => $codigo, $campo => $valor])
         ->call('registrarEspecimen')->assertHasErrors([$campo])
         ->assertSet('showModal', true);
-    expect(DB::table('taxonomia.especimenes')->where('occurrence_id', $codigo)->exists())->toBeFalse();
+    expect(DB::table('taxonomia.especimenes')->where('specimen_notes', $codigo)->exists())->toBeFalse();
 })->with([
     ['decimalLatitude', '91'], ['decimalLongitude', '-181'], ['individualCount', '-1'],
     ['individualCount', '2.5'], ['individualCount', 'texto'], ['individualCount', '2147483648'], ['elevationMinM', 'texto'],
-    ['occurrenceId', str_repeat('x', 121)], ['entidadDepositanteId', 'no-es-uuid'],
+    ['country', str_repeat('x', 121)], ['entidadDepositanteId', 'no-es-uuid'],
 ]);
 
 test('el curador guarda una ficha con código automático y localidades nuevas', function (): void {
@@ -58,10 +58,13 @@ test('el curador guarda una ficha con código automático y localidades nuevas',
         ->call('registrarEspecimen')->assertHasNoErrors()->assertSet('showModal', false);
     $ficha = DB::table('taxonomia.especimenes')->where('id', $ui->get('ultimoCreadoId'))->first();
     expect($ficha->codigo_catalogo)->toMatch('/^MEPN-INV-[0-9A-Z]{26}$/')
+        ->and($ficha->occurrence_id)->toMatch('/^urn:uuid:[0-9a-f-]{36}$/')
         ->and($ficha->individual_count)->toBe(5)->and((float) $ficha->decimal_latitude)->toBe(-0.09)
         ->and([$ficha->localidad_area, $ficha->localidad2, $ficha->localidad3])
         ->toBe([$datos['localidad'], $datos['localidad2'], $datos['localidad3']]);
-    $ui->assertSee('Ver última ficha creada')->assertDontSeeHtml('id="captura-codigoCatalogo"');
+    $ui->assertSee('Ver última ficha creada')->assertDontSeeHtml('id="captura-codigoCatalogo"')
+        ->assertDontSeeHtml('id="captura-occurrenceId"')->assertDontSeeHtml('id="captura-catalogNumber"')
+        ->assertDontSeeHtml('id="captura-cardexLiquidCollectionCode"');
     expect(DB::table('divulgacion.especimenes_divulgables')->where('especimen_id', $ficha->id)->exists())->toBeFalse();
     $ui->set('showModal', true)->call('buscarOpcionesCaptura', 'localidad', $marca)
         ->assertReturned(fn (array $resultado) => array_column($resultado['opciones'], 'valor') === [$datos['localidad']]);
@@ -70,5 +73,20 @@ test('el curador guarda una ficha con código automático y localidades nuevas',
         ->call('registrarEspecimen')->assertHasNoErrors();
     $segunda = DB::table('taxonomia.especimenes')->where('id', $ui->get('ultimoCreadoId'))->first();
     expect($segunda->codigo_catalogo)->not->toBe($ficha->codigo_catalogo)
+        ->and($segunda->occurrence_id)->not->toBe($ficha->occurrence_id)
         ->and(DB::table('taxonomia.especimenes')->where('id', $ficha->id)->value('colector'))->toBe('QA sintético');
+});
+
+test('la configuración aplica el nombre y la obligatoriedad del campo en el alta', function (): void {
+    $curador = User::factory()->curador()->create();
+    app(\Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo::class)->guardar([
+        'colector' => ['etiqueta' => 'Equipo de colecta QA', 'obligatorio' => false],
+        'localidad3' => ['etiqueta' => 'Sector QA', 'obligatorio' => true],
+    ], (string) $curador->id);
+    $taxon = DB::table('taxonomia.taxones')->where('estado', 'activo')->value('id');
+    Livewire::actingAs($curador)->withQueryParams(['q' => 'QA-CAMPOS-'])->test(EspecimenIndex::class)
+        ->assertSee('Equipo de colecta QA')->assertSee('Sector QA')
+        ->set('taxonId', $taxon)->call('registrarEspecimen')
+        ->assertHasErrors(['localidad3' => 'required'])->assertHasNoErrors('colector')
+        ->set('localidad3', 'QA-CAMPOS-SECTOR')->call('registrarEspecimen')->assertHasNoErrors();
 });

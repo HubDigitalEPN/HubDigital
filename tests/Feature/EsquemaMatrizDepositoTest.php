@@ -49,6 +49,33 @@ test('la plantilla v2 adjunta importa una observación sin convertir las instruc
     // El error de fecha del ejemplo se conserva para revisión; no se inventa otra fecha.
 });
 
+test('el Excel completa género y epíteto vacíos y toma los permisos del expediente', function (): void {
+    $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
+    $ruta = tempnam(sys_get_temp_dir(), 'depositante-expediente-');
+    try {
+        $hoja = $libro->getSheet(0);
+        $esquema = array_column(app(EsquemaMatrizPort::class)->leer()['columnas'], 'cabecera', 'campo');
+        $cabeceras = $hoja->rangeToArray('A1:'.$hoja->getHighestDataColumn().'1')[0];
+        foreach (['genus', 'specificEpithet', 'researchPermit', 'transportPermit'] as $campo) {
+            $i = array_search($esquema[$campo], $cabeceras, true);
+            expect($i)->not->toBeFalse();
+            $hoja->setCellValue([$i + 1, 2], $campo === 'researchPermit' ? 'NO USAR ESTE DATO' : null);
+        }
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
+        $fila = app(LectorMatrizDeposito::class)->leer($ruta, [
+            'researchPermit' => 'PERMISO-RECOLECCION-QA', 'transportPermit' => 'PERMISO-MOVILIZACION-QA',
+        ])['registros'][0];
+        expect($fila['genus'])->toBe('indeterminado')
+            ->and($fila['specificEpithet'])->toBe('indeterminado')
+            ->and($fila['scientificName'])->not->toContain('indeterminado')
+            ->and($fila['researchPermit'])->toBe('PERMISO-RECOLECCION-QA')
+            ->and($fila['transportPermit'])->toBe('PERMISO-MOVILIZACION-QA');
+    } finally {
+        $libro->disconnectWorksheets();
+        unlink($ruta);
+    }
+});
+
 test('curaduría cambia la cabecera conservando el identificador protegido y la lectura de ambas plantillas', function (): void {
     $curador = User::factory()->curador()->create();
     Livewire::actingAs($curador)->test(ConfiguracionMatrizDeposito::class)
@@ -134,7 +161,9 @@ test('solo curador y administrador pueden cambiar la matriz y los alias ambiguos
     Livewire::test(ConfiguracionMatrizDeposito::class)->assertForbidden();
     Livewire::actingAs(User::factory()->depositante()->create())->test(ConfiguracionMatrizDeposito::class)->assertForbidden();
     $admin = User::factory()->administrador()->create();
-    $this->actingAs($admin)->get(route('prestamos.curador.matriz.columnas'))->assertOk();
+    $matrices = route('admin.matrices', ['tabla' => 'matriz-depositos']);
+    $this->actingAs($admin)->get(route('prestamos.curador.matriz.columnas'))->assertRedirect($matrices);
+    $this->get($matrices)->assertOk()->assertSeeLivewire(\App\Livewire\Administracion\TablasCatalogos::class);
     $antes = app(EsquemaMatrizPort::class)->leer();
     Livewire::actingAs($admin)->test(ConfiguracionMatrizDeposito::class)
         ->call('editar', 'country')->set('aliasTexto', 'scientificName')->call('guardar')

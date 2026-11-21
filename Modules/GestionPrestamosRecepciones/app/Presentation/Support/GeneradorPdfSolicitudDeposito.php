@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Presentation\Support;
 
-use App\Models\User;
+use App\Support\WizardCopy;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +18,7 @@ final class GeneradorPdfSolicitudDeposito
     {
         return Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
             'solicitud' => $solicitud,
+            'textoOficio' => TextoSolicitudDeposito::redactar($solicitud, WizardCopy::text(TextoSolicitudDeposito::PLANTILLA)),
             'institucionFirmante' => $this->institucionFirmante($solicitud),
             'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
             'esVistaPrevia' => true,
@@ -46,18 +47,20 @@ final class GeneradorPdfSolicitudDeposito
         }
 
         $institucionFirmante = $this->institucionFirmante($solicitud);
-        $clave = $this->clave($solicitud, $institucionFirmante);
+        $textoOficio = TextoSolicitudDeposito::redactar($solicitud, WizardCopy::text(TextoSolicitudDeposito::PLANTILLA));
+        $clave = $this->clave($solicitud, $textoOficio);
         $existente = Cache::get($clave);
         if (is_string($existente)) return $existente;
         // Revisar y abrir la firma pueden coincidir. Una sola petición compila
         // la plantilla; las demás reutilizan exactamente los mismos bytes.
-        return Cache::lock($clave.':generando', 30)->block(20, function () use ($solicitud, $institucionFirmante, $clave): string {
+        return Cache::lock($clave.':generando', 30)->block(20, function () use ($solicitud, $institucionFirmante, $textoOficio, $clave): string {
             $indice = 'oficio-pdf-indice:'.$solicitud->id;
             Cache::put($indice, array_values(array_unique([...Cache::get($indice, []), $clave])), now()->addMinutes(20));
             // Revisar y firmar utilizan los mismos bytes mientras siga vigente el oficio.
             return Cache::remember($clave, now()->addMinutes(20), static fn (): string =>
                 Pdf::loadView('gestionprestamosrecepciones::pdf.solicitud-deposito', [
                     'solicitud' => $solicitud,
+                    'textoOficio' => $textoOficio,
                     'institucionFirmante' => $institucionFirmante,
                     'perfilFirma' => PerfilFirmaPdf::solicitudDepositante(),
                 ])->addInfo(['HubDigitalVerificationUrl' => self::urlVerificacion($solicitud)])->setPaper('a4')->output()
@@ -85,10 +88,10 @@ final class GeneradorPdfSolicitudDeposito
 
     private function institucionFirmante(SolicitudDepositoEloquentModel $solicitud): string
     {
-        return trim((string) User::query()->whereKey($solicitud->investigador_id)->value('institucion'));
+        return trim((string) $solicitud->solicitud_institucion);
     }
 
-    private function clave(SolicitudDepositoEloquentModel $solicitud, ?string $institucionFirmante = null): string
+    private function clave(SolicitudDepositoEloquentModel $solicitud, ?string $textoOficio = null): string
     {
         $datos = $solicitud->only([
             'id', 'numero', 'created_at', 'solicitud_documento_version',
@@ -97,7 +100,7 @@ final class GeneradorPdfSolicitudDeposito
             'solicitud_correo', 'solicitud_oficio', 'solicitud_texto',
         ]);
         $plantilla = module_path('GestionPrestamosRecepciones', 'resources/views/pdf/solicitud-deposito.blade.php');
-        $identidad = hash('sha256', serialize([$datos, $institucionFirmante ?? $this->institucionFirmante($solicitud),
+        $identidad = hash('sha256', serialize([$datos, $textoOficio ?? TextoSolicitudDeposito::redactar($solicitud, WizardCopy::text(TextoSolicitudDeposito::PLANTILLA)),
             hash_file('sha256', $plantilla), 'oficio-perfil-firmante-qr-v4', config('app.url')]));
         return 'oficio-pdf:'.$solicitud->id.':'.$identidad;
     }

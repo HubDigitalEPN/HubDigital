@@ -89,6 +89,7 @@ class InventarioGestionColeccionServiceProvider extends ModuleServiceProvider
     public function register(): void
     {
         parent::register();
+        $this->app->scoped(\Modules\InventarioGestionColeccion\Presentation\Support\ConfiguracionCapturaCatalogo::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

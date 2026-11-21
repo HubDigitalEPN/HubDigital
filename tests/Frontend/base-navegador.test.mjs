@@ -24,10 +24,15 @@ function entries(current, target = '/workspace') {
 test('los nueve cuerpos vigentes tienen huellas y aserciones verificadas sin lanzar Neon', () => {
     const parts = browser.runnerParts(runner);
     // portal-casos.json conserva las huellas de la migración histórica. El
-    // caso revisado exige una ejecución propia sobre sus aserciones vigentes.
-    const revised = {'apertura-sesion': {
-        body_sha256: 'd31d14effa433bd9ae56e60bd0055f54b0d4bf82d0db4bbc6881cdd3e4783acd', assertions: 23,
-    }};
+    // Los casos revisados exigen una ejecución propia sobre sus aserciones vigentes.
+    const revised = {
+        'apertura-sesion': {
+            body_sha256: 'd31d14effa433bd9ae56e60bd0055f54b0d4bf82d0db4bbc6881cdd3e4783acd', assertions: 23,
+        },
+        'administracion-importacion': {
+            body_sha256: 'bc012a296adb0caf744b11551cc27326e5f349e4e7873ef07ecc10ab47901ae6', assertions: 8,
+        },
+    };
     for (const id of browser.ids) {
         const body = browser.preservedBody(parts.bodies[id]);
         const expected = revised[id] ?? layout.cases[id];
@@ -49,15 +54,22 @@ test('no conserva una aprobacion si cambia una entrada mientras el recorrido est
     const temporary = mkdtempSync(path.join(tmpdir(), 'hub-browser-stable-'));
     try {
         const file = 'resources/js/portal-photo-model.js';
-        const original = state({[file]: 'export const photo = 1;'});
+        const admin = 'tests/Browser/portal-neon-administracion.mjs';
+        const original = state({[file]: 'export const photo = 1;', [admin]: 'export const transporte = true;'});
         for (const [relative, text] of Object.entries(original.contents)) {
             const filename = path.join(temporary, relative);
             mkdirSync(path.dirname(filename), {recursive: true}); writeFileSync(filename, text);
         }
         const plan = {inputs: browser.inputs(original)};
         browser.assertCaseUnchanged(temporary, plan, 'fotografias');
+        browser.assertCaseUnchanged(temporary, plan, 'administracion-importacion');
         writeFileSync(path.join(temporary, file), 'export const photo = 2;');
         assert.throws(() => browser.assertCaseUnchanged(temporary, plan, 'fotografias'), /Cambio durante el recorrido/);
+        const runnerFile = path.join(temporary, 'tests/Browser/portal-livewire.mjs');
+        const cambiado = runner.replace('max_execution_time=120', 'max_execution_time=121');
+        assert.notEqual(cambiado, runner);
+        writeFileSync(runnerFile, cambiado);
+        assert.throws(() => browser.assertCaseUnchanged(temporary, plan, 'administracion-importacion'), /test:preparacion-neon-qa/);
     } finally {
         assert.equal(path.dirname(temporary), path.resolve(tmpdir()));
         assert.ok(path.basename(temporary).startsWith('hub-browser-stable-'));
@@ -68,6 +80,15 @@ test('cambiar el selector o el empaquetado no invalida entradas funcionales ya a
     const before = browser.inputs(state({'scripts/deployment/impacto-validacion.cjs': 'anterior'}));
     const current = browser.inputs(state({'scripts/deployment/impacto-validacion.cjs': 'nuevo'}));
     assert.deepEqual(current, before);
+});
+
+test('el transporte MCP de administración invalida exclusivamente ese recorrido', () => {
+    const file = 'tests/Browser/portal-neon-administracion.mjs';
+    const before = browser.inputs(state({[file]: 'transporte anterior'}));
+    const current = browser.inputs(state({[file]: 'transporte revisado'}));
+    const plan = browser.select({root: '/workspace', entries: entries(before), current, now});
+    assert.deepEqual(plan.ejecutar, ['administracion-importacion']);
+    assert.equal(plan.reutilizar.length, 8);
 });
 test('un método aislado de tooltip no ejecuta árbol, fotos ni otros recorridos del dashboard', () => {
     const file = 'resources/js/portal-dashboard.js';

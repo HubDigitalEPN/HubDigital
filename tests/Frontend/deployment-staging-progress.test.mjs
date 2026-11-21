@@ -75,3 +75,28 @@ test('DEV usa el staging del bundle verificado y conserva progreso y errores', (
     assert.match(core, /sudo bash "\$\{stage_driver\}" "\$\{base_dir\}\/\$\{package_name\}" 2>&1 \| tee "\$\{stage_log\}"/);
     assert.match(core, /trap 'rm -f -- "\$\{stage_driver\}"' EXIT/);
 });
+
+test('las plantillas Nginx conservan Cotizador Ingram en PROD cuando está instalado', () => {
+    const snippet = '/etc/nginx/snippets/ingram-cotizador.conf';
+    const cwd = new URL('../../', import.meta.url);
+    for (const template of ['hubdigital.conf', 'hubdigital-http.conf']) {
+        for (const [host, installed, expected] of [
+            ['labinvepn.org', 'yes', 1],
+            ['labinvepn.org', 'no', 0],
+            ['dev.labinvepn.org', 'yes', 0],
+        ]) {
+            const result = spawnSync(bash, ['--noprofile', '--norc', '-c',
+                'set -eu; source deploy/oracle/scripts/deployment-host.sh; deployment_hostname="$1"; render_nginx_for_host "$2" "$3"',
+                'qa', host, `deploy/oracle/nginx/${template}`, installed], {cwd, encoding: 'utf8', timeout: 5000, windowsHide: true});
+            assert.ifError(result.error);
+            assert.equal(result.status, 0, result.stderr);
+            const lines = result.stdout.split(/\r?\n/);
+            assert.equal(lines.filter(line => line.trim() === `include ${snippet};`).length, expected);
+            assert.ok(lines.filter(line => line.trim().startsWith('server_name ')).every(line => line.trim() === `server_name ${host};`));
+            assert.doesNotMatch(result.stdout, /__INGRAM_COTIZADOR__/);
+            if (expected && template === 'hubdigital.conf') {
+                assert.ok(result.stdout.indexOf(snippet) > result.stdout.indexOf('listen 443 ssl'));
+            }
+        }
+    }
+});

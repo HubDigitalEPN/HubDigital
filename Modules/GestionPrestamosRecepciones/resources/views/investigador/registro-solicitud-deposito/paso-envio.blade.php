@@ -202,7 +202,7 @@
 
                 <div class="rounded-lg border border-border bg-bg-main p-2 space-y-0.5">
                     <p class="text-xs text-text-secondary">Solicitante</p>
-                    @unless($soloEdicionDeTextos)<p class="text-sm font-semibold text-text-primary">{{ auth()->user()->name }}</p>@endunless
+                    @unless($soloEdicionDeTextos)<p class="text-sm font-semibold text-text-primary">{{ $solicitudNombrePermiso }}</p>@endunless
                 </div>
 
                 @if($soloEdicionDeTextos || !empty($documentosCargados))

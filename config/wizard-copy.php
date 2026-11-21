@@ -29,6 +29,7 @@ return [
         'proyecto' => 'Título del proyecto',
         'oficio' => 'Número de oficio',
         'generar_pdf' => 'Generar PDF',
+        'texto_pdf' => 'Yo, {titular}, con número de {tipo_identificacion} {identificacion}, en mi calidad de {cargo}, solicito autorice la recepción de los especímenes de {grupo}, que fueron recolectados en el proyecto «{proyecto}», cuyos detalles indico en la matriz adjunta al expediente, conforme a los requisitos establecidos en la página web del Laboratorio.',
     ],
     'tramite' => [
         'titulo' => 'Tipo de trámite',

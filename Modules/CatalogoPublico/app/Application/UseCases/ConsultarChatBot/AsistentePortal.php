@@ -190,7 +190,7 @@ final class AsistentePortal
             ]];
         }
         if (preg_match('/^buscar por localidad/', $normal)) {
-            return ['texto' => 'Abre el catálogo y escribe la localidad en Búsqueda universal. Pulsa la lupa, busca y selecciona un ejemplar o todos los resultados para actualizar las vistas.', 'opciones' => [
+            return ['texto' => 'Abre el catálogo y escribe la localidad en Búsqueda universal. Pulsa la lupa y selecciona un ejemplar o aplica todos los resultados para actualizar las vistas.', 'opciones' => [
                 ['label' => 'Abrir catálogo', 'url' => route('portal.catalogo')],
             ]];
         }

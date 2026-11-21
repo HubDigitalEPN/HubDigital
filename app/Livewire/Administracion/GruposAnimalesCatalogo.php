@@ -18,6 +18,7 @@ use Livewire\WithPagination;
 #[Title('Grupos animales de depósitos')]
 final class GruposAnimalesCatalogo extends Component
 {
+    use \App\Livewire\Concerns\EditaRegistroCatalogo;
     use WithInteractiveGrid;
     use WithPagination;
 
@@ -94,6 +95,7 @@ final class GruposAnimalesCatalogo extends Component
             ]);
         }
         $this->modal('grupo-animal-editor')->close();
+        $this->actualizarGrillaCatalogos();
     }
 
     public function cambiarEstado(string $codigo): void
@@ -102,6 +104,7 @@ final class GruposAnimalesCatalogo extends Component
         abort_unless($fila, 404);
         DB::table('recepciones.catalogo_grupos_invertebrados')->where('codigo', $codigo)
             ->update(['activo' => ! $fila->activo, 'updated_at' => now()]);
+        $this->actualizarGrillaCatalogos();
     }
 
     public function render(): View

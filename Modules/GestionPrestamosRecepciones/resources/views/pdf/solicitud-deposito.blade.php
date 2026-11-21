@@ -37,7 +37,7 @@
 
     <p>De mis consideraciones,</p>
 
-    <p class="cuerpo">{{ \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar($solicitud) }}</p>
+    <p class="cuerpo">{{ $textoOficio ?? \Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito::redactar($solicitud) }}</p>
 
     <p>Sin otro particular, me suscribo de usted.</p>
     <p>Atentamente,</p>

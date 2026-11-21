@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Services;
 
+use App\Models\User;
+use App\Support\PortalCopy;
 use Illuminate\Support\Str;
 
 /** Orientación local por intención, conversación y estado real del expediente. */
@@ -19,6 +21,10 @@ final class AsistenteDocumentalDepositos
 
         if (preg_match('/ignora|salta.*valid|omite.*valid|aprobar sin|acepta todo|burlar/', $normal)) {
             return 'La orientación del chat no aprueba archivos ni omite sus controles. Adjunta el documento solicitado; su contenido, integridad y firma se comprueban en el flujo de carga y validación.';
+        }
+        if (preg_match('/\bcurador(?:a)?\b/', $normal)
+            && preg_match('/\b(?:comunic\w*|contact\w*|escri\w*|correo|email|quien|nombre|hablar)\b/', $normal)) {
+            return $this->contactoCuraduria();
         }
         if (preg_match('/virus|malware|antivirus|javascript|\bjs\b|\.exe|ejecutable|renombr|extension/', $normal)) {
             return 'Cambiar la extensión a .pdf no convierte un archivo en PDF. Debe ser un PDF real de hasta 10 MB. La carga comprueba su cabecera, estructura y contenido activo; rechaza JavaScript, acciones activas y ejecutables renombrados. Esas comprobaciones no equivalen a un antivirus. Un PDF seguro también debe corresponder a la casilla y superar la validación documental.';
@@ -111,6 +117,19 @@ final class AsistenteDocumentalDepositos
         return $requeridos !== []
             ? "En este paso debes adjuntar:\n{$lista}\nPuedo explicarte qué debe contener, cómo preparar el PDF, las firmas o un aviso de rechazo. ¿Cuál es tu duda?"
             : 'No figuran archivos externos requeridos en este paso. Puedo orientarte sobre formato PDF, firmas y correspondencia de los documentos con el expediente.';
+    }
+
+    private function contactoCuraduria(): string
+    {
+        $correo = trim(PortalCopy::text('contacto.email'));
+        if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            return 'Consulta el contacto institucional en la página del Laboratorio de Invertebrados.';
+        }
+        $usuario = User::query()->where('email_normalizado', Str::lower($correo))->first();
+
+        return $usuario?->esCurador()
+            ? 'Puedes comunicarte con '.$usuario->name.', de la curaduría del Laboratorio de Invertebrados, escribiendo a '.$correo.'.'
+            : 'Puedes comunicarte con la curaduría del Laboratorio de Invertebrados escribiendo a '.$correo.'.';
     }
 
     private function normalizar(string $texto): string

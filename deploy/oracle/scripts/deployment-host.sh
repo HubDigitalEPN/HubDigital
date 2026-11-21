@@ -14,8 +14,25 @@ case "${deployment_hostname}" in
     *) echo 'Host de despliegue no permitido.' >&2; exit 65 ;;
 esac
 
+render_nginx_for_host() {
+    local template="$1" cotizador="$2" include_line=''
+    if [[ "${deployment_hostname}" == labinvepn.org && "${cotizador}" == yes ]]; then
+        include_line='    include /etc/nginx/snippets/ingram-cotizador.conf;'
+    fi
+    sed -e "s/dev\\.labinvepn\\.org/${deployment_hostname}/g" \
+        -e "s|^    # __INGRAM_COTIZADOR__[[:space:]]*$|${include_line}|" "${template}"
+}
+
 install_nginx_for_host() {
-    local template="$1" target="$2"
-    sed "s/dev\\.labinvepn\\.org/${deployment_hostname}/g" "${template}" > "${target}"
-    chmod 0644 "${target}"
+    local template="$1" target="$2" cotizador=no candidate
+    if [[ -f /etc/nginx/snippets/ingram-cotizador.conf ]]; then
+        cotizador=yes
+    fi
+    candidate="$(mktemp "${target}.XXXXXX")" || return
+    if render_nginx_for_host "${template}" "${cotizador}" > "${candidate}" \
+        && chmod 0644 "${candidate}" && mv -fT -- "${candidate}" "${target}"; then
+        return
+    fi
+    rm -f -- "${candidate}"
+    return 1
 }

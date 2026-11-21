@@ -135,7 +135,8 @@ Route::middleware(['auth', 'verified'])
             Route::get('/curador/prestamo/{id}/cerrar', CerrarPrestamo::class)->name('curador.prestamo.cerrar');
             Route::get('/curador/prestamo/{id}/prorroga', GestionarProrroga::class)->name('curador.prestamo.gestionar-prorroga');
             Route::get('/curador/configuracion', ConfiguracionRecordatorios::class)->name('curador.configuracion');
-            Route::get('/curador/matriz-columnas', \Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionMatrizDeposito::class)->name('curador.matriz.columnas');
+            Route::get('/curador/matriz-columnas', \App\Http\Controllers\RedirigirTablaCatalogo::class)
+                ->defaults('tablaCatalogo', 'matriz-depositos')->defaults('destinoCatalogo', 'admin.matrices')->name('curador.matriz.columnas');
         });
 
         // Recepcion EPN: constata el lote fisico, sin atribuciones curatoriales.

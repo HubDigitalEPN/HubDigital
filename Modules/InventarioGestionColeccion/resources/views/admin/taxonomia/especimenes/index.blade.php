@@ -991,10 +991,7 @@
             <flux:heading id="alta-especimen-titulo" size="lg" class="text-text-primary">Nuevo espécimen</flux:heading>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <x-catalogo-campo campo="fechaColecta" />
-                <x-catalogo-campo campo="occurrenceId" />
-                <x-catalogo-campo campo="catalogNumber" />
                 <x-catalogo-campo campo="oldCode" />
-                <x-catalogo-campo campo="cardexLiquidCollectionCode" />
                 <x-catalogo-campo campo="taxonId" :valor="$taxonId" placeholder="Selecciona un taxón" lista />
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

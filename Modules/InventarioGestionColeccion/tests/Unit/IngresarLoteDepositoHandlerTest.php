@@ -68,6 +68,34 @@ test('el codigo de catalogo se deriva del numero de solicitud y la fila', functi
     expect($salida->codigosCreados)->toBe(['MEPN-INV-DEP-00002-0001', 'MEPN-INV-DEP-00002-0012']);
 });
 
+test('el ingreso usa los permisos del expediente y completa el Cardex con el número de depósito', function (): void {
+    $repo = new InMemoryEspecimenRepository;
+    $filas = [
+        ['indice' => 1, 'datosDwC' => filaDwC(), 'estadoRegistro' => 'Validado Técnicamente'],
+        ['indice' => 2, 'datosDwC' => filaDwC([
+            'researchPermit' => 'PERMISO-EN-EXCEL',
+            'cardexLiquidCollectionCode' => 'CARDEX-HISTORICO',
+        ]), 'estadoRegistro' => 'Validado Técnicamente'],
+    ];
+
+    ingestaDeposito($repo)->handle(new IngresarLoteDepositoInput(
+        numeroSolicitud: 'MEPN-INV-DEP-00002',
+        actaRecepcion: 'ACTA-DEP-00002',
+        estadoCustodia: 'Temporal',
+        filas: $filas,
+        permisoRecoleccion: 'MAE-REC-001',
+        permisoMovilizacion: 'MAE-MOV-002',
+    ));
+
+    [$sinDatos, $conDatos] = $repo->buscarTodos();
+    expect($sinDatos->researchPermit())->toBe('MAE-REC-001')
+        ->and($sinDatos->transportPermit())->toBe('MAE-MOV-002')
+        ->and($sinDatos->cardexLiquidCollectionCode())->toBe('MEPN-INV-DEP-00002')
+        ->and($conDatos->researchPermit())->toBe('MAE-REC-001')
+        ->and($conDatos->transportPermit())->toBe('MAE-MOV-002')
+        ->and($conDatos->cardexLiquidCollectionCode())->toBe('CARDEX-HISTORICO');
+});
+
 test('los especimenes entran con el regimen de tenencia del tramite', function (string $custodia): void {
     $repo = new InMemoryEspecimenRepository;
 

@@ -26,7 +26,7 @@ function solicitudParaPieFirma(User $depositante): SolicitudDepositoEloquentMode
     ]);
 }
 
-test('el pie identifica la institución del depositante y no la del proyecto ni la sesión revisora', function (?string $institucion): void {
+test('el pie identifica la institución elegida para el titular en la solicitud', function (?string $institucion): void {
     $depositante = User::factory()->depositante()->create(['institucion' => $institucion]);
     $this->actingAs(User::factory()->create(['institucion' => 'Institución de otra cuenta']));
     $solicitud = solicitudParaPieFirma($depositante);
@@ -47,14 +47,14 @@ test('el pie identifica la institución del depositante y no la del proyecto ni 
     $dom = new DOMDocument();
     $dom->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
     $pie = (new DOMXPath($dom))->query('//div[@class="firmante"]')->item(0)->textContent;
-    expect($pie)->toContain('Hernan Augusto Troya Proano', $depositante->email)
-        ->not->toContain('Escuela Politécnica Nacional', 'Institución de otra cuenta')
+    expect($pie)->toContain('Hernan Augusto Troya Proano', $depositante->email, 'Escuela Politécnica Nacional')
+        ->not->toContain('Institución de otra cuenta')
         ->and($html)->toContain('en mi calidad de Coordinador Técnico, solicito', 'Escuela Politécnica Nacional')
         ->and($solicitud->fresh()->getAttributes())->toBe($antes);
-    if ($institucion !== null) expect($pie)->toContain($institucion);
+    if ($institucion !== null) expect($pie)->not->toContain($institucion);
 })->with(['institución del perfil' => ['Kintiflow'], 'perfil sin institución' => [null]]);
 
-test('actualizar la institución del perfil renueva el PDF sin firma almacenado en caché', function (): void {
+test('editar la institución elegida en la solicitud renueva el oficio sin firmar guardado en caché', function (): void {
     $depositante = User::factory()->depositante()->create(['institucion' => 'Empresa inicial']);
     $solicitud = solicitudParaPieFirma($depositante);
     $instituciones = [];
@@ -71,8 +71,10 @@ test('actualizar la institución del perfil renueva el PDF sin firma almacenado 
     $generador = app(GeneradorPdfSolicitudDeposito::class);
     expect($generador->generar($solicitud))->toBe('%PDF-empresa-inicial');
     $depositante->update(['institucion' => 'Empresa actualizada']);
+    expect($generador->generar($solicitud))->toBe('%PDF-empresa-inicial');
+    $solicitud->update(['solicitud_institucion' => 'Empresa elegida']);
     expect($generador->generar($solicitud))->toBe('%PDF-empresa-actualizada')
-        ->and($instituciones)->toBe(['Empresa inicial', 'Empresa actualizada'])
+        ->and($instituciones)->toBe(['Escuela Politécnica Nacional', 'Empresa elegida'])
         ->and(Cache::get('oficio-pdf-indice:'.$solicitud->id))->toHaveCount(2)
-        ->and($solicitud->fresh()->solicitud_institucion)->toBe('Escuela Politécnica Nacional');
+        ->and($solicitud->fresh()->solicitud_institucion)->toBe('Empresa elegida');
 });

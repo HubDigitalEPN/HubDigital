@@ -77,11 +77,10 @@
                             </flux:sidebar.item>
                         </flux:sidebar.group>
                     @elseif($rolActivo === RolUsuario::PASANTE)
-                        <flux:sidebar.item icon="pencil-square" :href="route('inventario.captura-dwc')" wire:navigate>Captura Darwin Core</flux:sidebar.item>
+                        <flux:sidebar.group heading="Catálogo" icon="archive-box" class="grid" expandable :expanded="request()->routeIs('inventario.captura-dwc')">
+                            <flux:sidebar.item icon="pencil-square" :href="route('inventario.captura-dwc')" :current="request()->routeIs('inventario.captura-dwc')" wire:navigate>Especímenes</flux:sidebar.item>
+                        </flux:sidebar.group>
                     @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN], true))
-                        @if($rolActivo === RolUsuario::CURADOR)
-                            <flux:sidebar.item icon="users" :href="route('admin.usuarios')" wire:navigate>Administrar usuarios</flux:sidebar.item>
-                        @endif
                         <flux:sidebar.group
                             heading="Gestión de préstamos" icon="document-text"
                             class="grid"
@@ -125,7 +124,7 @@
                             heading="Gestión de depósitos" icon="archive-box"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*', 'prestamos.receptor.*', 'admin.instituciones', 'admin.cargos', 'admin.grupos-animales', 'admin.fuentes-revocacion')"
+                            :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*', 'prestamos.receptor.*')"
                         >
                             <flux:sidebar.item
                                 icon="inbox-arrow-down"
@@ -136,44 +135,12 @@
                                 Revisión documental y actas
                             </flux:sidebar.item>
                             <flux:sidebar.item icon="clipboard-document-check" :href="route('prestamos.receptor.depositos')" :current="request()->routeIs('prestamos.receptor.*')" wire:navigate>Recepción física</flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="building-library"
-                                :href="route('admin.instituciones')"
-                                :current="request()->routeIs('admin.instituciones')"
-                                wire:navigate
-                            >
-                                Instituciones
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="briefcase"
-                                :href="route('admin.cargos')"
-                                :current="request()->routeIs('admin.cargos')"
-                                wire:navigate
-                            >
-                                Cargos
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="beaker"
-                                :href="route('admin.grupos-animales')"
-                                :current="request()->routeIs('admin.grupos-animales')"
-                                wire:navigate
-                            >
-                                Grupos animales
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="shield-check"
-                                :href="route('admin.fuentes-revocacion')"
-                                :current="request()->routeIs('admin.fuentes-revocacion')"
-                                wire:navigate
-                            >
-                                Revocación de firmas
-                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
                             heading="Catálogo" icon="rectangle-stack"
                             class="grid"
                             expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas', 'inventario.taxonomia.taxones', 'inventario.taxonomia.localidades')"
+                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas')"
                         >
                             <flux:sidebar.item
                                 icon="magnifying-glass"
@@ -199,45 +166,6 @@
                             >
                                 Etiquetado QR
                             </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="tag"
-                                :href="route('inventario.taxonomia.taxones')"
-                                :current="request()->routeIs('inventario.taxonomia.taxones')"
-                                wire:navigate
-                            >
-                                Taxones
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="map-pin"
-                                :href="route('inventario.taxonomia.localidades')"
-                                :current="request()->routeIs('inventario.taxonomia.localidades')"
-                                wire:navigate
-                            >
-                                Localidades
-                            </flux:sidebar.item>
-                        </flux:sidebar.group>
-                        <flux:sidebar.group
-                            heading="Configuración del catálogo" icon="adjustments-horizontal"
-                            class="grid"
-                            expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.dataset.config', 'inventario.taxonomia.columnas.config')"
-                        >
-                            <flux:sidebar.item
-                                icon="globe-alt"
-                                :href="route('inventario.taxonomia.dataset.config')"
-                                :current="request()->routeIs('inventario.taxonomia.dataset.config')"
-                                wire:navigate
-                            >
-                                Publicación GBIF
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="swatch"
-                                :href="route('inventario.taxonomia.columnas.config')"
-                                :current="request()->routeIs('inventario.taxonomia.columnas.config')"
-                                wire:navigate
-                            >
-                                Columnas de la tabla
-                            </flux:sidebar.item>
                         </flux:sidebar.group>
                         <flux:sidebar.group
                             heading="Divulgación" icon="megaphone"
@@ -257,11 +185,10 @@
 
                         </flux:sidebar.group>
                             <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*','divulgacion.asistente')" class="grid">
+                                <flux:sidebar.item icon="table-cells" :href="route('admin.catalogos')" :current="request()->routeIs('admin.catalogos')" wire:navigate>Tablas de catálogos</flux:sidebar.item>
+                                <flux:sidebar.item icon="document-text" :href="route('admin.matrices')" :current="request()->routeIs('admin.matrices')" wire:navigate>Matrices</flux:sidebar.item>
                                 <flux:sidebar.item icon="pencil-square" :href="route('admin.contenidos')" :current="request()->routeIs('admin.contenidos')" wire:navigate>Contenidos y textos</flux:sidebar.item>
-                                <flux:sidebar.item icon="chat-bubble-left-right" :href="route('divulgacion.asistente')" :current="request()->routeIs('divulgacion.asistente')" wire:navigate>Asistente del portal</flux:sidebar.item>
-                        @if($rolActivo === RolUsuario::ADMIN)
-                                <flux:sidebar.item icon="key" :href="route('admin.botones')" :current="request()->routeIs('admin.botones')" wire:navigate>Botones y permisos</flux:sidebar.item>
-                                <flux:sidebar.item icon="table-cells" :href="route('admin.formato-ipt')" :current="request()->routeIs('admin.formato-ipt')" wire:navigate>Formato IPT (GBIF)</flux:sidebar.item>
+                        @if(in_array($rolActivo, [RolUsuario::ADMIN, RolUsuario::CURADOR], true))
                                 <flux:sidebar.item
                                     icon="users"
                                     :href="route('admin.usuarios')"
@@ -269,20 +196,6 @@
                                     wire:navigate
                                 >
                                     Usuarios y perfiles
-                                </flux:sidebar.item>
-                                <flux:sidebar.item
-                                    icon="cog-6-tooth"
-                                    :href="route('admin.configuracion')"
-                                    :current="request()->routeIs('admin.configuracion')"
-                                    wire:navigate
-                                >
-                                    Correo y descargas
-                                </flux:sidebar.item>
-                                <flux:sidebar.item icon="map-pin" :href="route('admin.localidades')" :current="request()->routeIs('admin.localidades')" wire:navigate>
-                                    Localidades del Ecuador
-                                </flux:sidebar.item>
-                                <flux:sidebar.item icon="hashtag" :href="route('admin.siglas-expedientes')" :current="request()->routeIs('admin.siglas-expedientes')" wire:navigate>
-                                    Siglas de expedientes
                                 </flux:sidebar.item>
                         @endif
                             </flux:sidebar.group>

@@ -12,6 +12,7 @@ const definitions = {
     chat: {sources: ['Modules/CatalogoPublico/resources/views/livewire/chat-bot-widget.blade.php','public/js/chat-shell.js','public/css/chat-shell.css','resources/views/components/platform-footer.blade.php','resources/views/components/pwa-install-button.blade.php','resources/views/components/pwa-notification-button.blade.php','resources/views/partials/head.blade.php','resources/js/app.js','resources/css/app.css','resources/views/layouts/portal.blade.php','Modules/CatalogoPublico/app/Presentation/Http/Controllers/ChatBotWidget.php'], checks:['install','hide','fresh','catalogOnly','restore','focus']},
 };
 Object.assign(definitions, {
+    tablas_catalogos: {sources:['app/Livewire/Administracion/TablasCatalogos.php','app/Livewire/Concerns/EditaRegistroCatalogo.php','app/Support/RegistrosAdministracionCatalogos.php','resources/views/livewire/administracion/tablas-catalogos.blade.php'], checks:['menu','selector','editors','navigation','action','fit']},
     instituciones_unificadas: {sources:['app/Services/DirectorioInstituciones.php','app/Livewire/Administracion/InstitucionesCatalogo.php','resources/views/livewire/administracion/instituciones-catalogo.blade.php','Modules/InventarioGestionColeccion/routes/web.php'],checks:['canonical','menu','labels','saved','edited','duplicate','disabled','acta','responsive']},
     catalogo_taxones: {sources:['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/TaxonIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/taxones/index.blade.php'],checks:['parents','created','search','edited','inactive','empty','responsive']},
     catalogo_alta: {sources:['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/EspecimenIndex.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/especimenes/index.blade.php','Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/ColumnasCatalogo.php'], checks:['open','ecuador','invalid','labels','dateLabels','saved','edited','responsive']},
@@ -22,7 +23,7 @@ Object.assign(definitions, {
     depositos_reintento: {sources:['Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/EstadoEntregaNotification.php'], checks:['curator','authorized','history','receiveEnabled','responsive']},
     depositos_cerrado: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/detalle-deposito.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Investigador/DetalleDeposito.php','Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/FlujoIngresoDeposito.php'], checks:['closed','noIntake','documents','status','responsive']},
     depositos_documento: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/documento-ingreso-listo.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DocumentoIngreso.php'], checks:['ready','automatic','fallback','status','responsive']},
-    depositos_firma: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-solicitud.blade.php'], checks:['left','label','signedPreview','frame','responsive']},
+    depositos_firma: {sources:['Modules/GestionPrestamosRecepciones/resources/views/investigador/registro-solicitud-deposito/paso-solicitud.blade.php','resources/js/hubdigital-firmador.js'], checks:['left','label','signedPreview','frame','responsive']},
     depositos_ingreso: {sources:['Modules/GestionPrestamosRecepciones/resources/views/curador/validar-ingreso-qr.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ValidarIngresoQr.php'], checks:['authentic','characteristics','reason','received','noDuplicate','responsive']},
     depositos_contenido: {sources:['Modules/GestionPrestamosRecepciones/resources/views/curador/contenido-recepcion.blade.php','Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/Curador/ContenidoRecepcion.php'], checks:['tabulated','validated','closed','responsive']},
     captura_dwc: {sources:['resources/views/livewire/captura-darwin-core.blade.php','app/Livewire/CapturaDarwinCore.php'], checks:['reserved','saved','labels','responsive']},
@@ -66,6 +67,11 @@ const contracts = {
     'Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/ActualizacionCatalogo.php':['tests/Feature/ImportacionCatalogoMatricesTest.php'],
     'app/Services/DirectorioInstituciones.php':['tests/Feature/InstitucionesUnificadasTest.php'],
     'app/Livewire/Administracion/InstitucionesCatalogo.php':['tests/Feature/InstitucionesUnificadasTest.php'],
+    'app/Http/Controllers/RedirigirTablaCatalogo.php':['tests/Feature/TablasCatalogosTest.php'],
+    'app/Livewire/Administracion/TablasCatalogos.php':['tests/Feature/TablasCatalogosTest.php'],
+    'app/Livewire/Concerns/EditaRegistroCatalogo.php':['tests/Feature/TablasCatalogosTest.php'],
+    'app/Support/RegistrosAdministracionCatalogos.php':['tests/Feature/TablasCatalogosTest.php'],
+    'Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Providers/InventarioGestionColeccionServiceProvider.php':['tests/Feature/CatalogoAltaManualTest.php'],
     'resources/views/livewire/administracion/instituciones-catalogo.blade.php':['tests/Feature/InstitucionesUnificadasTest.php'],
     'resources/views/layouts/app/sidebar.blade.php':['tests/Feature/InstitucionesUnificadasTest.php'],
     'Modules/InventarioGestionColeccion/routes/web.php':['tests/Feature/InstitucionesUnificadasTest.php'],
@@ -489,7 +495,8 @@ function runnerFragment(source,id){
     let common=source.slice(0,marks[0].index);
     // Esta fábrica nueva solo es invocada por los dos editores. No modifica
     // la ejecución ni las aserciones de los otros recorridos.
-    if(!/comprobarOrden|sinMovimiento/.test(body))common=common.replace(/    const (?:comprobarOrden|sinMovimiento)[\s\S]*?(?=    const comprobarAyudas=)/,'');
+    if(!/comprobarOrden|sinMovimiento/.test(body))common=common.replace(/    const (?:comprobarOrden|sinMovimiento)\b[\s\S]*?(?=^    const (?:abrirAccionesInventario|comprobarAyudas)=)/m,'');
+    if(!/abrirAccionesInventario|buscarEnInventario|comprobarOrden|sinMovimiento/.test(body))common=common.replace(/    const abrirAccionesInventario=[\s\S]*?(?=    const comprobarAyudas=)/,'');
     return common+'\n'+body;
 }
 function preserveCompatible(root,id,originalRunner){

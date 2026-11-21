@@ -14,10 +14,12 @@ final class LectorMatrizDeposito
 {
     public function __construct(private readonly EsquemaMatrizPort $esquemas) {}
 
-    public function leer(string $ruta): array
+    /** @param array<string, string> $permisosExpediente */
+    public function leer(string $ruta, array $permisosExpediente = []): array
     {
         $definicion = $this->esquemas->leer();
         $mapa = EsquemaMatriz::mapa($definicion['columnas']);
+        $permisosExpediente = array_intersect_key($permisosExpediente, array_flip(['researchPermit', 'transportPermit']));
         $libro = IOFactory::load($ruta);
         try {
             // La tabla va en la primera hoja; consultar la guía y guardar el
@@ -60,6 +62,9 @@ final class LectorMatrizDeposito
                     foreach ($noVacios as $col => $valor) {
                         $config = $cabeceras[$col] ?? [];
                         $descripciones = [$config['descripcion'] ?? '', ...($definicion['descripciones_guia'][$config['campo'] ?? ''] ?? [])];
+                        if (in_array($config['campo'] ?? '', ['researchPermit', 'transportPermit'], true)) {
+                            $descripciones[] = 'Se completa con el permiso registrado en el expediente.';
+                        }
                         if (! in_array(EsquemaMatriz::clave($valor), array_map(EsquemaMatriz::clave(...), $descripciones), true)) { $esGuia = false; break; }
                     }
                 }
@@ -82,6 +87,12 @@ final class LectorMatrizDeposito
                         if ($partes !== [] && ! in_array('', $partes, true)) { $registro['scientificName'] = implode(' ', $partes); break; }
                     }
                 }
+                foreach (['genus', 'specificEpithet'] as $campo) {
+                    if (($registro[$campo] ?? null) === '') {
+                        $registro[$campo] = 'indeterminado';
+                    }
+                }
+                $registro = array_replace($registro, $permisosExpediente);
                 $registros[] = $registro; $numeros[] = $fila;
             }
             if ($registros === []) throw new \DomainException('El Excel debe incluir las cabeceras de la matriz y al menos una fila de datos.');
