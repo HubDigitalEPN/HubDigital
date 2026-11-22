@@ -6,6 +6,7 @@
         searchText: '', clientPage: 1, clientPerPage: 15, clientTotal: 0, originalOrder: null, nextOrder: 0,
         columnSearch: '', draftHidden: [], sortColumns: [], sortField: '', sortDirection: 'asc', filterText: '', filterValues: {},
         columnOrder: [], columnFilters: {}, activeColumn: 0, columnTerm: '', columnOperator: 'contains', valueSearch: '', draggingColumn: null,
+        anchosColumnas: {}, arrastreAncho: null,
         pageSort: '', pageDirection: 'asc', pageMatches: 0, headerTrigger: null,
         clientFirstPage: 1, clientLastLoaded: 1, clientWindowToken: '', clientAnchor: 1,
         cargandoContinuidad: false, errorContinuidad: '', ultimaDireccion: 1,
@@ -43,10 +44,22 @@
             try{return pager?JSON.parse(pager.dataset.gridWindow):null;}catch{return null;}
         },
         instalarScroll() {
-            // El catálogo público ya dispone de su propio cursor de carga.
-            if(this.root.closest?.('[data-hay-mas]'))return;
             this.superficie=this.root.querySelector('.atlas-record-table-scroll')||this.root.querySelector('.hub-ig-scroll');
             if(!this.superficie?.addEventListener)return;
+            this.alTecla = event => {
+                if (event.ctrlKey || event.altKey || event.metaKey
+                    || event.target.closest?.('input,textarea,select,button,[contenteditable="true"]')) return;
+                if (['PageDown', 'ArrowDown', 'End'].includes(event.key)) this.intencionScroll = 1;
+                else if (['PageUp', 'ArrowUp', 'Home'].includes(event.key)) this.intencionScroll = -1;
+                else return;
+                if (this.enBorde(this.intencionScroll)) {
+                    event.preventDefault();
+                    this.alScroll?.();
+                }
+            };
+            this.superficie.addEventListener('keydown', this.alTecla);
+            // El catálogo público mide su propio contenedor y conserva su cursor de carga.
+            if (this.root.closest?.('[data-hay-mas]')) return;
             const envoltura=this.root.querySelector('.hub-ig-scroll');
             if(envoltura!==this.superficie)envoltura.style.overflow='visible';
             const component=this.root.closest?.('[wire\\:id]');
@@ -79,20 +92,11 @@
                 this.intencionScroll=Math.sign((this.inicioTacto??0)-(event.touches[0]?.clientY??0));
                 this.alScroll();
             };
-            this.alTecla=event=>{
-                if(event.target.closest?.('input,textarea,select,button,[contenteditable="true"]'))return;
-                if(['PageDown','ArrowDown','End'].includes(event.key))this.intencionScroll=1;
-                else if(['PageUp','ArrowUp','Home'].includes(event.key))this.intencionScroll=-1;
-                else return;
-                if(this.enBorde(this.intencionScroll) && this.puedeContinuar(this.intencionScroll)){
-                    event.preventDefault();this.alScroll();
-                }
-            };
             this.superficie.addEventListener('wheel',this.alRueda,{passive:false});
             this.superficie.addEventListener('scroll',this.alScroll,{passive:true});
-            this.superficie.addEventListener('touchstart',this.alTocar,{passive:true});this.superficie.addEventListener('touchmove',this.alMoverTacto,{passive:true});this.superficie.addEventListener('keydown',this.alTecla);
+            this.superficie.addEventListener('touchstart',this.alTocar,{passive:true});this.superficie.addEventListener('touchmove',this.alMoverTacto,{passive:true});
             this.alMedir=()=>this.ajustarScroll();
-            window.addEventListener('resize',this.alMedir,{passive:true});window.addEventListener('scroll',this.alMedir,{passive:true});
+            window.addEventListener('resize', this.alMedir, {passive: true});
             if(typeof ResizeObserver!=='undefined'){this.medidas=new ResizeObserver(this.alMedir);this.medidas.observe(this.root);}
             this.ajustarScroll();
         },
@@ -107,12 +111,14 @@
         ajustarScroll() {
             if(!this.superficie?.isConnected)return;
             const viewport=window.visualViewport?.height||window.innerHeight;
-            const top=this.superficie.getBoundingClientRect().top;
             const modal=this.root.closest('dialog[open]');
+            // Dentro de un diálogo el límite es su borde; en la página se mide
+            // desde el documento para que el scroll exterior no agrande la cuadrícula.
+            const top = this.superficie.getBoundingClientRect().top + (modal ? 0 : window.scrollY);
             const bottom=modal?Math.min(viewport,modal.getBoundingClientRect().bottom):viewport;
-            const altura=Math.max(100,Math.min(bottom-Math.max(8,top)-64,viewport-120));
+            const minimo = modal ? 100 : Math.max(100, Math.min(viewport / 3, viewport - 120));
+            const altura = Math.max(minimo, Math.min(bottom - Math.max(8, top) - 64, viewport - 120));
             const valor=altura+'px';if(this.superficie.style.maxHeight!==valor)this.superficie.style.maxHeight=valor;
-            this.superficie.style.overscrollBehaviorY='auto';
         },
         enBorde(direccion) {const s=this.superficie;return !!s && (direccion>0?s.scrollHeight-s.scrollTop-s.clientHeight<=16:s.scrollTop<=1);},
         puedeContinuar(direccion) {
@@ -165,27 +171,66 @@
             }
             this.root.querySelector('table').classList.add('hub-ig-movable');
             headers.forEach((cell, index) => {
+                if (cell.dataset.gridFixed) return;
                 cell.draggable = true; cell.tabIndex = 0; cell.setAttribute('aria-haspopup', 'dialog');
                 cell.title = 'Buscar y ordenar · arrastra para mover · Alt + flechas para mover con teclado';
                 if (cell._hubGridHeader) return;
                 cell._hubGridHeader = true;
                 cell.addEventListener('click', event => {
-                    if (event.target.closest('input, select, textarea, a')) return;
+                    if (event.target.closest('input, select, textarea, a, [data-grid-resize], [data-grid-server-order]')) return;
                     event.preventDefault(); event.stopImmediatePropagation(); this.openColumn(index, cell);
                 }, true);
                 cell.addEventListener('keydown', event => {
-                    if (event.target.closest('input, select, textarea')) return;
+                    if (event.target.closest('input, select, textarea, [data-grid-resize], [data-grid-server-order]')) return;
                     if (event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
                         event.preventDefault(); event.stopImmediatePropagation(); this.moveColumn(index, event.key === 'ArrowLeft' ? -1 : 1); cell.focus();
                     } else if (['Enter', ' '].includes(event.key)) { event.preventDefault(); event.stopImmediatePropagation(); this.openColumn(index, cell); }
                 }, true);
-                cell.addEventListener('dragstart', event => { this.draggingColumn = index; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', String(index)); });
+                cell.addEventListener('dragstart', event => {
+                    if (this.arrastreAncho) { event.preventDefault(); return; }
+                    this.draggingColumn = index; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', String(index));
+                });
                 cell.addEventListener('dragover', event => { if (this.draggingColumn !== null) {event.preventDefault(); event.dataTransfer.dropEffect = 'move';} });
                 cell.addEventListener('drop', event => { event.preventDefault(); if (this.draggingColumn === null) return; this.placeColumn(this.draggingColumn, index); this.draggingColumn = null; });
                 cell.addEventListener('dragend', () => { this.draggingColumn = null; });
             });
         },
+        estilosColumnas() {
+            const estilos = {'--ig-visible-columns': this.columns.length - this.hidden.length};
+            if (!this.$el.hasAttribute('data-grid-resizable')) return estilos;
+            const cabeceras = this.headers();
+            const orden = this.columnOrder.length ? this.columnOrder : this.columns.map((_, indice) => indice);
+            const medidas = orden.filter(indice => !this.hidden.includes(indice))
+                .map(indice => Number(cabeceras[indice]?.dataset.gridFixed) || this.anchosColumnas[cabeceras[indice]?.dataset.gridField]);
+            estilos['--ig-column-template'] = medidas.map(ancho => ancho ? ancho + 'px' : 'minmax(144px, 1fr)').join(' ');
+            estilos['--ig-table-min-width'] = medidas.reduce((total, ancho) => total + (ancho || 144), 0) + 'px';
+            return estilos;
+        },
+        anchoColumna(campo, control) {
+            return this.anchosColumnas[campo] || control.closest('th').getBoundingClientRect().width;
+        },
+        ajustarAncho(campo, ancho) {
+            this.anchosColumnas = {...this.anchosColumnas, [campo]: Math.max(104, Math.min(720, Math.round(ancho)))};
+        },
+        iniciarAncho(evento, campo) {
+            if (evento.button !== 0) return;
+            const control = evento.currentTarget;
+            control.focus({preventScroll: true});
+            this.arrastreAncho = {campo, x: evento.clientX, ancho: this.anchoColumna(campo, control)};
+            control.setPointerCapture(evento.pointerId);
+            control.closest('th').draggable = false;
+        },
+        moverAncho(evento) {
+            const arrastre = this.arrastreAncho;
+            if (arrastre) this.ajustarAncho(arrastre.campo, arrastre.ancho + evento.clientX - arrastre.x);
+        },
+        terminarAncho(control) {
+            this.arrastreAncho = null;
+            control.closest('th').draggable = true;
+        },
         placeColumn(from, to) {
+            const headers = this.headers();
+            if (headers[from]?.dataset.gridFixed || headers[to]?.dataset.gridFixed) return;
             const next = [...this.columnOrder], start = next.indexOf(from), end = next.indexOf(to);
             if (start < 0 || end < 0 || start === end) return;
             next.splice(start, 1); next.splice(end, 0, from); this.columnOrder = next; this.applyColumns();
@@ -319,7 +364,7 @@
             Object.entries(this.filterValues).forEach(([field, value]) => this.$wire.$set(field, value, false));
             await this.$wire.buscarGrilla(); this.$refs.filterDialog.close();
         },
-        reset() { this.hidden = []; this.compact = false; this.columnOrder = this.columns.map((_, index) => index); this.columnFilters = {}; this.pageSort = ''; this.applyColumns(); if (client) { this.searchText = ''; this.sortField = ''; this.clientPerPage = 15; this.clientPage = 1; this.renderClientRows(); } else this.renderPageRows(); this.closeMenu(false); },
+        reset() { this.hidden = []; this.compact = false; this.anchosColumnas = {}; this.columnOrder = this.columns.map((_, index) => index); this.columnFilters = {}; this.pageSort = ''; this.applyColumns(); if (client) { this.searchText = ''; this.sortField = ''; this.clientPerPage = 15; this.clientPage = 1; this.renderClientRows(); } else this.renderPageRows(); this.closeMenu(false); },
         searchPage() { this.clientPage = 1; this.renderClientRows(); },
         get clientLastPage() { return Math.max(1, Math.ceil(this.clientTotal / this.clientPerPage)); },
         get clientPageNumbers() { return [...new Set([1, ...Array.from({length: 5}, (_, i) => this.clientPage - 2 + i), this.clientLastPage])].filter(n => n > 0 && n <= this.clientLastPage).sort((a,b) => a-b); },
@@ -359,7 +404,7 @@
         destroy() {
             this.menuOpen=false;this.observer?.disconnect();this.medidas?.disconnect();
             if(this.superficie){for(const [tipo,fn] of [['wheel',this.alRueda],['scroll',this.alScroll],['touchstart',this.alTocar],['touchmove',this.alMoverTacto],['keydown',this.alTecla]])if(fn)this.superficie.removeEventListener(tipo,fn);}
-            if(this.alMedir){window.removeEventListener('resize',this.alMedir);window.removeEventListener('scroll',this.alMedir);}
+            if(this.alMedir) window.removeEventListener('resize',this.alMedir);
         },
     });
 })();

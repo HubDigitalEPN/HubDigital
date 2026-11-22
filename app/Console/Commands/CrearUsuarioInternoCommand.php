@@ -18,7 +18,7 @@ final class CrearUsuarioInternoCommand extends Command
 {
     protected $signature = 'usuarios:crear-interno
         {email : Correo institucional de la cuenta}
-        {rol : CURADOR, AYUDANTE_CURADOR (Técnico), PASANTE o ADMIN}
+        {rol : CURADOR (Administrador-Curador), AYUDANTE_CURADOR (Técnico) o PASANTE}
         {--nombre= : Nombre}
         {--apellido= : Apellido}';
 
@@ -27,12 +27,12 @@ final class CrearUsuarioInternoCommand extends Command
     public function handle(): int
     {
         $email = User::normalizarEmail((string) $this->argument('email'));
-        $rol = RolUsuario::tryFrom(Str::upper((string) $this->argument('rol')));
+        $rol = RolUsuario::desdeHistorico((string) $this->argument('rol'));
         $nombre = trim((string) ($this->option('nombre') ?: $this->ask('Nombre')));
         $apellido = trim((string) ($this->option('apellido') ?: $this->ask('Apellido')));
 
         if (! in_array($rol, RolUsuario::rolesInternos(), true)) {
-            $this->error('El rol debe ser CURADOR, AYUDANTE_CURADOR (Técnico), PASANTE o ADMIN.');
+            $this->error('El rol debe ser CURADOR, AYUDANTE_CURADOR o PASANTE.');
 
             return self::FAILURE;
         }

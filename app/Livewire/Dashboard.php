@@ -103,12 +103,12 @@ class Dashboard extends Component
         $inicio = microtime(true);
         $user = Auth::user();
 
-        if (in_array($user->rolActivo(), [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN], true)) {
+        if (in_array($user->rolActivo(), [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR], true)) {
             \App\Support\BotonesSistema::autorizar('panel.curador');
         }
 
         $vista = match ($user->rolActivo()) {
-            RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN => view('livewire.dashboard.curador-panel', [
+            RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::CURADOR => view('livewire.dashboard.curador-panel', [
                 ...$this->resumenCuraduria(),
                 'graficoFamilias' => $this->graficoFamilias(),
                 'graficoDeterminacion' => $this->graficoDeterminacion(),

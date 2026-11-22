@@ -337,46 +337,53 @@
                         <flux:button size="sm" variant="ghost" wire:click="restaurarColumnas">Por defecto</flux:button>
                         <flux:button size="sm" variant="ghost" wire:click="mostrarTodasColumnas">Mostrar todas</flux:button>
                         <flux:button size="sm" variant="ghost" wire:click="ocultarTodasColumnas">Ocultar todas</flux:button>
-                        <flux:button size="sm" variant="ghost" wire:click="soloColumnasCriticas">Solo críticas</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="soloColumnasCriticas">Solo requeridas para GBIF</flux:button>
                         <flux:button size="sm" icon="x-mark" variant="ghost" wire:click="$set('panelColumnasAbierto', false)">Cerrar</flux:button>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-4 text-xs text-text-secondary">
-                    <span class="font-medium">Prioridad:</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-full bg-error"></span> Crítica (requerida GBIF)</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-full bg-warning"></span> Recomendada</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-full bg-text-secondary"></span> Opcional</span>
-                </div>
-
-                @php $metaColumnas = collect($columnasRegistro)->keyBy('clave'); @endphp
-                <div class="grid max-h-96 gap-1 overflow-y-auto">
-                    @foreach($ordenColumnas as $i => $clave)
-                        @php $col = $metaColumnas[$clave] ?? null; @endphp
-                        @if($col)
-                            <div wire:key="col-{{ $clave }}" class="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-bg-main">
-                                <div class="flex flex-col leading-none">
-                                    <button type="button" wire:click="moverColumna('{{ $clave }}', -1)" @disabled($i === 0)
-                                            class="text-text-secondary hover:text-text-primary disabled:opacity-30"
-                                            aria-label="Subir {{ $col['etiqueta'] }}">▲</button>
-                                    <button type="button" wire:click="moverColumna('{{ $clave }}', 1)" @disabled($i === count($ordenColumnas) - 1)
-                                            class="text-text-secondary hover:text-text-primary disabled:opacity-30"
-                                            aria-label="Bajar {{ $col['etiqueta'] }}">▼</button>
-                                </div>
-                                <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                                    <input type="checkbox" wire:click="toggleColumna('{{ $clave }}')"
-                                           @checked(in_array($clave, $columnasVisibles, true))
-                                           class="size-4 rounded border-border" />
-                                    <span class="inline-block size-2.5 shrink-0 rounded-full
-                                        @if($col['prioridad']==='critica') bg-error
-                                        @elseif($col['prioridad']==='recomendada') bg-warning
-                                        @else bg-text-secondary @endif" title="{{ $col['prioridad'] }}"></span>
-                                    <span class="truncate text-sm text-text-primary">{{ $col['etiqueta'] }}</span>
-                                    <span class="ml-auto shrink-0 text-xs text-text-secondary">{{ $col['grupo'] }}</span>
-                                </label>
-                            </div>
-                        @endif
-                    @endforeach
+                @php
+                    $metaColumnas = collect($columnasRegistro)->keyBy('clave');
+                    $requisitos = ['critica' => 'Obligatorio para GBIF', 'recomendada' => 'Recomendado', 'opcional' => 'Opcional'];
+                @endphp
+                <div class="max-h-96 overflow-auto rounded border border-border">
+                    <table class="w-full text-left text-sm" aria-label="Requisitos de las columnas">
+                        <thead class="sticky top-0 bg-bg-main">
+                            <tr class="border-b border-border">
+                                <th scope="col" class="px-3 py-2">Orden</th>
+                                <th scope="col" class="px-3 py-2">Campo visible</th>
+                                <th scope="col" class="px-3 py-2">Requisito</th>
+                                <th scope="col" class="px-3 py-2">Grupo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-border">
+                            @foreach($ordenColumnas as $i => $clave)
+                                @php
+                                    $col = $metaColumnas[$clave] ?? null;
+                                @endphp
+                                @continue(!$col)
+                                <tr wire:key="col-{{ $clave }}" class="hover:bg-bg-main">
+                                    <td class="px-3 py-2">
+                                        <div class="flex gap-2">
+                                            <button type="button" wire:click="moverColumna('{{ $clave }}', -1)" @disabled($i === 0)
+                                                class="text-text-secondary hover:text-text-primary disabled:opacity-30" aria-label="Subir {{ $col['etiqueta'] }}">▲</button>
+                                            <button type="button" wire:click="moverColumna('{{ $clave }}', 1)" @disabled($i === count($ordenColumnas) - 1)
+                                                class="text-text-secondary hover:text-text-primary disabled:opacity-30" aria-label="Bajar {{ $col['etiqueta'] }}">▼</button>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <label class="flex cursor-pointer items-center gap-2">
+                                            <input type="checkbox" wire:click="toggleColumna('{{ $clave }}')"
+                                                @checked(in_array($clave, $columnasVisibles, true)) class="size-4 shrink-0 rounded border-border" />
+                                            <span>{{ $col['etiqueta'] }}</span>
+                                        </label>
+                                    </td>
+                                    <td class="px-3 py-2">{{ $requisitos[$col['prioridad']] ?? 'Opcional' }}</td>
+                                    <td class="px-3 py-2 text-text-secondary">{{ $col['grupo'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             </div>
             @endif
@@ -454,7 +461,6 @@
                 @if(count($filtrosActivos) > 0)<span class="text-text-secondary">(filtrado)</span>@endif
             </span>
             <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xs text-text-secondary" wire:loading>Cargando…</span>
                 <flux:button size="sm" variant="ghost" icon="clock" wire:click="abrirHistorial">
                     Historial
                 </flux:button>
@@ -481,7 +487,8 @@
 
             <x-grid-frame label="Especímenes" page-size-label="Filas por carga"
                           :page-size="$perPage" page-size-action="cambiarFilasPorCarga" :page-sizes="$tamanosPagina"
-                          :allow-download="false" column-action="$set('panelColumnasAbierto', true)" :continuous-window="$continuidad">
+                          :allow-download="false" column-action="$set('panelColumnasAbierto', true)" :continuous-window="$continuidad"
+                          data-grid-resizable data-especimen-grid>
                 <x-slot:actions>
                     <button type="button" role="menuitem" tabindex="-1" @click="marcarFilas(@js(array_column($filas, 'id'))); closeMenu()" @disabled($filas === [])>
                         <flux:icon name="check" /><span>Marcar filas cargadas ({{ count($filas) }})</span>
@@ -520,29 +527,26 @@
                     </a>
                 </x-slot:actions>
             <div class="hidden md:block">
-            <table class="w-full border-separate border-spacing-0 font-mono text-xs">
+            <table class="hub-ig-movable w-full border-separate border-spacing-0 font-mono text-xs">
                 <thead>
                     <tr>
-                        <th scope="col"
+                        <th scope="col" data-grid-leading data-grid-action data-grid-fixed="64" data-grid-label="Acciones y selección"
                             class="sticky left-0 top-0 z-30 w-16 border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 font-sans font-medium text-white">
                             <span class="sr-only">Acciones y selección</span>
                         </th>
-                        <th scope="col"
+                        <th scope="col" data-grid-leading data-grid-fixed="48"
                             class="sticky left-16 top-0 z-30 w-12 border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 text-right font-sans font-medium text-white">
                             #
                         </th>
                         @foreach($columnasTabla as $col)
                             @php $ordenable = in_array($col['clave'], $clavesOrdenables, true); @endphp
-                            <th scope="col" data-copy-preserve
+                            <th scope="col" data-copy-preserve data-grid-field="{{ $col['clave'] }}" data-grid-label="{{ $col['etiqueta'] }}"
+                                @if($ordenable) aria-sort="{{ $ordenarPor !== $col['clave'] ? 'none' : ($ordenDireccion === 'asc' ? 'ascending' : 'descending') }}" @endif
                                 class="sticky top-0 z-20 whitespace-nowrap border-b border-r border-blue-navy/40 bg-blue-navy px-2 py-2 text-left font-sans font-medium text-white">
                                 @if($ordenable)
-                                    <button type="button" wire:click="ordenarPorColumna('{{ $col['clave'] }}')"
+                                    <button type="button" wire:click="ordenarPorColumna('{{ $col['clave'] }}')" data-grid-server-order
                                             class="inline-flex items-center gap-1.5 hover:underline"
                                             title="Ordenar por {{ $col['etiqueta'] }}">
-                                        <span class="inline-block size-2 rounded-full
-                                            @if($col['prioridad']==='critica') bg-error
-                                            @elseif($col['prioridad']==='recomendada') bg-warning
-                                            @else bg-white/50 @endif"></span>
                                         {{ $col['etiqueta'] }}
                                         @if($ordenarPor === $col['clave'])
                                             <span aria-hidden="true">{{ $ordenDireccion === 'asc' ? '▲' : '▼' }}</span>
@@ -552,14 +556,9 @@
                                         @endif
                                     </button>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5">
-                                        <span class="inline-block size-2 rounded-full
-                                            @if($col['prioridad']==='critica') bg-error
-                                            @elseif($col['prioridad']==='recomendada') bg-warning
-                                            @else bg-white/50 @endif"></span>
-                                        {{ $col['etiqueta'] }}
-                                    </span>
+                                    {{ $col['etiqueta'] }}
                                 @endif
+                                <x-grid-resize :field="$col['clave']" :label="$col['etiqueta']" />
                             </th>
                         @endforeach
                     </tr>
@@ -571,7 +570,7 @@
                             $fondo = $i % 2 === 0 ? 'bg-surface' : 'bg-bg-main';
                         @endphp
                         <tr wire:key="fila-{{ $especimen['id'] }}" class="group">
-                            <td class="sticky left-0 z-10 w-16 border-b border-r border-border px-1 py-1 {{ $fondo }} group-hover:bg-science-blue/10">
+                            <td data-grid-leading data-grid-action class="sticky left-0 z-10 w-16 border-b border-r border-border px-1 py-1 {{ $fondo }} group-hover:bg-science-blue/10">
                                 <div class="flex items-center gap-1">
                                     @include('inventariogestioncoleccion::admin.taxonomia.especimenes.boton-acciones-fila')
                                     <input type="checkbox" class="size-4 rounded border-border"
@@ -580,7 +579,7 @@
                                            aria-label="Seleccionar {{ $especimen['codigoCatalogo'] }}" />
                                 </div>
                             </td>
-                            <td class="sticky left-16 z-10 border-b border-r border-border px-2 py-1 text-right text-text-secondary
+                            <td data-grid-leading class="sticky left-16 z-10 border-b border-r border-border px-2 py-1 text-right text-text-secondary
                                        {{ $fondo }} group-hover:bg-science-blue/10">
                                 {{ $offsetFila + $i + 1 }}
                             </td>

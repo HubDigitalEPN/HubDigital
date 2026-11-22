@@ -1,7 +1,8 @@
 @props(['pageSizeLabel' => 'Filas por página', 'server' => false, 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100], 'columnAction' => null])
-<div class="hub-ig-actions" x-on:click.outside="closeMenu(false)">
+<div @class(['hub-ig-actions', 'hub-ig-action-pair' => isset($afterActions) && $afterActions->isNotEmpty()]) x-on:click.outside="closeMenu(false)">
     <button type="button" class="hub-ig-button" x-ref="actionsButton" aria-haspopup="menu" :aria-expanded="menuOpen.toString()"
         x-on:click="openMenu()" x-on:keydown.arrow-down.prevent="if (!menuOpen) openMenu()">Acciones <flux:icon name="chevron-down" /></button>
+    {{ $afterActions ?? '' }}
     <div class="hub-ig-menu" x-ref="actionMenu" x-show="menuOpen" x-cloak role="menu" aria-label="Acciones de la grilla" x-on:keydown="menuKey($event)">
         <div data-menu-view="main" x-show="menuView === 'main'">
             <button type="button" role="menuitem" tabindex="-1" @if($columnAction) wire:click="{{ $columnAction }}" x-on:click="closeMenu()" @else x-on:click="openColumns()" @endif><flux:icon name="table-cells" /><span>Columnas</span><span class="hub-ig-menu-trailing">…</span></button>

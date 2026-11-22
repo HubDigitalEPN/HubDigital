@@ -1,18 +1,4 @@
-<div data-testid="admin-users-page" class="hub-workspace flex h-full w-full flex-1 flex-col gap-6 p-4 sm:p-6">
-    <header class="hub-page-header">
-        <div>
-            <h1 class="mt-1 hub-page-title">Usuarios y perfiles</h1>
-        </div>
-        <flux:button
-            wire:click="alternarFormulario"
-            variant="primary"
-            icon="user-plus"
-            data-testid="admin-user-create-toggle"
-        >
-            {{ $mostrarFormulario ? 'Cerrar formulario' : 'Crear usuario' }}
-        </flux:button>
-    </header>
-
+<div data-testid="admin-users-page" class="hub-workspace space-y-3 px-4 pb-4 pt-2">
     @if (session('usuario-creado'))
         <div role="status" class="rounded-lg border border-bio-green/25 bg-bio-green/5 px-4 py-3 text-sm text-bio-green">
             {{ session('usuario-creado') }}
@@ -26,7 +12,7 @@
     @endif
 
     @if ($mostrarFormulario)
-        <section class="hub-panel p-5">
+        <section class="hub-panel p-5" x-data x-init="$nextTick(() => $el.querySelector('input')?.focus())">
             <div class="mb-5">
                 <h2 class="font-display text-lg font-semibold text-blue-navy">Nueva cuenta</h2>
 
@@ -79,7 +65,7 @@
     @endif
 
     @if ($usuarioEnEdicion)
-        <section class="hub-panel border-science-blue/30 p-5">
+        <section class="hub-panel border-science-blue/30 p-5" x-data x-init="$nextTick(() => $el.querySelector('input')?.focus())">
             <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 class="font-display text-lg font-semibold text-blue-navy">Editar perfil de usuario</h2>
@@ -136,7 +122,13 @@
         </section>
     @endif
 
-    <x-interactive-grid :rows="$usuarios" label="Usuarios y perfiles" :columns="['Persona', 'Perfil', 'Rol', 'Estado', 'Alta', 'Acciones']">
+    <x-interactive-grid :rows="$usuarios" label="Usuarios y perfiles" :columns="['Acciones', 'Persona', 'Perfil', 'Rol', 'Estado', 'Alta']" data-grid-resizable>
+        <x-slot:toolbarActions>
+            <flux:button class="hub-ig-new-record" variant="primary" icon="user-plus" wire:click="alternarFormulario"
+                x-on:click="closeMenu(false)" data-testid="admin-user-create-toggle">
+                {{ $mostrarFormulario ? 'Cerrar formulario' : 'Crear usuario' }}
+            </flux:button>
+        </x-slot:toolbarActions>
         <x-slot:filters>
             <flux:select x-model="filterValues.filtroRol" data-grid-filter="filtroRol" label="Rol" aria-label="Filtrar por rol" data-testid="admin-user-role-filter">
                 <flux:select.option value="">Todos los roles</flux:select.option>
@@ -145,10 +137,21 @@
                 @endforeach
             </flux:select>
         </x-slot:filters>
-        <thead><tr><x-grid-heading field="persona">Persona</x-grid-heading><x-grid-heading field="perfil">Perfil</x-grid-heading><x-grid-heading>Rol</x-grid-heading><x-grid-heading field="estado">Estado</x-grid-heading><x-grid-heading field="alta">Alta</x-grid-heading><x-grid-heading>Acciones</x-grid-heading></tr></thead>
+        <thead><tr><th scope="col" data-grid-action data-grid-fixed="56" data-grid-label="Acciones"><span class="sr-only">Acciones</span></th><x-grid-heading field="persona">Persona</x-grid-heading><x-grid-heading field="perfil">Perfil</x-grid-heading><x-grid-heading>Rol</x-grid-heading><x-grid-heading field="estado">Estado</x-grid-heading><x-grid-heading field="alta">Alta</x-grid-heading></tr></thead>
                 <tbody class="divide-y divide-border">
                     @forelse ($usuarios as $usuario)
-                        <tr data-testid="admin-user-row" class="hover:bg-bg-main/50">
+                        <tr wire:key="fila-usuario-{{ $usuario->id }}" data-testid="admin-user-row" class="hover:bg-bg-main/50">
+                            <td data-grid-action>
+                                <x-catalogo-menu-fila :id="'usuario-acciones-'.$usuario->id" :etiqueta="$usuario->name">
+                                    @if (!$usuario->hasVerifiedEmail())
+                                        <button type="button" role="menuitem" wire:click="reenviarVerificacion(@js((string) $usuario->id))" title="Reenviar verificación"><flux:icon name="envelope" />Verificar</button>
+                                    @endif
+                                    <button type="button" role="menuitem" wire:click="editar(@js((string) $usuario->id))"><flux:icon name="pencil" />Editar</button>
+                                    @if($usuario->id !== auth()->id())
+                                        <button type="button" role="menuitem" wire:click="confirmarEliminacion(@js((string) $usuario->id))" aria-label="Eliminar usuario"><flux:icon name="trash" />Eliminar</button>
+                                    @endif
+                                </x-catalogo-menu-fila>
+                            </td>
                             <td class="px-4 py-4">
                                 <p class="font-medium text-text-primary">{{ $usuario->name }}</p>
                                 <p class="text-xs text-text-secondary">{{ $usuario->email }}</p>
@@ -174,17 +177,6 @@
                             </td>
                             <td class="whitespace-nowrap px-4 py-4 text-xs text-text-secondary">
                                 {{ $usuario->created_at?->format('d/m/Y') }}
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-4 text-right">
-                                <div class="inline-flex items-center gap-1">
-                                    @if (! $usuario->hasVerifiedEmail())
-                                        <flux:button wire:click="reenviarVerificacion('{{ $usuario->id }}')" variant="ghost" size="sm" icon="envelope" title="Reenviar verificación">Verificar</flux:button>
-                                    @endif
-                                    <flux:button wire:click="editar('{{ $usuario->id }}')" variant="ghost" size="sm" icon="pencil-square">Editar</flux:button>
-                                    @if($usuario->id !== auth()->id())
-                                        <flux:button wire:click="confirmarEliminacion('{{ $usuario->id }}')" variant="ghost" size="sm" icon="trash" aria-label="Eliminar usuario">Eliminar</flux:button>
-                                    @endif
-                                </div>
                             </td>
                         </tr>
                     @empty

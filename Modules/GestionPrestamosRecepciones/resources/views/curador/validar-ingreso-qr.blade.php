@@ -2,7 +2,7 @@
     <header><h1 class="text-2xl font-semibold">Validar documento de ingreso</h1><p class="text-text-secondary">{{ $solicitud->numero }} · {{ $solicitud->codigo_qr }}</p></header>
     @if($aviso)
         <p class="text-sm" role="status">Documento y aviso: {{ str_replace('_', ' ', $aviso->estado) }}. Correo: {{ str_replace('_', ' ', $aviso->correo_estado) }}. Intentos: {{ $aviso->intentos }}/3.</p>
-        @if(in_array($aviso->estado, ['fallido', 'revision_necesaria'], true) && auth()->user()->tieneAlgunRol(\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::ADMIN))
+        @if(in_array($aviso->estado, ['fallido', 'revision_necesaria'], true) && auth()->user()->tieneAlgunRol(\App\Enums\RolUsuario::CURADOR))
             <form wire:submit="reintentarAviso" class="space-y-3 rounded-lg border border-border p-4">
                 <flux:textarea wire:model="motivoReintento" label="Motivo del reintento del documento o correo" required maxlength="3000" />
                 @if($aviso->estado === 'revision_necesaria')
@@ -14,7 +14,7 @@
     @endif
     @if($solicitud->recepcion_qr_rechazada_en)
         <flux:callout variant="warning" heading="Entrega no recibida">{{ $solicitud->recepcion_qr_motivo }}. Se requiere autorización del Curador para otro intento.</flux:callout>
-        @if(auth()->user()->tieneAlgunRol(\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::ADMIN) && $solicitud->estado === 'Aprobada Documentalmente')
+        @if(auth()->user()->tieneAlgunRol(\App\Enums\RolUsuario::CURADOR) && $solicitud->estado === 'Aprobada Documentalmente')
             <form wire:submit="autorizarNuevoIntento" class="space-y-3">
                 <flux:textarea wire:model="motivo" label="Motivo para autorizar otro intento" required maxlength="3000" />
                 <flux:button type="submit" variant="primary" wire:loading.attr="disabled">Autorizar nuevo intento</flux:button>

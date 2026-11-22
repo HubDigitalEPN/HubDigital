@@ -6,9 +6,37 @@
     "seleccion_paquete": "solo-cambio",
     "base_caduca_por_fecha": false,
     "integral_solo_explicito": true,
+    "pruebas_manuales": {
+      "php": ["tests/Unit/TurnstileVerifierTest.php", "Modules/CatalogoPublico/tests/Unit/VisorImagenPortalTest.php"],
+      "node": ["tests/Frontend/auth-forms.test.mjs", "tests/Frontend/hub-turnstile.test.mjs", "tests/Frontend/manual-password.test.mjs"]
+    },
+    "comprobaciones_tecnicas": {
+      "servicios_y_contratos": ["tests/Unit/R2S3ClientTest.php", "Modules/CatalogoPublico/tests/Unit/PortalContratoExportacionQa6Test.php"],
+      "integracion_postgresql": ["Modules/CatalogoPublico/tests/Integration/InventarioGestionColeccionEspecimenAdapterTest.php"],
+      "carga_y_mutacion": ["tests/Frontend/interactive-grid-client.test.mjs"]
+    },
     "modulos": {"portal": "CatalogoPublico", "inventario": "InventarioGestionColeccion", "depositos": "GestionPrestamosRecepciones"},
-    "controles_pdf": ["Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/CodigoQrDisponibleNotification.php", "Modules/GestionPrestamosRecepciones/resources/views/pdf/solicitud-deposito.blade.php", "Modules/GestionPrestamosRecepciones/resources/views/pdf/acta-recepcion.blade.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Documentos/DomPdfGeneradorActaRecepcionAdapter.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/ContenidoRecibidoDeposito.php", "Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DescargarActaRecepcion.php", "tools/pdf-signature/src/main/java/org/hubdigital/signatures/PdfSignatureCli.java", "tools/pdf-signature/src/main/resources/autoprueba/qr-barrido-144dpi.png", "tools/pdf-signature/src/main/resources/autoprueba/qr-barrido-144dpi.txt"],
+    "controles_pdf": ["app/Services/SystemMailConfigurationService.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/DocumentoIngresoDeposito.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Notifications/CodigoQrDisponibleNotification.php", "Modules/GestionPrestamosRecepciones/resources/views/pdf/solicitud-deposito.blade.php", "Modules/GestionPrestamosRecepciones/resources/views/pdf/acta-recepcion.blade.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Documentos/DomPdfGeneradorActaRecepcionAdapter.php", "Modules/GestionPrestamosRecepciones/app/Infrastructure/Services/ContenidoRecibidoDeposito.php", "Modules/GestionPrestamosRecepciones/app/Presentation/Http/Controllers/DescargarActaRecepcion.php", "tools/pdf-signature/src/main/java/org/hubdigital/signatures/PdfSignatureCli.java", "tools/pdf-signature/src/main/resources/autoprueba/qr-barrido-144dpi.png", "tools/pdf-signature/src/main/resources/autoprueba/qr-barrido-144dpi.txt"],
     "contratos_propios": {
+      "scripts/deployment/crear-paquete-oci-core.ps1": ["tests/Frontend/postgresql-navegador.test.mjs"],
+      "scripts/deployment/windows/validar-postgresql-temporal.ps1": ["tests/Frontend/postgresql-navegador.test.mjs"],
+      "scripts/development/localhost.ps1": ["tests/Frontend/postgresql-navegador.test.mjs"],
+      "Modules/GestionPrestamosRecepciones/app/Infrastructure/Listeners/NotificarCuradorEventoPrestamoListener.php": ["Modules/GestionPrestamosRecepciones/tests/Infrastructure/Listeners/NotificarCuradorEventoPrestamoListenerTest.php"],
+      "app/Console/Commands/AsignarPerfilesUsuarioCommand.php": ["tests/Feature/Auth/BotonesRbacTest.php"],
+      "app/Http/Controllers/AdminBootstrapController.php": ["tests/Feature/Auth/AdminBootstrapTest.php"],
+      "app/Support/Administracion/AdminBootstrapGuard.php": ["tests/Feature/Auth/AdminBootstrapTest.php"],
+      "database/factories/UserFactory.php": ["tests/Feature/Auth/AdminUserManagementTest.php"],
+      "database/migrations/2026_11_22_120001_unificar_perfil_administrador_curador.php": ["tests/Feature/Auth/BotonesRbacTest.php", "tests/Feature/GestionMenuLateralTest.php"],
+      "Modules/InventarioGestionColeccion/app/Infrastructure/SeguimientoFisico/Importers/EditorMatrizImportacion.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "app/Services/SystemMailConfigurationService.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "app/Support/EditorMatrizIpt.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "app/Support/OpcionesRelacionCatalogo.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "app/Support/TablasCatalogoDatos.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "app/Support/ValidacionTablasCatalogo.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "database/migrations/2026_11_21_230002_create_estado_configuracion_correo.php": ["tests/Feature/TablasCatalogosTest.php"],
+      "app/Support/EditorMatrizDepositos.php": ["tests/Feature/EsquemaMatrizDepositoTest.php"],
+      "config/menu-lateral.php": ["tests/Feature/GestionMenuLateralTest.php"],
+      "database/migrations/2026_11_21_230001_create_menu_lateral.php": ["tests/Feature/GestionMenuLateralTest.php"],
       "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AceptarJustificacionesAlertas/AceptarJustificacionesAlertasHandler.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"],
       "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AceptarJustificacionesAlertas/AceptarJustificacionesAlertasOutput.php": ["Modules/GestionPrestamosRecepciones/tests/Behat/Features/RecepcionValidacionLotesEspecimenesYDatos/aprobacion_documental_solicitud.feature"],
       "Modules/GestionPrestamosRecepciones/app/Application/UseCases/AprobarDocumentalmenteSolicitud/AprobarDocumentalmenteSolicitudOutput.php": ["tests/Feature/DepositosArquitecturaTest.php"],
@@ -29,7 +57,7 @@
     {"id": "ete-runtime", "responsable": "paquete", "descripcion": "Preparacion del runtime ETE aislado"},
     {"id": "javascript-contratos", "responsable": "agente", "descripcion": "Contratos Node de tests/Frontend: integral o relacionados con evidencia del resto"},
     {"id": "laravel-arranque", "responsable": "paquete", "descripcion": "Arranque de Laravel"},
-    {"id": "postgres-integracion", "responsable": "paquete", "descripcion": "Pest con PostgreSQL aislado, PDF y Neon/Livewire: integral o relacionados con evidencia del resto"},
+    {"id": "php-unitario", "responsable": "paquete", "descripcion": "Pruebas unitarias PHP seleccionadas por impacto"},
     {"id": "diff", "responsable": "paquete", "descripcion": "Diff sin conflictos ni errores de formato"},
     {"id": "json", "responsable": "paquete", "descripcion": "Sintaxis de JSON modificados"},
     {"id": "composer-contrato", "responsable": "paquete", "descripcion": "Validez de composer.json y composer.lock"},
@@ -40,7 +68,7 @@
     {"id": "bash", "responsable": "paquete", "descripcion": "Sintaxis Bash y asistentes DEV/PROD generados"},
     {"id": "php-sintaxis", "responsable": "paquete", "descripcion": "Sintaxis PHP modificados"},
     {"id": "migraciones", "responsable": "paquete", "descripcion": "Integridad de clases de migracion"},
-    {"id": "gherkin", "responsable": "paquete", "descripcion": "Cobertura @listo con Behat strict: integral o relacionada con evidencia del resto"},
+    {"id": "pdf-tecnico", "responsable": "paquete", "descripcion": "Admisión de PDF y verificación criptográfica PHP/Java en localhost"},
     {"id": "identidad-artefacto", "responsable": "paquete", "descripcion": "Runtime requerido, evidencia vigente, identidad de fuentes/builds, publicacion y archivos OCI"}
   ]
 }

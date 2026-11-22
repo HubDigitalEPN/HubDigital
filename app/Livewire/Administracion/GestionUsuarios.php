@@ -118,7 +118,7 @@ final class GestionUsuarios extends Component
             'institucion' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
         ])->validate();
 
-        abort_if($this->rol === RolUsuario::ADMIN->value && !auth()->user()->esAdministrador(), 403);
+        abort_if($this->rol === RolUsuario::CURADOR->value && !auth()->user()->esAdministrador(), 403);
         $creador->crear($datos, RolUsuario::from($datos['rol']), creadoPorAdministrador: true);
 
         $this->reset([
@@ -165,7 +165,7 @@ final class GestionUsuarios extends Component
         $this->autorizarAdministracion();
 
         $usuario = User::query()->with('roles')->findOrFail($this->usuarioEnEdicion);
-        abort_if(($usuario->esAdministrador() || in_array(RolUsuario::ADMIN->value, $this->edicionRoles, true)) && !auth()->user()->esAdministrador(), 403);
+        abort_if(($usuario->esAdministrador() || in_array(RolUsuario::CURADOR->value, $this->edicionRoles, true)) && !auth()->user()->esAdministrador(), 403);
         $rol = RolUsuario::tryFrom($this->edicionRol);
         $rolesSeleccionados = collect($this->edicionRoles)
             ->map(static fn (mixed $valor): ?RolUsuario => is_string($valor) ? RolUsuario::tryFrom($valor) : null)
@@ -204,14 +204,14 @@ final class GestionUsuarios extends Component
             return;
         }
 
-        if ($internos->contains(fn (RolUsuario $asignado): bool => ! in_array($asignado, [RolUsuario::ADMIN, RolUsuario::PASANTE], true))
+        if ($internos->contains(fn (RolUsuario $asignado): bool => ! in_array($asignado, [RolUsuario::CURADOR, RolUsuario::PASANTE], true))
             && ! $this->esCorreoInstitucional($datos['email'])) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'Los roles internos requieren un correo institucional autorizado.',
             ]);
         }
 
-        if ($usuario->is(auth()->user()) && ! $rolesSeleccionados->contains($usuario->rol)) {
+        if ($usuario->is(auth()->user()) && ! $rolesSeleccionados->contains(RolUsuario::CURADOR)) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'No puedes retirar tu propio rol de administración.',
             ]);
@@ -253,7 +253,7 @@ final class GestionUsuarios extends Component
         abort_if($usuario->is(auth()->user()) || ($usuario->esAdministrador() && !auth()->user()->esAdministrador()), 403);
 
         if ($usuario->esAdministrador() && User::query()
-            ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::ADMIN->value))
+            ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::CURADOR->value))
             ->count() <= 1) {
             throw ValidationException::withMessages([
                 'usuarioPorEliminar' => 'Debe existir al menos otra cuenta administradora.',
@@ -318,12 +318,12 @@ final class GestionUsuarios extends Component
     private function autorizarAdministracion(): void
     {
         // Se vuelve a consultar la membresía en cada petición Livewire para
-        // que revocar ADMIN invalide incluso un formulario que ya estaba abierto.
+        // que revocar el perfil administrador invalide incluso un formulario abierto.
         abort_unless(
             auth()->check() && User::query()
                 ->whereKey(auth()->id())
                 ->whereNotNull('email_verified_at')
-                ->whereHas('roles', fn ($roles) => $roles->whereIn('rol', [RolUsuario::ADMIN->value, RolUsuario::CURADOR->value]))
+                ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::CURADOR->value))
                 ->exists(),
             403,
         );

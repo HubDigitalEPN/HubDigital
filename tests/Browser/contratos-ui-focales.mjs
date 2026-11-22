@@ -146,7 +146,7 @@ export async function comprobarUIFocal(caso) {
         await cargar('teclado',3);checks.keyboard=rows().length===45;
         await cargar('rueda',4);checks.bounded=rows().length===45 && state.datosVentana().desde===2 && scroll.clientHeight<=innerHeight && scroll.scrollHeight>scroll.clientHeight;
         await cargar('teclado',3,-1);checks.previous=state.datosVentana().desde===1 && rows()[0].textContent.includes('QA-UI-GRID-000');
-        const header=root.querySelector('thead th');header.click();await wait(()=>q('dialog[open].hub-ig-column-popup'));
+        const header=root.querySelector('thead th[data-grid-field="nombre"]');header.click();await wait(()=>q('dialog[open].hub-ig-column-popup'));
         checks.menu=q('dialog[open]').textContent.includes('Buscar en esta columna') && q('dialog[open] input')===document.activeElement;
         const popup=q('dialog[open]');[...popup.querySelectorAll('button')].find(b=>b.title==='Orden descendente').click();
         await wait(()=>!q('dialog[open]') && rows()[0].textContent.includes('QA-UI-GRID-065'));checks.sorted=true;
@@ -431,31 +431,43 @@ export async function comprobarUIFocal(caso) {
         checks.batch=true;checks.selectionCleared=borrar(await abrirAccionesInventario()).disabled;
         checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='tablas_catalogos') {
-        const selector=()=>q('#selector-tabla-catalogo');
+        const selector=()=>q('[data-tablas-catalogos] button[role="combobox"]');
         const tabla=()=>q('[data-registros-catalogos]');
         const menu=all('nav[data-flux-sidebar-nav] ui-disclosure a');
         await wait(()=>selector() && tabla());
-        const entrar=async valor=>{
-            selector().value=valor;
-            selector().dispatchEvent(new Event('change',{bubbles:true}));
-            await wait(()=>q('[data-tabla-catalogo]')?.dataset.tablaCatalogo===valor);
+        const opciones=()=>all('dialog.hub-lov-overlay[open] button[role="option"]');
+        const abrir=async()=>{selector().click(); await wait(()=>opciones().length>0);};
+        const elegir=async (nombre, clave)=>{
+            opciones().find(opcion=>opcion.textContent.trim()===nombre).click();
+            await wait(()=>q('[data-tabla-catalogo]')?.dataset.tablaCatalogo===clave && !q('dialog.hub-lov-overlay[open]'));
         };
-        if(selector().value!=='') await entrar('');
-        const etiqueta=selector().getAttribute('aria-labelledby')?.split(/\s+/).map(id=>document.getElementById(id)?.textContent.trim()).join(' ');
-        const opciones=[...selector().options].map(o=>o.value);
+        const root=q('[data-tablas-catalogos]');
+        await abrir();
+        const nombres=opciones().map(o=>o.textContent.trim());
         checks.menu=['catalogos','matrices','usuarios','contenidos'].every(p=>menu.filter(a=>new URL(a.href).pathname==='/administracion/'+p).length===1);
-        checks.selector=etiqueta==='Catálogo' && opciones.includes('') && ['asistente','botones','cargos','columnas','sistema','instituciones','taxones','fuentes-revocacion','grupos-animales','localidades-ecuador','localidades-coleccion','siglas-expedientes','gbif'].every(k=>opciones.includes(k))
-            && !opciones.includes('usuarios') && !opciones.includes('matriz-depositos');
-        const original=tabla();
-        checks.editors=new Set(all('[data-catalogo-fila]').map(fila=>fila.dataset.catalogoFila)).size>1 && all('[data-registros-catalogos]').length===1;
-        await entrar('cargos');
-        checks.navigation=original===tabla() && location.pathname==='/administracion/catalogos'
-            && all('[data-catalogo-fila]').every(fila=>fila.dataset.catalogoFila==='cargos');
-        const fila=q('[data-catalogo-fila="cargos"]');
-        fila.querySelector('button').click();
-        await wait(()=>q('dialog[open] input[wire\\:model="nombre"]'));
-        checks.action=q('dialog[open]').textContent.includes('Editar cargo') && !q('dialog[open] table');
-        all('dialog[open] button').find(b=>b.textContent.trim()==='Cancelar').click();
+        checks.selector=selector().closest('[data-flux-field]').querySelector('label')?.textContent.trim()==='Tabla'
+            && ['Instituciones','Cargos','Revocación de firmas','Localidades de Ecuador','Siglas de expedientes','Publicación GBIF','Correo y descargas · Correo'].every(nombre=>nombres.includes(nombre))
+            && !nombres.some(nombre=>/Usuarios y perfiles|Botones y permisos|Matriz de depósitos/.test(nombre));
+        const columnas=()=>[...tabla().querySelectorAll('thead th')].map(h=>h.textContent.trim());
+        await elegir('Correo y descargas · Correo','sistema');
+        const correo=columnas();
+        await abrir();await elegir('Cargos','cargos');
+        const cargos=columnas();
+        checks.editors=correo.includes('password') && cargos.includes('nombre') && cargos.includes('activo')
+            && cargos.includes('N.º') && !cargos.some(h=>['id','created_at','updated_at','Tabla','Detalle','Estado'].includes(h))
+            && all('[data-registros-catalogos]').length===1;
+        checks.navigation=root===q('[data-tablas-catalogos]') && location.pathname==='/administracion/catalogos'
+            && all('[data-catalogo-fila]').length>0 && all('[data-catalogo-fila]').every(fila=>fila.dataset.catalogoFila==='cargos');
+        q('[data-catalogo-fila="cargos"] td:first-child [data-catalogo-menu-fila]').click();
+        await wait(()=>q('[role="menu"]:popover-open [role="menuitem"]'));
+        const menuFila=q('[role="menu"]:popover-open');
+        const eliminar=[...menuFila.querySelectorAll('[role="menuitem"]')].some(item=>item.textContent.trim()==='Eliminar');
+        [...menuFila.querySelectorAll('[role="menuitem"]')].find(item=>item.textContent.trim()==='Editar').click();
+        await wait(()=>model('datos.nombre')?.closest('dialog[open]'));
+        const dialogo=model('datos.nombre').closest('dialog');
+        checks.action=eliminar && dialogo.textContent.includes('Editar registro') && !dialogo.querySelector('table')
+            && [...dialogo.querySelector('select').options].map(o=>o.textContent.trim()).join() === 'Sí,No';
+        [...dialogo.querySelectorAll('button')].find(b=>b.textContent.trim()==='Cancelar').click();
         await wait(()=>!q('dialog[open]'));
         checks.fit=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='instituciones_unificadas') {

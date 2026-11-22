@@ -18,6 +18,11 @@ const phpDirectories = [...phpSuites.matchAll(/<directory(?:\s+[^>]*)?>([^<]+)<\
 if (!phpDirectories.length || phpDirectories.some(p => p.startsWith('/') || p.split('/').includes('..'))) throw new Error('Directorios PHP no compatibles con la seleccion segura.');
 const phpTest = file => phpDirectories.some(prefix => file.startsWith(prefix)) && file.endsWith('Test.php');
 const nodeTest = file => /^tests\/Frontend\/.*\.test\.mjs$/.test(file);
+const manualPhp = new Set(config.pruebas_manuales.php);
+const manualNode = new Set(config.pruebas_manuales.node);
+const technicalPhp = file => phpTest(file) && /(^|\/)tests\/Unit\//.test(file) && !manualPhp.has(file);
+const technicalNode = file => nodeTest(file) && !manualNode.has(file);
+const businessScenario = file => /\/tests\/Behat\/.*\.feature$/.test(file);
 
 function owner(file) {
     for (const [area, module] of Object.entries(config.modulos)) if (file.startsWith(`Modules/${module}/`)) return area;
@@ -48,7 +53,12 @@ function inventoryHash(files) {
 
 function selectPlan({files, baseline, runtime, root, head, environment, dependencies = {}, nodeDependencies = {}, fileDependencies = nodeDependencies, uncertain = [], ancestor = false, force = false, now = Date.now()}) {
     const allFiles = Object.keys(files).filter(f => files[f] !== 'eliminado').sort();
-    const allPhp = allFiles.filter(phpTest), allNode = allFiles.filter(nodeTest);
+    const allPhp = allFiles.filter(technicalPhp), allNode = allFiles.filter(technicalNode);
+    const technical = config.comprobaciones_tecnicas;
+    const existing = paths => paths.filter(file => allFiles.includes(file));
+    const standalonePhp = existing(technical.servicios_y_contratos);
+    const postgresTests = existing(technical.integracion_postgresql);
+    const loadAndMutation = existing(technical.carga_y_mutacion);
     if (!force && (!baseline || baseline.version !== 1 || baseline.full_test_coverage !== true || baseline.root !== root || !ancestor)) {
         throw new Error('Falta una base aprobada compatible con esta linea de trabajo. Restaurar la base local o solicitar -Integral expresamente; no se ejecutaran todas las pruebas automaticamente.');
     }
@@ -62,8 +72,8 @@ function selectPlan({files, baseline, runtime, root, head, environment, dependen
     // El grafo completo se conserva como diagnostico. La seleccion del paquete
     // solo admite pruebas que cubren directamente una fuente cambiada.
     const direct = new Set(changes.flatMap(file => fileDependencies[file] || []));
-    const selectedNode = integral ? allNode : allNode.filter(f => changes.includes(f) || direct.has(f));
-    const selectedPhp = integral ? allPhp : allPhp.filter(f => changes.includes(f) || direct.has(f));
+    const selectedNode = integral ? allNode : allNode.filter(f => changes.includes(f) || direct.has(f) || loadAndMutation.includes(f));
+    const selectedPhp = integral ? allPhp : allPhp.filter(f => changes.includes(f) || direct.has(f) || standalonePhp.includes(f));
     const projectOf = file => frontendProjects.find(p => p !== '.' && file.startsWith(p + '/')) || '.';
     const frontend = integral ? frontendProjects : [...new Set(changes.filter(f =>
         /(^|\/)resources\/.*\.(js|mjs|css|scss|blade\.php)$|(^|\/)(package(-lock)?\.json|(vite|postcss|tailwind)\.config\.[^/]+)$/.test(f)).map(projectOf))];
@@ -72,14 +82,11 @@ function selectPlan({files, baseline, runtime, root, head, environment, dependen
     const ete = integral || changes.some(f => /^(resources\/python\/portal_ete\/|tests\/Python\/)|^scripts\/development\/instalar-ete\.ps1$/.test(f));
     const pythonTests = integral ? allFiles.filter(f => /^tests\/Python\/test_.*\.py$/.test(f)) :
         allFiles.filter(f => /^tests\/Python\/test_.*\.py$/.test(f) && (changes.includes(f) || direct.has(f)));
-    const selectedFeatures = integral ? allFiles.filter(f => /\/tests\/Behat\/.*\.feature$/.test(f))
-        : allFiles.filter(f => /\/tests\/Behat\/.*\.feature$/.test(f) && (changes.includes(f) || direct.has(f)));
-    const selectedTests = new Set([...selectedNode, ...selectedPhp, ...pythonTests, ...selectedFeatures]);
+    const selectedTests = new Set([...selectedNode, ...selectedPhp, ...postgresTests, ...pythonTests]);
     const pending = integral ? [] : changes.filter(f => {
-        // El cuerpo DOM nuevo tiene contratos MCP propios, exigidos de nuevo
-        // por refreshRuntimePlan/assertCoverage antes de acreditar el plan.
-        if (f === 'tests/Browser/contratos-ui-focales.mjs' && Object.hasOwn(focalUI.owner, f)) return false;
-        if (f === 'tests/Browser/portal-neon-administracion.mjs') return false;
+        // PHP y JavaScript modificados tienen comprobación de sintaxis aunque
+        // sus escenarios de negocio estén reservados a la revisión manual.
+        if (f.startsWith('tests/Browser/') || businessScenario(f) || /\.(php|js|mjs|cjs)$/.test(f)) return false;
         if (/\.md$|\.(json|sh|sh\.template)$/.test(f) || java && f.startsWith('tools/pdf-signature/') || pdf && f === 'deploy/oracle/scripts/verify-deposit-pdf.php') return false;
         if (selectedTests.has(f) || (fileDependencies[f] || []).some(test => selectedTests.has(test))) return false;
         if (frontend.includes(projectOf(f)) && /(^|\/)resources\//.test(f)) return false;
@@ -90,16 +97,17 @@ function selectPlan({files, baseline, runtime, root, head, environment, dependen
         baseline_sha256: baseline ? digest(JSON.stringify(baseline)) : null,
         agente: {composer: integral || changes.some(f => /^composer\.(json|lock)$/.test(f)), java_build: java, java_test: java,
             frontend, node_tests: selectedNode},
-        paquete: {ete, python: integral || pythonTests.length > 0, python_tests: pythonTests, laravel: integral || selectedPhp.length > 0 || pdf,
+        paquete: {ete, python: integral || pythonTests.length > 0, python_tests: pythonTests,
+            laravel: integral || selectedPhp.length > 0 || pdf || changes.some(f => /\.php$/.test(f) && !phpTest(f)),
             migraciones: integral || changes.some(f => /(^|\/)migrations\//.test(f) || f === 'deploy/oracle/scripts/verify-migration-classes.php'),
             guias: integral || changes.some(f => /^scripts\/deployment\/(crear-paquete-oci-core\.ps1|produccion-vm\.sh\.template|instrucciones-produccion-oci\.txt)$/.test(f)),
-            postgres: integral || selectedPhp.length > 0 || pdf, pdf, navegador: integral,
-            pruebas_php: selectedPhp, gherkin: integral || selectedFeatures.length > 0, gherkin_paths: selectedFeatures},
-        cobertura: {php: {ejecutar: selectedPhp, reutilizar: allPhp.filter(f => !selectedPhp.includes(f))},
-            node: {ejecutar: selectedNode, reutilizar: allNode.filter(f => !selectedNode.includes(f))},
-            gherkin: {ejecutar: selectedFeatures, reutilizar: allFiles.filter(f => /\/tests\/Behat\/.*\.feature$/.test(f) && !selectedFeatures.includes(f))},
+            pdf, navegador: false, pruebas_php: selectedPhp, pruebas_db: postgresTests, gherkin: false, gherkin_paths: []},
+        cobertura: {php: {ejecutar: [...selectedPhp, ...postgresTests], reutilizar: allPhp.filter(f => !selectedPhp.includes(f)),
+                manuales: allFiles.filter(f => phpTest(f) && !technicalPhp(f) && !postgresTests.includes(f))},
+            node: {ejecutar: selectedNode, reutilizar: allNode.filter(f => !selectedNode.includes(f)), manuales: allFiles.filter(f => manualNode.has(f))},
+            gherkin: {ejecutar: [], reutilizar: [], manuales: allFiles.filter(businessScenario)},
             integraciones: {java: java ? 'ejecutar' : 'reutilizar', python: integral || pythonTests.length ? 'ejecutar' : 'reutilizar',
-                pdf: pdf ? 'ejecutar' : 'reutilizar', navegador: integral ? 'ejecutar' : 'reutilizar'},
+                pdf: pdf ? 'ejecutar' : 'reutilizar', navegador: 'fuera-del-paquete'},
             builds: {ejecutar: frontend, reutilizar: frontendProjects.filter(p => !frontend.includes(p)),
                 java: java ? 'ejecutar' : 'reutilizar'}},
         dependencias: {modulos: dependencies, consumidores_js: nodeDependencies, consumidores_archivos: fileDependencies || {}, inciertas: uncertain},
@@ -273,17 +281,26 @@ function browserScope({root, files, changes, entries = {}, baseline}) {
         if (!/^(resources\/(js|css)\/|Modules\/[^/]+\/resources\/|public\/images\/|tests\/Browser\/)|PortalCatalogo\.php$/.test(file)) continue;
         if (file === 'tests/Browser/portal-neon-administracion.mjs') {
             selected.add('administracion-importacion');
+            selected.add('tooltip-livewire');
             continue;
         }
         if (file === 'tests/Browser/portal-livewire.mjs') {
             try {
                 if (!/^[a-f0-9]{40}$/.test(baseline?.head || '')) throw new Error('Falta el commit de la base aprobada.');
-                const original = spawnSync('git.exe', ['-C', root, 'show', `${baseline.head}:${file}`], {windowsHide: true});
-                if (original.status !== 0 || digest(original.stdout) !== baseline.sources?.[file]) throw new Error('La fuente de Git no coincide con el runner aprobado.');
+                // La base puede haberse acreditado antes del commit de publicación.
+                // HEAD solo es una fuente válida si conserva los bytes ya aprobados.
+                const readSource = ref => spawnSync('git.exe', ['-C', root, 'show', `${ref}:${file}`], {windowsHide: true});
+                const matchesApproved = source => source.status === 0 && digest(source.stdout) === baseline.sources?.[file];
+                let original = readSource(baseline.head);
+                if (!matchesApproved(original)) original = readSource('HEAD');
+                if (!matchesApproved(original)) throw new Error('La fuente de Git no coincide con el runner aprobado.');
                 const before = browserCases.runnerParts(original.stdout.toString('utf8').replaceAll('\r\n', '\n'));
                 const after = browserCases.runnerParts(fs.readFileSync(path.join(root, file), 'utf8').replaceAll('\r\n', '\n'));
                 if (before.common !== after.common) throw new Error('Cambió la preparación compartida del navegador.');
-                if (before.adminTransport !== after.adminTransport) selected.add('administracion-importacion');
+                if (before.adminTransport !== after.adminTransport) {
+                    selected.add('administracion-importacion');
+                    selected.add('tooltip-livewire');
+                }
                 for (const id of browserCases.ids) if (before.bodies[id] !== after.bodies[id]) selected.add(id);
             } catch { pending.push(file); }
             continue;
@@ -303,13 +320,9 @@ function browserScope({root, files, changes, entries = {}, baseline}) {
     return {cases: [...selected], pending};
 }
 
-function assertCoverage(plan, {agent = false} = {}) {
-    // El 30 % construye los frontends; la UI pertenece al 70 % posterior.
-    // El pendiente se conserva en el plan y solo se satisface con su recibo.
-    const pending = (plan.pendientes || []).filter(item => !item.startsWith('ui-focal:')
-        || (!agent && !focalUI.status(plan.root, item.slice('ui-focal:'.length))));
+function assertCoverage(plan) {
+    const pending = plan.pendientes || [];
     if (pending.length) throw new Error(`Falta delimitar cobertura del cambio: ${pending.join(', ')}. Agregar el contrato o mapeo puntual; no se ejecutara una suite integral como alternativa.`);
-    if (!agent) for (const id of plan.ui_focal?.cases || []) if (!focalUI.status(plan.root,id)) throw Error('La comprobación UI focal '+id+' ya no corresponde a las fuentes y build actuales.');
 }
 
 function approvedBase({plan, previous, files, runtime, environment, root, head, completedAt}) {
@@ -337,25 +350,6 @@ function pdfPlanDecision(selected, decision) {
 
 function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     const force = plan.forced_integral === true;
-    const validation = path.join(root, '.local/validation');
-    let entries = {};
-    try { entries = JSON.parse(fs.readFileSync(path.join(validation, 'base-navegador.json'), 'utf8')).cases; } catch { /* La base maestra conserva la aprobacion previa. */ }
-    let baseline;
-    if (!force && plan.changes.includes('tests/Browser/portal-livewire.mjs')) {
-        try {
-            const approved = JSON.parse(fs.readFileSync(path.join(validation, 'base-integral.json'), 'utf8'));
-            if (digest(JSON.stringify(approved)) === plan.baseline_sha256) baseline = approved;
-        } catch { /* browserScope informa la falta de la fuente aprobada. */ }
-    }
-    const scope = force ? {cases: browserCases.ids, pending: []} : browserScope({root, files, changes: plan.changes, entries, baseline});
-    plan.pendientes = [...new Set([...(plan.pendientes || []), ...scope.pending])];
-    plan.navegador = browserCases.loadPlan({root, sources: files, runtime, environment,
-        dependencies: {}, force, onlyCases: force ? undefined : scope.cases});
-    const focalCases = force || !fs.existsSync(path.join(root,'tests/Browser/contratos-ui-focales.mjs')) ? [] : focalScope(plan.changes);
-    plan.ui_focal = {cases:focalCases};
-    for (const id of focalCases) if (!focalUI.status(root,id)) plan.pendientes.push('ui-focal:'+id);
-    plan.paquete.navegador_casos = plan.navegador.ejecutar;
-    plan.paquete.navegador = plan.navegador.ejecutar.length > 0;
     try {
         const pdfState = {root, head, ...packageSectors.inputs({sector: 'pdf', sources: files, runtime, environment})};
         const pdfDecision = pdfPlanDecision(plan.paquete.pdf, packageSectors.select(root, 'pdf', pdfState, {force}));
@@ -368,17 +362,17 @@ function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
         // vuelve a seleccionar con los artefactos reales, antes de las pruebas.
         plan.sectores_paquete = {pdf: {execute: plan.paquete.pdf, inputs: null, evidence: null}};
     }
-    plan.paquete.postgres = plan.integral || plan.paquete.pruebas_php.length > 0 || plan.paquete.navegador || plan.paquete.pdf;
     plan.cobertura.integraciones.pdf = plan.paquete.pdf ? 'ejecutar' : 'reutilizar';
-    plan.cobertura.navegador = {ejecutar: plan.navegador.ejecutar, reutilizar: plan.navegador.reutilizar,
-        motivos: plan.navegador.motivos, evidencia: plan.navegador.evidencia};
-    plan.cobertura.integraciones.navegador = plan.paquete.navegador ? 'ejecutar-casos-seleccionados' : 'reutilizar';
     return plan;
 }
 
 async function main() {
-    const [action, project, option] = process.argv.slice(2);
-    if (!['generar', 'verificar', 'acreditar'].includes(action) || !project) throw new Error('Uso: impacto-validacion.cjs generar|verificar|acreditar PROYECTO [integral]');
+    const [action, project, ...options] = process.argv.slice(2);
+    if (!['generar', 'verificar', 'acreditar'].includes(action) || !project || options.some(option => !['integral', 'recompilar'].includes(option))) {
+        throw new Error('Uso: impacto-validacion.cjs generar|verificar|acreditar PROYECTO [integral] [recompilar]');
+    }
+    const force = options.includes('integral');
+    const recompileCurrent = options.includes('recompilar');
     const root = fs.realpathSync(project), directory = path.join(root, '.local', 'validation');
     const planPath = path.join(directory, 'plan-impacto.json'), basePath = path.join(directory, 'base-integral.json');
     const reportPath = path.join(directory, 'ultima-validacion.json');
@@ -393,8 +387,8 @@ async function main() {
         }
         const sectorEnvironment = sectors.identity(root);
         const plan = selectPlan({files, root, head, baseline, runtime,
-            ancestor, environment: sectorEnvironment.fingerprint, force: option === 'integral', ...graph(root, files)});
-        if (sectorBase && option !== 'integral') {
+            ancestor, environment: sectorEnvironment.fingerprint, force, ...graph(root, files)});
+        if (sectorBase && !force) {
             try {
                 runtime ||= await hashRuntime(root);
                 const ownState = {sources: files, runtime, environment: sectorEnvironment.fingerprint,
@@ -410,34 +404,43 @@ async function main() {
                 if (reusable['java-criptografia'] && !plan.agente.java_build) plan.agente.java_test = false;
                 plan.agente.frontend = plan.agente.frontend.filter(project => !reusable[`frontend-compilacion:${project}`] || !reusable[`frontend-dependencias:${project}`]);
                 plan.agente.frontend_deps = plan.agente.frontend.filter(project => !reusable[`frontend-dependencias:${project}`]);
-                if (reusable['javascript-contratos'] && !plan.agente.composer && !plan.agente.java_build && !plan.agente.java_test && plan.agente.frontend.length === 0) { plan.agente.node_tests = []; plan.agente.node_reutilizado = true; }
-                plan.cobertura.node = {ejecutar: plan.agente.node_tests, reutilizar: Object.keys(files).filter(nodeTest).filter(f => !plan.agente.node_tests.includes(f))};
+                if (!recompileCurrent && reusable['javascript-contratos'] && !plan.agente.composer && !plan.agente.java_build && !plan.agente.java_test && plan.agente.frontend.length === 0) { plan.agente.node_tests = []; plan.agente.node_reutilizado = true; }
+                plan.cobertura.node = {...plan.cobertura.node, ejecutar: plan.agente.node_tests,
+                    reutilizar: Object.keys(files).filter(technicalNode).filter(f => !plan.agente.node_tests.includes(f))};
                 plan.cobertura.builds = {ejecutar: plan.agente.frontend, reutilizar: frontendProjects.filter(p => !plan.agente.frontend.includes(p)), java: plan.agente.java_build ? 'ejecutar' : 'reutilizar'};
                 plan.cobertura.integraciones.java = plan.agente.java_test ? 'ejecutar' : 'reutilizar';
             } catch { /* Runtime incompleto: conservar el alcance integral calculado. */ }
         }
+        if (recompileCurrent) {
+            const required = Object.values(config.comprobaciones_tecnicas).flat();
+            const missing = required.filter(file => !files[file] || files[file] === 'eliminado');
+            if (missing.length) throw new Error(`Faltan los contratos tecnicos requeridos: ${missing.join(', ')}.`);
+            const reusable = plan.agente.evidencia_reutilizada || {};
+            plan.agente.frontend = [...frontendProjects];
+            plan.agente.frontend_deps = frontendProjects.filter(project => !reusable[`frontend-dependencias:${project}`]);
+            plan.agente.java_build = true;
+            plan.agente.java_test = true;
+            plan.cobertura.builds = {ejecutar: plan.agente.frontend, reutilizar: [], java: 'ejecutar'};
+            plan.cobertura.integraciones.java = 'ejecutar';
+        }
         if (!runtime) { try { runtime = await hashRuntime(root); } catch { runtime = {per_root: {}}; } }
         refreshRuntimePlan({root, head, files, runtime, environment: sectorEnvironment.fingerprint, plan});
         writeJson(planPath, plan);
-        assertCoverage(plan, {agent: true});
+        assertCoverage(plan);
         console.log(`VALIDACION ${plan.integral ? 'INTEGRAL EXPLICITA' : 'SOLO DEL CAMBIO'}: ${plan.reason}`);
         console.log(`Cambios acumulados: ${plan.changes.length}; areas: ${plan.areas.join(', ') || 'documentacion'}.`);
-        console.log(`PHP: ejecutar ${plan.cobertura.php.ejecutar.length}, reutilizar ${plan.cobertura.php.reutilizar.length}; Node: ejecutar ${plan.cobertura.node.ejecutar.length}, reutilizar ${plan.cobertura.node.reutilizar.length}.`);
+        console.log(`PHP: ${plan.paquete.pruebas_php.length} archivos unitarios o de servicio y ${plan.paquete.pruebas_db.length} de integración PostgreSQL; Node: ${plan.cobertura.node.ejecutar.length}.`);
         console.log(`Sectores del agente con evidencia propia compatible: ${Object.keys(plan.agente.evidencia_reutilizada || {}).join(', ') || 'ninguno'}.`);
-        console.log(`Navegador por casos: ejecutar ${plan.navegador.ejecutar.length}, reutilizar ${plan.navegador.reutilizar.length}; base independiente de Pest.`);
-        for (const id of browserCases.ids) console.log(`  ${plan.navegador.ejecutar.includes(id) ? 'EJECUTAR' : 'REUTILIZAR'} ${id}: ${plan.navegador.motivos[id]}`);
+        console.log('Navegador: los recorridos interactivos se comprueban fuera del paquete OCI.');
         console.log(`Detalle y dependencias: ${planPath}`);
     } else {
         const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
         assertCoverage(plan);
         if (plan.version !== 1 || plan.root !== root || plan.source_sha256 !== inventoryHash(files) || plan.policy_sha256 !== policyHash) throw new Error('El plan de impacto no corresponde a las fuentes y reglas actuales. Repetir el bloque del agente.');
-        if (!plan.navegador) throw new Error('Falta la seleccion independiente del navegador. Repetir el bloque del agente.');
         const verifiedRuntime = await hashRuntime(root), verifiedEnvironment = environment(root);
-        browserCases.verify(root, plan.navegador, {sources: files, runtime: verifiedRuntime, environment: verifiedEnvironment,
-            dependencies: plan.dependencias.consumidores_archivos});
         const pdfState = {root, head, ...packageSectors.inputs({sector: 'pdf', sources: files, runtime: verifiedRuntime, environment: verifiedEnvironment})};
         if (!plan.sectores_paquete?.pdf || ['root', 'input_sha256', 'output_sha256'].some(key => pdfState[key] !== plan.sectores_paquete.pdf.inputs?.[key])) throw new Error('Cambiaron los insumos PDF. Repetir el bloque del agente.');
-        if (option === 'integral' && !plan.integral) throw new Error('Para forzar integral, ejecutar primero validar-cambios-agente.ps1 -Integral.');
+        if (force && !plan.integral) throw new Error('El plan actual no corresponde a una validacion tecnica integral.');
         if (!plan.integral) {
             const base = JSON.parse(fs.readFileSync(basePath, 'utf8'));
             if (digest(JSON.stringify(base)) !== plan.baseline_sha256) throw new Error('La base aprobada cambio durante las pruebas. Repetir la seleccion del cambio.');

@@ -50,7 +50,7 @@ final class RecepcionQrDeposito
 
     public function autorizarNuevoIntento(string $id, User $curador, string $motivo): void
     {
-        abort_unless($curador->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
+        abort_unless($curador->tieneAlgunRol(RolUsuario::CURADOR), 403);
         if (trim($motivo) === '' || mb_strlen($motivo) > 3000) {
             throw new \DomainException('Escribe el motivo de la autorización (máximo 3000 caracteres).');
         }

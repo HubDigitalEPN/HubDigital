@@ -6,6 +6,9 @@ namespace App\Services;
 
 use App\Models\SystemMailConfiguration;
 use App\Models\User;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 final class SystemMailConfigurationService
@@ -35,7 +38,9 @@ final class SystemMailConfigurationService
         // insertar en una tabla que aun no existe.
         if (app()->environment('testing')
             || ! Schema::hasTable('usuarios.configuracion_correo')
-            || $this->stored() !== null) {
+            || $this->stored() !== null
+            || (Schema::hasTable('usuarios.estado_configuracion_correo')
+                && DB::table('usuarios.estado_configuracion_correo')->where('id', 1)->exists())) {
             return;
         }
 
@@ -61,28 +66,34 @@ final class SystemMailConfigurationService
         );
     }
 
+    public function registrarEliminacion(): void
+    {
+        DB::table('usuarios.estado_configuracion_correo')->insertOrIgnore(['id' => 1]);
+    }
+
     /**
      * @param  array{host:string,port:int,username:string,from_address:string,from_name:string}  $data
      */
     public function save(array $data, #[\SensitiveParameter] string $password, User $actor): SystemMailConfiguration
     {
-        $existing = $this->stored();
-        $effectivePassword = $password !== ''
-            ? $password
-            : (string) ($existing?->password ?? config('mail.mailers.smtp.password'));
+        try {
+            $effectivePassword = $password !== ''
+                ? $password
+                : (string) ($this->stored()?->password ?? config('mail.mailers.smtp.password'));
+        } catch (DecryptException) {
+            throw new \DomainException('Ingresa una nueva contraseña de aplicación SMTP para reemplazar la guardada.');
+        }
 
         if ($effectivePassword === '') {
             throw new \DomainException('Ingresa la contraseña de aplicación SMTP.');
         }
 
-        $configuration = SystemMailConfiguration::query()->updateOrCreate(
-            ['id' => 1],
-            [
-                ...$data,
-                'password' => $effectivePassword,
-                'updated_by' => $actor->getKey(),
-            ],
+        SystemMailConfiguration::query()->upsert(
+            [['id' => 1, ...$data, 'password' => Crypt::encryptString($effectivePassword), 'updated_by' => $actor->getKey()]],
+            ['id'],
+            [...array_keys($data), 'password', 'updated_by'],
         );
+        $configuration = SystemMailConfiguration::query()->findOrFail(1);
 
         $this->apply($configuration);
 

@@ -11,7 +11,7 @@ const fuenteDashboard = readFileSync(new URL('../../resources/js/portal-dashboar
 const plantillaDashboard = readFileSync(new URL('../../Modules/CatalogoPublico/resources/views/dashboard-coleccion.blade.php', import.meta.url), 'utf8');
 const fuenteLivewire = readFileSync(new URL('../../vendor/livewire/livewire/dist/livewire.js', import.meta.url), 'utf8');
 
-function dashboardConMapa(celdas,{acceso=true}={}) {
+function dashboardConMapa(celdas,{acceso=true,zoom=10}={}) {
     const registros = new Map();
     const marcadores = [];
     const cuadros = new Map();
@@ -25,7 +25,7 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
     let redibujosTeselas = 0;
     let siguienteCuadro = 0;
     const nodo = () => ({style: {}, atributos: {}, eventos: {}, setAttribute(clave, valor) {this.atributos[clave] = valor;}, getAttribute(clave) {return this.atributos[clave] ?? null;}, removeAttribute(clave) {delete this.atributos[clave];}, addEventListener(clave, manejador) {this.eventos[clave] = manejador;}, focus() {focos.push(this); this.eventos.focus?.();}, getBoundingClientRect() {return {left: 20, top: 300, bottom: 316, width: 16, height: 16};}});
-    const mapa = {getZoom: () => 10, whenReady(accion) {accion.call(this); return this;}, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds(limites, opciones) {encuadres.push({limites, opciones});}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
+    const mapa = {getZoom: () => zoom, whenReady(accion) {accion.call(this); return this;}, on(nombres, accion) {for (const nombre of nombres.split(' ')) eventosMapa[nombre] = accion;}, fitBounds(limites, opciones) {encuadres.push({limites, opciones});}, createPane: () => ({style: {}}), invalidateSize() {}, remove() {}};
     const capa = {addTo() { return this; }, clearLayers() { marcadores.length = 0; }};
     const control = () => ({addTo() { return this; }, on() { return this; }, redraw() {}});
     const L = {
@@ -36,6 +36,7 @@ function dashboardConMapa(celdas,{acceso=true}={}) {
         }),
         featureGroup: () => capa, latLngBounds: puntos => ({puntos, isValid: () => puntos.length > 0}),
         DomUtil: {create(tag, clase, padre) {const elemento = {...nodo(), tagName: tag, className: clase, children: []}; padre?.children.push(elemento); return elemento;}},
+        DomEvent: {disableClickPropagation() {}},
         divIcon: opciones => opciones,
         marker(coordenadas, opciones) { return L.circleMarker(coordenadas, opciones); },
         circleMarker(coordenadas, opciones) {
@@ -144,20 +145,33 @@ test('la vista pública permite abrir una ubicación con ratón y teclado', () =
     assert.deepEqual(aperturas.map(datos => Array.from(datos)), [[-.25, -78.5, 2], [-.25, -78.5, 2]]);
 });
 
-test('trece registros en tres coordenadas muestran sus cantidades y seis registros coincidentes abren la misma ubicación', () => {
+test('trece registros en tres coordenadas usan puntos sin texto y mantienen sus cantidades accesibles', () => {
     const celdas = [{lat: -.666, lon: -77.91, total: 6, filos: {Arthropoda: 6}},
         {lat: -.71, lon: -76.2, total: 5, filos: {Arthropoda: 5}}, {lat: -.712, lon: -76.201, total: 2, filos: {Arthropoda: 2}}];
     const {dashboard, marcadores, pintar} = dashboardConMapa(celdas);
     assert.equal(marcadores.length, 3);
-    assert.equal(marcadores.reduce((suma, m) => suma + Number(m.opciones.icon.html.children[0].textContent), 0), 13);
+    assert.equal(marcadores.reduce((suma, m) => suma + Number(m.elemento.atributos['aria-label'].match(/(\d+) registros/)[1]), 0), 13);
+    assert.ok(marcadores.every(m => m.opciones.icon.html === '' && m.opciones.icon.iconSize[0] <= 16));
     const aperturas = []; dashboard.abrirUbicacion = (...datos) => aperturas.push(datos.slice(0, 3));
     dashboard.actualizar({celdas: [celdas[0]], filos: {Arthropoda: 6}}); pintar();
     assert.equal(marcadores.length, 1);
-    assert.equal(marcadores[0].opciones.icon.html.children[0].textContent, '6');
-    assert.equal(marcadores[0].opciones.icon.html.children[1].textContent, 'reg.');
+    assert.equal(marcadores[0].opciones.icon.html, '');
     assert.deepEqual(Array.from(marcadores[0].coordenadas), [-.666, -77.91]);
     assert.match(marcadores[0].elemento.atributos['aria-label'], /6 registros.*Comparten esta coordenada/);
     marcadores[0].eventos.click(); assert.deepEqual(Array.from(aperturas[0]), [-.666, -77.91, 6]);
+});
+
+test('un grupo de ubicaciones usa un punto pequeño con color y etiqueta accesible', () => {
+    const celdas = [{lat: -.666, lon: -77.91, total: 6, filos: {Arthropoda: 6}},
+        {lat: -.667, lon: -77.911, total: 5, filos: {Arthropoda: 5}}];
+    const {marcadores} = dashboardConMapa(celdas, {zoom: 3});
+    assert.equal(marcadores.length, 1);
+    const {icon} = marcadores[0].opciones;
+    assert.equal(icon.className, 'atlas-map-cluster');
+    assert.deepEqual(Array.from(icon.iconSize), [16, 16]);
+    assert.equal(icon.html.style.background, colorCantidadRegistros(11));
+    assert.equal(icon.html.children.length, 0);
+    assert.match(icon.html.getAttribute('aria-label'), /2 localidades.*11 registros/);
 });
 
 test('composición llega a Livewire por UUID y el mapa reemplaza la población al seleccionar y retirar cada filo', () => {
@@ -390,7 +404,7 @@ test('una ubicación compartida usa el color de su cantidad y abre las coordenad
     assert.equal(marcadores.length, 1);
     const mixto = marcadores[0];
     assert.equal(mixto.opciones.icon.className, 'atlas-map-count');
-    assert.equal(mixto.opciones.icon.html.children[0].textContent, '8');
+    assert.equal(mixto.opciones.icon.html, '');
     assert.equal(mixto.elemento.style.background, colorCantidadRegistros(8));
     assert.match(mixto.elemento.atributos['aria-label'], /Mollusca: 2/);
     const aperturas = [];
@@ -402,7 +416,7 @@ test('una ubicación compartida usa el color de su cantidad y abre las coordenad
     dashboard.actualizar({celdas: [{...celdas[0], total: 2, filos: {Mollusca: 2}}], filos: {Mollusca: 2}});
     pintar();
     assert.equal(marcadores[0].elemento.style.background, colorCantidadRegistros(2));
-    assert.equal(marcadores[0].opciones.icon.html.children[0].textContent, '2');
+    assert.match(marcadores[0].elemento.getAttribute('aria-label'), /2 registros/);
     assert.deepEqual(Array.from(marcadores[0].coordenadas), [-0.63194, -76.14416]);
 });
 

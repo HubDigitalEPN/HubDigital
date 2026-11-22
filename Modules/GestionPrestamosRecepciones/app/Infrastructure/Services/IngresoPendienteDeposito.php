@@ -104,7 +104,7 @@ final class IngresoPendienteDeposito
 
     public function reintentar(string $id, User $curador, string $motivo, bool $aceptarDuplicado = false): void
     {
-        abort_unless($curador->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
+        abort_unless($curador->tieneAlgunRol(RolUsuario::CURADOR), 403);
         if (trim($motivo) === '' || mb_strlen($motivo) > 3000) {
             throw new \DomainException('Explica el motivo del reintento.');
         }

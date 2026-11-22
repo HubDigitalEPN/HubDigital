@@ -3,22 +3,51 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source = await readFile(new URL('../../public/js/interactive-grid.js', import.meta.url), 'utf8');
-function grid(extra = {}, count = 42) {
+function grid(extra = {}, count = 42, code = source) {
     const rows = Array.from({length: count}, (_, i) => {
         const cells = ['Registro '+(i+1), i === 40 ? 'Taxón único' : 'Taxón general'].map(innerText => ({innerText, hidden: false, colSpan: 1}));
         return {cells, children: cells, hidden: false, textContent: cells.map(c=>c.innerText).join(' '), querySelector: () => null};
     });
     const body = {rows, append(row) { const i=this.rows.indexOf(row); this.rows.splice(i,1); this.rows.push(row); }};
     const watches = {}, window = {};
-    vm.runInNewContext(source, {window, MutationObserver: class {observe() {} disconnect() {}}, Intl, ...extra});
+    vm.runInNewContext(code, {window, MutationObserver: class {observe() {} disconnect() {}}, Intl, ...extra});
     const state = window.hubInteractiveGrid(['Registro', 'Taxón'], false, 'Prueba', true);
     state.$el = {querySelector: selector => selector === 'table tbody' ? body : {}, querySelectorAll: selector => selector === 'table tr' ? rows : []};
     state.$watch = (key, fn) => watches[key]=fn;
     state.$refs = {actionMenu: {}, actionsButton: {focus() {}}, columnsDialog: {close() {}}, sortDialog: {close() {}}};
     state.$wire = new Proxy({}, {get() { throw new Error('La grilla local no debe invocar al servidor'); }});
     state.init();
-    return {state, rows, watches, visible: () => rows.filter(r=>!r.hidden)};
+    return {state, rows, watches, window, visible: () => rows.filter(r=>!r.hidden)};
 }
+test('carga en memoria: la grilla filtra 5000 filas y limita el lote visible', () => {
+    const start = performance.now();
+    const g = grid({}, 5000);
+    assert.equal(g.visible().length, 15);
+    g.state.searchText = 'UNICO';
+    g.state.searchPage();
+    assert.equal(g.visible().length, 1);
+    assert.equal(g.visible()[0].cells[0].innerText, 'Registro 41');
+    assert.ok(performance.now() - start < 5000, 'El procesamiento local de 5000 filas debe terminar antes de 5 s.');
+});
+
+test('mutación: los contratos detectan un lote incorrecto y la pérdida de normalización', () => {
+    const lote = code => assert.equal(grid({}, 42, code).visible().length, 15);
+    const busqueda = code => {
+        const g = grid({}, 42, code);
+        g.state.searchText = 'UNICO';
+        g.state.searchPage();
+        assert.equal(g.visible().length, 1);
+    };
+    const mutaciones = [
+        [lote, 'clientPerPage: 15', 'clientPerPage: 14'],
+        [busqueda, "value.normalize('NFD').replace(/", 'value.replace(/'],
+    ];
+    for (const [contrato, original, alterado] of mutaciones) {
+        assert.ok(source.includes(original));
+        contrato(source);
+        assert.throws(() => contrato(source.replace(original, alterado)), {code: 'ERR_ASSERTION'});
+    }
+});
 test('la búsqueda abarca las filas no visibles y el paginado conserva todos los registros', () => {
     const g=grid();
     assert.equal(g.visible().length,15); assert.equal(g.state.clientLastPage,3);
@@ -37,6 +66,35 @@ test('la carga continua agrega filas y limita la ventana; permite volver sin per
     assert.equal(g.visible()[0].cells[0].innerText,'Registro 16');assert.equal(g.visible().at(-1).cells[0].innerText,'Registro 60');
     g.state.cargarClienteContinuo(-1);assert.equal(g.visible()[0].cells[0].innerText,'Registro 1');
     g.state.searchText='UNICO';g.state.searchPage();assert.equal(g.visible().length,1);assert.equal(g.state.clientFirstPage,1);assert.equal(g.state.clientLastLoaded,1);
+});
+
+test('la grilla conserva su altura al desplazar la página y se adapta al tamaño visible', () => {
+    const {state, window} = grid();
+    window.visualViewport = {height: 800};
+    window.scrollY = 0;
+    let top = 236;
+    let modal = null;
+    state.root = {closest: () => modal};
+    state.superficie = {isConnected: true, style: {}, getBoundingClientRect: () => ({top})};
+
+    state.ajustarScroll();
+    assert.equal(state.superficie.style.maxHeight, '500px');
+    window.scrollY = 150;
+    top = 86;
+    state.ajustarScroll();
+    assert.equal(state.superficie.style.maxHeight, '500px');
+    window.visualViewport.height = 730;
+    state.ajustarScroll();
+    assert.equal(state.superficie.style.maxHeight, '430px');
+
+    top = 810;
+    state.ajustarScroll();
+    assert.equal(parseFloat(state.superficie.style.maxHeight), 730 / 3);
+
+    modal = {getBoundingClientRect: () => ({bottom: 500})};
+    top = 100;
+    state.ajustarScroll();
+    assert.equal(state.superficie.style.maxHeight, '336px');
 });
 test('el menú espera a ser visible, admite Fin y Escape y queda dentro de una pantalla estrecha', () => {
     const frames=[], document={activeElement: null};

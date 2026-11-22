@@ -30,7 +30,10 @@ test('los nueve cuerpos vigentes tienen huellas y aserciones verificadas sin lan
             body_sha256: 'd31d14effa433bd9ae56e60bd0055f54b0d4bf82d0db4bbc6881cdd3e4783acd', assertions: 23,
         },
         'administracion-importacion': {
-            body_sha256: 'bc012a296adb0caf744b11551cc27326e5f349e4e7873ef07ecc10ab47901ae6', assertions: 8,
+            body_sha256: '8a3a0bb580f7602da779ee986b33d04f50cfaa923eb38b9915cb6c736f4d6e27', assertions: 8,
+        },
+        'tooltip-livewire': {
+            body_sha256: '210cbb1ed4cf837a5229617b979161a50d68ef4045d2d32e24e725d3542b2927', assertions: 4,
         },
     };
     for (const id of browser.ids) {
@@ -63,6 +66,7 @@ test('no conserva una aprobacion si cambia una entrada mientras el recorrido est
         const plan = {inputs: browser.inputs(original)};
         browser.assertCaseUnchanged(temporary, plan, 'fotografias');
         browser.assertCaseUnchanged(temporary, plan, 'administracion-importacion');
+        browser.assertCaseUnchanged(temporary, plan, 'tooltip-livewire');
         writeFileSync(path.join(temporary, file), 'export const photo = 2;');
         assert.throws(() => browser.assertCaseUnchanged(temporary, plan, 'fotografias'), /Cambio durante el recorrido/);
         const runnerFile = path.join(temporary, 'tests/Browser/portal-livewire.mjs');
@@ -70,6 +74,7 @@ test('no conserva una aprobacion si cambia una entrada mientras el recorrido est
         assert.notEqual(cambiado, runner);
         writeFileSync(runnerFile, cambiado);
         assert.throws(() => browser.assertCaseUnchanged(temporary, plan, 'administracion-importacion'), /test:preparacion-neon-qa/);
+        assert.throws(() => browser.assertCaseUnchanged(temporary, plan, 'tooltip-livewire'), /test:preparacion-neon-qa/);
     } finally {
         assert.equal(path.dirname(temporary), path.resolve(tmpdir()));
         assert.ok(path.basename(temporary).startsWith('hub-browser-stable-'));
@@ -82,13 +87,13 @@ test('cambiar el selector o el empaquetado no invalida entradas funcionales ya a
     assert.deepEqual(current, before);
 });
 
-test('el transporte MCP de administración invalida exclusivamente ese recorrido', () => {
+test('el transporte MCP cambia exclusivamente los dos recorridos que lo usan', () => {
     const file = 'tests/Browser/portal-neon-administracion.mjs';
     const before = browser.inputs(state({[file]: 'transporte anterior'}));
     const current = browser.inputs(state({[file]: 'transporte revisado'}));
     const plan = browser.select({root: '/workspace', entries: entries(before), current, now});
-    assert.deepEqual(plan.ejecutar, ['administracion-importacion']);
-    assert.equal(plan.reutilizar.length, 8);
+    assert.deepEqual(plan.ejecutar, ['tooltip-livewire', 'administracion-importacion']);
+    assert.equal(plan.reutilizar.length, 7);
 });
 test('un método aislado de tooltip no ejecuta árbol, fotos ni otros recorridos del dashboard', () => {
     const file = 'resources/js/portal-dashboard.js';

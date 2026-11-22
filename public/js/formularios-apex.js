@@ -10,7 +10,8 @@
     };
     function decorate(control) {
         if (!eligible(control)) return;
-        if (control.closest('.hub-ig-toolbar, .hub-ig-footer')) return;
+        if (control.closest('.hub-ig-toolbar, .hub-ig-footer')
+            && !(control.matches('.hub-lov-trigger') && control.closest('[data-hub-apex-toolbar-field]'))) return;
         mark(control, 'data-hub-apex-control');
         let field = control.closest('[data-flux-field]');
         let label = field?.querySelector('[data-flux-label], .hub-lov-label');

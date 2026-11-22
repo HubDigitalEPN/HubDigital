@@ -66,7 +66,7 @@ final class AdminBootstrapController extends Controller
                 ...$datos,
                 'cargo' => 'Curador y administrador del sistema',
                 'institucion' => 'Escuela Politécnica Nacional',
-            ], RolUsuario::ADMIN);
+            ], RolUsuario::CURADOR);
         });
 
         RateLimiter::clear($claveIntento);

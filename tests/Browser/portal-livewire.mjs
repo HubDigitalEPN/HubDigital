@@ -16,7 +16,7 @@ const planPath = process.argv[3];
 const planBrowser = planPath ? JSON.parse(readFileSync(planPath, 'utf8')).navegador : null;
 const seleccionados = planBrowser?.ejecutar || browserEvidence.ids;
 // NEON QA ADMIN INICIO
-const neonAdministracion = seleccionados.length === 1 && seleccionados[0] === 'administracion-importacion'
+const neonAdministracion = seleccionados.every(id => ['administracion-importacion', 'tooltip-livewire'].includes(id))
     ? await import('./portal-neon-administracion.mjs') : null;
 // NEON QA ADMIN FIN
 assert.ok(seleccionados.length > 0 && seleccionados.every(id => browserEvidence.ids.includes(id)), 'Selección de casos del navegador inválida.');
@@ -143,7 +143,9 @@ try {
     execFileSync(php, ['artisan', 'view:cache', '--no-interaction'], {cwd: proyecto, env: entorno, stdio: 'pipe'});
     const respuestaFixture = execFileSync(php, ['tests/Browser/portal-fixture.php', 'crear', token, fixture], {cwd: proyecto, env: entorno, encoding: 'utf8'});
     // NEON QA ADMIN INICIO
-    neonAdministracion?.prepararMatrizAdministracion(php, proyecto, entorno);
+    if (seleccionados.includes('administracion-importacion')) {
+        neonAdministracion?.prepararMatrizAdministracion(php, proyecto, entorno);
+    }
     // NEON QA ADMIN FIN
     let datos;
     try { datos = JSON.parse(respuestaFixture); }
@@ -242,6 +244,12 @@ try {
         await visible("document.querySelector('.atlas-dashboard .atlas-map .leaflet-pane') && window.Livewire"); await reposo();
     };
     const iniciarSesion = async () => {
+        // NEON QA ADMIN INICIO
+        if (neonAdministracion && await evaluar("Boolean(document.querySelector('.portal-curator-access'))")) {
+            await abrirCatalogo();
+            return;
+        }
+        // NEON QA ADMIN FIN
         await conexion.send('Network.clearBrowserCookies');
         await conexion.send('Page.navigate', {url:origen+'/login'});
         await visible("document.querySelector('#hub-login-form') && window.Alpine");
@@ -453,15 +461,16 @@ try {
     await evaluar("document.querySelector('.atlas-map-actions .atlas-panel-tools > button').click()");
     await evaluar("Alpine.$data(document.querySelector('.atlas-dashboard')).ubicacionesIndividuales = true; Alpine.$data(document.querySelector('.atlas-dashboard')).programarPintado()");
     await visible("document.querySelectorAll('.atlas-map [aria-label^=\"Ubicación original\"]').length === 3");
-    assert.deepEqual(await evaluar("[...document.querySelectorAll('.atlas-map-count-label strong')].map(n => Number(n.textContent)).sort((a,b) => a-b)"), [5, 12], 'Los registros que comparten una coordenada muestran su cantidad sin multiplicar ubicaciones.');
+    assert.deepEqual(await evaluar("[...document.querySelectorAll('.atlas-map-count')].map(n => Number(n.getAttribute('aria-label').match(/(\\d+) registros/)[1])).sort((a,b) => a-b)"), [5, 12], 'Los puntos conservan los recuentos accesibles sin multiplicar ubicaciones.');
+    assert.ok(await evaluar("[...document.querySelectorAll('.atlas-map-count, .atlas-map-cluster-button')].every(n => !n.textContent.trim())"));
     async function mostrarTooltip() {
         await evaluar("document.querySelector('.atlas-map').scrollIntoView({block:'center'})");
         // Leaflet puede repintar al ajustar el tamaño. Elegir un marcador actual
         // y visible evita apuntar a un SVG retirado o cubierto por sus controles.
         await esperar(async () => {
+            await conexion.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: 0, y: 0});
             const rect = await evaluar(`(() => {for (const p of document.querySelectorAll('.atlas-map [aria-label^="Ubicación original"]')) {const r=p.getBoundingClientRect(); const x=r.x+r.width/2,y=r.y+r.height/2; const encima=document.elementFromPoint(x,y); if (encima === p || p.contains(encima)) return {x,y};} return null;})()`);
             if (!rect) return false;
-            await conexion.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: 0, y: 0});
             await conexion.send('Input.dispatchMouseEvent', {type: 'mouseMoved', ...rect});
             return evaluar("document.querySelector('.atlas-floating-tooltip:not([hidden])')?.textContent.includes('Ubicación original')");
         }, 'hover real de un marcador visible y tooltip abierto');
@@ -1082,12 +1091,15 @@ try {
     assert.equal(columnasMatriz.size,106);
     await evaluar("(() => {const i="+grillaMatriz+".querySelector('input[type=search]');i.value='dateDetermined';i.dispatchEvent(new Event('input',{bubbles:true}));i.closest('form').requestSubmit();})()");
     await visible(filasMatriz+".length===1 && "+filasMatriz+"[0].textContent.includes('dateDetermined')");await reposo();
-    await evaluar(filasMatriz+"[0].querySelector('button').click()");
-    await visible("Boolean(document.querySelector('[data-matriz-config] dialog[open]'))");await reposo();
-    assert.ok(await evaluar("document.querySelector('[data-matriz-config] dialog[open]').contains(document.activeElement)"),'Editar una columna lleva el foco al formulario modal del curador.');
+    await evaluar(filasMatriz+"[0].querySelector('[data-catalogo-menu-fila]').click()");
+    const menuColumna = filasMatriz+"[0].querySelector('[role=menu]:popover-open')";
+    await visible("Boolean("+menuColumna+")");
+    await evaluar(menuColumna+".querySelector('[role=menuitem]').click()");
+    await visible("Boolean(document.querySelector('[data-editor-matrices] dialog[open]'))");await reposo();
+    assert.ok(await evaluar("document.querySelector('[data-editor-matrices] dialog[open]').contains(document.activeElement)"),'Editar una columna lleva el foco al formulario modal del curador.');
     await conexion.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await conexion.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-    await visible("!document.querySelector('[data-matriz-config] dialog[open]')");
+    await visible("!document.querySelector('[data-editor-matrices] dialog[open]')");
     await reposo();
     // La pantalla real de carga muestra el conflicto de columnas sin una
     // navegación de error y conserva el botón de guardar deshabilitado.

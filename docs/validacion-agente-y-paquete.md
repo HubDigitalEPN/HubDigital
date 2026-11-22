@@ -22,10 +22,8 @@ cambios. Conserva el recibo original sin escribirlo ni renovar su fecha; guarda
 un testigo separado en `ui-focal/compatibilidad`. Un cambio de aserciones, fuentes
 o ayudas utilizadas obliga a ejecutar de nuevo ese caso mediante Neon.
 
-La cobertura se conserva y se distribuye por responsabilidad: seis de veinte
-familias corresponden al agente (30 %) y catorce al paquete manual (70 %).
-Estos porcentajes no representan minutos ni cantidad de casos. El contrato es
-`scripts/deployment/plan-validacion.json`.
+El comando OCI compila y valida en una sola ejecucion desde el repositorio de trabajo
+de HubDigital. Conserva las dependencias compatibles con los locks.
 
 ## Seleccion por impacto
 
@@ -34,7 +32,7 @@ comparan todos los archivos nuevos, modificados y eliminados desde la ultima
 base aprobada local. El paquete selecciona exclusivamente pruebas propias de las
 fuentes cambiadas, incluidas referencias literales al archivo bajo prueba e imports
 directos. El grafo transitivo se conserva como diagnostico y no agrega consumidores
-ni otros dominios a las pruebas. El inventario PHP procede de `phpunit.xml`.
+ni otros dominios a las pruebas. El inventario PHP tecnico procede de las pruebas unitarias declaradas en `phpunit.xml`. Los archivos PHP y JavaScript modificados pasan ademas por una comprobacion de sintaxis.
 Si falta cobertura mapeada, el proceso indica los archivos pendientes y se detiene;
 no cambia automaticamente a una suite integral ni acredita una omision.
 
@@ -44,15 +42,17 @@ no cambia automaticamente a una suite integral ni acredita una omision.
 | Funcion o modulo | Pruebas que cubren directamente la fuente cambiada |
 | Autenticacion, permisos, dependencias, migraciones o infraestructura compartida | Contratos propios; sin expansion integral automatica |
 | Cobertura sin mapear o ausencia de base aprobada compatible | Detener e indicar lo pendiente; nunca ejecutar todo por defecto |
-| Solicitud expresa con `-Integral` | Todas las suites |
+| Solicitud expresa con `-Integral` | Todos los controles tecnicos del paquete |
 
 La cantidad de archivos, la antiguedad de la base, un cambio de selector o una
 diferencia de entorno no fuerzan una revision integral. Se conserva la comprobacion
 de identidad de fuentes y runtime del estado actual. ETE/Python, Laravel,
-migraciones, PDF, UI y guias generadas solo se prueban cuando el plan del cambio
-los selecciona. Python y Gherkin reciben los archivos seleccionados, sin expandirse
-a todo el dominio. En UI se seleccionan recursos o fragmentos reconocidos;
-un fragmento desconocido queda pendiente en lugar de abrir los nueve recorridos.
+migraciones, PDF y guias generadas se comprueban segun el plan del cambio.
+El paquete ejecuta pruebas unitarias, de integración, de servicios y contratos,
+de base de datos, de carga y rendimiento y de mutación. PostgreSQL usa un esquema
+aislado sin copiar cuentas. La carga y las mutaciones de la cuadrícula se prueban
+en memoria, sin navegador. El inicio de sesión y los recorridos funcionales del
+sistema quedan para la revisión independiente.
 
 Tras aprobar todos los controles seleccionados, se actualiza
 `.local/validation/base-integral.json` tambien en las ejecuciones incrementales.
@@ -74,23 +74,10 @@ asistentes generados se subordinan al plan del cambio.
 
 ## Entradas y responsabilidades
 
-Al terminar todos los ajustes de cada solicitud, el agente ejecuta en localhost:
+El paquete compila el codigo actual y ejecuta sus controles tecnicos en la misma orden.
+`validar-cambios-agente.ps1` queda disponible para pruebas acotadas del desarrollo.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/deployment/validar-cambios-agente.ps1
-```
-
-Las directrices autorizan permanentemente las comprobaciones locales acotadas y sus reintentos pertinentes.
-No requiere token ni hace commit, push, paquete o despliegue. Selecciona el impacto,
-prepara lo necesario y emite evidencia solo tras completar todos sus controles.
-Para comprobar el desarrollo se permiten casos locales filtrados cuando la entrada
-no permite acotar suficientemente. El agente revisa tambien los dependientes
-concretamente afectados; el paquete automatico mantiene la seleccion exclusiva
-del cambio. `validar-cambios-agente.ps1 -SoloSelectorPaquete` comprueba solo este
-selector, el alcance de UI y el avance de la base, sin ejecutar el sistema completo.
-Si se trabaja sin agente, el usuario puede ejecutar esta misma entrada.
-
-| Agente: 30 % | Paquete: 70 % |
+| Compilacion y pruebas de construccion | Otros controles tecnicos del paquete |
 | --- | --- |
 | Instalacion PHP desde el lock | Diff y conflictos |
 | Compilacion Maven y copia del JAR | JSON modificados |
@@ -100,51 +87,27 @@ Si se trabaja sin agente, el usuario puede ejecutar esta misma entrada.
 | Contratos JavaScript Node | Preparacion del runtime ETE |
 | | Auditoria npm de los cuatro proyectos |
 | | Bash y asistentes DEV/PROD generados |
-| | Sintaxis PHP modificados |
+| | Sintaxis de PHP y JavaScript modificados |
 | | Clases de migracion |
-| | Gherkin `@listo --strict` |
+| | Pruebas unitarias PHP |
 | | Arranque Laravel |
-| | Pest/PostgreSQL, PDF local y Neon/Livewire |
+| | Control tecnico PDF y firma PHP/Java local |
 | | Runtime, evidencia, identidad, publicacion y archivos OCI |
 
 La tabla establece quien realiza cada control; el plan determina su ejecucion o
-reutilizacion. No se eliminan casos ni se debilitan aserciones. PostgreSQL mantiene
-bases y almacenamiento aislados. La medicion de firma sigue exclusivamente en
-localhost con limite de tres segundos. La autoprueba Java conserva QR a 144 y
-220 dpi. Solo el paquete usa el P12 y las credenciales autorizadas de `.local/secrets`.
-La revision visual complementaria utiliza Opera Neon QA al 75 %.
+reutilizacion. Las pruebas funcionales se conservan para ejecucion independiente.
+La medicion tecnica de firma usa PDF y certificados sinteticos en localhost
+y conserva el limite de tres segundos. La revision visual complementaria
+utiliza Opera Neon QA al 75 %.
 
 ## Evidencia
 
-- `.local/validation/base-sectores-agente.json`: bases independientes de las seis
-  familias del agente, con fecha real, fuentes propias, comando, ejecutor,
-  entorno y artefactos. Se crean al aprobar el 30 %, sin esperar a PHP/PostgreSQL.
-  Permiten reutilizar Java y builds aunque todavia falte la primera base integral
-  del 70 %. No vencen por antigüedad y no se renuevan las fechas de sectores
-  reutilizados. Modificar el selector exige sus contratos Node; no obliga a
-  recompilar sectores cuyos insumos siguen identicos. Reconstruir el JAR exige
-  comprobarlo nuevamente. `-Integral` fuerza tambien estos sectores.
-  La identidad de entorno utiliza los ejecutables resueltos y sus versiones,
-  el JDK efectivo y la huella de configuracion; no el texto completo de PATH ni
-  las carpetas temporales del lanzador. Codex y la consola manual comparten
-  evidencia si resuelven las mismas herramientas. Se conservan metadatos para
-  identificar cambios reales de Node, PHP, Java o configuracion.
-- `.local/validation/plan-impacto.json`: motivo integral/selectivo, cambios
-  acumulados, mapa de dependencias, pruebas a ejecutar/reutilizar y builds.
-- `.local/validation/evidencia-agente.json`: acredita el 30 % del plan exacto;
-  identifica repositorio, HEAD, fuentes, vendor completo, JAR y cuatro builds.
-  Vence a las 24 horas. Un reintento invalida primero el recibo anterior.
-- `.local/validation/ultima-validacion.json`: registra lo ejecutado y lo reutilizado
-  solo al completar correctamente el 70 %.
-- `.local/validation/base-integral.json`: se crea o renueva exclusivamente tras
-  completar el 30 % y el 70 % en modalidad integral. Una cancelacion, un fallo o
-  solamente el bloque del agente nunca establecen una base integral.
-
-El paquete comprueba la evidencia al inicio y antes de publicar. Cambiar fuentes,
-HEAD, plan o runtime exige repetir la entrada completa del agente. Los insumos
-se identifican antes de sus suites y se comparan al terminar. Nunca fabricar ni
-editar recibos o planes para acreditar controles pendientes. Los recibos del
-reparto anterior 40/60 y de reglas anteriores no son compatibles.
+El plan, las huellas del codigo compilado, los resultados y la base aprobada
+se guardan en `.local/validation`. El paquete genera estos registros durante su
+propia ejecucion y conserva el commit y las huellas de los archivos entregados.
+Las compilaciones parten del repositorio de trabajo HubDigital. Antes de compilar,
+el comando guarda un ZIP verificado de las fuentes y sus configuraciones en
+`.local/backups/codigo-fuente`. El respaldo queda fuera de Git y de los archivos OCI.
 
 ## Uso manual del paquete
 
@@ -154,41 +117,26 @@ La publicacion conserva la misma orden y requiere autorizacion expresa:
 crear-paquete-oci -DescripcionCambio "descripcion del cambio"
 ```
 
-Para completar el 70 % en localhost sin publicar ni empaquetar:
+Para compilar y comprobar en localhost sin publicar ni empaquetar:
 
 ```powershell
 crear-paquete-oci -SoloValidacionLocal -DescripcionCambio "revision local"
 ```
 
-Ambas exigen evidencia vigente del agente. Gherkin conserva perfil `default`,
-etiqueta `@listo` y modo `--strict`: en selectivo ejecuta los archivos relacionados,
-con evidencia integral para los restantes. Cualquier fallo bloquea publicacion.
+Cualquier fallo tecnico bloquea la publicacion.
 Sin una base compatible se solicita restaurarla o autorizar `-Integral`; no se inicia integral automaticamente.
 
-Para forzar todas las suites, usar primero `validar-cambios-agente.ps1 -Integral`
-y despues `crear-paquete-oci -Integral` (opcionalmente `-SoloValidacionLocal`).
-Forzar integral en el paquete exige que el agente haya aprobado ese mismo alcance.
+Para forzar todos los controles tecnicos, usar `crear-paquete-oci -Integral` (opcionalmente `-SoloValidacionLocal`).
 GitHub Actions sigue deshabilitado. El agente no ejecuta el paquete sin solicitud
 expresa, ni valida o despliega en DEV/PROD por haber validado localmente.
 
 ## Progreso y archivos OCI
 
-Cada comando muestra su duracion. Durante PHP se informa cada diez segundos del
-tiempo, casos finalizados, fallos, omitidos y caso activo de cada proceso. Los
-omitidos se cuentan tambien entre los finalizados. El observador lee mensajes
-TeamCity y los archivos de workers del directorio temporal exclusivo de esa
-llamada: ParaTest retiene stdout hasta terminar el archivo. La salida definitiva
-del registro `--log-teamcity` y el codigo de salida siguen determinando la aprobacion.
-Pest consume `--teamcity` antes de ejecutar en paralelo; ese argumento no sirve
-para observar esta suite. Los puntos de consola no se cuentan como pruebas aprobadas.
-No se inventan porcentajes globales con recuentos parciales de cada worker.
-Al terminar se muestran cinco casos lentos y el registro completo en
-`.local/deployment/pruebas-php-*.log`. Ctrl+C detiene solo el arbol del proceso
-creado por el observador; conserva registro y estado observado. Cancelacion,
-salida no cero, fallo notificado, protocolo incompleto o cero casos bloquean
-la acreditacion. La limpieza de PostgreSQL informa su fase final.
+Cada comando muestra su duracion. Pest ejecuta los archivos unitarios
+seleccionados; los controles PDF conservan su evidencia independiente.
+Las pruebas funcionales no se ejecutan como parte de esta operacion.
 
-`-Destino W` mantiene `artifacts/oci/<descripcion>-<fecha>` con seis archivos:
+`-Destino W` es el valor predeterminado y mantiene `artifacts/oci/<descripcion>-<fecha>` con seis archivos:
 bundle `.tar.gz`, `.sha256`, asistentes DEV/PROD, entorno privado DEV e instrucciones.
 No se genera `cloudshell-upload.tar.gz`: DEV recibe directamente el bundle,
 su checksum, el asistente DEV y el entorno. El `.env` separado contiene secretos;
@@ -234,13 +182,8 @@ no ejecuta suites ajenas ni acredita el 30 % completo.
 Esta politica sustituye referencias historicas
 a ejecutar todas las suites en cada llamada al paquete.
 
-## Navegador por casos con evidencia independiente
+## Pruebas visuales independientes del paquete
 
-`.local/validation/base-navegador.json` conserva aprobaciones propias de nueve recorridos: apertura/sesion/cabecera/pie, filtros/busqueda/graficos, tooltip/Livewire, arbol/diversidad, modales/mapa/registros, tabla/paginacion, fotografias, administracion/importacion y PDF de siete figuras. El selector registra casos ejecutados, reutilizados y motivos en el plan; no repetir UI intacta aunque Pest no haya completado su base integral. Cada caso prepara su estado sin ejecutar las aserciones de otros casos.
+Las pruebas con Opera Neon se realizan en localhost por separado. `crear-paquete-oci` no lanza el navegador ni exige recibos de UI focal o del historial de navegador, tampoco con `-Integral`. El inicio de sesion y las validaciones funcionales del sistema se comprueban aparte; el paquete ejecuta controles tecnicos. Las evidencias visuales existentes conservan sus fechas y su alcance original.
 
-El paquete limita la seleccion a los casos propios del cambio; la antiguedad de los recorridos intactos no los vuelve a ejecutar. Reutilizar conserva la fecha real y la aprobacion historica, sin declarar ejecutadas sus aserciones sobre el cambio nuevo. La migracion del OK completo confirmado exige runner original, cuerpos completos y todas sus aserciones conservadas, fixture y fuentes compatibles. Su procedencia declara expresamente que el runner nuevo no se ejecuto. No acredita Pest ni crea una base integral del 70 %. Un caso cancelado o fallido no queda aprobado; los que si terminaron conservan su evidencia individual.
-
-Cambios de empaquetado o selector por si solos no disparan UI. El paquete no sigue consumidores transitivos para agregar recorridos. Los metodos de tooltip del dashboard y los metodos conocidos del controlador se comparan por fragmento; un componente sin fragmento o contrato propio delimitado queda pendiente y no activa los nueve casos. `-Integral` fuerza los nueve recorridos solo por solicitud expresa. Las auditorias actuales y la integridad OCI siguen obligatorias.
-
-
-Las bases propias ETE/Python y PDF PHP/Java se guardan en `.local/validation/base-sectores-paquete.json` al aprobar cada sector. No esperan al cierre de Pest. Se conservan las fechas originales y se invalidan antes de reintentar; no acreditan PHP ni Gherkin. ETE identifica tambien el interprete y todo su entorno virtual. El OK historico de PDF puede conservarse con fuentes, vendor, JAR, entorno y transcripcion compatibles: su certificado es sintetico y temporal. El avance cancelado conserva 11 casos Python aprobados como resultado historico; sin huella previa del runtime ETE, su base reutilizable se establece tras la siguiente prueba. El plan de navegador y PDF se actualiza con los artefactos ya construidos antes de sellar las pruebas del agente, sin repetir su calculo de huellas.
+Las bases propias ETE/Python y PDF PHP/Java se guardan en `.local/validation/base-sectores-paquete.json` al aprobar cada sector. No esperan al cierre de Pest. Se conservan las fechas originales y se invalidan antes de reintentar; no acreditan PHP ni Gherkin. ETE identifica tambien el interprete y todo su entorno virtual. El OK historico de PDF puede conservarse con fuentes, vendor, JAR, entorno y transcripcion compatibles: su certificado es sintetico y temporal. El avance cancelado conserva 11 casos Python aprobados como resultado historico; sin huella previa del runtime ETE, su base reutilizable se establece tras la siguiente prueba. El plan de PDF se actualiza con los artefactos ya construidos antes de sellar las pruebas del agente, sin repetir su calculo de huellas.

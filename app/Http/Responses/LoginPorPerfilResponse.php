@@ -15,7 +15,7 @@ final class LoginPorPerfilResponse implements LoginResponse, TwoFactorLoginRespo
         $ingreso = $request->session()->pull('url.intended');
         $volverAIngreso = is_string($ingreso) && parse_url($ingreso, PHP_URL_HOST) === $request->getHost()
             && str_starts_with((string) parse_url($ingreso, PHP_URL_PATH), '/depositos/ingreso/');
-        $curador = in_array($request->user()?->rolActivo(), [\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::AYUDANTE_CURADOR, \App\Enums\RolUsuario::ADMIN], true);
+        $curador = in_array($request->user()?->rolActivo(), [\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::AYUDANTE_CURADOR], true);
         $destino = route($curador ? 'portal.catalogo' : 'dashboard', $curador ? ['vista' => 'mapa'] : []);
         if ($volverAIngreso) $destino = $ingreso;
         if ($request->wantsJson()) {

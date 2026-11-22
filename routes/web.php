@@ -10,6 +10,7 @@ use App\Livewire\Administracion\ConfiguracionSistema;
 use App\Livewire\Administracion\ConfiguracionExpediente;
 use App\Livewire\Administracion\GestionUsuarios;
 use App\Livewire\Administracion\TablasCatalogos;
+use App\Livewire\Administracion\TablasCatalogosDatos;
 use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
 
@@ -39,10 +40,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
     Route::get('/roles/activar/{rol}', ActivarRol::class)->name('roles.activar');
     Route::get('/administracion/usuarios', GestionUsuarios::class)
-        ->middleware('role:admin,curador')
+        ->middleware('role:admin')
         ->name('admin.usuarios');
     Route::get('/administracion/botones', \App\Livewire\Administracion\GestionBotones::class)
         ->middleware('role:admin')->name('admin.botones');
+    Route::get('/administracion/menu-lateral', \App\Livewire\Administracion\GestionMenuLateral::class)
+        ->middleware('role:admin')->name('admin.menu-lateral');
     Route::get('/administracion/configuracion', ConfiguracionSistema::class)
         ->middleware('role:admin')
         ->name('admin.configuracion');
@@ -56,7 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:admin')->name('admin.formato-ipt');
     Route::get('/administracion/contenidos/fichas/{taxon}/foto', \Modules\CatalogoPublico\Presentation\Http\Controllers\FotoFichaTaxonomica::class)
         ->whereUuid('taxon')->middleware('role:curador')->name('admin.ficha-foto');
-    Route::get('/administracion/catalogos', TablasCatalogos::class)
+    Route::get('/administracion/catalogos', TablasCatalogosDatos::class)
         ->middleware('role:curador')->name('admin.catalogos');
     Route::get('/administracion/matrices', TablasCatalogos::class)
         ->middleware('role:curador')->name('admin.matrices');

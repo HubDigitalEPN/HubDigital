@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Files;
 
 use Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -23,13 +24,28 @@ final class PlantillaMatrizDepositante
         // conservando los identificadores internos y su posición.
         $columnas = array_values(array_filter($this->esquemas->leer()['columnas'],
             static fn (array $columna): bool => $columna['plantilla_depositante'] ?? in_array($columna['campo'], $camposBase, true)));
-        $incluidas = array_column($columnas, 'campo');
-        foreach (array_reverse($camposBase, true) as $i => $campo) {
-            if (! in_array($campo, $incluidas, true)) {
-                $hoja->removeColumnByIndex($i + 1);
+        $originales = [];
+        foreach ($camposBase as $i => $campo) {
+            $originales[$campo]['ancho'] = $hoja->getColumnDimensionByColumn($i + 1)->getWidth();
+            foreach ([1, 2, 3] as $fila) {
+                $celda = $hoja->getCell([$i + 1, $fila]);
+                $originales[$campo]['celdas'][$fila] = [$celda->getValue(), $celda->getDataType(), $celda->getXfIndex()];
             }
         }
+        $altoPlantilla = Coordinate::columnIndexFromString($hoja->getHighestColumn());
+        $columnasSobrantes = $altoPlantilla - count($columnas);
+        if ($columnasSobrantes > 0) {
+            $hoja->removeColumnByIndex(count($columnas) + 1, $columnasSobrantes);
+        }
+
+        $referenciaVisual = $originales[$camposBase[0]];
         foreach ($columnas as $i => $columna) {
+            $original = $originales[$columna['campo']] ?? null;
+            $hoja->getColumnDimensionByColumn($i + 1)->setWidth(($original ?? $referenciaVisual)['ancho']);
+            foreach ([1, 2, 3] as $fila) {
+                [$valor, $tipo, $estilo] = $original['celdas'][$fila] ?? [null, DataType::TYPE_NULL, $referenciaVisual['celdas'][$fila][2]];
+                $hoja->getCell([$i + 1, $fila])->setValueExplicit($valor, $tipo)->setXfIndex($estilo);
+            }
             $hoja->setCellValueExplicit([$i + 1, 1], $columna['cabecera'], DataType::TYPE_STRING);
             // Conservar el texto enriquecido de la guía original cuando no cambió.
             if ((string) $hoja->getCell([$i + 1, 3])->getValue() !== $columna['descripcion']) {

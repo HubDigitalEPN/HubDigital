@@ -1,13 +1,17 @@
 @props(['label' => 'Resultados', 'pageSizeLabel' => 'Filas por página', 'client' => false, 'pageSize' => null, 'pageSizeAction' => null, 'allowDownload' => true, 'pageSizes' => [15, 25, 50, 100], 'actionMenu' => true, 'columnAction' => null, 'continuousWindow' => null])
 <section {{ $attributes->class(['hub-ig']) }} aria-label="{{ $label }}" data-hub-grid="specialized" @if($continuousWindow) data-grid-scroll-only @endif
-    x-id="['grid-columns-title', 'grid-sort-title', 'grid-filter-title']" x-data="hubInteractiveGrid([], false, @js($label), @js($client))" :class="{'hub-ig-compact': compact}">
+    x-id="['grid-columns-title', 'grid-sort-title', 'grid-filter-title']" x-data="hubInteractiveGrid([], false, @js($label), @js($client))"
+    :class="{'hub-ig-compact': compact}" @if($attributes->has('data-grid-resizable')) x-bind:style="estilosColumnas()" @endif>
     <div class="hub-ig-toolbar">
         {{ $search ?? '' }}
         @if($client)
             <div class="hub-ig-search"><flux:icon name="magnifying-glass" /><input type="search" x-model="searchText" x-on:keydown.enter.prevent="searchPage()" aria-label="Buscar en {{ $label }}" placeholder="Buscar en la tabla"><button type="button" class="hub-ig-button" x-on:click="searchPage()">Ir</button></div>
         @endif
         @if($actionMenu)
-            <x-grid-tools :page-size-label="$pageSizeLabel" :client="$client" :page-size="$pageSize" :page-size-action="$pageSizeAction" :allow-download="$allowDownload" :page-sizes="$pageSizes" :column-action="$columnAction">{{ $actions ?? '' }}</x-grid-tools>
+            <x-grid-tools :page-size-label="$pageSizeLabel" :client="$client" :page-size="$pageSize" :page-size-action="$pageSizeAction" :allow-download="$allowDownload" :page-sizes="$pageSizes" :column-action="$columnAction">
+                <x-slot:afterActions>{{ $toolbarActions ?? '' }}</x-slot:afterActions>
+                {{ $actions ?? '' }}
+            </x-grid-tools>
         @endif
         {{ $reset ?? '' }}
         @unless(isset($reset))<button type="button" class="hub-ig-button hub-ig-reset" x-on:click="reset()"><flux:icon name="arrow-uturn-left" /> Restablecer vista</button>@endunless

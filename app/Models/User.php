@@ -111,7 +111,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function rolesAsignados(): Collection
     {
-        return $this->roles->pluck('rol');
+        return $this->roles->pluck('rol')->unique()->values();
     }
 
     public function tieneRol(RolUsuario $rol): bool
@@ -143,6 +143,10 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($enSesion !== null) {
             $rol = RolUsuario::desdeHistorico($enSesion);
             if ($rol !== null && $asignados->contains($rol)) {
+                if ($enSesion !== $rol->value) {
+                    session(['rol_activo' => $rol->value]);
+                }
+
                 return $rol;
             }
         }
@@ -215,7 +219,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function esCurador(): bool
     {
-        return $this->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN);
+        return $this->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR);
     }
 
     public function esReceptor(): bool
@@ -240,7 +244,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function esAdministrador(): bool
     {
-        return $this->tieneRol(RolUsuario::ADMIN);
+        return $this->tieneRol(RolUsuario::CURADOR);
     }
 
     public function esUsuarioInterno(): bool

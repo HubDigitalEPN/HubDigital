@@ -23,7 +23,9 @@ final class CheckRole
             static fn (string $role): RolUsuario => RolUsuario::desdeHistorico($role) ?? throw new \InvalidArgumentException('Rol desconocido.'),
             $roles,
         );
-        if (in_array(RolUsuario::CURADOR, $esperados, true)) {
+        // La declaración curador admite al equipo. La declaración admin
+        // conserva el requisito de pertenecer al perfil con permisos completos.
+        if (in_array(RolUsuario::CURADOR->value, array_map('strtoupper', $roles), true)) {
             $esperados[] = RolUsuario::AYUDANTE_CURADOR;
         }
 

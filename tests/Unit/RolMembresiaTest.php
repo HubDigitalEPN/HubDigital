@@ -43,18 +43,20 @@ test('los helpers de rol reflejan la membresía', function () {
     expect($user->esCurador())->toBeFalse();
 });
 
-test('administracion es un rol interno reconocido por los helpers', function () {
-    $user = usuarioConRoles(RolUsuario::ADMIN);
+test('Administrador-Curador es el único perfil administrativo', function () {
+    $user = usuarioConRoles(RolUsuario::CURADOR);
 
     expect($user->esAdministrador())->toBeTrue();
     expect($user->esCurador())->toBeTrue();
     expect($user->esUsuarioInterno())->toBeTrue();
-    expect(RolUsuario::rolesInternos())->toContain(RolUsuario::ADMIN);
+    expect(RolUsuario::rolesInternos())->toContain(RolUsuario::CURADOR);
+    expect(RolUsuario::desdeHistorico('ADMIN'))->toBe(RolUsuario::CURADOR);
+    expect(array_column(RolUsuario::cases(), 'value'))->toBe(['DEPOSITANTE', 'CURADOR', 'AYUDANTE_CURADOR', 'PASANTE']);
 });
 
 test('la membresía de curador puede coexistir con perfiles de autoservicio', function () {
     $user = usuarioConRoles(RolUsuario::PRESTAMISTA, RolUsuario::CURADOR);
-    expect($user->esCurador())->toBeTrue()->and($user->esPrestamista())->toBeTrue()->and($user->esAdministrador())->toBeFalse();
+    expect($user->esCurador())->toBeTrue()->and($user->esPrestamista())->toBeTrue()->and($user->esAdministrador())->toBeTrue();
 });
 
 test('el ayudante tiene membresía curatorial sin recibir administración', function () {

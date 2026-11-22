@@ -27,7 +27,7 @@ final class CapturaDarwinCore extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::PASANTE, RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
+        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::PASANTE, RolUsuario::CURADOR), 403);
     }
 
     public function campos(): array

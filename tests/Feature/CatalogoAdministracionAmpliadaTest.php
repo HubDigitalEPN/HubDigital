@@ -29,9 +29,9 @@ test('administración edita textos del sistema con autoría y los publica como t
     expect(TextosSistema::diccionario())->not->toHaveKey($original);
 });
 
-test('visitantes y curadores no pueden administrar los textos internos del sistema', function (): void {
+test('visitantes y técnicos no pueden administrar los textos internos del sistema', function (): void {
     Livewire::test(ConfiguracionTextosSistema::class)->assertForbidden();
-    Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionTextosSistema::class)->assertForbidden();
+    Livewire::actingAs(User::factory()->receptor()->create())->test(ConfiguracionTextosSistema::class)->assertForbidden();
 });
 
 test('una columna nueva se puede retirar sin uso y queda protegida después de guardar datos incluso al vaciarla', function (): void {

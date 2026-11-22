@@ -38,9 +38,9 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
     ): string {
         $referencia = (string) Str::uuid();
         $deposito = SolicitudDepositoEloquentModel::find($solicitudId);
-        // El cierre técnico debe alertar siempre al curador y al creador, aunque
+        // El cierre técnico debe alertar siempre al Administrador-Curador, aunque
         // el Técnico figure como responsable de la aprobación documental.
-        $curadores = User::whereHas('roles', fn ($q) => $q->whereIn('rol', [RolUsuario::CURADOR->value, RolUsuario::ADMIN->value]))->get();
+        $curadores = User::whereHas('roles', fn ($q) => $q->where('rol', RolUsuario::CURADOR->value))->get();
 
         if ($curadores->isEmpty()) {
             Log::warning('Lote recibido sin curadores a quienes asignar el acta', [
@@ -160,7 +160,6 @@ final class NotificacionCuratoriaAdapter implements NotificacionCuratoriaPort
             fn ($consulta) => $consulta->whereIn('rol', [
                 RolUsuario::CURADOR->value,
                 RolUsuario::AYUDANTE_CURADOR->value,
-                RolUsuario::ADMIN->value,
             ]),
         );
     }

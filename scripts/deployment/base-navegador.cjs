@@ -4,6 +4,7 @@ const path = require('node:path');
 const {createHash, randomUUID} = require('node:crypto');
 const ids = ['apertura-sesion', 'filtros-graficos', 'tooltip-livewire', 'arbol-diversidad', 'modales-mapa', 'tabla-paginacion', 'fotografias', 'administracion-importacion', 'pdf-siete-figuras'];
 const transportAdmin = 'tests/Browser/portal-neon-administracion.mjs';
+const neonCases = ['administracion-importacion', 'tooltip-livewire'];
 const hash = value => createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');
 const days = 7;
 const shared = /^(composer\.(json|lock)|package(-lock)?\.json|modules_statuses\.json|bootstrap\/|config\/|routes\/|app\/(Models\/User|Enums\/Rol|Http\/Middleware|Providers|Support\/(Botones|DescargasCatalogo)))|(^|\/)(Auth|Authentication|Authorization|Policies|Permissions|Roles|Permisos|migrations|Providers|Middleware|routes|config)\/|(^|\/)(Rol|Role|Permission|Permiso|BotonesRbac)[^/]*\.php$|(^|\/)package(-lock)?\.json$/i;
@@ -95,8 +96,10 @@ function inputs({root, sources, contents, environment, runtime, dependencies = {
         result[id]['entorno'] = environment; result[id]['vendor'] = runtime?.per_root?.vendor || 'ausente';
     }
     if (parts.adminTransport) {
-        result['administracion-importacion']['test:preparacion-neon-qa'] = hash(parts.adminTransport);
-        result['administracion-importacion'][transportAdmin] = sources[transportAdmin];
+        for (const id of neonCases) {
+            result[id]['test:preparacion-neon-qa'] = hash(parts.adminTransport);
+            result[id][transportAdmin] = sources[transportAdmin];
+        }
     }
     for (const file of Object.keys(sources).sort()) {
         if (infrastructureOnly.test(file) || (!functional.test(file) && !shared.test(file))) continue;
@@ -244,7 +247,7 @@ function assertCaseUnchanged(root, plan, id) {
     const layout = JSON.parse(fs.readFileSync(path.join(root, 'tests/Browser/portal-casos.json'), 'utf8'));
     const tests = {'test:cuerpo': hash(parts.bodies[id]), 'test:preparacion': hash(parts.common),
         'test:contrato': hash(layout.cases[id]), 'test:fixture': hash(fs.readFileSync(path.join(root, 'tests/Browser/portal-fixture.php')))};
-    if (id === 'administracion-importacion' && parts.adminTransport) {
+    if (neonCases.includes(id) && parts.adminTransport) {
         tests['test:preparacion-neon-qa'] = hash(parts.adminTransport);
     }
     const loaded = new Map();

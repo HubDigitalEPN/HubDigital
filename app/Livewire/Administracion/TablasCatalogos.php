@@ -6,51 +6,57 @@ namespace App\Livewire\Administracion;
 
 use App\Livewire\Concerns\WithInteractiveGrid;
 use App\Support\AccesoCatalogo;
-use App\Support\RegistrosAdministracionCatalogos;
+use App\Support\ConfiguracionIpt;
+use App\Support\EditorMatrizDepositos;
+use App\Support\EditorMatrizIpt;
+use App\Support\PaginadorGrillaContinua;
+use App\Support\RegistrosAdministracionCatalogos as Matrices;
+use DomainException;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Modules\CatalogoPublico\Presentation\Http\Controllers\AdministrarAsistente;
-use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionMatrizDeposito;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionColumnasIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\ConfiguracionPlantillaCatalogoIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DatasetConfigForm;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\LocalidadIndex;
-use Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\TaxonIndex;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo;
+use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\EditorMatrizImportacion;
 
 #[Layout('layouts.app')]
-#[Title('Tablas de catálogos')]
+#[Title('Matrices')]
 final class TablasCatalogos extends Component
 {
+    use WithFileUploads;
     use WithInteractiveGrid;
     use WithPagination;
 
     #[Url(history: true)]
-    public string $tabla = '';
+    public string $tabla = Matrices::DEPOSITOS;
 
     #[Url(as: 'q')]
     public string $busqueda = '';
 
-    public string $tablaNueva = 'instituciones';
+    #[Locked]
+    public ?string $campoEdicion = null;
 
     #[Locked]
-    public array $editor = [];
+    public string $huella = '';
 
     #[Locked]
-    public int $versionEditor = 0;
+    public string $modo = '';
 
-    #[Locked]
-    public bool $gestionaMatrices = false;
+    public array $datos = [];
+
+    public $archivo = null;
 
     public function mount(): void
     {
-        $this->gestionaMatrices = request()->routeIs('admin.matrices');
-        $this->tablaNueva = $this->gestionaMatrices ? 'matriz-depositos' : 'instituciones';
+        if ($this->tabla === '') {
+            $this->tabla = Matrices::DEPOSITOS;
+        }
     }
 
     public function boot(): void
@@ -60,7 +66,18 @@ final class TablasCatalogos extends Component
 
     public function updatedTabla(): void
     {
-        $this->resetPage();
+        $this->seleccion();
+        $this->cancelar();
+        $this->restablecerGrilla();
+    }
+
+    public function seleccionarTabla(string $tabla): void
+    {
+        abort_unless(isset($this->matrices()[$tabla]), 403);
+        if ($tabla !== $this->tabla) {
+            $this->tabla = $tabla;
+            $this->updatedTabla();
+        }
     }
 
     public function updatedBusqueda(): void
@@ -70,130 +87,235 @@ final class TablasCatalogos extends Component
 
     public function nuevo(): void
     {
-        $catalogos = $this->catalogos();
-        if (isset($catalogos[$this->tabla]['nuevo'])) {
-            $this->mostrarEditor($this->tabla, $catalogos[$this->tabla]['nuevo']);
+        $definicion = $this->preparar('columna');
+        $this->datos = ['orden' => count($definicion['columnas']) + 1, 'formato' => 'texto'] + match ($this->tabla) {
+            Matrices::DEPOSITOS => ['requisito' => 'opcional', 'plantilla_depositante' => '1'],
+            Matrices::IMPORTACION => ['requisito' => 'opcional'],
+            Matrices::IPT => ['ancho' => 10, 'origen' => ''],
+        };
+        $this->modal('editar-columna-matriz')->show();
+    }
+
+    public function editarColumna(string $campo): void
+    {
+        $definicion = $this->preparar('columna', $campo);
+        $indice = array_search($campo, array_column($definicion['columnas'], 'campo'), true);
+        abort_if($indice === false, 404);
+        $columna = $definicion['columnas'][$indice];
+        $columna['alias'] = implode($this->tabla === Matrices::IMPORTACION ? "\n" : ', ', $columna['alias'] ?? []);
+        if ($this->tabla === Matrices::DEPOSITOS) {
+            $columna['plantilla_depositante'] = ($columna['plantilla_depositante'] ?? true) ? '1' : '0';
+        }
+        $this->datos = ['orden' => $indice + 1] + $columna;
+        $this->modal('editar-columna-matriz')->show();
+    }
+
+    public function guardarColumna(): void
+    {
+        abort_unless($this->modo === 'columna', 422);
+        $this->seleccion();
+        $this->resetValidation();
+        try {
+            $this->editor()->guardarFila($this->campoEdicion, $this->datos, $this->huella);
+        } catch (ValidationException $error) {
+            $mensajes = [];
+            foreach ($error->errors() as $campo => $errores) {
+                $mensajes[str_starts_with($campo, 'datos.') ? $campo : 'datos.'.$campo] = $errores;
+            }
+            throw ValidationException::withMessages($mensajes);
+        } catch (DomainException $error) {
+            $this->addError('matriz', $error->getMessage());
             return;
         }
-        $this->modal('catalogo-alta')->show();
+        $this->finalizar('editar-columna-matriz');
     }
 
-    public function abrirAlta(): void
+    public function solicitarEliminar(string $campo): void
     {
-        $catalogo = $this->catalogos()[$this->tablaNueva] ?? null;
-        abort_unless(isset($catalogo['nuevo']), 403);
-        $this->modal('catalogo-alta')->close();
-        $this->mostrarEditor($this->tablaNueva, $catalogo['nuevo']);
+        $definicion = $this->preparar('eliminar', $campo);
+        abort_unless(in_array($campo, array_column($definicion['columnas'], 'campo'), true), 404);
+        $this->modal('confirmar-cambio-matriz')->show();
     }
 
-    public function abrirRegistro(string $tabla, string $id, string $accion = 'editar'): void
+    public function solicitarRestaurar(): void
     {
-        $catalogo = $this->catalogos()[$tabla] ?? null;
-        abort_unless($catalogo && in_array($accion, ['editar', 'estado', 'acta'], true), 403);
-        abort_if(mb_strlen($id) > 200, 404);
-        $fila = app(RegistrosAdministracionCatalogos::class)->consultar([$tabla => $catalogo['nombre']], '')
-            ->where('id', $id)->first();
-        abort_unless($fila, 404);
-
-        $metodo = $catalogo[$accion] ?? null;
-        $argumento = match ($accion) {
-            'acta' => $fila->acta_id,
-            'estado' => $tabla === 'instituciones' ? $fila->estado_id : $fila->id,
-            default => $fila->id,
-        };
-        abort_if($accion !== 'editar' && ($metodo === null || $argumento === null), 403);
-        $this->mostrarEditor($tabla, $metodo, $argumento);
+        abort_unless($this->tabla === Matrices::IPT, 403);
+        $this->preparar('restaurar');
+        $this->modal('confirmar-cambio-matriz')->show();
     }
 
-    public function cerrarEditor(): void
+    public function confirmarCambio(): void
     {
-        $this->editor = [];
-    }
-
-    #[On('registro-catalogo-actualizado')]
-    public function actualizar(): void
-    {
-        $this->cerrarEditor();
-        session()->flash('catalogo-actualizado', 'Transacción Efectuada');
-    }
-
-    public function render(): View
-    {
-        $catalogos = $this->catalogos();
-        abort_unless($this->tabla === '' || isset($catalogos[$this->tabla]), 403);
-        abort_unless($this->editor === [] || isset($catalogos[$this->editor['tabla']]), 403);
-        $nombres = array_map(static fn (array $catalogo): string => $catalogo['nombre'], $catalogos);
-        if ($this->tabla !== '') {
-            $nombres = [$this->tabla => $nombres[$this->tabla]];
+        $this->seleccion();
+        try {
+            if ($this->modo === 'eliminar' && $this->campoEdicion !== null) {
+                $this->editor()->eliminarFila($this->campoEdicion, $this->huella);
+            } else {
+                abort_unless($this->modo === 'restaurar' && $this->tabla === Matrices::IPT, 422);
+                app(EditorMatrizIpt::class)->restaurar($this->huella);
+            }
+        } catch (DomainException $error) {
+            $this->addError('matriz', $error->getMessage());
+            return;
         }
-        $consulta = app(RegistrosAdministracionCatalogos::class)->consultar($nombres, mb_substr($this->busqueda, 0, 150));
-        $this->ordenarConsultaGrilla($consulta, $this->tabla === '' ? 'catalogo' : 'nombre');
-        $filas = $this->paginarGrilla($consulta->orderBy('nombre')->orderBy('tabla')->orderBy('id'));
+        $this->finalizar('confirmar-cambio-matriz');
+    }
 
-        return view('livewire.administracion.tablas-catalogos', compact('catalogos', 'filas'))
-            ->title($this->gestionaMatrices ? 'Matrices' : 'Tablas de catálogos');
+    public function mostrarCarga(): void
+    {
+        abort_unless($this->tabla === Matrices::IMPORTACION, 403);
+        $this->preparar('carga');
+        $this->modal('cargar-plantilla-matriz')->show();
+    }
+
+    public function subirPlantilla(ConfiguracionPlantillaCatalogo $servicio): void
+    {
+        abort_unless($this->modo === 'carga' && $this->tabla === Matrices::IMPORTACION, 422);
+        AccesoCatalogo::autorizar();
+        $this->validate(['archivo' => 'required|file|mimes:xlsx|max:2048'], [
+            'archivo.required' => 'Selecciona la plantilla modificada.',
+            'archivo.mimes' => 'Selecciona la plantilla en formato .xlsx.',
+            'archivo.max' => 'La plantilla de configuración no debe superar 2 MB.',
+        ]);
+        try {
+            $definicion = $servicio->desdeExcel($this->archivo->getRealPath());
+            $servicio->guardar($definicion, $this->huella, (string) auth()->id());
+        } catch (DomainException $error) {
+            $this->addError('archivo', $error->getMessage());
+            return;
+        } catch (\Throwable $error) {
+            report($error);
+            $this->addError('archivo', 'No se pudo actualizar la plantilla. Comprueba el archivo e intenta nuevamente.');
+            return;
+        }
+        $this->finalizar('cargar-plantilla-matriz');
+    }
+
+    public function cancelar(): void
+    {
+        $this->reset('campoEdicion', 'huella', 'modo', 'datos', 'archivo');
+        $this->resetValidation();
+    }
+
+    public function render(Matrices $registros): View
+    {
+        $matrices = $this->matrices();
+        $seleccion = $this->seleccion();
+        $fuente = $registros->fuente($this->tabla);
+        $columnas = $registros->columnas($this->tabla);
+        $filas = $this->filasMatriz($registros, $fuente);
+        $opciones = $this->modo === 'columna' ? $registros->etiquetas($this->tabla) : [];
+        $puedeCrear = true;
+        if ($this->tabla === Matrices::IMPORTACION) {
+            $estandares = array_column(ConfiguracionPlantillaCatalogo::predeterminada()['columnas'], 'campo');
+            $esAdministrador = auth()->user()->esAdministrador();
+            $puedeCrear = $esAdministrador || !$registros->contieneCampos($fuente, $estandares);
+            if ($this->modo === 'columna' && $this->campoEdicion === null) {
+                $configuradas = $registros->consultar($this->tabla, $fuente, '')->whereIn('campo', $estandares)->pluck('campo');
+                $estandares = array_diff($estandares, $configuradas->all());
+                $opciones['campo'] = ($esAdministrador ? ['' => 'Columna personalizada'] : []) + array_combine($estandares, $estandares);
+            }
+        }
+        if ($this->modo === 'columna' && $this->tabla === Matrices::IPT) {
+            $origenes = app(ConfiguracionIpt::class)->origenes();
+            $opciones['origen'] = ['' => 'Sin origen'] + array_combine($origenes, $origenes);
+            if ($this->campoEdicion === null) {
+                $terminos = array_diff(ConfiguracionIpt::terminos(), $registros->consultar($this->tabla, $fuente, '')->pluck('campo')->all());
+                $opciones['campo'] = array_combine($terminos, $terminos);
+            }
+        }
+        $columnasProtegidas = match ($this->tabla) {
+            Matrices::DEPOSITOS => $registros->proteccionDepositos($fuente),
+            Matrices::IMPORTACION => ['occurrenceID'],
+            Matrices::IPT => ['occurrenceID', 'basisOfRecord', 'scientificName', 'eventDate'],
+        };
+
+        return view('livewire.administracion.tablas-catalogos', compact('matrices', 'seleccion', 'columnas', 'filas',
+            'opciones', 'puedeCrear', 'columnasProtegidas'));
+    }
+
+    private function filasMatriz(Matrices $registros, Builder $fuente): PaginadorGrillaContinua
+    {
+        $busqueda = mb_substr($this->busqueda, 0, 150);
+        if (trim($busqueda) !== '' || $this->gridColumnFilters !== [] || !in_array($this->gridSort, ['', 'orden'], true)) {
+            $consulta = $registros->consultar($this->tabla, $fuente, $busqueda);
+
+            return $this->paginarGrilla($this->ordenarConsultaGrilla($consulta, 'orden')->orderBy('campo'));
+        }
+
+        $porPagina = $this->filasGrilla();
+        $pagina = $this->getPage();
+        $total = $registros->cantidad($fuente);
+        $direccion = $this->gridDirection === 'desc' ? 'desc' : 'asc';
+        [$offset, $ventana] = $this->rangoGrillaContinua($this->tabla.'|orden|'.$direccion, $total, $porPagina, $pagina);
+        $cantidad = min($ventana, max(0, $total - $offset));
+        $desde = $direccion === 'desc' ? $total - $offset - $cantidad : $offset;
+        $filas = $cantidad > 0 ? $registros->lote($this->tabla, $fuente, $desde, $cantidad, $direccion)->get() : collect();
+
+        return new PaginadorGrillaContinua($filas, $total, $porPagina, $pagina, $offset, $this->gridVentana);
     }
 
     protected function gridColumns(): array
     {
-        return ['nombre' => 'nombre', 'catalogo' => 'catalogo', 'detalle' => 'detalle', 'estado' => 'estado'];
+        $this->seleccion();
+        $campos = array_keys(app(Matrices::class)->columnas($this->tabla));
+        return array_combine($campos, $campos);
     }
 
-    private function mostrarEditor(string $tabla, ?string $accion, ?string $argumento = null): void
+    private function preparar(string $modo, ?string $campo = null): array
     {
-        $this->editor = compact('tabla', 'accion', 'argumento');
-        $this->versionEditor++;
-        if ($this->catalogos()[$tabla]['panel'] ?? false) {
-            $this->modal('catalogo-configuracion')->show();
-        }
+        $this->seleccion();
+        abort_if($campo !== null && ($campo === '' || mb_strlen($campo) > 160), 404);
+        $this->cancelar();
+        $definicion = app(Matrices::class)->definicion($this->tabla);
+        $this->huella = ConfiguracionPlantillaCatalogo::huella($definicion);
+        $this->modo = $modo;
+        $this->campoEdicion = $campo;
+        return $definicion;
     }
 
-    private function catalogos(): array
+    private function finalizar(string $modal): void
     {
-        if ($this->gestionaMatrices) {
-            return $this->matrices();
-        }
-        $catalogos = [
-            'instituciones' => ['nombre' => 'Instituciones y depositantes', 'componente' => InstitucionesCatalogo::class,
-                'editar' => 'editarDirectorio', 'nuevo' => 'nueva', 'estado' => 'cambiarEstado', 'acta' => 'generarActa'],
-            'cargos' => ['nombre' => 'Cargos', 'componente' => CargosCatalogo::class,
-                'editar' => 'editar', 'nuevo' => 'nueva', 'estado' => 'cambiarEstado'],
-            'grupos-animales' => ['nombre' => 'Grupos animales', 'componente' => GruposAnimalesCatalogo::class,
-                'editar' => 'editar', 'nuevo' => 'nuevo', 'estado' => 'cambiarEstado'],
-            'taxones' => ['nombre' => 'Taxones', 'componente' => TaxonIndex::class,
-                'editar' => 'abrirEditModal', 'nuevo' => 'abrirModal', 'estado' => 'desactivarTaxon'],
-            'localidades-coleccion' => ['nombre' => 'Localidades de la colección', 'componente' => LocalidadIndex::class,
-                'editar' => 'abrirEditModal', 'nuevo' => 'abrirModal'],
-            'fuentes-revocacion' => ['nombre' => 'Revocación de firmas', 'componente' => FuentesRevocacionFirma::class,
-                'editar' => 'editar', 'nuevo' => 'nuevo', 'estado' => 'cambiarEstado'],
-            'asistente' => ['nombre' => 'Asistente del portal', 'componente' => AdministrarAsistente::class, 'panel' => true],
-            'gbif' => ['nombre' => 'Publicación GBIF', 'componente' => DatasetConfigForm::class, 'panel' => true],
-            'columnas' => ['nombre' => 'Columnas de la tabla', 'componente' => ConfiguracionColumnasIndex::class, 'panel' => true],
-        ];
-        if (auth()->user()->esAdministrador()) {
-            $catalogos += [
-                'localidades-ecuador' => ['nombre' => 'Localidades de Ecuador', 'componente' => LocalidadesEcuadorCatalogo::class,
-                    'editar' => 'editar', 'nuevo' => 'nueva', 'estado' => 'cambiarEstado'],
-                'botones' => ['nombre' => 'Botones y permisos', 'componente' => GestionBotones::class, 'panel' => true],
-                'sistema' => ['nombre' => 'Correo y descargas', 'componente' => ConfiguracionSistema::class, 'panel' => true],
-                'siglas-expedientes' => ['nombre' => 'Siglas de expedientes', 'componente' => ConfiguracionExpediente::class, 'panel' => true],
-            ];
-        }
+        $this->modal($modal)->close();
+        $this->cancelar();
+        $this->reset('gridVentana');
+        $this->resetPage();
+        session()->flash('catalogo-actualizado', 'Transacción Efectuada');
+    }
 
-        return $catalogos;
+    private function editor(): EditorMatrizDepositos|EditorMatrizImportacion|EditorMatrizIpt
+    {
+        return match ($this->tabla) {
+            Matrices::DEPOSITOS => app(EditorMatrizDepositos::class),
+            Matrices::IMPORTACION => app(EditorMatrizImportacion::class),
+            Matrices::IPT => app(EditorMatrizIpt::class),
+        };
+    }
+
+    private function seleccion(): array
+    {
+        return $this->matrices()[$this->tabla] ?? abort(403);
     }
 
     private function matrices(): array
     {
         $matrices = [
-            'matriz-depositos' => ['nombre' => 'Matriz de depósitos', 'componente' => ConfiguracionMatrizDeposito::class,
-                'editar' => 'editar', 'nuevo' => 'editar'],
+            Matrices::DEPOSITOS => [
+                'nombre' => 'Matriz de depósitos',
+                'uso' => 'Define las columnas de la plantilla que usan los depositantes y las reglas para validar sus archivos.',
+            ],
         ];
         if (AccesoCatalogo::completo()) {
-            $matrices['plantilla-catalogo'] = ['nombre' => 'Plantilla de importación del catálogo', 'componente' => ConfiguracionPlantillaCatalogoIndex::class, 'panel' => true];
+            $matrices[Matrices::IMPORTACION] = [
+                'nombre' => 'Plantilla de importación del catálogo',
+                'uso' => 'Define las cabeceras, la guía y las reglas para importar especímenes al catálogo.',
+            ];
         }
         if (auth()->user()->esAdministrador()) {
-            $matrices['formato-ipt'] = ['nombre' => 'Formato IPT (GBIF)', 'componente' => ConfiguracionFormatoIpt::class, 'panel' => true];
+            $matrices[Matrices::IPT] = [
+                'nombre' => 'Formato IPT (GBIF)',
+                'uso' => 'Define las columnas, el orden y el formato de las descargas destinadas a GBIF.',
+            ];
         }
 
         return $matrices;

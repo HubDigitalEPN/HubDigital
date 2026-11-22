@@ -34,7 +34,7 @@ final class AdminBootstrapGuard
 
         return ! DB::table('usuarios.admin_bootstrap')->where('id', 'administrador-inicial')->exists()
             && ! User::query()
-            ->whereHas('roles', fn ($consulta) => $consulta->where('rol', RolUsuario::ADMIN->value))
+            ->whereHas('roles', fn ($consulta) => $consulta->where('rol', RolUsuario::CURADOR->value))
             ->exists();
     }
 

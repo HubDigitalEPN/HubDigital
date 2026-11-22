@@ -15,7 +15,7 @@ const stages = plan.controles.filter(c => c.responsable === 'agente').map(c => c
 if (plan.version !== 3 || plan.controles.length !== 20 || stages.length !== 6 ||
     new Set(plan.controles.map(c => c.id)).size !== 20 ||
     plan.controles.filter(c => c.responsable === 'paquete').length !== 14) throw new Error('Plan de validacion incompatible con el reparto 30/70.');
-const fail = message => { throw new Error(`${message} Ejecute scripts/deployment/validar-cambios-agente.ps1 sobre los cambios actuales.`); };
+const fail = message => { throw new Error(`${message} Repita la validacion correspondiente sobre los cambios actuales.`); };
 
 async function hashRuntime(root, roots = runtimeRoots) {
     const files = [];

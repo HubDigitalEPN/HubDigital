@@ -14,7 +14,7 @@ test('administración combina depositante y admin sin alterar el perfil principa
     $admin = User::factory()->administrador()->create();
     $persona = User::factory()->depositante()->create(['email' => 'investigador@example.org']);
     Livewire::actingAs($admin)->test(GestionUsuarios::class)->call('editar', $persona->id)
-        ->set('edicionRoles', ['DEPOSITANTE', 'ADMIN'])->set('edicionRol', 'DEPOSITANTE')->call('actualizar')->assertHasNoErrors();
+        ->set('edicionRoles', ['DEPOSITANTE', 'CURADOR'])->set('edicionRol', 'DEPOSITANTE')->call('actualizar')->assertHasNoErrors();
     $persona->refresh()->load('roles');
     expect($persona->rolesAsignados()->all())->toContain(RolUsuario::DEPOSITANTE, RolUsuario::ADMIN)
         ->and($persona->rol)->toBe(RolUsuario::DEPOSITANTE);
@@ -25,9 +25,9 @@ test('administración combina depositante y admin sin alterar el perfil principa
     expect($dom->query('//nav[@id="menu-portal-movil"]//summary[normalize-space(.)="Cambiar perfil"]')->length)->toBe(1);
     $this->actingAs($persona)->get(route('dashboard'))->assertOk();
     Livewire::actingAs($persona)->test(SelectorRolActivo::class)->call('cambiar', 'ADMIN')->assertRedirect(route('dashboard'));
-    expect(session('rol_activo'))->toBe('ADMIN');
-    Livewire::actingAs($persona)->test(SelectorRolActivo::class)->call('cambiar', 'CURADOR');
-    expect(session('rol_activo'))->toBe('ADMIN')->and($persona->tieneRol(RolUsuario::CURADOR))->toBeFalse();
+    expect(session('rol_activo'))->toBe('CURADOR');
+    Livewire::actingAs($persona)->test(SelectorRolActivo::class)->call('cambiar', 'PASANTE');
+    expect(session('rol_activo'))->toBe('CURADOR')->and($persona->tieneRol(RolUsuario::PASANTE))->toBeFalse();
     Livewire::actingAs(User::factory()->depositante()->create())->test(GestionUsuarios::class)->assertForbidden();
 });
 
@@ -42,13 +42,15 @@ test('el ayudante accede a descargas curatoriales y no administra permisos ni us
 
 test('la matriz conserva permisos separados de ver y usar y bloquea HTTP y Livewire tras revocar', function (): void {
     $admin = User::factory()->administrador()->create();
-    $curador = User::factory()->curador()->create();
+    $tecnico = User::factory()->receptor()->create();
     Livewire::actingAs($admin)->test(GestionBotones::class)
-        ->set('permisos.catalogo_completo.CURADOR.usar', false)->call('guardar')->assertHasNoErrors();
-    $this->actingAs($curador);
+        ->set('permisos.catalogo_completo.CURADOR.usar', false)
+        ->set('permisos.catalogo_completo.AYUDANTE_CURADOR.usar', false)->call('guardar')->assertHasNoErrors();
+    expect(BotonesSistema::permitido('catalogo.completo', $admin))->toBeTrue();
+    $this->actingAs($tecnico);
     expect(BotonesSistema::visible('catalogo.completo'))->toBeTrue()->and(BotonesSistema::permitido('catalogo.completo'))->toBeFalse();
     $this->getJson(route('portal.descarga', ['exportacion' => 'datos']))->assertForbidden();
-    Livewire::actingAs($curador)->test(PortalCatalogo::class)->call('descargarDatos')->assertForbidden();
+    Livewire::actingAs($tecnico)->test(PortalCatalogo::class)->call('descargarDatos')->assertForbidden();
     expect(BotonesSistema::permitido('catalogo.ipt'))->toBeTrue();
 });
 
@@ -75,7 +77,7 @@ test('un perfil activo depositante no hereda los botones admin y una membresía 
     $persona->activarRol(RolUsuario::ADMIN);
     expect(BotonesSistema::permitido('catalogo.completo'))->toBeTrue();
     expect(\App\Support\DescargasCatalogo::equipoActivo())->toBeTrue();
-    $persona->roles()->where('rol', 'ADMIN')->delete();
+    $persona->roles()->where('rol', 'CURADOR')->delete();
     expect(BotonesSistema::permitido('catalogo.completo'))->toBeFalse();
     expect($persona->nombreSaludo())->toBe(ucfirst(strtolower(explode(' ', $persona->first_name)[0])));
 });
@@ -84,7 +86,7 @@ test('el comando de asignación agrega membresías sin crear cuentas ni elevarla
     $persona = User::factory()->depositante()->create();
     $this->artisan('usuarios:asignar-perfiles', ['email' => $persona->email, 'roles' => ['ADMIN']])->assertSuccessful();
     expect($persona->fresh()->rolesAsignados()->all())->toContain(RolUsuario::DEPOSITANTE, RolUsuario::ADMIN);
-    $this->artisan('usuarios:asignar-perfiles', ['email' => $persona->email, 'roles' => ['CURADOR', 'INVENTADO']])->assertFailed();
-    expect($persona->fresh()->tieneRol(RolUsuario::CURADOR))->toBeFalse();
+    $this->artisan('usuarios:asignar-perfiles', ['email' => $persona->email, 'roles' => ['PASANTE', 'INVENTADO']])->assertFailed();
+    expect($persona->fresh()->tieneRol(RolUsuario::PASANTE))->toBeFalse();
     $this->artisan('usuarios:asignar-perfiles', ['email' => 'ausente@example.org', 'roles' => ['ADMIN']])->assertFailed();
 });

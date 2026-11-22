@@ -2,7 +2,7 @@
     <header><h1 class="text-2xl font-semibold">Contenido recibido · {{ $solicitud->numero }}</h1><p>Registra cada lote o grupo de especímenes que comprobaste físicamente.</p></header>
     <a class="text-science-blue underline" href="{{ route('prestamos.curador.deposito.revisar', $solicitud->id) }}" wire:navigate>Consultar solicitud y matriz declarada</a>
     @if($solicitud->contenido_validado_en)
-        <flux:callout variant="success" heading="Recibida y validada">Contenido cerrado. Se notificó al Administrador (Curador) y al Administrador-Creador para continuar con el acta final.</flux:callout>
+        <flux:callout variant="success" heading="Recibida y validada">Contenido cerrado. Se notificó al Administrador-Curador para continuar con el acta final.</flux:callout>
     @else
         <form wire:submit="guardarRegistro" class="rounded-lg border border-border p-4 space-y-4">
             <h2 class="text-lg font-semibold">{{ $registroId ? 'Editar registro físico' : 'Registrar material comprobado' }}</h2>

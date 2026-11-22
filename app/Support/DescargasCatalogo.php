@@ -13,7 +13,7 @@ final class DescargasCatalogo
     public static function equipoActivo(?User $usuario = null): bool
     {
         $usuario ??= auth()->user();
-        return $usuario !== null && in_array($usuario->rolActivo(), [\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::AYUDANTE_CURADOR, \App\Enums\RolUsuario::ADMIN], true);
+        return $usuario !== null && in_array($usuario->rolActivo(), [\App\Enums\RolUsuario::CURADOR, \App\Enums\RolUsuario::AYUDANTE_CURADOR], true);
     }
 
     public static function publicasHabilitadas(): bool

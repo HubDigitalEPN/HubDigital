@@ -61,7 +61,7 @@ test('administrator creates an internal user without email verification and requ
     Notification::assertNothingSent();
 });
 
-test('user management prevents duplicates and external emails for internal roles', function () {
+test('user management prevents duplicates and external emails for technician accounts', function () {
     $admin = User::factory()->administrador()->create();
     User::factory()->depositante()->create(['email' => 'existente@example.org']);
 
@@ -78,13 +78,13 @@ test('user management prevents duplicates and external emails for internal roles
         ->test(GestionUsuarios::class)
         ->set('first_name', 'Cuenta')
         ->set('last_name', 'No institucional')
-        ->set('email', 'curador@example.org')
-        ->set('rol', RolUsuario::CURADOR->value)
+        ->set('email', 'tecnico@example.org')
+        ->set('rol', RolUsuario::AYUDANTE_CURADOR->value)
         ->call('crear', 'Inicial-Segura-2026!', 'Inicial-Segura-2026!')
         ->assertHasErrors('email');
 
     expect(User::query()->where('email_normalizado', 'existente@example.org')->count())->toBe(1)
-        ->and(User::query()->where('email_normalizado', 'curador@example.org')->exists())->toBeFalse();
+        ->and(User::query()->where('email_normalizado', 'tecnico@example.org')->exists())->toBeFalse();
 });
 
 test('administrator searches citizens and internal profiles', function () {

@@ -51,9 +51,9 @@ beforeEach(function (): void {
     config(['deposit-storage.driver' => 'local', 'deposit-storage.require_remote' => false]);
 });
 
-test('hay cinco perfiles operativos y los alias conservan préstamos y recepción', function (): void {
+test('hay cuatro perfiles operativos y los alias conservan préstamos y recepción', function (): void {
     expect(array_map(fn ($rol) => $rol->etiqueta(), RolUsuario::cases()))->toBe([
-        'Depositante', 'Administrador (Curador)', 'Técnico', 'Pasante', 'Administrador-Creador',
+        'Depositante', 'Administrador-Curador', 'Técnico', 'Pasante',
     ]);
     expect(RolUsuario::desdeHistorico('PRESTAMISTA'))->toBe(RolUsuario::DEPOSITANTE)
         ->and(RolUsuario::desdeHistorico('RECEPTOR'))->toBe(RolUsuario::AYUDANTE_CURADOR);
@@ -121,7 +121,7 @@ test('la captura guarda datos DwC y bloquea occurrenceID y campos internos aunqu
     expect(DB::table('taxonomia.especimenes')->where('id', $id)->value('occurrence_id'))->toBe($fila->occurrence_id);
 });
 
-test('envío avisa al dueño curador Técnico y creador sin incluir Pasantes', function (): void {
+test('envío avisa al dueño y al equipo con acceso al depósito sin incluir Pasantes', function (): void {
     $dueno = User::factory()->depositante()->create();
     $curador = User::factory()->curador()->create();
     $tecnico = User::factory()->receptor()->create();
@@ -247,14 +247,14 @@ test('la notificación y el QR conservan su destino al iniciar sesión sin permi
         ->assertRedirect(route('portal.catalogo', ['vista' => 'mapa']));
 });
 
-test('el Curador asigna un Pasante de confianza y no modifica ni crea cuentas Creador', function (): void {
+test('Administrador-Curador asigna un Pasante y puede editar otra cuenta administradora', function (): void {
     $curador = User::factory()->curador()->create();
     $dueno = User::factory()->depositante()->create();
     $creador = User::factory()->administrador()->create();
     Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $dueno->id)
         ->set('edicionRoles', [RolUsuario::PASANTE->value])->set('edicionRol', RolUsuario::PASANTE->value)->call('actualizar')->assertHasNoErrors();
     expect($dueno->fresh()->esPasante())->toBeTrue();
-    Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $creador->id)->assertForbidden();
-    Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $dueno->id)
-        ->set('edicionRoles', ['ADMIN'])->set('edicionRol', 'ADMIN')->call('actualizar')->assertForbidden();
+    Livewire::actingAs($curador)->test(GestionUsuarios::class)->call('editar', $creador->id)
+        ->assertSet('edicionRol', 'CURADOR');
+    Livewire::actingAs(User::factory()->receptor()->create())->test(GestionUsuarios::class)->assertForbidden();
 });

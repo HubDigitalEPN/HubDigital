@@ -80,7 +80,7 @@ test('un texto seleccionado se publica en postgres y detecta una edicion concurr
 
 test('los textos generales indican pantalla y campo y el editor conserva el permiso de administracion', function(){
     Livewire::actingAs(User::factory()->administrador()->create())->test(ConfiguracionTextosSistema::class)->assertSee('Ubicación y campo')->assertSee('Pantalla donde aparece');
-    Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionTextosWizard::class)->assertForbidden();
+    Livewire::actingAs(User::factory()->receptor()->create())->test(ConfiguracionTextosWizard::class)->assertForbidden();
 });
 
 test('el formulario operativo consume la distribucion publicada y conserva sus campos obligatorios',function(){

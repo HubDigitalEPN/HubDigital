@@ -79,7 +79,7 @@ final class DetalleDeposito extends Component
 
         $receptores = User::query()->whereHas('roles', fn ($roles) => $roles->whereIn('rol', [
             RolUsuario::RECEPTOR->value,
-            RolUsuario::ADMIN->value,
+            RolUsuario::CURADOR->value,
         ]))->get();
 
         if ($receptores->isNotEmpty()) {

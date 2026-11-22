@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Administracion\TablasCatalogos;
 use App\Models\User;
 use Livewire\Livewire;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort;
@@ -9,6 +10,29 @@ use Modules\GestionPrestamosRecepciones\Infrastructure\Files\LectorMatrizDeposit
 use Modules\GestionPrestamosRecepciones\Presentation\Http\Controllers\Curador\ConfiguracionMatrizDeposito;
 
 uses(Tests\DatabaseFeatureTestCase::class);
+
+test('la cuadrícula de matrices cambia el orden y conserva el ejemplo de la columna de depósitos', function (): void {
+    $this->actingAs(User::factory()->curador()->create());
+    $esquema = app(EsquemaMatrizPort::class);
+    $original = $esquema->leer();
+    $grilla = Livewire::test(TablasCatalogos::class)->call('editarColumna', 'country')
+        ->set('datos.orden', 1)->call('guardarColumna')->assertHasNoErrors();
+    expect($esquema->leer()['columnas'][0]['campo'])->toBe('country');
+
+    $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
+    try {
+        $hoja = $libro->getSheet(0);
+        $cabeceras = $hoja->rangeToArray('A1:'.$hoja->getHighestDataColumn().'1')[0];
+        $posicion = array_search('recordNumber', $cabeceras, true);
+        expect($cabeceras[0])->toBe($esquema->leer()['columnas'][0]['cabecera'])
+            ->and($posicion)->toBeGreaterThan(0)
+            ->and($hoja->getCell([$posicion + 1, 2])->getValue())->toBe('HMLX3276');
+    } finally {
+        $libro->disconnectWorksheets();
+    }
+    $grilla->call('solicitarEliminar', 'recordNumber')->call('confirmarCambio')->assertHasErrors('matriz');
+    expect($esquema->leer()['columnas'])->toHaveCount(count($original['columnas']));
+});
 
 test('la plantilla corta del depositante conserva 42 columnas colores ejemplo guía y leyenda y se importa sin falsos errores', function (): void {
     $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();

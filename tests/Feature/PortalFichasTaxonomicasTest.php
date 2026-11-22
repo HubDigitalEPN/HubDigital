@@ -68,14 +68,14 @@ test('el administrador cambia el nombre de la ficha conservando la identidad y r
     $this->assertDatabaseHas(FichasTaxonomicas::TABLA, ['taxon_id' => $id, 'descripcion' => 'Leyenda inicial']);
 });
 
-test('el curador puede abrir la ficha y el servidor impide que cambie el nombre científico', function (): void {
+test('el técnico puede abrir la ficha y el servidor impide que cambie el nombre científico', function (): void {
     [$rama] = fichaPortalFixture();
     $id = $rama['especie'];
     $original = DB::table('taxonomia.taxones')->where('id', $id)->value('nombre_cientifico');
 
-    Livewire::actingAs(User::factory()->curador()->create())->test(FichasTaxonomicasPortal::class)
+    Livewire::actingAs(User::factory()->receptor()->create())->test(FichasTaxonomicasPortal::class)
         ->call('seleccionar', $id)->assertSet('editorFichaAbierto', true)
-        ->assertDontSeeHtml('id="ficha-nombre-cientifico"')->set('nombreCientifico', 'Taxonqa curador')
+        ->assertDontSeeHtml('id="ficha-nombre-cientifico"')->set('nombreCientifico', 'Taxonqa lector')
         ->call('guardar')->assertForbidden();
 
     $this->assertDatabaseHas('taxonomia.taxones', ['id' => $id, 'nombre_cientifico' => $original]);

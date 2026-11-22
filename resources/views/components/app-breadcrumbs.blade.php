@@ -13,6 +13,10 @@
     ];
 
     $items = match (true) {
+        request()->routeIs('admin.catalogos') => [['Tablas de catálogos', null]],
+        request()->routeIs('admin.matrices') => [['Matrices', null]],
+        request()->routeIs('admin.botones') => [['Botones y permisos', null]],
+        request()->routeIs('admin.menu-lateral') => [['Menú lateral', null]],
         request()->routeIs('admin.contenidos') => [['Contenidos y textos', null]],
         request()->routeIs('admin.usuarios') => [
             ['Usuarios y perfiles', null],
@@ -33,6 +37,7 @@
         request()->routeIs('prestamos.investigador.mis-depositos', 'depositos.mis-solicitudes') => [['Depósitos', null], ['Mis depósitos', null]],
         request()->routeIs('roles.activar') => [['Configuración de cuenta', null], ['Activar rol', null]],
         request()->routeIs('profile.edit', 'security.edit', 'appearance.edit') => [['Configuración de cuenta', null]],
+        request()->routeIs('inventario.taxonomia.especimenes') => [['Inventario', null], ['Creación de especímenes', null]],
         request()->routeIs('inventario.*') => [['Inventario', null], [str($routeName)->afterLast('.')->headline()->toString(), null]],
         request()->routeIs('divulgacion.index') => [['Divulgación', null], ['Publicación del catálogo', null]],
         request()->routeIs('divulgacion.*') => [['Divulgación', null], [str($routeName)->afterLast('.')->headline()->toString(), null]],

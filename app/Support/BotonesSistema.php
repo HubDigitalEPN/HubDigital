@@ -20,6 +20,9 @@ final class BotonesSistema
     public static function permisos(string $boton, RolUsuario $rol): array
     {
         $def = self::definiciones()[$boton] ?? null;
+        if ($def && $rol === RolUsuario::CURADOR) {
+            return ['ver' => true, 'usar' => true];
+        }
         if (! $def || ! in_array($rol->value, $def['elegibles'], true)) {
             return ['ver' => false, 'usar' => false];
         }

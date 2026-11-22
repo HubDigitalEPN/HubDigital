@@ -51,14 +51,14 @@ test('las rutas retiradas no conservan pantallas ni redirecciones', function ():
 });
 
 test('el editor único conserva los permisos de los editores incluidos', function (): void {
-    $this->actingAs(User::factory()->curador()->create());
+    $this->actingAs(User::factory()->receptor()->create());
     $this->get(route('admin.contenidos'))->assertOk()->assertSeeLivewire(App\Livewire\Administracion\ConfiguracionTextosPortal::class)
         ->assertDontSee('Textos generales del sistema');
     foreach (['depositos', 'sistema'] as $seccion) {
         $this->get(route('admin.contenidos', compact('seccion')))->assertForbidden();
         Livewire::test(ContenidosTextos::class)->set('seccion', $seccion)->assertForbidden();
     }
-    $this->actingAs(User::factory()->administrador()->create());
+    $this->actingAs(User::factory()->curador()->create());
     $this->get(route('admin.contenidos', ['seccion' => 'depositos']))->assertOk()->assertSeeLivewire(App\Livewire\Administracion\ConfiguracionTextosWizard::class);
     $this->get(route('admin.contenidos', ['seccion' => 'sistema']))->assertOk()->assertSeeLivewire(App\Livewire\Administracion\ConfiguracionTextosSistema::class);
     $this->actingAs(User::factory()->depositante()->create())->get(route('admin.contenidos'))->assertForbidden();
@@ -74,13 +74,13 @@ test('publicación reúne pendientes y divulgados en una página sin cambiar sus
     $this->actingAs(User::factory()->depositante()->create())->get(route('divulgacion.index'))->assertForbidden();
 });
 
-test('el resumen administrativo se integra en el dashboard y queda restringido al creador', function (): void {
-    $this->actingAs(User::factory()->administrador()->create());
+test('el resumen administrativo se integra en el dashboard del Administrador-Curador', function (): void {
+    $this->actingAs(User::factory()->curador()->create());
     Livewire::test(Dashboard::class)->assertViewHas('administracion', fn ($datos) => $datos['total'] === User::query()->count()
         && $datos['verificados'] === User::query()->whereNotNull('email_verified_at')->count()
         && $datos['pendientes'] === User::query()->whereNull('email_verified_at')->count())
         ->assertSee('Usuarios y perfiles')->assertSee('Ingresos aprobados');
-    $this->actingAs(User::factory()->curador()->create());
+    $this->actingAs(User::factory()->receptor()->create());
     Livewire::test(Dashboard::class)->assertViewHas('administracion', null)->assertDontSee('Pendientes de verificar');
 });
 

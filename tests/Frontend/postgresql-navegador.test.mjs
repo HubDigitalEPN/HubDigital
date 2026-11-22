@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const validator = 'scripts/deployment/windows/validar-postgresql-temporal.ps1';
 
-test('el navegador prepara su esquema y su historial antes de copiar datos para Pest o PDF', () => {
+test('el validador OCI prepara PHP y PDF sin invocar Opera Neon', () => {
     const command = String.raw`
 $ErrorActionPreference = 'Stop'
 $tokens = $null
@@ -14,88 +14,95 @@ $parseErrors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile(
     (Resolve-Path $env:HUBDIGITAL_QA_POSTGRES_VALIDATOR).Path, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
-$browser = $ast.Find({param($n) $n -is [System.Management.Automation.Language.IfStatementAst] -and
-    $n.Clauses[0].Item1.Extent.Text -eq '$validarNavegador'}, $true)
 $copies = $ast.Find({param($n) $n -is [System.Management.Automation.Language.IfStatementAst] -and
     $n.Clauses[0].Item1.Extent.Text -eq '$validarPdf -or $validarPhp'}, $true)
-if (!$browser -or !$copies -or $browser.Extent.EndOffset -ge $copies.Extent.StartOffset) { throw 'Orden de las etapas inválido.' }
-
+if (!$copies) { throw 'Falta la preparacion aislada de PHP y PDF.' }
+if ($ast.Extent.Text -match 'portal-livewire|validarNavegador|paquete\.navegador|Opera Neon') {
+    throw 'El validador OCI aun contiene un recorrido de navegador.'
+}
+$core = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Resolve-Path 'scripts/deployment/crear-paquete-oci-core.ps1').Path, [ref]$tokens, [ref]$parseErrors)
+if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+if ($core.Extent.Text -match 'portal-livewire|suiteNavegadorCompletada|paquete\.navegador|ui_focal|vendor/bin/behat|FlujoDepositoPersistenciaE2ETest') {
+    throw 'El comando OCI aun requiere una prueba funcional del sistema.'
+}
+if ($core.Extent.Text -notmatch 'vendor/bin/pest' -or $core.Extent.Text -notmatch 'verify-deposit-pdf\.php') {
+    throw 'Faltan los controles técnicos PHP o PDF.'
+}
+$tecnico = $ast.Find({param($n) $n -is [System.Management.Automation.Language.IfStatementAst] -and
+    $n.Clauses[0].Item1.Extent.Text -eq '$ContratosTecnicos'}, $true)
+if ($core.Extent.Text -notmatch "'-ContratosTecnicos'" -or !$tecnico -or
+    $tecnico.Clauses[0].Item2.Extent.Text -notmatch '--schema-only' -or
+    $tecnico.Clauses[0].Item2.Extent.Text -notmatch '--table=public.migrations') {
+    throw 'La integración PostgreSQL requiere el modo técnico sin copiar datos de usuarios.'
+}
+if ($core.Extent.Text -notmatch '\$Destino = ''W''' -or $core.Extent.Text -notmatch 'Guardar-RespaldoFuentes -Raiz \$Proyecto') {
+    throw 'Falta el respaldo automatico o el destino local predeterminado.'
+}
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    (Resolve-Path 'scripts/development/localhost.ps1').Path, [ref]$tokens, [ref]$parseErrors)
+if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
 $patron = $ast.Find({param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and
     $n.Left.Extent.Text -eq '$patronBaseAislada'}, $true)
 $prefijoPruebas = 'hd_pkg_0123456789ab'
 . ([ScriptBlock]::Create($patron.Extent.Text))
-if ($prefijoPruebas + '_browser' -notmatch $patronBaseAislada -or 'hubdigital' -match $patronBaseAislada -or
-    'hd_pkg_abcdef012345_browser' -match $patronBaseAislada) { throw 'La limpieza no está limitada a esta ejecución.' }
-
-$etapa = [ScriptBlock]::Create(($browser.Clauses[0].Item2.Statements.Extent.Text -join [Environment]::NewLine))
-$Proyecto = (Get-Location).Path
-$raizPruebas = Join-Path $Proyecto '.local/validation/simulacion-node'
-$basePruebas = 'hubdigital'
-$pgBin = 'pg-mock'
-$phpNativo = 'php-mock'
-$PlanImpacto = 'plan-focal.json'
-$seleccion = @{paquete = @{navegador_casos = @('modales-mapa')}}
-$basesAisladas = [Collections.Generic.List[string]]::new()
-$traza = [Collections.Generic.List[object]]::new()
-$env:DB_URL = 'valor-previo'
-$env:APP_CONFIG_CACHE = 'cache-previa'
-function Join-Path($Path, $ChildPath) {
-    if ($Path -eq $pgBin) { return $ChildPath }
-    Microsoft.PowerShell.Management\Join-Path $Path $ChildPath
+if (($prefijoPruebas + '_1') -notmatch $patronBaseAislada -or
+    ($prefijoPruebas + '_1_test_2') -notmatch $patronBaseAislada -or
+    ($prefijoPruebas + '_browser') -match $patronBaseAislada -or
+    'hubdigital' -match $patronBaseAislada -or 'hd_pkg_abcdef012345_1' -match $patronBaseAislada) {
+    throw 'La limpieza no esta limitada a las bases PHP de esta ejecucion.'
 }
-function createdb.exe {
-    $traza.Add(@{op='crear'; args=$args})
-    $global:LASTEXITCODE = 0
-}
-function pg_dump.exe {
-    $traza.Add(@{op='exportar'; args=$args})
-    $global:LASTEXITCODE = 0
-}
-function pg_restore.exe {
-    $traza.Add(@{op='restaurar'; args=$args})
-    $global:LASTEXITCODE = 0
-}
-function php-mock {
-    $traza.Add(@{op='migrar'; args=$args; base=$env:DB_DATABASE; url=$env:DB_URL; cache=$env:APP_CONFIG_CACHE})
-    $global:LASTEXITCODE = 0
-}
-function node.exe {
-    $traza.Add(@{op='probar'; args=$args; base=$env:DB_DATABASE; url=$env:DB_URL; basePruebas=$env:TEST_DB_DATABASE})
-    $global:LASTEXITCODE = 0
-}
-& $etapa
-[pscustomobject]@{pasos=$traza; limpieza=$basesAisladas; url=$env:DB_URL; cache=$env:APP_CONFIG_CACHE} | ConvertTo-Json -Depth 5 -Compress
 `;
     const encoded = Buffer.from(command, 'utf16le').toString('base64');
     const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
         cwd: root, encoding: 'utf8', windowsHide: true, env: { ...process.env, HUBDIGITAL_QA_POSTGRES_VALIDATOR: validator },
     });
     assert.equal(result.status, 0, result.stderr);
-    const trace = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
-    const browserDatabase = 'hd_pkg_0123456789ab_browser';
-    assert.deepEqual(trace.pasos.map(step => step.op), ['exportar', 'exportar', 'crear', 'restaurar', 'restaurar', 'migrar', 'probar']);
-    const [exportSchema, exportMigrations, create, restoreSchema, restoreMigrations, migrate, run] = trace.pasos;
-    const connection = ['-h', '127.0.0.1', '-p', '5432', '-U', 'postgres'];
-    const schemaArchive = exportSchema.args.at(-1);
-    const migrationsArchive = exportMigrations.args.at(-1);
-    assert.match(schemaArchive, /simulacion-node[\\/]browser-schema\.dump$/);
-    assert.match(migrationsArchive, /simulacion-node[\\/]browser-migrations\.dump$/);
-    assert.deepEqual(exportSchema.args.map(String), [...connection, '-d', 'hubdigital', '--schema-only', '-Fc', '-f', schemaArchive]);
-    assert.deepEqual(exportMigrations.args.map(String), [...connection, '-d', 'hubdigital', '--data-only', '--table=public.migrations', '--strict-names', '--no-large-objects', '-Fc', '-f', migrationsArchive]);
-    assert.deepEqual(create.args.map(String), [...connection, '--template=template0', browserDatabase]);
-    const restore = [...connection, '-d', browserDatabase];
-    const guards = ['--exit-on-error', '--no-owner', '--no-privileges'];
-    assert.deepEqual(restoreSchema.args.map(String), [...restore, '--schema-only', ...guards, schemaArchive]);
-    assert.deepEqual(restoreMigrations.args.map(String), [...restore, '--data-only', ...guards, migrationsArchive]);
-    assert.deepEqual(migrate.args, ['artisan', 'migrate', '--database=pgsql', '--force', '--no-interaction']);
-    assert.match(migrate.cache, /browser-config\.php$/);
-    assert.deepEqual(run.args, ['tests/Browser/portal-livewire.mjs', 'php-mock', 'plan-focal.json']);
-    for (const step of [migrate, run]) {
-        assert.equal(step.base, browserDatabase);
-        assert.equal(step.url, 'null');
+});
+
+test('el ZIP conserva los bytes de las fuentes y excluye documentos y pruebas', () => {
+    const command = String.raw`
+$ErrorActionPreference = 'Stop'
+$tokens = $null
+$errors = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Resolve-Path 'scripts/deployment/crear-paquete-oci-core.ps1').Path, [ref]$tokens, [ref]$errors)
+if ($errors.Count) { throw ($errors | Out-String) }
+$fn = $ast.Find({param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Guardar-RespaldoFuentes'}, $true)
+. ([ScriptBlock]::Create($fn.Extent.Text))
+$temp = Join-Path ([IO.Path]::GetTempPath()) ('hd-codigo-zip-' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $temp | Out-Null
+try {
+    Set-Content -LiteralPath (Join-Path $temp 'app.php') -Value '<?php return 123;' -Encoding Ascii
+    Set-Content -LiteralPath (Join-Path $temp 'package-lock.json') -Value '{}' -Encoding Ascii
+    Set-Content -LiteralPath (Join-Path $temp 'AccesoTest.php') -Value 'prueba' -Encoding Ascii
+    Set-Content -LiteralPath (Join-Path $temp 'manual.pdf') -Value 'documento' -Encoding Ascii
+    $archivos = @('app.php','package-lock.json','AccesoTest.php','manual.pdf')
+    $manifest = @(foreach ($nombre in $archivos) { (Get-FileHash -LiteralPath (Join-Path $temp $nombre)).Hash.ToLowerInvariant() + '  ' + $nombre })
+    Guardar-RespaldoFuentes -Raiz $temp -Huellas $manifest -Commit ('1' * 40)
+    $carpeta = Join-Path $temp '.local/backups/codigo-fuente'
+    $archivo = @(Get-ChildItem -LiteralPath $carpeta -Filter '*.zip')
+    if ($archivo.Count -ne 1) { throw 'El paquete debe dejar un solo ZIP por ejecucion.' }
+    $zip = [IO.Compression.ZipFile]::OpenRead($archivo[0].FullName)
+    try {
+        if (($zip.Entries.FullName -join ',') -ne 'app.php,package-lock.json') { throw 'El ZIP incluye archivos ajenos a la fuente.' }
+    } finally { $zip.Dispose() }
+    $manifest[0] = ('0' * 64) + '  app.php'
+    $rechazo = $false
+    try { Guardar-RespaldoFuentes -Raiz $temp -Huellas $manifest -Commit ('1' * 40) }
+    catch { $rechazo = $true }
+    if (!$rechazo) { throw 'Se acepto una huella incorrecta.' }
+    if (@(Get-ChildItem -LiteralPath $carpeta).Count -ne 1) { throw 'Quedaron respaldos sin verificar.' }
+} finally {
+    $resuelto = (Resolve-Path -LiteralPath $temp).Path
+    if ([IO.Path]::GetDirectoryName($resuelto) -eq [IO.Path]::GetTempPath().TrimEnd('\') -and [IO.Path]::GetFileName($resuelto) -like 'hd-codigo-zip-*') {
+        Remove-Item -LiteralPath $resuelto -Recurse -Force
     }
-    assert.equal(run.basePruebas, browserDatabase);
-    assert.deepEqual(trace.limpieza, [browserDatabase]);
-    assert.equal(trace.url, 'valor-previo');
-    assert.equal(trace.cache, 'cache-previa');
+}
+`;
+    const encoded = Buffer.from(command, 'utf16le').toString('base64');
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
+        cwd: root, encoding: 'utf8', windowsHide: true,
+    });
+    assert.equal(result.status, 0, result.stderr);
 });

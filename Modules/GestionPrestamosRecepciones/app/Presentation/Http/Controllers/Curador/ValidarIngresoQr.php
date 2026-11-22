@@ -65,7 +65,7 @@ final class ValidarIngresoQr extends Component
 
     public function autorizarNuevoIntento(RecepcionQrDeposito $recepcion): void
     {
-        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::CURADOR, RolUsuario::ADMIN), 403);
+        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::CURADOR), 403);
         $this->validate(['motivo' => 'required|string|max:3000']);
         $recepcion->autorizarNuevoIntento($this->id, auth()->user(), $this->motivo);
         $this->motivo = '';

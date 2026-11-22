@@ -23,183 +23,25 @@
                 <flux:sidebar.collapse tooltip="Contraer o ampliar menú" class="hub-sidebar-collapse-control" />
             </div>
 
-            {{-- Navigation --}}
             <flux:sidebar.nav class="hub-sidebar-navigation mt-0 min-h-0 flex-1 overflow-y-auto pb-3 pt-4">
-
-                    <flux:sidebar.item
-                        icon="home"
-                        aria-label="Dashboard"
-                        :href="route('dashboard')"
-                        :current="request()->routeIs('dashboard')"
-                        wire:navigate
-                    >
-                        Dashboard
-                    </flux:sidebar.item>
                 @auth
-                    @php
-                        $rolActivo = auth()->user()->rolActivo();
-                    @endphp
-                    @if($rolActivo === RolUsuario::PRESTAMISTA)
-                        <flux:sidebar.group heading="Préstamos" icon="document-text" class="grid" expandable :expanded="request()->routeIs('prestamos.investigador.*')">
-                            <flux:sidebar.item
-                                icon="document-text"
-                                :href="route('prestamos.investigador.mis-solicitudes')"
-                                :current="request()->routeIs('prestamos.investigador.mis-solicitudes', 'prestamos.investigador.solicitud.*')"
-                                wire:navigate
-                            >
-                                Mis solicitudes
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="clipboard-document"
-                                :href="route('prestamos.investigador.mis-actas')"
-                                :current="request()->routeIs('prestamos.investigador.mis-actas')"
-                                wire:navigate
-                            >
-                                Mis actas
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="archive-box"
-                                :href="route('prestamos.investigador.mis-prestamos')"
-                                :current="request()->routeIs('prestamos.investigador.mis-prestamos', 'prestamos.investigador.prestamo.*')"
-                                wire:navigate
-                            >
-                                Mis préstamos
-                            </flux:sidebar.item>
-                        </flux:sidebar.group>
-                    @endif
-                    @if($rolActivo === RolUsuario::DEPOSITANTE)
-                        <flux:sidebar.group heading="Depósitos" icon="archive-box" class="grid" expandable :expanded="request()->routeIs('prestamos.investigador.*')">
-                            <flux:sidebar.item icon="archive-box" :href="route('prestamos.investigador.mis-depositos')" :current="request()->routeIs('prestamos.investigador.mis-depositos')" wire:navigate>
-                                Mis depósitos
-                            </flux:sidebar.item>
-                            <flux:sidebar.item icon="plus-circle" :href="route('prestamos.investigador.deposito.crear')" :current="request()->routeIs('prestamos.investigador.deposito.crear')" wire:navigate>
-                                Nueva solicitud
-                            </flux:sidebar.item>
-                        </flux:sidebar.group>
-                    @elseif($rolActivo === RolUsuario::PASANTE)
-                        <flux:sidebar.group heading="Catálogo" icon="archive-box" class="grid" expandable :expanded="request()->routeIs('inventario.captura-dwc')">
-                            <flux:sidebar.item icon="pencil-square" :href="route('inventario.captura-dwc')" :current="request()->routeIs('inventario.captura-dwc')" wire:navigate>Especímenes</flux:sidebar.item>
-                        </flux:sidebar.group>
-                    @elseif(in_array($rolActivo, [RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR, RolUsuario::ADMIN], true))
-                        <flux:sidebar.group
-                            heading="Gestión de préstamos" icon="document-text"
-                            class="grid"
-                            expandable
-                            :expanded="request()->routeIs('prestamos.curador.solicitudes', 'prestamos.curador.solicitud.*', 'prestamos.curador.actas', 'prestamos.curador.acta.*', 'prestamos.curador.prestamos', 'prestamos.curador.prestamo.*', 'prestamos.curador.configuracion')"
-                        >
-                            <flux:sidebar.item
-                                icon="document-text"
-                                :href="route('prestamos.curador.solicitudes')"
-                                :current="request()->routeIs('prestamos.curador.solicitudes', 'prestamos.curador.solicitud.*')"
-                                wire:navigate
-                            >
-                                Solicitudes
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="clipboard-document"
-                                :href="route('prestamos.curador.actas')"
-                                :current="request()->routeIs('prestamos.curador.actas', 'prestamos.curador.acta.*')"
-                                wire:navigate
-                            >
-                                Actas
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="archive-box"
-                                :href="route('prestamos.curador.prestamos')"
-                                :current="request()->routeIs('prestamos.curador.prestamos', 'prestamos.curador.prestamo.*')"
-                                wire:navigate
-                            >
-                                Préstamos
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="cog-6-tooth"
-                                :href="route('prestamos.curador.configuracion')"
-                                :current="request()->routeIs('prestamos.curador.configuracion')"
-                                wire:navigate
-                            >
-                                Recordatorios de préstamos
-                            </flux:sidebar.item>
-                        </flux:sidebar.group>
-                        <flux:sidebar.group
-                            heading="Gestión de depósitos" icon="archive-box"
-                            class="grid"
-                            expandable
-                            :expanded="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*', 'prestamos.receptor.*')"
-                        >
-                            <flux:sidebar.item
-                                icon="inbox-arrow-down"
-                                :href="route('prestamos.curador.depositos')"
-                                :current="request()->routeIs('prestamos.curador.depositos', 'prestamos.curador.deposito.*')"
-                                wire:navigate
-                            >
-                                Revisión documental y actas
-                            </flux:sidebar.item>
-                            <flux:sidebar.item icon="clipboard-document-check" :href="route('prestamos.receptor.depositos')" :current="request()->routeIs('prestamos.receptor.*')" wire:navigate>Recepción física</flux:sidebar.item>
-                        </flux:sidebar.group>
-                        <flux:sidebar.group
-                            heading="Catálogo" icon="rectangle-stack"
-                            class="grid"
-                            expandable
-                            :expanded="request()->routeIs('inventario.taxonomia.especimenes', 'inventario.taxonomia.importar', 'inventario.taxonomia.etiquetas')"
-                        >
-                            <flux:sidebar.item
-                                icon="magnifying-glass"
-                                :href="route('inventario.taxonomia.especimenes')"
-                                :current="request()->routeIs('inventario.taxonomia.especimenes')"
-                                wire:navigate
-                            >
-                                Especímenes
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="arrow-up-tray"
-                                :href="route('inventario.taxonomia.importar')"
-                                :current="request()->routeIs('inventario.taxonomia.importar')"
-                                wire:navigate
-                            >
-                                Importar catálogo
-                            </flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="qr-code"
-                                :href="route('inventario.taxonomia.etiquetas')"
-                                :current="request()->routeIs('inventario.taxonomia.etiquetas')"
-                                wire:navigate
-                            >
-                                Etiquetado QR
-                            </flux:sidebar.item>
-                        </flux:sidebar.group>
-                        <flux:sidebar.group
-                            heading="Divulgación" icon="megaphone"
-                            class="grid"
-                            expandable
-                            :expanded="request()->routeIs('divulgacion.index', 'divulgacion.imagenes')"
-                        >
-                            <flux:sidebar.item icon="table-cells" :href="route('divulgacion.index')" :current="request()->routeIs('divulgacion.index')" wire:navigate>Publicación del catálogo</flux:sidebar.item>
-                            <flux:sidebar.item
-                                icon="photo"
-                                :href="route('divulgacion.imagenes')"
-                                :current="request()->routeIs('divulgacion.imagenes')"
-                                wire:navigate
-                            >
-                                Imágenes
-                            </flux:sidebar.item>
-
-                        </flux:sidebar.group>
-                            <flux:sidebar.group heading="Administración" icon="cog-6-tooth" expandable :expanded="request()->routeIs('admin.*','divulgacion.asistente')" class="grid">
-                                <flux:sidebar.item icon="table-cells" :href="route('admin.catalogos')" :current="request()->routeIs('admin.catalogos')" wire:navigate>Tablas de catálogos</flux:sidebar.item>
-                                <flux:sidebar.item icon="document-text" :href="route('admin.matrices')" :current="request()->routeIs('admin.matrices')" wire:navigate>Matrices</flux:sidebar.item>
-                                <flux:sidebar.item icon="pencil-square" :href="route('admin.contenidos')" :current="request()->routeIs('admin.contenidos')" wire:navigate>Contenidos y textos</flux:sidebar.item>
-                        @if(in_array($rolActivo, [RolUsuario::ADMIN, RolUsuario::CURADOR], true))
-                                <flux:sidebar.item
-                                    icon="users"
-                                    :href="route('admin.usuarios')"
-                                    :current="request()->routeIs('admin.usuarios')"
-                                    wire:navigate
-                                >
-                                    Usuarios y perfiles
-                                </flux:sidebar.item>
-                        @endif
+                    @foreach(app(\App\Support\MenuLateral::class)->visiblePara(auth()->user()->rolActivo()) as $entrada)
+                        @if($entrada['ruta'] !== null)
+                            <flux:sidebar.item :icon="$entrada['icono']" :href="route($entrada['ruta'])" :title="$entrada['texto']"
+                                :current="request()->routeIs(...$entrada['activas'])" wire:navigate>{{ $entrada['texto'] }}</flux:sidebar.item>
+                        @else
+                            @php
+                                $activas = array_merge(...array_column($entrada['hijos'], 'activas'));
+                            @endphp
+                            <flux:sidebar.group :heading="$entrada['texto']" :icon="$entrada['icono']" :title="$entrada['texto']"
+                                expandable :expanded="request()->routeIs(...$activas)" class="grid">
+                                @foreach($entrada['hijos'] as $hijo)
+                                    <flux:sidebar.item :icon="$hijo['icono']" :href="route($hijo['ruta'])" :title="$hijo['texto']"
+                                        :current="request()->routeIs(...$hijo['activas'])" wire:navigate>{{ $hijo['texto'] }}</flux:sidebar.item>
+                                @endforeach
                             </flux:sidebar.group>
-                    @endif
+                        @endif
+                    @endforeach
                 @endauth
             </flux:sidebar.nav>
 
@@ -266,7 +108,6 @@
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
                                         RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
                                         RolUsuario::PASANTE => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
-                                        RolUsuario::ADMIN => ['bg-bio-green/10 text-bio-green', 'users'],
                                     };
                                 @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">

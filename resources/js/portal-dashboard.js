@@ -52,12 +52,6 @@ function agregarAgrupacionMapa(capa, mapa, grupo) {
     const etiqueta = etiquetaAgrupacionMapa(grupo);
     boton.setAttribute('aria-label', etiqueta);
     boton.title = etiqueta;
-    const numero = L.DomUtil.create('span', 'atlas-map-cluster-number', boton);
-    numero.textContent = grupo.ubicaciones.toLocaleString('es-EC');
-    numero.setAttribute('aria-hidden', 'true');
-    const unidad = L.DomUtil.create('span', 'atlas-map-cluster-unit', boton);
-    unidad.textContent = 'loc.';
-    unidad.setAttribute('aria-hidden', 'true');
     L.DomEvent.disableClickPropagation(boton);
     boton.addEventListener('click', evento => {
         evento.preventDefault();
@@ -70,7 +64,7 @@ function agregarAgrupacionMapa(capa, mapa, grupo) {
     });
     return L.marker([grupo.ancla.lat, grupo.ancla.lon], {
         pane: 'registros', interactive: false, keyboard: false,
-        icon: L.divIcon({html: boton, className: 'atlas-map-cluster', iconSize: [48, 48], iconAnchor: [24, 24]}),
+        icon: L.divIcon({html: boton, className: 'atlas-map-cluster', iconSize: [16, 16], iconAnchor: [8, 8]}),
     }).addTo(capa);
 }
 
@@ -654,19 +648,10 @@ const registrarDashboard = () => {
                 const {lat, lon, cantidad, radio} = nodo;
                 const partes = composicionFilos(nodo.filos);
                 const compartida = cantidad > 1;
-                let contenido = '';
-                if (compartida) {
-                    contenido = L.DomUtil.create('div', 'atlas-map-count-label');
-                    const numero = L.DomUtil.create('strong', '', contenido);
-                    numero.textContent = cantidad.toLocaleString('es-EC');
-                    const unidad = L.DomUtil.create('span', '', contenido);
-                    unidad.textContent = 'reg.';
-                    contenido.setAttribute('aria-hidden', 'true');
-                }
-                const tamano = compartida ? Math.max(38, 22 + String(cantidad).length * 6) : radio * 2;
+                const tamano = compartida ? 14 : radio * 2;
                 const marcador = compartida || partes.length > 1 ? new IconoCoordenadaOriginal([lat, lon], {
                     pane: 'registros', keyboard: false,
-                    icon: L.divIcon({html: contenido, className: compartida ? 'atlas-map-count' : 'atlas-map-mixed', iconSize: [tamano, tamano], iconAnchor: [tamano / 2, tamano / 2]}),
+                    icon: L.divIcon({html: '', className: compartida ? 'atlas-map-count' : 'atlas-map-mixed', iconSize: [tamano, tamano], iconAnchor: [tamano / 2, tamano / 2]}),
                 }).addTo(capa) : new CirculoCoordenadaOriginal([lat, lon], {
                     pane: 'registros',
                     radius: radio,

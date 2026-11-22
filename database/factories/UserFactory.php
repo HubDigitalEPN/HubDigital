@@ -109,7 +109,7 @@ class UserFactory extends Factory
     public function administrador(): static
     {
         return $this->state(fn (array $attributes) => [
-            'rol' => RolUsuario::ADMIN->value,
+            'rol' => RolUsuario::CURADOR->value,
             'cargo' => 'Administrador de HubDigital',
             'institucion' => 'Escuela Politécnica Nacional',
         ]);

@@ -139,14 +139,27 @@ final class ConfiguracionPlantillaCatalogo
     {
         self::validar($definicion);
         DB::transaction(function () use ($definicion, $esperada, $usuario): void {
-            $fila = DB::table('taxonomia.configuracion_plantilla_catalogo')->where('clave', 'catalogo')->lockForUpdate()->first();
-            if (!$fila || !hash_equals($esperada, self::huella(json_decode($fila->definicion, true, 512, JSON_THROW_ON_ERROR)))) throw new DomainException('La plantilla cambió mientras la editabas. Descarga la versión actual y vuelve a aplicar tus ajustes.');
+            $tabla = DB::table('taxonomia.configuracion_plantilla_catalogo');
+            $consulta = (clone $tabla)->where('clave', 'catalogo')->lockForUpdate();
+            $fila = $consulta->first();
+            if (!$fila) {
+                $tabla->insertOrIgnore([
+                    'clave' => 'catalogo',
+                    'definicion' => json_encode(self::predeterminada(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $fila = $consulta->first();
+            }
             $antes = json_decode($fila->definicion, true, 512, JSON_THROW_ON_ERROR);
+            if (!hash_equals($esperada, self::huella($antes))) {
+                throw new DomainException('La plantilla cambió mientras la editabas. Abre la versión actual y vuelve a aplicar tus ajustes.');
+            }
             $anteriores = array_column($antes['columnas'], null, 'campo');
             $conocidas = array_column(self::predeterminada()['columnas'], 'campo');
             foreach ($definicion['columnas'] as $columna) {
                 if (!isset($anteriores[$columna['campo']]) && !in_array($columna['campo'], $conocidas, true)) {
-                    if (!auth()->user()?->esAdministrador() || !($columna['personalizada'] ?? false)) throw new DomainException('Crea las nuevas columnas desde Catálogo → Especímenes con una cuenta administradora.');
+                    if (!auth()->user()?->esAdministrador() || !($columna['personalizada'] ?? false)) throw new DomainException('Crea las nuevas columnas desde Catálogo → Creación de especímenes con una cuenta administradora.');
                 }
                 if (($anteriores[$columna['campo']]['personalizada'] ?? false) && !($columna['personalizada'] ?? false)) throw new DomainException('Conserva el tipo de las columnas personalizadas.');
             }

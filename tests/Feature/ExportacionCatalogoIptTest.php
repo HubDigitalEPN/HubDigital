@@ -17,8 +17,8 @@ uses(Tests\DatabaseFeatureTestCase::class);
 
 test('sólo administración modifica el perfil IPT y protege cabeceras obligatorias códigos y concurrencia', function (): void {
     Livewire::test(ConfiguracionFormatoIpt::class)->assertForbidden();
-    Livewire::actingAs(User::factory()->curador()->create())->test(ConfiguracionFormatoIpt::class)->assertForbidden();
-    $this->actingAs(User::factory()->administrador()->create());
+    Livewire::actingAs(User::factory()->receptor()->create())->test(ConfiguracionFormatoIpt::class)->assertForbidden();
+    $this->actingAs(User::factory()->curador()->create());
     $config = app(ConfiguracionIpt::class); $antes = $config->leer(); $huella = ConfiguracionPlantillaCatalogo::huella($antes);
     $def = $antes; $def['columnas'] = array_values(array_filter($def['columnas'], fn ($c) => $c['campo'] !== 'habitat'));
     $def['columnas'][0]['ancho'] = 35;

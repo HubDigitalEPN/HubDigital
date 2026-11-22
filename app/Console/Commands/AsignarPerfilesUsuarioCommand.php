@@ -23,7 +23,7 @@ final class AsignarPerfilesUsuarioCommand extends Command
         }
         $roles = [];
         foreach ($this->argument('roles') as $valor) {
-            $rol = RolUsuario::tryFrom(strtoupper($valor));
+            $rol = RolUsuario::desdeHistorico($valor);
             if (! $rol) {
                 $this->error('Perfil desconocido. No se modificó la cuenta.');
                 return self::FAILURE;

@@ -21,7 +21,7 @@ beforeEach(function (): void {
     ]);
 });
 
-test('producción mantiene Turnstile aunque se desactive la variable de entorno', function (string $environment, string $expected): void {
+test('Turnstile respeta la política del entorno', function (string $environment, string|false $flag, string $expected): void {
     $script = <<<'PHP'
     require 'vendor/autoload.php';
     $services = require 'config/services.php';
@@ -29,13 +29,15 @@ test('producción mantiene Turnstile aunque se desactive la variable de entorno'
     PHP;
     $process = new Process([PHP_BINARY, '-r', $script], base_path(), [
         'APP_ENV' => $environment,
-        'TURNSTILE_ENABLED' => 'false',
+        'TURNSTILE_ENABLED' => $flag,
     ]);
 
     expect($process->mustRun()->getOutput())->toBe($expected);
 })->with([
-    'producción' => ['production', 'habilitado'],
-    'desarrollo local' => ['local', 'deshabilitado'],
+    'producción obligatorio' => ['production', 'false', 'habilitado'],
+    'localhost sin CAPTCHA con variable heredada' => ['local', 'true', 'deshabilitado'],
+    'desarrollo remoto con widget activo' => ['development', 'true', 'habilitado'],
+    'pruebas sin widget por defecto' => ['testing', false, 'deshabilitado'],
 ]);
 
 test('Siteverify recupera un fallo transitorio sin solicitar otro token', function (array $body, int $status): void {

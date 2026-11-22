@@ -32,7 +32,7 @@ try {
 }
 
 const diagnostico = `(() => {
-    const estado = window.__hubdigitalPrueba = {excepciones: [], red: [], pendientes: 0};
+    const estado = window.__hubdigitalPrueba = {excepciones: [], red: [], pendientes: 0, latencia: 0};
     addEventListener('error', evento => { if (evento.error) estado.excepciones.push(evento.message); });
     addEventListener('unhandledrejection', evento => estado.excepciones.push(String(evento.reason)));
     const error = console.error;
@@ -46,6 +46,7 @@ const diagnostico = `(() => {
         if (!livewire(input.url || input, options?.method || input.method)) return fetch.apply(this, arguments);
         estado.pendientes++;
         try {
+            if (estado.latencia) await new Promise(resolve => setTimeout(resolve, estado.latencia));
             const response = await fetch.apply(this, arguments);
             if (!response.ok) estado.red.push(response.status);
             return response;
@@ -168,6 +169,20 @@ export async function iniciarNeonAdministracion(origen, excepciones, erroresLive
         return {result:{value:resultado.value}};
     }
 
+    async function moverCursor(x, y) {
+        const label = x === 0 && y === 0
+            ? 'Distribución de Registros'
+            : (await evaluar(`document.elementFromPoint(${x}, ${y})?.closest('[aria-label^="Ubicación original"]')?.getAttribute('aria-label')`)).result.value;
+        assert.ok(label, 'El cursor debe apuntar a un marcador visible o al título del mapa.');
+        const snapshot = await herramienta('take_snapshot', {pageId:pagina, verbose:true});
+        const element = snapshot.split('\n').find(line => x === 0 && y === 0
+            ? line.includes(`heading "${label} `) || line.includes(`heading "${label}"`)
+            : line.includes(`button "${label}"`));
+        const uid = element?.match(/^\s*uid=(\S+)/)?.[1];
+        assert.ok(uid, `El elemento no se encontró en el árbol accesible de Neon QA: ${label}`);
+        return herramienta('hover', {pageId:pagina, uid});
+    }
+
     return {
         on() { /* El diagnóstico se obtiene de cada documento de la pestaña QA. */ },
         async send(method, params = {}) {
@@ -183,12 +198,16 @@ export async function iniciarNeonAdministracion(origen, excepciones, erroresLive
                 if (params.type === 'keyDown') await herramienta('press_key', {pageId:pagina, key:'Escape'});
                 return;
             }
+            if (method === 'Input.dispatchMouseEvent' && params.type === 'mouseMoved') return moverCursor(params.x, params.y);
+            if (method === 'Network.emulateNetworkConditions') return evaluar(`
+                if (window.__hubdigitalPrueba) window.__hubdigitalPrueba.latencia = ${Number(params.latency) || 0};
+            `);
             if (method === 'Browser.close') {
                 if (creada) await herramienta('close_page', {pageId:pagina});
                 return;
             }
             if (['Page.enable','Runtime.enable','Network.enable','Network.clearBrowserCookies',
-                'Emulation.setDeviceMetricsOverride','Network.emulateNetworkConditions'].includes(method)) return;
+                'Emulation.setDeviceMetricsOverride'].includes(method)) return;
             throw new Error(`Operación no implementada por el recorrido administrativo de Neon QA: ${method}`);
         },
         async subirMatriz(archivo) {

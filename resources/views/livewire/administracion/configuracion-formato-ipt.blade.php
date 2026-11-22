@@ -13,13 +13,20 @@
     </div>
 
     <datalist id="ipt-origenes">@foreach($origenes as $o)@if($o !== '')<option value="{{ $o }}"></option>@endif @endforeach</datalist>
-    <div class="overflow-auto rounded border border-border"><x-grid-frame label="Formato de exportación IPT"><table class="w-full text-sm"><thead><tr class="bg-bg-main text-left"><th class="p-3">Orden</th><th class="p-3">Cabecera IPT</th><th class="p-3">Campo de origen</th><th class="p-3">Formato</th><th class="p-3">Ancho</th><th class="p-3">Acciones</th></tr></thead><tbody>
+    <div class="overflow-auto rounded border border-border"><x-grid-frame label="Formato de exportación IPT"><table class="w-full text-sm"><thead><tr class="bg-bg-main text-left"><th scope="col" class="w-14" data-grid-fixed="56" data-grid-label="Acciones"><span class="sr-only">Acciones</span></th><th scope="col" class="p-3">Orden</th><th scope="col" class="p-3">Cabecera IPT</th><th scope="col" class="p-3">Campo de origen</th><th scope="col" class="p-3">Formato</th><th scope="col" class="p-3">Ancho</th></tr></thead><tbody>
     @foreach($columnas as $i => $c)
-        <tr wire:key="ipt-{{ $c['campo'] }}" class="border-t border-border"><td class="p-2">{{ $i + 1 }}</td><th scope="row" class="p-2 font-mono text-left" data-copy-preserve>{{ $c['campo'] }}</th>
+        <tr wire:key="ipt-{{ $c['campo'] }}" class="border-t border-border">
+            <td>
+                <x-catalogo-menu-fila :id="'ipt-fila-'.hash('sha256', $c['campo'])" :etiqueta="$c['campo']">
+                    <button type="button" role="menuitem" wire:click="mover({{ $i }}, -1)" aria-label="Subir {{ $c['campo'] }}" @disabled($i === 0)><flux:icon name="arrow-up" />Subir</button>
+                    <button type="button" role="menuitem" wire:click="mover({{ $i }}, 1)" aria-label="Bajar {{ $c['campo'] }}" @disabled($loop->last)><flux:icon name="arrow-down" />Bajar</button>
+                    <button type="button" role="menuitem" wire:click="quitar({{ $i }})" aria-label="Quitar {{ $c['campo'] }}" @disabled(in_array($c['campo'], ['occurrenceID','basisOfRecord','scientificName','eventDate'], true))><flux:icon name="trash" />Quitar</button>
+                </x-catalogo-menu-fila>
+            </td>
+            <td class="p-2">{{ $i + 1 }}</td><th scope="row" class="p-2 font-mono text-left" data-copy-preserve>{{ $c['campo'] }}</th>
             <td class="p-2"><input list="ipt-origenes" wire:model="columnas.{{ $i }}.origen" aria-label="Origen de {{ $c['campo'] }}" placeholder="Sin origen: celda vacía" class="max-w-64 rounded border border-border bg-surface p-2" /></td>
             <td class="p-2"><select wire:model="columnas.{{ $i }}.formato" aria-label="Formato de {{ $c['campo'] }}" class="rounded border border-border bg-surface p-2">@foreach($formatos as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach</select></td>
             <td class="p-2"><input type="number" min="5" max="80" wire:model="columnas.{{ $i }}.ancho" aria-label="Ancho de {{ $c['campo'] }}" class="w-20 rounded border border-border bg-surface p-2" /></td>
-            <td class="p-2 whitespace-nowrap"><button type="button" wire:click="mover({{ $i }}, -1)" aria-label="Subir {{ $c['campo'] }}" class="hub-ig-button min-h-11 min-w-11 rounded border border-border px-2 py-2 disabled:opacity-40" @disabled($i === 0)>↑</button> <button type="button" wire:click="mover({{ $i }}, 1)" aria-label="Bajar {{ $c['campo'] }}" class="hub-ig-button min-h-11 min-w-11 rounded border border-border px-2 py-2 disabled:opacity-40" @disabled($loop->last)>↓</button> <button type="button" wire:click="quitar({{ $i }})" aria-label="Quitar {{ $c['campo'] }}" class="hub-ig-button min-h-11 rounded border border-border px-2 py-2 disabled:opacity-40" @disabled(in_array($c['campo'], ['occurrenceID','basisOfRecord','scientificName','eventDate'], true))>Quitar</button></td>
         </tr>
     @endforeach
     </tbody></table></x-grid-frame></div>

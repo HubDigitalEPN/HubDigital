@@ -38,12 +38,14 @@ html body .hub-ig :is(.hub-ig-search input, select) { min-height: 2.6rem; height
 .hub-ig button svg, .hub-ig summary svg { width: 1rem; height: 1rem; flex: none; }
 .hub-ig-reset { margin-left: auto; }
 .hub-ig-actions { position: relative; }
+.hub-ig-action-pair { display: inline-flex; align-items: center; gap: .375rem; }
+.hub-ig-action-pair > .hub-ig-new-record { align-self: center; height: 2.25rem; }
 .hub-ig-actions > summary { list-style: none; }
 .hub-ig-actions > summary::-webkit-details-marker { display: none; }
 .hub-ig-actions-panel { position: absolute; z-index: 35; top: calc(100% + .3rem); left: 0; width: 15rem; max-height: 20rem; overflow: auto; border: 1px solid var(--ig-border); background: var(--ig-bg); box-shadow: 0 3px 12px #0002; padding: .65rem; }
 .hub-ig-actions-panel label { display: flex; gap: .5rem; align-items: center; padding: .4rem; font-weight: 400; cursor: pointer; }
 .hub-ig-actions-panel input { accent-color: #056ac8; }
-.hub-ig-scroll { overflow: auto; max-width: 100%; max-height: calc(100dvh - 12rem); overscroll-behavior-x: contain; overscroll-behavior-y: auto; touch-action: pan-x pan-y; }
+.hub-ig-scroll { overflow: auto; max-width: 100%; max-height: calc(100dvh - 12rem); overscroll-behavior: contain; touch-action: pan-x pan-y; }
 html body .hub-ig table { width: 100%; min-width: 100%; border-collapse: collapse; table-layout: auto; color: var(--ig-text); font: inherit; }
 html body .hub-ig[data-hub-grid=server] table { min-width: max(100%, calc(var(--ig-visible-columns, 4) * 9rem)); }
 html body .hub-ig thead, html body .hub-ig thead tr { background: var(--ig-bg); color: var(--ig-text); text-transform: none; letter-spacing: normal; }
@@ -133,6 +135,17 @@ html body .hub-ig table.hub-ig-movable { display: block; width: max(100%, calc(v
 .hub-ig-movable > thead { display: block; position: sticky; top: 0; z-index: 2; }
 .hub-ig-movable > tbody { display: flex; flex-direction: column; }
 html body .hub-ig .hub-ig-movable tr { display: grid; grid-template-columns: repeat(var(--ig-visible-columns, 4), minmax(0, 1fr)); width: 100%; }
+html body .hub-ig[data-grid-resizable] .hub-ig-movable { min-width: max(100%, var(--ig-table-min-width, 0px)); }
+html body .hub-ig[data-grid-resizable] .hub-ig-movable tr { grid-template-columns: var(--ig-column-template); }
+html body .hub-ig[data-grid-resizable] :is(th, td) { min-width: 0; max-width: none; white-space: normal; overflow-wrap: anywhere; }
+html body .hub-ig[data-grid-resizable] :is(th, td) button { white-space: normal; }
+html body .hub-ig[data-grid-resizable] tbody th { position: static; background: transparent; box-shadow: none; }
+html body .hub-ig[data-grid-resizable] :is(th, td)[data-grid-action] { position: sticky; inset-inline-start: 0; z-index: 1; padding-inline: .35rem; background: var(--ig-bg); }
+html body .hub-ig[data-especimen-grid] :is(th, td)[data-grid-leading] { align-content: center; }
+html body .hub-ig[data-especimen-grid] thead th[data-grid-leading] { z-index: 3; }
+.hub-ig th:has([data-grid-resize]) { padding-inline-end: 1.15rem; }
+.hub-ig [data-grid-resize] { position: absolute; inset: 0 0 0 auto; width: .65rem; cursor: col-resize; touch-action: none; }
+.hub-ig [data-grid-resize]:is(:hover, :focus-visible) { background: #056ac8; outline: 0; }
 html body .hub-ig .hub-ig-movable :is(th, td) { grid-row: 1; min-width: 0; max-width: none; }
 .hub-ig-movable :is(td, th)[colspan] { grid-column: 1 / -1; }
 html body .hub-ig .hub-ig-movable th[scope=col], html body .hub-ig .hub-ig-movable thead th { cursor: pointer; white-space: normal; }

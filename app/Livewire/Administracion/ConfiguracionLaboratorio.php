@@ -92,7 +92,7 @@ final class ConfiguracionLaboratorio extends Component
 
     public function boot(): void
     {
-        abort_unless(in_array(auth()->user()?->rolActivo(), [RolUsuario::ADMIN, RolUsuario::CURADOR], true), 403);
+        abort_unless(in_array(auth()->user()?->rolActivo(), [RolUsuario::CURADOR], true), 403);
     }
 
     public function mount(PaginaLaboratorio $pagina): void

@@ -28,10 +28,7 @@ final class NotificarCuradorEventoPrestamoListener
     ): void {
         $curadores = User::query()->whereHas(
             'roles',
-            fn ($consulta) => $consulta->whereIn('rol', [
-                RolUsuario::CURADOR->value,
-                RolUsuario::ADMIN->value,
-            ]),
+            fn ($consulta) => $consulta->where('rol', RolUsuario::CURADOR->value),
         )->get();
 
         if ($curadores->isEmpty()) {

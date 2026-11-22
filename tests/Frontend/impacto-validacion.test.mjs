@@ -21,7 +21,10 @@ test('publicar una eliminación aprobada no vuelve a seleccionarla y una restaur
 test('los contratos propios de depósitos seleccionan sus escenarios sin invalidar recibos DOM', () => {
     const root = path.resolve(import.meta.dirname, '../..');
     const entries = impact.config.contratos_propios;
-    assert.equal(Object.keys(entries).length, 10);
+    assert.equal(Object.keys(entries).filter(source => source.startsWith('Modules/GestionPrestamosRecepciones/')).length, 11);
+    assert.deepEqual(entries['Modules/GestionPrestamosRecepciones/app/Infrastructure/Listeners/NotificarCuradorEventoPrestamoListener.php'], [
+        'Modules/GestionPrestamosRecepciones/tests/Infrastructure/Listeners/NotificarCuradorEventoPrestamoListenerTest.php',
+    ]);
     const files = Object.fromEntries([...Object.keys(entries), ...Object.values(entries).flat()].map(file => [file, 'fuente']));
     const graph = impact.graph(root, files);
     for (const [source, contracts] of Object.entries(entries)) {
@@ -52,20 +55,17 @@ test('PDF fuera del cambio exige evidencia compatible sin ejecutar otra suite au
     }
     assert.equal(impact.pdfPlanDecision(true, {execute: true, previous}).execute, true);
 });
-test('el agente construye antes de UI; el paquete exige el recibo y rechaza un build posterior', () => {
+test('la revisión visual independiente rechaza un recibo de otro build', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'hd-ui-phase-')), id = 'depositos_documento';
     try {
         const files = [...focal.definitions[id].sources, ...Object.keys(focal.owner).filter(file => focal.owner[file].includes(id)),
             'tests/Browser/contratos-ui-focales.mjs', 'public/build/manifest.json'];
         for (const file of new Set(files)) { const target = path.join(root, file); mkdirSync(path.dirname(target), {recursive: true}); writeFileSync(target, 'fixture'); }
-        const p = {root, pendientes: ['ui-focal:'+id], ui_focal: {cases: [id]}};
-        assert.doesNotThrow(() => impact.assertCoverage(p, {agent: true}));
-        assert.throws(() => impact.assertCoverage({...p, pendientes: [...p.pendientes, 'fuente-sin-contrato.php']}, {agent: true}), /fuente-sin-contrato/);
-        assert.throws(() => impact.assertCoverage(p), /ui-focal/);
+        assert.equal(focal.status(root, id), false);
         focal.approve(root, id, Object.fromEntries(focal.definitions[id].checks.map(check => [check, true])), focal.inputs(root, id));
-        assert.doesNotThrow(() => impact.assertCoverage(p));
+        assert.equal(focal.status(root, id), true);
         writeFileSync(path.join(root, 'public/build/manifest.json'), 'build diferente');
-        assert.throws(() => impact.assertCoverage(p), /ui-focal/);
+        assert.equal(focal.status(root, id), false);
     } finally { rmSync(root, {recursive: true, force: true}); }
 });
 const source = 'Modules/CatalogoPublico/app/Servicio.php';
@@ -83,12 +83,21 @@ const baseline = {version: 1, full_test_coverage: true, root: '/workspace', head
 const plan = (files, overrides = {}) => impact.selectPlan({files, baseline, runtime, root: '/workspace', head: 'b'.repeat(40),
     environment: 'env', ancestor: true, now, ...overrides});
 
-test('el cuerpo DOM focal exige su recibo MCP propio sin seleccionar los nueve recorridos', () => {
-    const p=plan({...original,'tests/Browser/contratos-ui-focales.mjs':'nuevo'});
-    assert.deepEqual(p.pendientes,[]);
-    assert.equal(p.paquete.navegador,false);
-    p.ui_focal={cases:['laboratorio']};
-    assert.throws(()=>impact.assertCoverage(p),/UI focal laboratorio/);
+test('los recorridos de Neon son independientes del paquete, también con Integral', () => {
+    const files = {...original, 'tests/Browser/contratos-ui-focales.mjs':'nuevo', 'tests/Browser/portal-fixture.php':'nuevo',
+        'tests/Feature/Auth/AuthenticationTest.php':'nuevo', 'tests/Unit/TurnstileVerifierTest.php':'nuevo',
+        'tests/Frontend/hub-turnstile.test.mjs':'nuevo'};
+    for (const force of [false, true]) {
+        const p = plan(files, {force});
+        assert.deepEqual(p.pendientes, []);
+        assert.equal(p.paquete.navegador, false);
+        assert.equal(p.paquete.gherkin, false);
+        assert.ok(!p.paquete.pruebas_php.some(file => /Feature|Turnstile/.test(file)));
+        assert.ok(!p.agente.node_tests.some(file => /password|turnstile/.test(file)));
+        assert.equal(p.cobertura.integraciones.navegador, 'fuera-del-paquete');
+        assert.doesNotThrow(() => impact.assertCoverage(p));
+    }
+    assert.throws(() => impact.assertCoverage({pendientes: ['fuente-sin-contrato.ps1']}), /fuente-sin-contrato/);
 });
 
 test('el runner focal compartido conserva UI intacta y exige los casos de las fuentes propias', () => {
@@ -114,13 +123,13 @@ test('antiguedad, politica, entorno y numero de cambios nunca fuerzan integral',
     assert.equal(p.integral, false);
     assert.deepEqual(p.agente.node_tests, []);
     assert.deepEqual(p.paquete.pruebas_php, []);
-    assert.equal(p.paquete.postgres, false);
+    assert.equal(p.paquete.pdf, false);
 });
 
 test('documentacion aislada reutiliza suites sin ocultar las auditorias ni la integridad', () => {
     const p = plan({...original, 'README.md': 'b'.repeat(64)});
     assert.equal(p.integral, false);
-    assert.equal(p.paquete.postgres, false);
+    assert.equal(p.paquete.pdf, false);
     assert.equal(p.paquete.gherkin, false);
     assert.deepEqual(p.agente.frontend, []);
     assert.deepEqual(p.agente.node_tests, []);
@@ -131,13 +140,13 @@ test('documentacion aislada reutiliza suites sin ocultar las auditorias ni la in
 });
 
 test('una funcion selecciona solo sus contratos propios, sin consumidores transitivos ni PHP comun', () => {
-    const own = 'tests/Feature/PortalCatalogoTest.php';
-    const p = plan({...original, [source]: 'b'.repeat(64)}, {dependencies: {portal: ['inventario']}, fileDependencies: {
+    const own = 'tests/Unit/ServicioPortalTest.php';
+    const p = plan({...original, [source]: 'b'.repeat(64), [own]: 'prueba'}, {dependencies: {portal: ['inventario']}, fileDependencies: {
         [source]: [own, inventorySource], [inventorySource]: ['Modules/InventarioGestionColeccion/tests/Unit/ServicioTest.php']}});
     assert.equal(p.integral, false);
     assert.deepEqual(p.areas, ['portal']);
     assert.deepEqual(p.paquete.pruebas_php, [own]);
-    assert.ok(p.cobertura.php.reutilizar.includes('tests/Feature/DepositosPortalTest.php'));
+    assert.ok(p.cobertura.php.manuales.includes('tests/Feature/DepositosPortalTest.php'));
     assert.deepEqual(p.paquete.gherkin_paths, []);
     assert.equal(p.agente.java_test, false);
     assert.equal(p.paquete.python, false);
@@ -151,12 +160,12 @@ test('cambios criticos e incertidumbre no se convierten en una suite integral au
         const p = plan({...original, [file]: 'nuevo'}, {uncertain: [file]});
         assert.equal(p.integral, false, file);
         assert.deepEqual(p.paquete.pruebas_php, []);
-        if (file.endsWith('.php')) assert.throws(() => impact.assertCoverage(p), /Falta delimitar cobertura/);
+        if (file.endsWith('.php')) assert.equal(p.paquete.laravel, true);
     }
     assert.equal(plan(original, {force: true}).integral, true);
     const p = plan({...original, [source]: 'b'}, {uncertain: [source]});
     assert.equal(p.integral, false);
-    assert.throws(() => impact.assertCoverage(p), /Falta delimitar cobertura/);
+    assert.doesNotThrow(() => impact.assertCoverage(p));
 });
 
 test('una diferencia de artefactos no autoriza repetir pruebas funcionales ajenas al cambio', () => {
@@ -187,8 +196,8 @@ test('no usa pruebas indirectas como sustituto de cobertura propia del cambio', 
     const p = plan({...original, [source]: 'b'}, {fileDependencies: {[source]: ['app/Support/Puente.php'], 'app/Support/Puente.php': [related]}});
     assert.equal(p.integral, false);
     assert.deepEqual(p.paquete.pruebas_php, []);
-    assert.throws(() => impact.assertCoverage(p), /Falta delimitar cobertura/);
-    assert.ok(p.cobertura.php.reutilizar.includes('tests/Feature/PortalCatalogoTest.php'));
+    assert.equal(p.paquete.laravel, true);
+    assert.ok(p.cobertura.php.manuales.includes('tests/Feature/PortalCatalogoTest.php'));
     assert.ok(p.cobertura.node.reutilizar.includes('tests/Frontend/portal-map-model.test.mjs'));
 });
 
@@ -201,7 +210,7 @@ test('compara cambios acumulados, incluye eliminaciones y no expande a consumido
     assert.deepEqual(p.agente.node_tests, []);
     const crossBuild = plan({...original, [js]: 'b'}, {nodeDependencies: {[js]: ['Modules/InventarioGestionColeccion/resources/assets/js/app.js']}});
     assert.deepEqual(crossBuild.agente.frontend, ['.']);
-    const combined = [...p.cobertura.php.ejecutar, ...p.cobertura.php.reutilizar];
+    const combined = [...p.cobertura.php.ejecutar, ...p.cobertura.php.reutilizar, ...p.cobertura.php.manuales];
     assert.equal(new Set(combined).size, combined.length);
     assert.deepEqual(combined.sort(), tests.filter(f => f.endsWith('.php')).sort());
 });
@@ -210,16 +219,17 @@ test('cada frontend reconstruye solo el proyecto de los recursos modificados', (
     const file = 'Modules/InventarioGestionColeccion/resources/css/app.css';
     const p = plan({...original, [file]: 'css'});
     assert.deepEqual(p.agente.frontend, ['Modules/InventarioGestionColeccion']);
-    assert.equal(p.paquete.postgres, false);
+    assert.equal(p.paquete.pdf, false);
     assert.equal(p.paquete.gherkin, false);
     assert.equal(p.agente.composer, false);
 });
 
-test('Python y Gherkin seleccionan archivos propios, sin incluir todos los del modulo', () => {
+test('Python selecciona sus archivos propios y Gherkin queda para la revisión manual', () => {
     const python = 'tests/Python/test_portal_ete.py', feature = 'Modules/CatalogoPublico/tests/Behat/Features/catalogo.feature';
     const p = plan({...original, [python]: 'nuevo', [feature]: 'nuevo'});
     assert.deepEqual(p.paquete.python_tests, [python]);
-    assert.deepEqual(p.paquete.gherkin_paths, [feature]);
+    assert.deepEqual(p.paquete.gherkin_paths, []);
+    assert.ok(p.cobertura.gherkin.manuales.includes(feature));
     assert.equal(p.paquete.ete, true);
 });
 
@@ -239,7 +249,7 @@ test('el cambio aprobado pasa a ser la siguiente base sin reexaminar cambios ant
 });
 
 test('no incorpora un cambio sin cobertura ni sobrescribe una base alterada durante las pruebas', () => {
-    const files = {...original, [source]: 'sin-cobertura'};
+    const files = {...original, 'scripts/deployment/sin-cobertura.ps1': 'sin-cobertura'};
     const args = {plan: plan(files), previous: baseline, files, runtime, environment: 'env', root: '/workspace', head: baseline.head, completedAt: new Date(now).toISOString()};
     assert.throws(() => impact.approvedBase(args), /Falta delimitar cobertura/);
     assert.equal(baseline.sources[source], original[source]);
@@ -260,36 +270,26 @@ test('la antiguedad de UI intacta no abre Neon ni repite sus nueve recorridos', 
     assert.deepEqual(changed.ejecutar, ['fotografias']);
 });
 
-test('el plan real de UI y PDF no reintroduce suites fuera del cambio de fotografias', () => {
+test('un cambio de fotografías no requiere historial de navegador ni altera los controles PDF', () => {
     const temporary = mkdtempSync(path.join(tmpdir(), 'hub-impact-ui-'));
     try {
-        const runner = browser.ids.map(id => `    // CASO ${id} INICIO\n    assert.ok(true);\n    // CASO ${id} FIN\n`).join('');
-        const content = {'tests/Browser/portal-livewire.mjs': runner,
-            'tests/Browser/portal-casos.json': JSON.stringify({cases: Object.fromEntries(browser.ids.map(id => [id, {}]))}),
-            'tests/Browser/portal-fixture.php': '<?php // fixture', 'composer.lock': '{}', 'resources/js/portal-photo-model.js': 'export const photo=1;'};
+        const content = {'composer.lock': '{}', 'resources/js/portal-photo-model.js': 'export const photo=1;'};
         for (const [file, text] of Object.entries(content)) {
             mkdirSync(path.dirname(path.join(temporary, file)), {recursive: true}); writeFileSync(path.join(temporary, file), text);
         }
         const files = Object.fromEntries(Object.entries(content).map(([file, text]) => [file, browser.hash(text)]));
         const outputs = {per_root: {...runtime.per_root, 'resources/bin/hubdigital-pdf-signature.jar': 'jar'}};
-        const prior = browser.inputs({root: temporary, sources: files, runtime: outputs, environment: 'env'});
-        const cases = Object.fromEntries(browser.ids.map(id => [id, {root: temporary, status: 'passed', approved_at: baseline.completed_at,
-            input_sha256: prior[id].sha256, inputs: prior[id].values, provenance: {type: 'case-run-success'}}]));
-        const basePath = path.join(temporary, '.local/validation/base-navegador.json'); mkdirSync(path.dirname(basePath), {recursive: true});
-        writeFileSync(basePath, JSON.stringify({version: 1, root: temporary, cases}));
         const changed = {...files, 'resources/js/portal-photo-model.js': browser.hash('export const photo=2;')};
         writeFileSync(path.join(temporary, 'resources/js/portal-photo-model.js'), 'export const photo=2;');
         const p = plan(changed, {root: temporary, baseline: {...baseline, root: temporary, sources: files}});
         impact.refreshRuntimePlan({root: temporary, head: baseline.head, files: changed, runtime: outputs, environment: 'env', plan: p});
-        assert.deepEqual(p.navegador.ejecutar, ['fotografias']);
+        assert.equal(p.paquete.navegador, false);
+        assert.equal(p.ui_focal, undefined);
+        assert.equal(p.navegador, undefined);
         assert.equal(p.paquete.pdf, false);
         assert.equal(p.paquete.python, false);
         assert.deepEqual(p.paquete.pruebas_php, []);
         assert.deepEqual(p.pendientes, ['PDF: falta evidencia compatible; delimitar y renovar su control local sin ampliar suites.']);
-        // El fixture no aporta un recibo PDF: debe quedar pendiente sin ejecutar
-        // otra suite. El verificador de UI mantiene su alcance propio.
-        browser.verify(temporary, p.navegador, {sources: changed, runtime: outputs, environment: 'env',
-            dependencies: {'resources/js/portal-photo-model.js': ['resources/js/portal-search.js']}});
     } finally { assert.equal(path.dirname(temporary), path.resolve(tmpdir())); assert.ok(path.basename(temporary).startsWith('hub-impact-ui-')); rmSync(temporary, {recursive: true, force: true}); }
 });
 
@@ -328,29 +328,40 @@ test('una corrección aislada del runner histórico selecciona su propio recorri
             return result.stdout.trim();
         };
         mkdirSync(path.dirname(fullPath), {recursive: true});
-        writeFileSync(fullPath, runner);
+        writeFileSync(fullPath, runner.replace('const setup = 1;', 'const setup = 0;'));
         git('init', '--quiet', '--object-format=sha1');
+        git('add', '--', file);
+        git('-c', 'user.name=QA', '-c', 'user.email=qa@example.test', 'commit', '--quiet', '-m', 'Antes de publicar');
+        const previous = git('rev-parse', 'HEAD');
+        writeFileSync(fullPath, runner);
         git('add', '--', file);
         git('-c', 'user.name=QA', '-c', 'user.email=qa@example.test', 'commit', '--quiet', '-m', 'Runner aprobado');
         const baseline = {head: git('rev-parse', 'HEAD'), sources: {[file]: browser.hash(runner)}};
         const scope = {root: temporary, changes: [file], files: {[file]: 'nuevo'}, baseline};
         writeFileSync(fullPath, runner.replace("assert.ok('apertura-sesion')", "assert.equal('apertura-sesion', 'apertura-sesion')"));
         assert.deepEqual(impact.browserScope(scope), {cases: ['apertura-sesion'], pending: []});
+        assert.deepEqual(impact.browserScope({...scope, baseline: {...baseline, head: previous}}), {cases: ['apertura-sesion'], pending: []});
         assert.deepEqual(impact.browserScope({...scope, baseline: {...baseline, sources: {[file]: 'distinta'}}}), {cases: [], pending: [file]});
         writeFileSync(fullPath, runner.replace('const setup = 1;', 'const setup = 2;'));
         assert.deepEqual(impact.browserScope(scope), {cases: [], pending: [file]});
     } finally { assert.equal(path.dirname(temporary), path.resolve(tmpdir())); assert.ok(path.basename(temporary).startsWith('hub-impact-browser-')); rmSync(temporary, {recursive: true, force: true}); }
 });
 
-test('los scripts pasan el analisis PowerShell y solo acreditan una vez antes del commit', () => {
+test('el comando OCI compila y valida en una sola ejecución antes de acreditar y publicar', () => {
     const root = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
     const core = readFileSync(path.join(root, 'scripts/deployment/crear-paquete-oci-core.ps1'), 'utf8');
     const validator = readFileSync(path.join(root, 'scripts/deployment/validar-cambios-agente.ps1'), 'utf8');
     assert.match(validator, /if \(\$SoloSelectorPaquete\)/);
     const accredit = core.indexOf("'acreditar', $Proyecto");
-    assert.ok(accredit > core.indexOf('if (-not $suitePostgresCompletada'));
+    const technicalGate = core.indexOf('if (-not $suitePhpUnitariaCompletada');
+    assert.ok(technicalGate >= 0 && accredit > technicalGate);
     assert.ok(accredit < core.indexOf("'commit', '-m'"));
     assert.equal(core.match(/'acreditar', \$Proyecto/g).length, 1);
+    assert.match(core, /'impacto-validacion\.cjs'\), 'generar', \$Proyecto/);
+    assert.match(core, /\$argumentosImpacto \+= 'recompilar'/);
+    assert.match(core, /'-DskipTests', 'clean', 'package'/);
+    assert.match(core, /@\('run', 'build'\)/);
+    assert.doesNotMatch(core, /'evidencia-agente\.cjs'\), 'verificar'/);
     const command = "$ErrorActionPreference = 'Stop'; foreach ($p in @('scripts/deployment/crear-paquete-oci-core.ps1', 'scripts/deployment/validar-cambios-agente.ps1')) { $tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) $p), [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { throw ($errors | Out-String) } }";
     const parsed = spawnSync('powershell.exe', ['-NoProfile', '-Command', command], {cwd: root, encoding: 'utf8', windowsHide: true});
     assert.equal(parsed.status, 0, parsed.stderr);

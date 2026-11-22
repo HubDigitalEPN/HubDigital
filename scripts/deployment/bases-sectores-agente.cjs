@@ -63,7 +63,7 @@ function inputs({sources, runtime, environment: env, core}) {
     add('php-dependencias', sourceHash(f => /\.php$/.test(f) || /^composer\.(json|lock)$/.test(f)), command("@('install',"), runtime.per_root.vendor);
     const javaSources = sourceHash(f => f.startsWith('tools/pdf-signature/'));
     const jar = runtime.per_root['resources/bin/hubdigital-pdf-signature.jar'];
-    add('java-compilacion', javaSources, command("'-DskipTests', 'package'"), jar);
+    add('java-compilacion', javaSources, command("'tools/pdf-signature/pom.xml'"), jar);
     add('java-criptografia', javaSources, command("'selftest')"), jar);
     const frontendSources = sourceHash(f => /^(resources|Modules|public|app|routes|config|bootstrap)\//.test(f) || /^(package.*\.json|vite[^/]*|postcss[^/]*|tailwind[^/]*)$/.test(f));
     for (const [project, build] of Object.entries(projects)) {

@@ -31,7 +31,7 @@ final class GestionBotones extends Component
     {
         abort_unless(auth()->check() && User::query()->whereKey(auth()->id())
             ->whereNotNull('email_verified_at')->where('must_change_password', false)
-            ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::ADMIN->value))->exists(), 403);
+            ->whereHas('roles', fn ($roles) => $roles->where('rol', RolUsuario::CURADOR->value))->exists(), 403);
     }
 
     public function mount(): void
@@ -64,6 +64,9 @@ final class GestionBotones extends Component
             }
             foreach (BotonesSistema::definiciones() as $clave => $def) {
                 foreach (RolUsuario::cases() as $rol) {
+                    if ($rol === RolUsuario::CURADOR) {
+                        continue;
+                    }
                     $valor = $this->permisos[str_replace('.', '_', $clave)][$rol->value] ?? null;
                     if (! is_array($valor) || ! is_bool($valor['ver'] ?? null) || ! is_bool($valor['usar'] ?? null)) {
                         throw ValidationException::withMessages(['permisos' => 'Completa la matriz con permisos válidos.']);

@@ -1,5 +1,7 @@
 <?php
 
+$environment = env('APP_ENV', 'production');
+
 return [
 
     /*
@@ -36,7 +38,11 @@ return [
     ],
 
     'turnstile' => [
-        'enabled' => env('APP_ENV', 'production') === 'production' || env('TURNSTILE_ENABLED', true),
+        'enabled' => match ($environment) {
+            'local' => false,
+            'production' => true,
+            default => env('TURNSTILE_ENABLED', false),
+        },
         'site_key' => env('TURNSTILE_SITE_KEY'),
         'secret' => env('TURNSTILE_SECRET'),
         'expected_hostname' => env('TURNSTILE_EXPECTED_HOSTNAME'),
