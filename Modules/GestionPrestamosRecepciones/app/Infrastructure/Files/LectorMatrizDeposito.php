@@ -87,11 +87,6 @@ final class LectorMatrizDeposito
                         if ($partes !== [] && ! in_array('', $partes, true)) { $registro['scientificName'] = implode(' ', $partes); break; }
                     }
                 }
-                foreach (['genus', 'specificEpithet'] as $campo) {
-                    if (($registro[$campo] ?? null) === '') {
-                        $registro[$campo] = 'indeterminado';
-                    }
-                }
                 $registro = array_replace($registro, $permisosExpediente);
                 $registros[] = $registro; $numeros[] = $fila;
             }
@@ -101,7 +96,10 @@ final class LectorMatrizDeposito
                 if (trim($registro['scientificName'] ?? '') === '') throw new \DomainException('Fila '.$numeros[$i].': completa el nombre científico o la clasificación del espécimen.');
             }
             return ['campos' => array_keys($registros[0]), 'registros' => $registros, 'filas' => $numeros,
-                'criticos' => array_column(array_filter($definicion['columnas'], static fn ($c): bool => $c['requisito'] === 'obligatorio' && ($c['excepcion_campo'] ?? '') === ''), 'campo'),
+                'criticos' => array_values(array_intersect(
+                    array_column(array_filter($definicion['columnas'], static fn ($c): bool => $c['requisito'] === 'obligatorio' && ($c['excepcion_campo'] ?? '') === ''), 'campo'),
+                    array_keys($registros[0]),
+                )),
                 'recomendados' => array_column(array_filter($definicion['columnas'], static fn ($c): bool => $c['requisito'] === 'recomendado'), 'campo')];
         } finally {
             $libro->disconnectWorksheets();

@@ -14,6 +14,7 @@ use Modules\GestionPrestamosRecepciones\Domain\Events\SugerenciaTaxonomicaRevert
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\RegistroEspecimenNoEncontradoException;
+use Modules\GestionPrestamosRecepciones\Domain\Services\EsquemaMatriz;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoMatrizEspecies;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\MatrizEspeciesId;
@@ -178,7 +179,7 @@ final class MatrizEspecies
                 : '(sin nombre científico)';
 
             foreach ($criticosPresentes as $campo) {
-                if (trim((string) ($datos[$campo] ?? '')) === '') {
+                if (EsquemaMatriz::faltaValorObligatorio($datos + ['scientificName' => $registro->nombreCientifico()], $campo)) {
                     $violaciones[] = ['fila' => $fila, 'campo' => $campo];
                 }
             }

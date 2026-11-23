@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Domain\Entities;
 
+use Modules\GestionPrestamosRecepciones\Domain\Services\NormalizadorCamposDwC;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\RegistroEspecimenId;
 
@@ -298,6 +299,27 @@ final class RegistroEspecimen
     public function normalizaciones(): array
     {
         return $this->normalizaciones;
+    }
+
+    public function revalidarPrecisionCoordenadas(NormalizadorCamposDwC $normalizador): bool
+    {
+        $actualizado = false;
+        $cambios = [];
+        foreach ($this->normalizaciones as $cambio) {
+            $campo = $cambio['campo'];
+            if (($cambio['mensaje'] ?? '') !== 'Debe tener entre 1 y 4 decimales'
+                || ! in_array($campo, ['decimalLatitude', 'decimalLongitude'], true)) {
+                $cambios[] = $cambio;
+                continue;
+            }
+            $resultado = $normalizador->normalizar([$campo => $this->datosDwC[$campo] ?? $cambio['original']]);
+            $this->datosDwC[$campo] = $resultado->registro[$campo];
+            array_push($cambios, ...$resultado->cambios);
+            $actualizado = true;
+        }
+        $this->normalizaciones = $cambios;
+
+        return $actualizado;
     }
 
     // ── Reconstitución desde persistencia ────────────────────────

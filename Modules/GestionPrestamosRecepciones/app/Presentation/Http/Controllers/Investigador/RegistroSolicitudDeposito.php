@@ -60,6 +60,8 @@ use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposDwCFaltantesExce
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\CamposObligatoriosVaciosException;
 use Modules\GestionPrestamosRecepciones\Domain\Exceptions\SolicitudDepositoYaProcesada;
 use Modules\GestionPrestamosRecepciones\Domain\Repositories\MatrizEspeciesRepositoryInterface;
+use Modules\GestionPrestamosRecepciones\Domain\Services\EsquemaMatriz;
+use Modules\GestionPrestamosRecepciones\Domain\Services\NormalizadorCamposDwC;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaCantidadesMaterial;
 use Modules\GestionPrestamosRecepciones\Domain\Services\ReglaDocumentacionRequerida;
 use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\EstadoRegistroEspecimen;
@@ -86,7 +88,6 @@ use Modules\GestionPrestamosRecepciones\Presentation\Support\PasosWizardDeposito
 use Modules\GestionPrestamosRecepciones\Presentation\Support\ReglasSolicitudDeposito;
 use Modules\GestionPrestamosRecepciones\Presentation\Support\TextoSolicitudDeposito;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Persistence\Eloquent\Models\TaxonEloquentModel;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -806,7 +807,8 @@ final class RegistroSolicitudDeposito extends Component
                     fn (string $campo) => ! in_array($campo, $this->camposDwCPresentes, true)
                 ));
 
-                $this->poblarEstadosRegistros($matriz);
+                $editable = in_array($model->estado, [EstadoSolicitudDeposito::EnBorrador->value, EstadoSolicitudDeposito::RequiereCorreccion->value], true);
+                $this->poblarEstadosRegistros($matriz, actualizar: $editable);
             }
         }
 
@@ -2549,14 +2551,7 @@ final class RegistroSolicitudDeposito extends Component
         abort_unless(SolicitudDepositoEloquentModel::query()->whereKey($this->solicitudId)
             ->where('investigador_id', (string) auth()->id())->exists(), 403);
 
-        return response()->streamDownload(static function (): void {
-            $libro = app(PlantillaMatrizDepositante::class)->crear();
-            try {
-                (new Xlsx($libro))->save('php://output');
-            } finally {
-                $libro->disconnectWorksheets();
-            }
-        }, 'matriz-darwin-core.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+        return app(PlantillaMatrizDepositante::class)->descargar();
     }
 
     public function updatedArchivoMatriz(): void
@@ -2906,11 +2901,18 @@ final class RegistroSolicitudDeposito extends Component
      *
      * @param  array<int, array<string, mixed>>  $csvRegistros  Filas del CSV (solo en carga inicial, vacío en restauración)
      */
-    private function poblarEstadosRegistros(MatrizEspecies $matriz, array $csvRegistros = []): void
+    private function poblarEstadosRegistros(MatrizEspecies $matriz, array $csvRegistros = [], bool $actualizar = true): void
     {
         // Al reemplazar una matriz, los IDs anteriores dejan de pertenecer al formulario.
         $this->estadosRegistros = [];
         $registros = $matriz->registros();
+        $huboActualizacionEntidad = false;
+        if ($actualizar) {
+            $normalizador = app(NormalizadorCamposDwC::class);
+            foreach ($registros as $registro) {
+                $huboActualizacionEntidad = $registro->revalidarPrecisionCoordenadas($normalizador) || $huboActualizacionEntidad;
+            }
+        }
 
         if ($this->tipoTramite === TipoTramite::Donacion->value) {
             $i = 0;
@@ -2934,20 +2936,42 @@ final class RegistroSolicitudDeposito extends Component
                 ];
                 $i++;
             }
+            if ($huboActualizacionEntidad) {
+                app(MatrizEspeciesRepositoryInterface::class)->guardar($matriz);
+            }
 
             return;
         }
 
-        $nombres = array_values(array_map(fn ($r) => $r->nombreCientifico(), $registros));
-        $validador = app(ValidacionTaxonomicaPort::class);
-        $resultados = $validador->validarEspecies($nombres);
+        $porConsultar = [];
+        foreach ($registros as $id => $registro) {
+            if (! $registro->estado()->equals(EstadoRegistroEspecimen::Pendiente)) {
+                continue;
+            }
+            if ($actualizar && $this->fuenteMatriz === 'excel'
+                && EsquemaMatriz::identificacionParcial($registro->datosDwC(), $registro->nombreCientifico())) {
+                $matriz->mantenerNombreOriginal($id, 'Identificación parcial declarada en el Excel. Requiere revisión taxonómica de curaduría.');
+                $huboActualizacionEntidad = true;
+            } else {
+                $porConsultar[$id] = $registro->nombreCientifico();
+            }
+        }
+        $resultados = [];
+        if ($porConsultar !== []) {
+            $respuesta = app(ValidacionTaxonomicaPort::class)->validarEspecies(array_values($porConsultar));
+            $ids = array_keys($porConsultar);
+            foreach ($respuesta as $posicion => $resultado) {
+                if (isset($ids[$posicion])) {
+                    $resultados[$ids[$posicion]] = $resultado;
+                }
+            }
+        }
 
         $i = 0;
-        $huboActualizacionEntidad = false;
 
         foreach ($registros as $id => $registro) {
             $csvRow = $csvRegistros[$i] ?? [];
-            $validacion = $resultados[$i] ?? ['estado' => 'catalogado', 'sugerencia' => null, 'sugerencias' => []];
+            $validacion = $resultados[$id] ?? ['estado' => 'no_verificado', 'sugerencia' => null, 'sugerencias' => []];
             $estadoEntidad = $registro->estado();
 
             // Si el registro ya fue resuelto (sugerencia aceptada o hallazgo justificado),
@@ -2990,18 +3014,18 @@ final class RegistroSolicitudDeposito extends Component
                 // La validación exacta debe quedar en el agregado, no solo en el
                 // estado visual de Livewire: el envío vuelve a comprobar la matriz
                 // desde persistencia para impedir saltarse este paso.
-                if ($validacion['estado'] === 'catalogado') {
+                if ($actualizar && $validacion['estado'] === 'catalogado') {
                     $matriz->validarRegistroCatalogado($id);
                     $huboActualizacionEntidad = true;
                 }
-                if ($validacion['estado'] === 'no_verificado') {
+                if ($actualizar && $validacion['estado'] === 'no_verificado') {
                     $matriz->mantenerNombreOriginal($id, 'GBIF no disponible; requiere revisión taxonómica de curaduría.');
                     $huboActualizacionEntidad = true;
                 }
 
                 // Sincronizar el flag noCatalogado en la entidad para que el guard
                 // de justificar() funcione correctamente.
-                if ($esNoCatalogado && ! $registro->esNoCatalogado()) {
+                if ($actualizar && $esNoCatalogado && ! $registro->esNoCatalogado()) {
                     $matriz->marcarRegistroNoCatalogado($id);
                     $huboActualizacionEntidad = true;
                 }

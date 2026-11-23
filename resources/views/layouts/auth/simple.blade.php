@@ -11,10 +11,10 @@
         <div class="relative flex min-h-svh flex-col items-center justify-start overflow-x-hidden px-3 py-3 sm:px-5 sm:py-5 md:px-8">
             <div class="flex w-full max-w-2xl flex-col gap-3 sm:gap-4">
 
-                {{-- Brand: lockup oficial de Hub Digital --}}
                 <a href="{{ route('home') }}" class="flex items-center justify-center" wire:navigate>
-                    <img src="{{ asset('images/hub-logo-v1.avif') }}" alt="Hub Digital · Laboratorio de Invertebrados"
-                         class="h-10 w-auto sm:h-12" />
+                    <img src="{{ \App\Support\FotosEditoriales::url(\App\Support\FotosEditoriales::ACCESO_SISTEMA) }}"
+                         alt="{{ \App\Support\FotosEditoriales::alt(\App\Support\FotosEditoriales::ACCESO_SISTEMA, \App\Support\FotosEditoriales::ALT_SISTEMA) }}"
+                         class="h-10 w-auto max-w-full object-contain sm:h-12" data-logo-acceso />
                 </a>
 
                 {{-- Card --}}

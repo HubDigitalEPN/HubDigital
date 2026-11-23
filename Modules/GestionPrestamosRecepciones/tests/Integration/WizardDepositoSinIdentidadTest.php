@@ -237,6 +237,33 @@ test('el nuevo ejemplo del depositante pasa al envío y una fecha imposible qued
     }
 });
 
+test('la identificación hasta género avanza a envío para revisión y guarda las coordenadas con su precisión', function (): void {
+    [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
+    $componente = detalleNativoWizardParaPruebas($modelo, $usuario);
+    $libro = \PhpOffice\PhpSpreadsheet\IOFactory::load(base_path('Modules/GestionPrestamosRecepciones/resources/plantillas/matriz-depositantes-v3.xlsx'));
+    $ruta = tempnam(sys_get_temp_dir(), 'deposito-identificacion-parcial-');
+    try {
+        $hoja = $libro->getSheet(0);
+        $cabeceras = $hoja->rangeToArray('A1:'.$hoja->getHighestDataColumn().'1')[0];
+        foreach (['taxonRank' => 'genus', 'specificEpithet' => null, 'identifiedBy' => null,
+            'dateDetermined' => null, 'decimalLatitude' => 3.328912345, 'decimalLongitude' => -76] as $campo => $valor) {
+            $hoja->setCellValue([array_search($campo, $cabeceras, true) + 1, 2], $valor);
+        }
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
+        $archivo = \Illuminate\Http\UploadedFile::fake()->createWithContent('identificacion-parcial.xlsx', file_get_contents($ruta));
+        $componente->set('archivoMatriz', $archivo)->assertSet('errorMatriz', '')
+            ->call('guardarPasoCinco')->assertHasNoErrors()->assertSet('paso', 8);
+        $reg = RegistroEspecimenEloquentModel::where('matriz_id', $componente->get('matrizId'))->firstOrFail();
+        expect($reg->datos_dwc['scientificName'])->toBe('Lycomedes')
+            ->and($reg->datos_dwc['specificEpithet'])->toBe('')
+            ->and((float) $reg->datos_dwc['decimalLatitude'])->toBe(3.328912345)
+            ->and($reg->estado)->toBe('Validación Manual por Curaduría');
+    } finally {
+        $libro->disconnectWorksheets();
+        unlink($ruta);
+    }
+});
+
 test('un detalle inválido conserva la matriz anterior y puede corregirse sin otro botón', function (): void {
     [$modelo, $usuario] = borradorWizardSinIdentidadParaPruebas();
     $componente = detalleNativoWizardParaPruebas($modelo, $usuario);

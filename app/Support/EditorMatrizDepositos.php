@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort;
 use Modules\GestionPrestamosRecepciones\Domain\Services\EsquemaMatriz;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Files\ImportadorPlantillaDepositos;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo;
 
 final class EditorMatrizDepositos
@@ -16,6 +17,17 @@ final class EditorMatrizDepositos
     private const TABLA = 'recepciones.configuracion_matriz';
 
     public function __construct(private readonly EsquemaMatrizPort $esquema) {}
+
+    public function importarPlantilla(string $ruta, string $huella, ImportadorPlantillaDepositos $importador): void
+    {
+        $usuario = $this->autorizar();
+        $preview = $importador->leer($ruta, $this->esquema->leer());
+
+        DB::transaction(function () use ($preview, $huella, $usuario): void {
+            $this->bloquear($huella);
+            $this->guardarDefinicion($preview['definicion'], $usuario);
+        });
+    }
 
     public function guardarFila(?string $campoOriginal, array $datos, string $huella): void
     {

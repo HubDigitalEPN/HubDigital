@@ -20,6 +20,9 @@ trait WithFotosEditoriales
     {
         abort_unless(auth()->user()?->esCurador(), 403);
         $clave = FotosEditoriales::clave($id);
+        if ($alt === '' && in_array($id, [FotosEditoriales::CABECERA_SISTEMA, FotosEditoriales::ACCESO_SISTEMA], true)) {
+            $alt = FotosEditoriales::ALT_SISTEMA;
+        }
         $this->resetValidation();
         $this->fotoEditorialId = $id;
         $this->fotoEditorialVersion = EditorPortal::version($clave);
@@ -47,6 +50,10 @@ trait WithFotosEditoriales
         }
         $this->fotoEditorialAbierta = false; $this->fotoEditorial = null;
         $this->dispatch('foto-editorial-publicada');
+        if ($this->fotoEditorialId === FotosEditoriales::CABECERA_SISTEMA) {
+            $this->dispatch('logo-cabecera-publicado',
+                url: FotosEditoriales::url($this->fotoEditorialId), alt: $foto['alt']);
+        }
         session()->flash('foto-editorial-guardada', 'Transacción Efectuada');
     }
 }

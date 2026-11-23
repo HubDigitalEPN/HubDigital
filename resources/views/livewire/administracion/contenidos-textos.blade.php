@@ -17,6 +17,29 @@
         <livewire:administracion.configuracion-laboratorio />
     @elseif($seccion === 'fichas')
         <livewire:administracion.fichas-taxonomicas-portal />
+    @elseif($seccion === 'logos')
+        @php
+            $logos = [
+                \App\Support\FotosEditoriales::CABECERA_SISTEMA => 'Barra superior',
+                \App\Support\FotosEditoriales::ACCESO_SISTEMA => 'Pantallas de acceso',
+            ];
+        @endphp
+        <div class="grid gap-4 lg:grid-cols-2">
+            @foreach($logos as $id => $ubicacion)
+                @php($alt = \App\Support\FotosEditoriales::alt($id, \App\Support\FotosEditoriales::ALT_SISTEMA))
+                <section class="space-y-3 rounded-lg border border-border bg-surface p-4" aria-label="{{ $ubicacion }}">
+                    <h2 class="font-semibold">{{ $ubicacion }}</h2>
+                    <div @class(['flex min-h-28 items-center justify-center rounded p-4', 'bg-blue-navy' => $loop->first, 'bg-bg-main' => !$loop->first])>
+                        <img src="{{ \App\Support\FotosEditoriales::url($id) }}" alt="{{ $alt }}"
+                             class="max-h-16 max-w-full rounded bg-white object-contain {{ $loop->first ? 'p-1' : 'bg-transparent!' }}" />
+                    </div>
+                    <flux:button type="button" wire:click="seleccionarFotoEditorial('{{ $id }}')" icon="pencil">
+                        Cambiar logo
+                    </flux:button>
+                </section>
+            @endforeach
+        </div>
+        @include('livewire.administracion.partials.foto-editorial')
     @elseif($seccion === 'depositos')
         <livewire:administracion.configuracion-textos-wizard />
     @else

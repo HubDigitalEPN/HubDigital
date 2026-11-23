@@ -9,10 +9,24 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PlantillaMatrizDepositante
 {
     public function __construct(private readonly EsquemaMatrizPort $esquemas) {}
+
+    public function descargar(): StreamedResponse
+    {
+        return response()->streamDownload(function (): void {
+            $libro = $this->crear();
+            try {
+                (new Xlsx($libro))->save('php://output');
+            } finally {
+                $libro->disconnectWorksheets();
+            }
+        }, 'matriz-darwin-core.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
 
     public function crear(): Spreadsheet
     {

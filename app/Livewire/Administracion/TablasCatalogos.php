@@ -22,8 +22,11 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Files\ImportadorPlantillaDepositos;
+use Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo;
 use Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\EditorMatrizImportacion;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.app')]
 #[Title('Matrices')]
@@ -163,23 +166,61 @@ final class TablasCatalogos extends Component
 
     public function mostrarCarga(): void
     {
-        abort_unless($this->tabla === Matrices::IMPORTACION, 403);
+        abort_unless(in_array($this->tabla, [Matrices::IMPORTACION, Matrices::DEPOSITOS], true), 403);
         $this->preparar('carga');
         $this->modal('cargar-plantilla-matriz')->show();
     }
 
-    public function subirPlantilla(ConfiguracionPlantillaCatalogo $servicio): void
+    #[Locked]
+    public array $vistaPlantilla = [];
+
+    #[Locked]
+    public string $huellaArchivoPlantilla = '';
+
+    public function updatedArchivo(): void
     {
-        abort_unless($this->modo === 'carga' && $this->tabla === Matrices::IMPORTACION, 422);
-        AccesoCatalogo::autorizar();
+        $this->reset('vistaPlantilla', 'huellaArchivoPlantilla');
+        $this->resetValidation('archivo');
+    }
+
+    public function descargarPlantillaDepositos(PlantillaMatrizDepositante $plantilla): StreamedResponse
+    {
+        $this->seleccion();
+        abort_unless($this->tabla === Matrices::DEPOSITOS, 403);
+
+        return $plantilla->descargar();
+    }
+
+    public function subirPlantilla(ConfiguracionPlantillaCatalogo $servicio, ImportadorPlantillaDepositos $importador): void
+    {
+        $this->seleccion();
+        abort_unless($this->modo === 'carga' && in_array($this->tabla, [Matrices::DEPOSITOS, Matrices::IMPORTACION], true), 422);
         $this->validate(['archivo' => 'required|file|mimes:xlsx|max:2048'], [
             'archivo.required' => 'Selecciona la plantilla modificada.',
             'archivo.mimes' => 'Selecciona la plantilla en formato .xlsx.',
             'archivo.max' => 'La plantilla de configuración no debe superar 2 MB.',
         ]);
         try {
-            $definicion = $servicio->desdeExcel($this->archivo->getRealPath());
-            $servicio->guardar($definicion, $this->huella, (string) auth()->id());
+            $ruta = $this->archivo->getRealPath();
+            if ($this->tabla === Matrices::DEPOSITOS) {
+                $huellaArchivo = hash_file('sha256', $ruta);
+                if ($this->huellaArchivoPlantilla === '' || ! hash_equals($this->huellaArchivoPlantilla, $huellaArchivo)) {
+                    $actual = app(Matrices::class)->definicion($this->tabla);
+                    if (! hash_equals($this->huella, ConfiguracionPlantillaCatalogo::huella($actual))) {
+                        throw new DomainException('Otra persona cambió la matriz. Vuelve a abrir la carga para revisar el Excel.');
+                    }
+                    $resultado = $importador->leer($ruta, $actual);
+                    $this->vistaPlantilla = array_intersect_key($resultado, array_flip(['visibles', 'nuevas', 'ocultas']));
+                    $this->huellaArchivoPlantilla = $huellaArchivo;
+
+                    return;
+                }
+                app(EditorMatrizDepositos::class)->importarPlantilla($ruta, $this->huella, $importador);
+            } else {
+                AccesoCatalogo::autorizar();
+                $definicion = $servicio->desdeExcel($ruta);
+                $servicio->guardar($definicion, $this->huella, (string) auth()->id());
+            }
         } catch (DomainException $error) {
             $this->addError('archivo', $error->getMessage());
             return;
@@ -193,7 +234,7 @@ final class TablasCatalogos extends Component
 
     public function cancelar(): void
     {
-        $this->reset('campoEdicion', 'huella', 'modo', 'datos', 'archivo');
+        $this->reset('campoEdicion', 'huella', 'modo', 'datos', 'archivo', 'vistaPlantilla', 'huellaArchivoPlantilla');
         $this->resetValidation();
     }
 

@@ -1,6 +1,7 @@
 @php
     $esImportacion = $tabla === \App\Support\RegistrosAdministracionCatalogos::IMPORTACION;
     $esIpt = $tabla === \App\Support\RegistrosAdministracionCatalogos::IPT;
+    $esDepositos = $tabla === \App\Support\RegistrosAdministracionCatalogos::DEPOSITOS;
 @endphp
 <div class="hub-workspace space-y-2 px-4 pb-4 pt-2" data-editor-matrices data-tablas-catalogos>
     <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
@@ -29,6 +30,12 @@
                     <a href="{{ route('inventario.taxonomia.importar.plantilla') }}" role="menuitem" tabindex="-1" x-on:click="closeMenu(false)">
                         <flux:icon name="arrow-down-tray" />Descargar plantilla
                     </a>
+                @elseif($esDepositos)
+                    <button type="button" role="menuitem" tabindex="-1" wire:click="descargarPlantillaDepositos" x-on:click="closeMenu(false)">
+                        <flux:icon name="arrow-down-tray" />Descargar plantilla
+                    </button>
+                @endif
+                @if($esImportacion || $esDepositos)
                     <button type="button" role="menuitem" tabindex="-1" wire:click="mostrarCarga" x-on:click="closeMenu(false)">
                         <flux:icon name="arrow-up-tray" />Subir plantilla modificada
                     </button>
@@ -149,12 +156,26 @@
         @if($modo === 'carga')
             <form wire:submit="subirPlantilla" class="space-y-4">
                 <flux:heading size="lg">Subir plantilla modificada</flux:heading>
-                <p>La plantilla y sus reglas se aplicarán a las próximas importaciones.</p>
-                <flux:input type="file" wire:model="archivo" accept=".xlsx" label="Plantilla modificada (.xlsx)" />
+                @if($esDepositos)
+                    <p>Se aplicarán las cabeceras, el orden, las descripciones y los requisitos del Excel. Las filas de ejemplo se omiten.</p>
+                @else
+                    <p>La plantilla y sus reglas se aplicarán a las próximas importaciones.</p>
+                @endif
+                <x-editor-foto-input id="matriz-plantilla-excel" modelo="archivo" etiqueta="Plantilla modificada (.xlsx)" accept=".xlsx"
+                    accion="Elegir Excel" sin-archivo="Ningún archivo seleccionado" />
                 <flux:error name="archivo" />
+                @if($vistaPlantilla !== [])
+                    <ul role="status" class="list-disc space-y-1 pl-5 text-sm">
+                        <li>Columnas visibles en la nueva plantilla: {{ $vistaPlantilla['visibles'] }}</li>
+                        <li>Campos nuevos: {{ $vistaPlantilla['nuevas'] }}</li>
+                        <li>Columnas que se ocultarán y seguirán disponibles para archivos anteriores: {{ $vistaPlantilla['ocultas'] }}</li>
+                    </ul>
+                @endif
                 <div class="flex justify-end gap-2">
                     <flux:modal.close><flux:button>Cancelar</flux:button></flux:modal.close>
-                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="archivo,subirPlantilla">Subir plantilla</flux:button>
+                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="archivo,subirPlantilla">
+                        {{ $esDepositos ? ($vistaPlantilla === [] ? 'Revisar Excel' : 'Aplicar plantilla') : 'Subir plantilla' }}
+                    </flux:button>
                 </div>
             </form>
         @endif

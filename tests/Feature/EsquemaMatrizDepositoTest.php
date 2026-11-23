@@ -73,7 +73,7 @@ test('la plantilla v2 adjunta importa una observación sin convertir las instruc
     // El error de fecha del ejemplo se conserva para revisión; no se inventa otra fecha.
 });
 
-test('el Excel completa género y epíteto vacíos y toma los permisos del expediente', function (): void {
+test('el Excel conserva género y epíteto vacíos de una identificación parcial y toma los permisos del expediente', function (): void {
     $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
     $ruta = tempnam(sys_get_temp_dir(), 'depositante-expediente-');
     try {
@@ -85,12 +85,13 @@ test('el Excel completa género y epíteto vacíos y toma los permisos del exped
             expect($i)->not->toBeFalse();
             $hoja->setCellValue([$i + 1, 2], $campo === 'researchPermit' ? 'NO USAR ESTE DATO' : null);
         }
+        $hoja->setCellValue([array_search('taxonRank', $cabeceras, true) + 1, 2], 'family');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
         $fila = app(LectorMatrizDeposito::class)->leer($ruta, [
             'researchPermit' => 'PERMISO-RECOLECCION-QA', 'transportPermit' => 'PERMISO-MOVILIZACION-QA',
         ])['registros'][0];
-        expect($fila['genus'])->toBe('indeterminado')
-            ->and($fila['specificEpithet'])->toBe('indeterminado')
+        expect($fila['genus'])->toBe('')
+            ->and($fila['specificEpithet'])->toBe('')
             ->and($fila['scientificName'])->not->toContain('indeterminado')
             ->and($fila['researchPermit'])->toBe('PERMISO-RECOLECCION-QA')
             ->and($fila['transportPermit'])->toBe('PERMISO-MOVILIZACION-QA');

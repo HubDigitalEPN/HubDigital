@@ -80,7 +80,10 @@
             <flux:sidebar.toggle class="text-white/80 hover:text-white lg:hidden" icon="bars-2" inset="left" />
 
             <a href="{{ route('dashboard') }}" wire:navigate class="hub-mobile-brand hub-topbar-brand">
-                <img src="{{ asset('images/hub-logo-v1.avif') }}" alt="Laboratorio de Invertebrados" class="h-10 w-auto max-w-20 rounded bg-white p-1 object-contain" />
+                <img src="{{ \App\Support\FotosEditoriales::url(\App\Support\FotosEditoriales::CABECERA_SISTEMA) }}"
+                     alt="{{ \App\Support\FotosEditoriales::alt(\App\Support\FotosEditoriales::CABECERA_SISTEMA, \App\Support\FotosEditoriales::ALT_SISTEMA) }}"
+                     class="h-10 w-auto max-w-24 rounded bg-white p-1 object-contain sm:max-w-32" data-logo-cabecera
+                     x-data x-on:logo-cabecera-publicado.window="$el.src = $event.detail.url; $el.alt = $event.detail.alt" />
                 <span><strong>Plataforma de Gestión de Información</strong><small>Laboratorio de Invertebrados</small><small>Escuela Politécnica Nacional</small></span>
             </a>
 

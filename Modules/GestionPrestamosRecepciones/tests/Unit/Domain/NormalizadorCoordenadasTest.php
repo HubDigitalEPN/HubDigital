@@ -28,7 +28,7 @@ function coordenadaInvalida(string $campo, string|float $valor): bool
     return false;
 }
 
-it('acepta latitud dentro de rango con 1 a 4 decimales', function () {
+it('acepta coordenadas decimales dentro de rango', function () {
     expect(coordenadaInvalida('decimalLatitude', '-0.5'))->toBeFalse()
         ->and(coordenadaInvalida('decimalLatitude', '12.3456'))->toBeFalse()
         ->and(coordenadaInvalida('decimalLongitude', '-78.4567'))->toBeFalse();
@@ -50,14 +50,17 @@ it('rechaza longitud fuera del rango -180/180', function () {
         ->and(coordenadaInvalida('decimalLongitude', '-180.9'))->toBeTrue();
 });
 
-it('rechaza coordenadas sin decimales (mínimo 1 decimal)', function () {
-    expect(coordenadaInvalida('decimalLatitude', '12'))->toBeTrue()
-        ->and(coordenadaInvalida('decimalLongitude', '-78'))->toBeTrue();
+it('acepta coordenadas sin decimales', function () {
+    expect(coordenadaInvalida('decimalLatitude', '12'))->toBeFalse()
+        ->and(coordenadaInvalida('decimalLongitude', '-78'))->toBeFalse();
 });
 
-it('rechaza coordenadas con más de 4 decimales', function () {
-    expect(coordenadaInvalida('decimalLatitude', '12.34567'))->toBeTrue()
-        ->and(coordenadaInvalida('decimalLongitude', '-78.123456'))->toBeTrue();
+it('conserva coordenadas con más de 4 decimales sin redondearlas', function () {
+    $resultado = (new NormalizadorCamposDwC)->normalizar(['decimalLatitude' => '12.3456789', 'decimalLongitude' => '-78,12345678']);
+
+    expect($resultado->registro['decimalLatitude'])->toEqual(12.3456789)
+        ->and($resultado->registro['decimalLongitude'])->toBe(-78.12345678)
+        ->and(coordenadaInvalida('decimalLatitude', '90.00001'))->toBeTrue();
 });
 
 it('rechaza coordenadas no numéricas', function () {

@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Services\PaginaLaboratorio;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Storage\AlmacenamientoDepositos;
 
 /** Fotografías de presentación; sus identidades nunca proceden de una ruta enviada por el navegador. */
 final class FotosEditoriales
 {
-    public const ORIGINALES = ['inicio' => 'images/portal-laboratorio-hero.jpg', 'depositos' => 'images/portal-depositos-hero.webp', 'logo' => 'images/logo-epn-v1.avif'];
+    public const CABECERA_SISTEMA = 'logo-sistema-cabecera';
+    public const ACCESO_SISTEMA = 'logo-sistema-acceso';
+    public const ALT_SISTEMA = 'Laboratorio de Invertebrados';
+
+    public const ORIGINALES = [
+        'inicio' => 'images/portal-laboratorio-hero.jpg',
+        'depositos' => 'images/portal-depositos-hero.webp',
+        'logo' => 'images/logo-epn-v1.avif',
+        self::CABECERA_SISTEMA => 'images/logo-laboratorio-blanco.png',
+        self::ACCESO_SISTEMA => 'images/logo-laboratorio-transparente.png',
+    ];
 
     public static function clave(string $id): string
     {

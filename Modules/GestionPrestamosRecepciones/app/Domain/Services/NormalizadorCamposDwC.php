@@ -18,7 +18,7 @@ use Modules\GestionPrestamosRecepciones\Domain\ValueObjects\ResultadoNormalizaci
  *  - sex          : aliases en español/abreviatura → vocabulario DwC
  *  - lifeStage    : aliases en español             → vocabulario DwC
  *  - decimalLatitude / decimalLongitude : coma → punto; exige rango válido
- *    (lat −90/90, lon −180/180) y entre 1 y 4 decimales (marca inválido si no)
+ *    (lat −90/90, lon −180/180), con la precisión proporcionada.
  */
 final class NormalizadorCamposDwC
 {
@@ -125,19 +125,7 @@ final class NormalizadorCamposDwC
             ]]];
         }
 
-        // Precisión geográfica exigida: entre 1 y 4 decimales.
-        $decimales = $this->contarDecimales((string) $valor);
-        if ($decimales < 1 || $decimales > 4) {
-            return [$registro, [[
-                'campo' => $campo,
-                'original' => $original,
-                'normalizado' => null,
-                'invalido' => true,
-                'mensaje' => 'Debe tener entre 1 y 4 decimales',
-            ]]];
-        }
-
-        $normalizado = round((float) $valor, 4);
+        $normalizado = (float) $valor;
 
         $limites = [
             'decimalLatitude' => [-90.0,  90.0],
@@ -169,16 +157,6 @@ final class NormalizadorCamposDwC
             'original' => $original,
             'normalizado' => $normalizado,
         ]]];
-    }
-
-    /**
-     * Cuenta los dígitos decimales de un valor numérico ya normalizado (con punto).
-     */
-    private function contarDecimales(string $valor): int
-    {
-        $pos = strpos($valor, '.');
-
-        return $pos === false ? 0 : strlen(substr($valor, $pos + 1));
     }
 
     /**
