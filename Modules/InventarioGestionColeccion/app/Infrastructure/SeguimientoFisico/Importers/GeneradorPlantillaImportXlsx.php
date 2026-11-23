@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers;
 
+use App\Support\PlantillasLaboratorio;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -23,10 +24,7 @@ final class GeneradorPlantillaImportXlsx
     private static ?array $requisitosReferencia = null;
     public static function requisitoGuia(array $columna): string
     {
-        // La referencia viaja con los módulos; el generador también funciona
-        // sin arrancar Laravel ni depender del directorio de trabajo.
-        $rutaReferencia = dirname(__DIR__, 5).'/GestionPrestamosRecepciones/database/data/matriz-deposito-v2.json';
-        self::$requisitosReferencia ??= array_column(json_decode(file_get_contents($rutaReferencia), true, 512, JSON_THROW_ON_ERROR)['columnas'], 'requisito', 'campo');
+        self::$requisitosReferencia ??= array_column(PlantillasLaboratorio::referencia()['catalogo'], 'requisito_guia', 'campo');
         return $columna['requisito_guia'] ?? self::$requisitosReferencia[$columna['campo']] ?? $columna['requisito'];
     }
 
@@ -41,8 +39,14 @@ final class GeneradorPlantillaImportXlsx
      */
     public static function columnas(?array $definicion = null): array
     {
+        return array_column(self::visibles($definicion), 'descripcion', 'cabecera');
+    }
+
+    private static function visibles(?array $definicion): array
+    {
         $definicion ??= ConfiguracionPlantillaCatalogo::predeterminada();
-        return array_column($definicion['columnas'], 'descripcion', 'cabecera');
+
+        return array_values(array_filter($definicion['columnas'], static fn (array $columna): bool => $columna['plantilla_catalogo'] ?? true));
     }
 
     /** Cabeceras CSV completas, incluidas las que contienen comas. */
@@ -55,9 +59,8 @@ final class GeneradorPlantillaImportXlsx
     /** Devuelve el contenido binario del .xlsx de la plantilla. */
     public static function generar(?array $definicion = null): string
     {
-        $definicion ??= ConfiguracionPlantillaCatalogo::predeterminada();
-        $columnas = self::columnas($definicion);
-        $encabezados = array_keys($columnas);
+        $columnas = self::visibles($definicion);
+        $encabezados = array_column($columnas, 'cabecera');
 
         $spreadsheet = new Spreadsheet;
 
@@ -65,7 +68,7 @@ final class GeneradorPlantillaImportXlsx
         $hoja = $spreadsheet->getActiveSheet();
         $hoja->setTitle('Especímenes');
         $hoja->fromArray([$encabezados], null, 'A1');
-        $instrucciones = array_column($definicion['columnas'], 'descripcion');
+        $instrucciones = array_column($columnas, 'descripcion');
         $instrucciones[0] = '[INSTRUCCIONES] '.$instrucciones[0];
         $hoja->fromArray([$instrucciones], null, 'A2');
 
@@ -77,7 +80,7 @@ final class GeneradorPlantillaImportXlsx
         ]);
         foreach (range(1, count($encabezados)) as $col) {
             $hoja->getColumnDimensionByColumn($col)->setWidth(28);
-            $c = $definicion['columnas'][$col-1]; $requisito = self::requisitoGuia($c);
+            $requisito = self::requisitoGuia($columnas[$col - 1]);
             $celda = Coordinate::stringFromColumnIndex($col).'1';
             $hoja->getStyle($celda)->getFill()->setFillType($requisito === 'predeterminado' ? Fill::FILL_PATTERN_GRAY0625 : Fill::FILL_SOLID)->getStartColor()->setRGB(self::colorRequisito($requisito));
             $hoja->getStyle($celda)->getFont()->getColor()->setRGB('000000');
@@ -94,7 +97,7 @@ final class GeneradorPlantillaImportXlsx
         $guia->setTitle('Guía');
         $guia->fromArray([['Campo', 'Columna', 'Descripción y ejemplo', 'Requisito guía v2', 'Formato', 'Requisito catálogo']], null, 'A1');
         $fila = 2;
-        foreach ($definicion['columnas'] as $c) {
+        foreach ($columnas as $c) {
             $requisito = self::requisitoGuia($c);
             $guia->fromArray([[$c['campo'], $c['cabecera'], $c['descripcion'], $requisito, $c['formato'], $c['requisito']]], null, 'A'.$fila);
             $guia->getStyle('D'.$fila)->getFill()->setFillType($requisito === 'predeterminado' ? Fill::FILL_PATTERN_GRAY0625 : Fill::FILL_SOLID)->getStartColor()->setRGB(self::colorRequisito($requisito));

@@ -106,7 +106,7 @@
                             @elseif(isset($opciones[$campo]))
                                 <flux:select wire:model="datos.{{ $campo }}" :label="$etiqueta">
                                     @if($campo === 'requisito_guia')
-                                        <option value="">Usar requisito de la columna</option>
+                                        <option value="">{{ $esImportacion ? 'Usar requisito de la plantilla de referencia' : 'Usar requisito de la columna' }}</option>
                                     @elseif($campo === 'campo' && !array_key_exists('', $opciones[$campo]))
                                         <option value="">Selecciona un campo</option>
                                     @endif

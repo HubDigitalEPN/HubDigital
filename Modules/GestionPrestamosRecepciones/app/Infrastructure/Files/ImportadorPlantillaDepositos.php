@@ -88,8 +88,11 @@ final class ImportadorPlantillaDepositos
                     $alias[] = $anterior['cabecera'];
                 }
                 if ($anterior !== null && (in_array($campo, ['researchPermit', 'transportPermit'], true)
-                    || in_array($anterior['requisito'], ['interno', 'predeterminado'], true))) {
+                    || in_array($anterior['requisito'], ['interno', 'predeterminado'], true)
+                    || $requisito === ($anterior['requisito_guia'] ?? null))) {
                     $requisito = $anterior['requisito'];
+                } elseif (isset($anterior['requisito_guia'])) {
+                    unset($anterior['requisito_guia']);
                 }
                 if ($anterior !== null && $descripcion !== ($anterior['descripcion'] ?? '') && ($anterior['descripcion'] ?? '') !== '') {
                     $actual['descripciones_guia'][$campo] = array_values(array_unique([

@@ -352,7 +352,10 @@ function refreshRuntimePlan({root, head, files, runtime, environment, plan}) {
     const force = plan.forced_integral === true;
     try {
         const pdfState = {root, head, ...packageSectors.inputs({sector: 'pdf', sources: files, runtime, environment})};
-        const pdfDecision = pdfPlanDecision(plan.paquete.pdf, packageSectors.select(root, 'pdf', pdfState, {force}));
+        const entradasAntesDeCompilar = plan.sectores_paquete?.pdf?.inputs;
+        const cambioDeBinario = plan.agente.java_build && entradasAntesDeCompilar?.input_sha256 === pdfState.input_sha256 &&
+            entradasAntesDeCompilar.output_sha256 !== pdfState.output_sha256;
+        const pdfDecision = pdfPlanDecision(plan.paquete.pdf || cambioDeBinario, packageSectors.select(root, 'pdf', pdfState, {force}));
         plan.sectores_paquete = {pdf: {execute: pdfDecision.execute, inputs: pdfState,
             evidence: pdfDecision.evidence}};
         if (pdfDecision.pending) plan.pendientes.push('PDF: falta evidencia compatible; delimitar y renovar su control local sin ampliar suites.');

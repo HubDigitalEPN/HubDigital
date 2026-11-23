@@ -28,18 +28,25 @@ afterEach(function (): void {
     $GLOBALS['plantillas_catalogo_qa'] = [];
 });
 
-test('la descarga y su guía reúnen la matriz de laboratorio y las dos notas sin catalogNumber obsoleto', function (): void {
+test('la descarga y su guía reproducen las 106 cabeceras oficiales y conservan la compatibilidad de las notas', function (): void {
     $def = app(ConfiguracionPlantillaCatalogo::class)->leer();
     $fuente = json_decode(file_get_contents(base_path('Modules/GestionPrestamosRecepciones/database/data/matriz-deposito-v2.json')), true);
     expect(array_column($def['columnas'], 'campo'))->toEqualCanonicalizing([...array_column($fuente['columnas'], 'campo'), 'notesGeneral', 'taxonomicNotes']);
-    expect(array_column($def['columnas'], 'cabecera'))->not->toContain('catalogNumber', 'invidualCount');
+    $cabeceras = array_column(\App\Support\PlantillasLaboratorio::referencia()['catalogo'], 'cabecera');
+    expect(array_keys(GeneradorPlantillaImportXlsx::columnas($def)))->toBe($cabeceras)->toHaveCount(106)
+        ->toContain('invidualCount', 'iInfraspecificEpithet')->not->toContain('catalogNumber', 'notesGeneral', 'taxonomicNotes');
+    expect(ConfiguracionPlantillaCatalogo::alias($def))->toMatchArray([
+        'individualcount' => 'individualCount', 'invidualcount' => 'individualCount',
+        'notesgeneral' => 'notesGeneral', 'taxonomicnotes' => 'taxonomicNotes',
+    ]);
     ConfiguracionPlantillaCatalogo::validar($def);
     $ruta = archivoPlantillaCatalogoQa(GeneradorPlantillaImportXlsx::generar($def));
     expect(app(ConfiguracionPlantillaCatalogo::class)->desdeExcel($ruta))->toEqual($def);
     $libro = IOFactory::load($ruta);
     try {
-        expect($libro->getSheetByName('Guía')->getHighestDataRow())->toBe(count($def['columnas']) + 1)
+        expect($libro->getSheetByName('Guía')->getHighestDataRow())->toBe(107)
             ->and($libro->getSheetByName('Guía')->getCell('F2')->getValue())->toBe('obligatorio');
+        expect($libro->getSheet(0)->rangeToArray('A1:DB1')[0])->toBe($cabeceras);
         expect($libro->getSheet(0)->getCell('A2')->getValue())->toStartWith('[INSTRUCCIONES] ')
             ->and($libro->getSheet(0)->getCell('C2')->getValue())->toBe($def['columnas'][2]['descripcion'])
             ->and($libro->getSheet(0)->getStyle('C1')->getFill()->getStartColor()->getRGB())->toBe('FFC000')

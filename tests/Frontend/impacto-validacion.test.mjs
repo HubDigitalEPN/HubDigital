@@ -4,6 +4,7 @@ import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import impact from '../../scripts/deployment/impacto-validacion.cjs';
+import packageSectors from '../../scripts/deployment/bases-sectores-paquete.cjs';
 import browser from '../../scripts/deployment/base-navegador.cjs';
 import focal from '../../scripts/deployment/contratos-ui-focales.cjs';
 import {readFileSync} from 'node:fs';
@@ -54,6 +55,24 @@ test('PDF fuera del cambio exige evidencia compatible sin ejecutar otra suite au
         assert.equal(incompatible.pending, true);
     }
     assert.equal(impact.pdfPlanDecision(true, {execute: true, previous}).execute, true);
+});
+test('el JAR recompilado vuelve a seleccionar solo el control PDF cuando cambia su huella', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'hd-pdf-rebuild-'));
+    try {
+        const head = 'a'.repeat(40), files = {'composer.lock': 'mismo'}, environment = 'entorno';
+        const jar = 'resources/bin/hubdigital-pdf-signature.jar';
+        const anterior = {per_root: {vendor: 'mismo', [jar]: 'anterior'}};
+        const actual = {per_root: {vendor: 'mismo', [jar]: 'recompilado'}};
+        const entradas = packageSectors.inputs({sector: 'pdf', sources: files, runtime: anterior, environment});
+        const selected = {agente: {java_build: true}, paquete: {pdf: false}, pendientes: [],
+            sectores_paquete: {pdf: {inputs: entradas}}, cobertura: {integraciones: {}}};
+        impact.refreshRuntimePlan({root, head, files, runtime: actual, environment, plan: selected});
+        assert.equal(selected.paquete.pdf, true);
+        assert.equal(selected.cobertura.integraciones.pdf, 'ejecutar');
+        assert.deepEqual(selected.pendientes, []);
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
 });
 test('la revisión visual independiente rechaza un recibo de otro build', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'hd-ui-phase-')), id = 'depositos_documento';

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers;
 
+use App\Support\PlantillasLaboratorio;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,6 +14,13 @@ use ZipArchive;
 final class ConfiguracionPlantillaCatalogo
 {
     public static function predeterminada(): array
+    {
+        $base = self::anterior();
+
+        return PlantillasLaboratorio::catalogo($base, $base);
+    }
+
+    public static function anterior(): array
     {
         return json_decode(file_get_contents(__DIR__.'/../../../../database/data/plantilla-catalogo-v3.json'), true, 512, JSON_THROW_ON_ERROR);
     }
@@ -74,6 +82,7 @@ final class ConfiguracionPlantillaCatalogo
             $campos[$campo] = true; $cabeceras[$cabecera] = true;
             if (!in_array($c['requisito'] ?? '', ['obligatorio', 'recomendado', 'opcional'], true) || !in_array($c['formato'] ?? '', ['texto', 'fecha'], true)) throw new DomainException('Requisito o formato no válido en «'.$c['cabecera'].'».');
             if (isset($c['requisito_guia']) && !in_array($c['requisito_guia'], ['obligatorio','recomendado','opcional','interno','predeterminado'], true)) throw new DomainException('Requisito de guía no válido.');
+            if (($c['plantilla_catalogo'] ?? true) === false && $c['requisito'] === 'obligatorio') throw new DomainException('Incluye «'.$c['cabecera'].'» en la plantilla porque es obligatoria para la importación.');
             if (($c['personalizada'] ?? false) && !preg_match('/^extra_[a-f0-9]{32}$/D', $c['campo'])) throw new DomainException('La clave estable de la columna personalizada no es válida.');
         }
         $id = array_values(array_filter($columnas, fn ($c) => $c['campo'] === 'occurrenceID'));
@@ -125,12 +134,18 @@ final class ConfiguracionPlantillaCatalogo
                 if ($previo && $previo['cabecera'] !== $c['cabecera']) $c['alias'] = array_values(array_unique([...$c['alias'], $previo['cabecera']]));
                 $columnas[] = $c;
             }
-            $definicion = ['version' => 'catalogo-v3', 'columnas' => $columnas]; self::validar($definicion);
             // Leer la fila por coordenada evita perder encabezados vacíos intermedios.
             $cabeceras = [];
             $cantidad = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($hoja->getHighestDataColumn());
             for ($i = 1; $i <= $cantidad; $i++) $cabeceras[] = $leer($hoja->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i).'1'));
             if ($cabeceras !== array_column($columnas, 'cabecera')) throw new DomainException('Los encabezados y su orden deben coincidir con la columna «Columna» de la hoja Guía.');
+            $visibles = array_column($columnas, 'campo');
+            foreach ($anteriores['columnas'] as $posicion => $previa) {
+                if (($previa['plantilla_catalogo'] ?? true) === false && ! in_array($previa['campo'], $visibles, true)) {
+                    array_splice($columnas, $posicion, 0, [$previa]);
+                }
+            }
+            $definicion = ['version' => 'catalogo-v3', 'columnas' => $columnas]; self::validar($definicion);
             return $definicion;
         } finally { $libro->disconnectWorksheets(); }
     }

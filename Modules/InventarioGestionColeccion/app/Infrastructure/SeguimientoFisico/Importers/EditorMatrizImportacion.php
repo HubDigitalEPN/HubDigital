@@ -24,6 +24,7 @@ final class EditorMatrizImportacion
             'descripcion' => ['required', 'string', 'max:5000'],
             'requisito' => ['required', 'in:obligatorio,recomendado,opcional'],
             'formato' => ['required', 'in:texto,fecha'],
+            'plantilla_catalogo' => ['sometimes', 'boolean'],
             'requisito_guia' => ['nullable', 'in:obligatorio,recomendado,opcional,interno,predeterminado'],
             'orden' => ['nullable', 'integer', 'min:1', 'max:'.$limite],
             'alias' => ['nullable', 'string', 'max:5000'],
@@ -40,6 +41,12 @@ final class EditorMatrizImportacion
         $fila['descripcion'] = trim($valores['descripcion']);
         $fila['requisito'] = $valores['requisito'];
         $fila['formato'] = $valores['formato'];
+        if (array_key_exists('plantilla_catalogo', $valores)) {
+            unset($fila['plantilla_catalogo']);
+            if (! (bool) $valores['plantilla_catalogo']) {
+                $fila['plantilla_catalogo'] = false;
+            }
+        }
         $fila['alias'] = $this->alias($valores, $fila['alias'] ?? [], $cabeceraAnterior, $fila['cabecera']);
         if (array_key_exists('requisito_guia', $valores)) {
             unset($fila['requisito_guia']);

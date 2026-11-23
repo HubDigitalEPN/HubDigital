@@ -34,19 +34,22 @@ test('la cuadrícula de matrices cambia el orden y conserva el ejemplo de la col
     expect($esquema->leer()['columnas'])->toHaveCount(count($original['columnas']));
 });
 
-test('la plantilla corta del depositante conserva 42 columnas colores ejemplo guía y leyenda y se importa sin falsos errores', function (): void {
+test('la plantilla corta descarga las 40 columnas oficiales y conserva colores, ejemplo, guía y leyenda', function (): void {
     $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
     $ruta = tempnam(sys_get_temp_dir(), 'depositante-v3-');
     try {
         $hoja = $libro->getSheet(0);
-        expect($hoja->getHighestDataColumn())->toBe('AP')
+        $general = array_column(\App\Support\PlantillasLaboratorio::referencia()['catalogo'], 'cabecera', 'campo');
+        $campos = array_column(\App\Support\PlantillasLaboratorio::referencia()['depositantes'], 'campo');
+        expect($hoja->rangeToArray('A1:AN1')[0])->toBe(array_map(static fn ($c) => $general[$c], $campos));
+        expect($hoja->getHighestDataColumn())->toBe('AN')
             ->and($hoja->getCell('A1')->getValue())->toBe('recordNumber')
-            ->and($hoja->getCell('AP1')->getValue())->toBe('occurrenceRemarks')
+            ->and($hoja->getCell('AN1')->getValue())->toBe('microhabitat')
             ->and($hoja->getStyle('A1')->getFill()->getStartColor()->getARGB())->toBe('FFFFC000')
-            ->and($hoja->getStyle('E1')->getFill()->getStartColor()->getARGB())->toBe('FFFFFF00')
+            ->and($hoja->getStyle('C1')->getFill()->getStartColor()->getARGB())->toBe('FFFFC000')
+            ->and($hoja->getCell('C2')->getValue())->toBe('consulting')
             ->and((string) $hoja->getCell('A3')->getValue())->toContain('Código de campo')
-            ->and($hoja->getCell('A3')->getValue())->toBeInstanceOf(\PhpOffice\PhpSpreadsheet\RichText\RichText::class)
-            ->and((string) $hoja->getCell('H3')->getValue())->toContain('barra')
+            ->and((string) $hoja->getCell('H3')->getValue())->toBe(\App\Support\PlantillasLaboratorio::referencia()['depositantes'][7]['descripcion'])
             ->and($hoja->getCell('A5')->getValue())->toBe('Clave')
             ->and($hoja->getCell('A7')->getValue())->toBe('campo sugerido, caso aplique, se agradece el aporte');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
@@ -112,7 +115,7 @@ test('curaduría cambia la cabecera conservando el identificador protegido y la 
     $libro = app(\Modules\GestionPrestamosRecepciones\Infrastructure\Files\PlantillaMatrizDepositante::class)->crear();
     $ruta = tempnam(sys_get_temp_dir(), 'depositante-cabecera-');
     try {
-        expect($libro->getSheet(0)->getHighestDataColumn())->toBe('AP')
+        expect($libro->getSheet(0)->getHighestDataColumn())->toBe('AN')
             ->and($libro->getSheet(0)->getCell('A1')->getValue())->toBe('Código de campo');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
         $resultado = app(LectorMatrizDeposito::class)->leer($ruta);

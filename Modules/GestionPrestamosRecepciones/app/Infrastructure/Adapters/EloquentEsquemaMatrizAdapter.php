@@ -32,7 +32,7 @@ final class EloquentEsquemaMatrizAdapter implements EsquemaMatrizPort
                 }
             }
             if ($indice === false) $columnas[] = $columna + ['plantilla_depositante' => true];
-            else $columnas[$indice] = $columna + ['plantilla_depositante' => $columnas[$indice]['plantilla_depositante'] ?? true];
+            else $columnas[$indice] = $columna + $columnas[$indice];
             EsquemaMatriz::mapa($columnas);
             $excepcion = $columna['excepcion_campo'] ?? '';
             if ($excepcion !== '' && (! in_array($excepcion, array_column($columnas, 'campo'), true) || trim($columna['excepcion_valor'] ?? '') === '')) {

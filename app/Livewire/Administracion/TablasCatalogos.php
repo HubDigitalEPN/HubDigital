@@ -93,7 +93,7 @@ final class TablasCatalogos extends Component
         $definicion = $this->preparar('columna');
         $this->datos = ['orden' => count($definicion['columnas']) + 1, 'formato' => 'texto'] + match ($this->tabla) {
             Matrices::DEPOSITOS => ['requisito' => 'opcional', 'plantilla_depositante' => '1'],
-            Matrices::IMPORTACION => ['requisito' => 'opcional'],
+            Matrices::IMPORTACION => ['requisito' => 'opcional', 'plantilla_catalogo' => '1'],
             Matrices::IPT => ['ancho' => 10, 'origen' => ''],
         };
         $this->modal('editar-columna-matriz')->show();
@@ -108,6 +108,8 @@ final class TablasCatalogos extends Component
         $columna['alias'] = implode($this->tabla === Matrices::IMPORTACION ? "\n" : ', ', $columna['alias'] ?? []);
         if ($this->tabla === Matrices::DEPOSITOS) {
             $columna['plantilla_depositante'] = ($columna['plantilla_depositante'] ?? true) ? '1' : '0';
+        } elseif ($this->tabla === Matrices::IMPORTACION) {
+            $columna['plantilla_catalogo'] = ($columna['plantilla_catalogo'] ?? true) ? '1' : '0';
         }
         $this->datos = ['orden' => $indice + 1] + $columna;
         $this->modal('editar-columna-matriz')->show();

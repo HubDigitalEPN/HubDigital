@@ -33,11 +33,13 @@ final class RegistrosAdministracionCatalogos
                 'alias' => 'Otros nombres', 'requisito' => 'Requisito', 'formato' => 'Formato',
                 'descripcion' => 'Descripción', 'excepcion_campo' => 'Campo de la excepción',
                 'excepcion_valor' => 'Valor de la excepción', 'plantilla_depositante' => 'En plantilla del depositante',
+                'requisito_guia' => 'Requisito en la guía',
             ],
             self::IMPORTACION => [
                 'campo' => 'Campo', 'cabecera' => 'Cabecera Excel', 'descripcion' => 'Descripción y ejemplo',
                 'alias' => 'Otros nombres', 'requisito' => 'Requisito', 'formato' => 'Formato',
-                'requisito_guia' => 'Requisito en la guía', 'personalizada' => 'Personalizada',
+                'requisito_guia' => 'Requisito en la guía', 'plantilla_catalogo' => 'En plantilla general',
+                'personalizada' => 'Personalizada',
             ],
             self::IPT => ['campo' => 'Cabecera IPT', 'origen' => 'Campo de origen', 'formato' => 'Formato', 'ancho' => 'Ancho'],
         };
@@ -134,7 +136,7 @@ final class RegistrosAdministracionCatalogos
         $tipos = array_map(static fn (string $campo): string => $campo.' '.match ($campo) {
             'ancho' => 'integer',
             'alias' => 'jsonb',
-            'plantilla_depositante', 'personalizada' => 'boolean',
+            'plantilla_depositante', 'plantilla_catalogo', 'personalizada' => 'boolean',
             default => 'text',
         }, $campos);
         $filas = DB::query()->fromSub($documento, 'matriz')
@@ -152,8 +154,8 @@ final class RegistrosAdministracionCatalogos
         $columna = 'columna.'.$campo;
         if ($campo === 'alias') {
             $filas->selectRaw("CASE WHEN $columna IS NOT NULL THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text($columna)), ', ') END AS alias");
-        } elseif (in_array($campo, ['plantilla_depositante', 'personalizada'], true)) {
-            $valorPorDefecto = $campo === 'plantilla_depositante' ? 'true' : 'false';
+        } elseif (in_array($campo, ['plantilla_depositante', 'plantilla_catalogo', 'personalizada'], true)) {
+            $valorPorDefecto = $campo === 'personalizada' ? 'false' : 'true';
             $filas->selectRaw("CASE WHEN COALESCE($columna, $valorPorDefecto) THEN ? ELSE ? END AS $campo", [$etiquetas[1], $etiquetas[0]]);
         } elseif ($etiquetas !== []) {
             $casos = str_repeat(' WHEN ? THEN ?', count($etiquetas));
@@ -175,8 +177,9 @@ final class RegistrosAdministracionCatalogos
         $binario = [1 => 'Sí', 0 => 'No'];
 
         return match ($matriz) {
-            self::DEPOSITOS => ['requisito' => $guia, 'formato' => $formatos, 'plantilla_depositante' => $binario],
-            self::IMPORTACION => ['requisito' => $requisitos, 'requisito_guia' => $guia, 'formato' => $formatos, 'personalizada' => $binario],
+            self::DEPOSITOS => ['requisito' => $guia, 'requisito_guia' => $requisitos, 'formato' => $formatos, 'plantilla_depositante' => $binario],
+            self::IMPORTACION => ['requisito' => $requisitos, 'requisito_guia' => $guia, 'formato' => $formatos,
+                'plantilla_catalogo' => $binario, 'personalizada' => $binario],
             self::IPT => ['formato' => ConfiguracionIpt::FORMATOS],
         };
     }

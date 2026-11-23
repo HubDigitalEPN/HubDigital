@@ -42,12 +42,16 @@ final class EditorMatrizDepositos
             'cabecera' => ['required', 'string', 'max:160'],
             'alias' => ['nullable', 'string', 'max:2000'],
             'requisito' => ['required', 'in:obligatorio,recomendado,opcional,interno,predeterminado'],
+            'requisito_guia' => ['nullable', 'in:obligatorio,recomendado,opcional'],
             'formato' => ['required', 'in:texto,fecha'],
             'descripcion' => ['nullable', 'string', 'max:4000'],
             'excepcion_campo' => ['nullable', 'string', 'max:160', 'required_with:excepcion_valor'],
             'excepcion_valor' => ['nullable', 'string', 'max:160', 'required_with:excepcion_campo'],
             'plantilla_depositante' => ['required', 'boolean'],
         ])->validate();
+        if (($columna['requisito_guia'] ?? null) === '') {
+            $columna['requisito_guia'] = null;
+        }
 
         DB::transaction(function () use ($campoOriginal, $columna, $huella, $usuario): void {
             $definicion = $this->bloquear($huella);

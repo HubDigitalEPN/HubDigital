@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Files;
 
+use App\Support\PlantillasLaboratorio;
 use Modules\GestionPrestamosRecepciones\Application\Ports\EsquemaMatrizPort;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -53,6 +54,7 @@ final class PlantillaMatrizDepositante
         }
 
         $referenciaVisual = $originales[$camposBase[0]];
+        $ejemplos = PlantillasLaboratorio::referencia()['ejemplos_depositantes'];
         foreach ($columnas as $i => $columna) {
             $original = $originales[$columna['campo']] ?? null;
             $hoja->getColumnDimensionByColumn($i + 1)->setWidth(($original ?? $referenciaVisual)['ancho']);
@@ -61,11 +63,16 @@ final class PlantillaMatrizDepositante
                 $hoja->getCell([$i + 1, $fila])->setValueExplicit($valor, $tipo)->setXfIndex($estilo);
             }
             $hoja->setCellValueExplicit([$i + 1, 1], $columna['cabecera'], DataType::TYPE_STRING);
+            if ($original === null && isset($ejemplos[$columna['campo']])) {
+                $hoja->setCellValueExplicit([$i + 1, 2], $ejemplos[$columna['campo']], DataType::TYPE_STRING);
+            }
             // Conservar el texto enriquecido de la guía original cuando no cambió.
             if ((string) $hoja->getCell([$i + 1, 3])->getValue() !== $columna['descripcion']) {
                 $hoja->setCellValueExplicit([$i + 1, 3], $columna['descripcion'], DataType::TYPE_STRING);
             }
-            $color = match ($columna['requisito']) { 'obligatorio' => 'FFFFC000', 'recomendado' => 'FFFFFF00', default => 'FFFFFFFF' };
+            $color = match ($columna['requisito_guia'] ?? $columna['requisito']) {
+                'obligatorio' => 'FFFFC000', 'recomendado' => 'FFFFFF00', default => 'FFFFFFFF',
+            };
             if (in_array($columna['campo'], ['researchPermit', 'transportPermit'], true)) {
                 $hoja->setCellValueExplicit([$i + 1, 3], 'Se completa con el permiso registrado en el expediente.', DataType::TYPE_STRING);
                 $color = 'FFFFFFFF';
