@@ -46,7 +46,6 @@ return [
         'requisito_datos' => 'Datos de depósito material MEPN y detalle biológico, completados mediante formularios guiados',
         'nota_requisitos' => 'Los documentos exactos se determinarán en el siguiente paso según el origen de los especímenes.',
         'requisito_donacion_solicitud' => 'Solicitud de donación generada y firmada dentro de HubDigital',
-        'requisito_donacion_carta' => 'Carta de cesión de derechos / origen lícito',
     ],
     'origen' => [
         'titulo' => 'Origen de los especímenes',

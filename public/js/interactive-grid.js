@@ -206,6 +206,22 @@
             estilos['--ig-table-min-width'] = medidas.reduce((total, ancho) => total + (ancho || 144), 0) + 'px';
             return estilos;
         },
+        controlAnchoColumna() {
+            let observador;
+            return {
+                anchoVisible: null,
+                init() {
+                    const cabecera = this.$el.closest('th');
+                    // Livewire evalúa las ligaduras en copias sin tamaño antes de actualizar la tabla.
+                    observador = new ResizeObserver(() => {
+                        const ancho = Math.round(cabecera.getBoundingClientRect().width);
+                        this.anchoVisible = ancho > 0 ? ancho : null;
+                    });
+                    observador.observe(cabecera, {box: 'border-box'});
+                },
+                destroy() { observador.disconnect(); },
+            };
+        },
         anchoColumna(campo, control) {
             return this.anchosColumnas[campo] || control.closest('th').getBoundingClientRect().width;
         },

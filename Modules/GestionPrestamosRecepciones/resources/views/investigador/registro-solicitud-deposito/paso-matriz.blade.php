@@ -15,10 +15,12 @@
             :solo-edicion-de-textos="$soloEdicionDeTextos ?? false" />
     </flux:field>
     @if($matrizId)
+        @php($requiereRevision = collect($estadosRegistros)->contains(static fn (array $registro): bool =>
+            ($registro['advertencias'] ?? []) !== [] || in_array($registro['estado'], ['Pendiente', 'No Verificado'], true)))
         <div class="rounded border border-border bg-surface p-4">
             <p class="font-semibold text-blue-navy">{{ $archivoMatrizNombre ?: 'Matriz guardada' }} · {{ number_format($totalRegistros, 0, ',', '.') }} registros</p>
             @if($camposDwCRecomendadosFaltantes !== [])<p class="mt-2 text-sm text-text-secondary">Campos recomendados ausentes: {{ implode(', ', $camposDwCRecomendadosFaltantes) }}.</p>@endif
-            <details class="mt-3">
+            <details class="mt-3" @if($requiereRevision) open @endif>
                 <summary class="cursor-pointer font-semibold text-science-blue">Ver resultado de la validación</summary>
                 <div class="mt-3 max-h-96 space-y-2 overflow-y-auto">
                     @foreach($estadosRegistros as $idRegistro => $registro)

@@ -60,7 +60,7 @@ if (($prefijoPruebas + '_1') -notmatch $patronBaseAislada -or
     assert.equal(result.status, 0, result.stderr);
 });
 
-test('el ZIP conserva los bytes de las fuentes y excluye documentos y pruebas', () => {
+test('el ZIP guarda las fuentes fuera de Git y excluye documentos y pruebas', () => {
     const command = String.raw`
 $ErrorActionPreference = 'Stop'
 $tokens = $null
@@ -71,25 +71,35 @@ if ($errors.Count) { throw ($errors | Out-String) }
 $fn = $ast.Find({param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Guardar-RespaldoFuentes'}, $true)
 . ([ScriptBlock]::Create($fn.Extent.Text))
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('hd-codigo-zip-' + [Guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $temp | Out-Null
+$repo = Join-Path $temp 'proyecto'
+$datosLocales = Join-Path $temp 'perfil-local'
+New-Item -ItemType Directory -Path $repo,$datosLocales | Out-Null
 try {
-    Set-Content -LiteralPath (Join-Path $temp 'app.php') -Value '<?php return 123;' -Encoding Ascii
-    Set-Content -LiteralPath (Join-Path $temp 'package-lock.json') -Value '{}' -Encoding Ascii
-    Set-Content -LiteralPath (Join-Path $temp 'AccesoTest.php') -Value 'prueba' -Encoding Ascii
-    Set-Content -LiteralPath (Join-Path $temp 'manual.pdf') -Value 'documento' -Encoding Ascii
+    New-Item -ItemType Directory -Path (Join-Path $repo '.git') | Out-Null
+    Set-Content -LiteralPath (Join-Path $repo 'app.php') -Value '<?php return 123;' -Encoding Ascii
+    Set-Content -LiteralPath (Join-Path $repo 'package-lock.json') -Value '{}' -Encoding Ascii
+    Set-Content -LiteralPath (Join-Path $repo 'AccesoTest.php') -Value 'prueba' -Encoding Ascii
+    Set-Content -LiteralPath (Join-Path $repo 'manual.pdf') -Value 'documento' -Encoding Ascii
     $archivos = @('app.php','package-lock.json','AccesoTest.php','manual.pdf')
-    $manifest = @(foreach ($nombre in $archivos) { (Get-FileHash -LiteralPath (Join-Path $temp $nombre)).Hash.ToLowerInvariant() + '  ' + $nombre })
-    Guardar-RespaldoFuentes -Raiz $temp -Huellas $manifest -Commit ('1' * 40)
-    $carpeta = Join-Path $temp '.local/backups/codigo-fuente'
+    $manifest = @(foreach ($nombre in $archivos) { (Get-FileHash -LiteralPath (Join-Path $repo $nombre)).Hash.ToLowerInvariant() + '  ' + $nombre })
+    Guardar-RespaldoFuentes -Raiz $repo -Huellas $manifest -Commit ('1' * 40) -DatosLocales $datosLocales
+    $carpeta = Join-Path $datosLocales 'HubDigital/Respaldos/codigo-fuente'
     $archivo = @(Get-ChildItem -LiteralPath $carpeta -Filter '*.zip')
     if ($archivo.Count -ne 1) { throw 'El paquete debe dejar un solo ZIP por ejecucion.' }
     $zip = [IO.Compression.ZipFile]::OpenRead($archivo[0].FullName)
     try {
         if (($zip.Entries.FullName -join ',') -ne 'app.php,package-lock.json') { throw 'El ZIP incluye archivos ajenos a la fuente.' }
     } finally { $zip.Dispose() }
+    New-Item -ItemType Directory -Path (Join-Path $datosLocales '.git') | Out-Null
+    Set-Content -LiteralPath (Join-Path $datosLocales '.git/HEAD') -Value 'ref: refs/heads/main' -Encoding Ascii
+    $rechazoGit = $false
+    try { Guardar-RespaldoFuentes -Raiz $repo -Huellas $manifest -Commit ('1' * 40) -DatosLocales $datosLocales }
+    catch { $rechazoGit = $_.Exception.Message -match 'fuera de todo repositorio Git' }
+    if (!$rechazoGit) { throw 'Se acepto guardar el respaldo dentro de otro repositorio.' }
+    Remove-Item -LiteralPath (Join-Path $datosLocales '.git/HEAD')
     $manifest[0] = ('0' * 64) + '  app.php'
     $rechazo = $false
-    try { Guardar-RespaldoFuentes -Raiz $temp -Huellas $manifest -Commit ('1' * 40) }
+    try { Guardar-RespaldoFuentes -Raiz $repo -Huellas $manifest -Commit ('1' * 40) -DatosLocales $datosLocales }
     catch { $rechazo = $true }
     if (!$rechazo) { throw 'Se acepto una huella incorrecta.' }
     if (@(Get-ChildItem -LiteralPath $carpeta).Count -ne 1) { throw 'Quedaron respaldos sin verificar.' }

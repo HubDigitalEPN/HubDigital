@@ -92,10 +92,6 @@
                     {{ \App\Support\WizardCopy::text('tramite.requisito_donacion_solicitud') }}
                 </li>
                 <li class="flex items-center gap-2">
-                    <flux:icon name="document-check" class="size-3.5 text-text-secondary shrink-0" />
-                    {{ \App\Support\WizardCopy::text('tramite.requisito_donacion_carta') }}
-                </li>
-                <li class="flex items-center gap-2">
                     <flux:icon name="table-cells" class="size-3.5 text-text-secondary shrink-0" />
                     {{ \App\Support\WizardCopy::text('tramite.requisito_datos') }}
                 </li>

@@ -107,7 +107,8 @@ se guardan en `.local/validation`. El paquete genera estos registros durante su
 propia ejecucion y conserva el commit y las huellas de los archivos entregados.
 Las compilaciones parten del repositorio de trabajo HubDigital. Antes de compilar,
 el comando guarda un ZIP verificado de las fuentes y sus configuraciones en
-`.local/backups/codigo-fuente`. El respaldo queda fuera de Git y de los archivos OCI.
+`%LOCALAPPDATA%\HubDigital\Respaldos\codigo-fuente`. Esta carpeta local de Windows
+queda fuera de cualquier repositorio Git, del paquete OCI y de las VM.
 
 ## Uso manual del paquete
 

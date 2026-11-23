@@ -380,19 +380,31 @@ function Get-HuellasCodigo {
 }
 
 function Guardar-RespaldoFuentes {
-    param([string]$Raiz, [string[]]$Huellas, [string]$Commit)
+    param(
+        [string]$Raiz, [string[]]$Huellas, [string]$Commit,
+        [string]$DatosLocales = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    )
 
     Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
     $base = [IO.Path]::GetFullPath($Raiz).TrimEnd('\', '/')
-    $respaldo = Join-Path $base '.local\backups\codigo-fuente'
-    $ruta = $base
-    foreach ($segmento in @('.local', 'backups', 'codigo-fuente')) {
-        $ruta = Join-Path $ruta $segmento
-        if (!(Test-Path -LiteralPath $ruta -PathType Container)) { New-Item -ItemType Directory -Path $ruta | Out-Null }
-        if ((Get-Item -LiteralPath $ruta).Attributes -band [IO.FileAttributes]::ReparsePoint) {
-            throw 'La carpeta de respaldos no admite enlaces ni junctions.'
+    if ($DatosLocales -notmatch '^[A-Za-z]:[\\/]') { throw 'Los respaldos requieren una ruta local absoluta de Windows.' }
+    $respaldo = [IO.Path]::GetFullPath((Join-Path $DatosLocales 'HubDigital\Respaldos\codigo-fuente'))
+    $unidad = [IO.DriveInfo]::new([IO.Path]::GetPathRoot($respaldo))
+    if ($unidad.DriveType -ne [IO.DriveType]::Fixed) { throw 'Los respaldos requieren una unidad local fija.' }
+    if ($respaldo.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase) -or $respaldo -eq $base) {
+        throw 'La carpeta de respaldos debe estar fuera del repositorio fuente.'
+    }
+    for ($ruta = $respaldo; $ruta; $ruta = [IO.Path]::GetDirectoryName($ruta)) {
+        $entrada = Get-Item -LiteralPath $ruta -Force -ErrorAction SilentlyContinue
+        if ($entrada -and (!$entrada.PSIsContainer -or ($entrada.Attributes -band [IO.FileAttributes]::ReparsePoint))) {
+            throw 'La carpeta de respaldos y sus directorios superiores deben ser carpetas reales.'
+        }
+        $git = Join-Path $ruta '.git'
+        if ((Test-Path -LiteralPath $git -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $git 'HEAD') -PathType Leaf)) {
+            throw 'La carpeta de respaldos debe estar fuera de todo repositorio Git.'
         }
     }
+    New-Item -ItemType Directory -Path $respaldo -Force | Out-Null
     $identificador = 'hubdigital-fuente-{0}-{1}-{2}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), $Commit.Substring(0, 8), [Guid]::NewGuid().ToString('N').Substring(0, 8)
     $final = Join-Path $respaldo ($identificador + '.zip')
     $temporal = $final + '.tmp'
@@ -699,6 +711,24 @@ if (-not $OmitirCompilacion) {
     $suiteJavaScriptCompletada = $true
 }
 
+if (-not $suiteJavaScriptCompletada -or -not $suiteJavaCriptograficaCompletada) {
+    throw 'No se completaron los controles de JavaScript y Java.'
+}
+if ($ValidacionAgente) {
+    $headTrasAgente = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
+    $huellasTrasAgente = @(Get-HuellasCodigo)
+    if ($headAntesValidacion -ne $headTrasAgente -or
+        [string]::Join("`n", $huellasAntesValidacion) -ne [string]::Join("`n", $huellasTrasAgente)) {
+        throw 'El codigo cambio durante la validacion del agente. No se emite evidencia; vuelve a validar los cambios finales.'
+    }
+}
+# El control PDF usa este recibo para identificar el JAR y vendor que va a probar.
+Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'crear', $Proyecto) -Descripcion 'Registrando compilaciones y contratos de JavaScript y Java aprobados'
+if ($ValidacionAgente) {
+    Write-Host 'VALIDACION LOCAL DEL AGENTE COMPLETA. Sin commit, push ni archivos OCI.' -ForegroundColor Green
+    exit 0
+}
+
 # El paquete ejecuta los controles afectados; el resto exige una base integral vigente.
 $suitePhpUnitariaCompletada = $false
 $solucionPdfComprobada = $false
@@ -799,23 +829,6 @@ if (-not $ValidacionAgente) {
             if ($LASTEXITCODE -ne 0) { throw "Sintaxis JavaScript invalida: $archivo" }
         }
     }
-}
-
-if (-not $suiteJavaScriptCompletada -or -not $suiteJavaCriptograficaCompletada) {
-    throw 'No se completaron los controles de JavaScript y Java.'
-}
-if ($ValidacionAgente) {
-    $headTrasAgente = (Get-SalidaGit -Argumentos @('rev-parse', 'HEAD') | Select-Object -First 1).Trim()
-    $huellasTrasAgente = @(Get-HuellasCodigo)
-    if ($headAntesValidacion -ne $headTrasAgente -or
-        [string]::Join("`n", $huellasAntesValidacion) -ne [string]::Join("`n", $huellasTrasAgente)) {
-        throw 'El codigo cambio durante la validacion del agente. No se emite evidencia; vuelve a validar los cambios finales.'
-    }
-}
-Invoke-Comando -Programa 'node.exe' -Argumentos @((Join-Path $directorioScript 'evidencia-agente.cjs'), 'crear', $Proyecto) -Descripcion 'Registrando los resultados tecnicos de esta ejecucion'
-if ($ValidacionAgente) {
-    Write-Host 'VALIDACION LOCAL DEL AGENTE COMPLETA. Sin commit, push ni archivos OCI.' -ForegroundColor Green
-    exit 0
 }
 
 $requeridos = @(

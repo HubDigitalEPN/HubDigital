@@ -354,6 +354,10 @@ test('el comando OCI compila y valida en una sola ejecución antes de acreditar 
     assert.match(validator, /if \(\$SoloSelectorPaquete\)/);
     const accredit = core.indexOf("'acreditar', $Proyecto");
     const technicalGate = core.indexOf('if (-not $suitePhpUnitariaCompletada');
+    const agentReceipt = core.indexOf("'evidencia-agente.cjs'), 'crear', $Proyecto");
+    const preparePdf = core.indexOf("'preparar-pdf', $Proyecto");
+    assert.ok(agentReceipt > core.indexOf('$suiteJavaScriptCompletada = $true'));
+    assert.ok(preparePdf > agentReceipt && technicalGate > preparePdf);
     assert.ok(technicalGate >= 0 && accredit > technicalGate);
     assert.ok(accredit < core.indexOf("'commit', '-m'"));
     assert.equal(core.match(/'acreditar', \$Proyecto/g).length, 1);

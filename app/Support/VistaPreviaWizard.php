@@ -34,7 +34,7 @@ final class VistaPreviaWizard
         $datos['provincia']='Pichincha';
         $datos['situacionRegulatoria']='Posee permisos del MAE';
         $datos['documentosRequeridos']=$modalidad==='Donación'
-            ? ['Carta de cesión de derechos / origen lícito']
+            ? []
             : ['Copia de la autorización de recolección (MAE)','Copia del permiso de movilización'];
         $datos['provinciasCatalogo']=CatalogoTerritorialEcuador::provincias();
         $datos['localidadesOrigenCatalogo']=[];$datos['localidadesCatalogo']=[];
