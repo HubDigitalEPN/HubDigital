@@ -509,13 +509,29 @@ export async function comprobarUIFocal(caso) {
         checks.page=!!all('h1,h2').find(e=>e.textContent.includes('Importar'));
         checks.canonical=all('a').some(a=>{const u=new URL(a.href);return u.pathname==='/administracion/contenidos' && u.searchParams.get('grupo')==='importacion';});
         checks.noReview=!document.body.textContent.includes('Control de calidad') && !all('a').some(a=>new URL(a.href).pathname.endsWith('/revision'));
-        checks.input=!!q('input[type=file]');
+        const archivo=q('#matriz-catalogo-archivo');
+        const requerido=archivo?.closest('[data-hub-apex-field]');
+        checks.input=archivo?.getAttribute('aria-required')==='true' && !!requerido
+            && parseFloat(getComputedStyle(requerido,'::before').borderTopWidth)>0
+            && getComputedStyle(requerido,'::before').borderTopColor==='rgb(198, 40, 40)';
+        const elegirLov=async (campo, etiqueta)=>{
+            const boton=()=>q('#lov-'+campo+'-boton');
+            await wait(()=>boton()?.hasAttribute('data-hub-apex-control'));
+            boton().click();
+            const dialogo=()=>q('#lov-'+campo+'-dialogo');
+            await wait(()=>dialogo()?.open);
+            const opcion=[...dialogo().querySelectorAll('[role=option]')].find(e=>e.textContent.trim()===etiqueta);
+            opcion.click();
+            await wait(()=>!dialogo()?.open && boton()?.textContent.includes(etiqueta));
+            return boton().getAttribute('aria-haspopup')==='dialog';
+        };
+        checks.modoLov=await elegirLov('modo','Actualizar datos con la matriz');
         const validar=()=>all('button').find(b=>b.getAttribute('wire:click')==='validar');
         validar().click();
         await wait(()=>all('[data-flux-error]').some(e=>e.textContent.includes('Selecciona la matriz') && e.getClientRects().length));
         await new Promise(resolve=>setTimeout(resolve,4500));
         checks.errorVisible=all('[data-flux-error]').some(e=>e.textContent.includes('Selecciona la matriz') && e.getClientRects().length && !e.hidden);
-        const archivo=q('input[type=file]'),nombre='qa-ayudas-'+Date.now()+'.csv',codigo='QA-UI-ARCHIVO-'+Date.now();
+        const nombre='qa-ayudas-'+Date.now()+'.csv',codigo='QA-UI-ARCHIVO-'+Date.now();
         await new Promise((resolve,reject)=>{
             const limpiar=()=>{clearTimeout(timer);archivo.removeEventListener('livewire-upload-finish',fin);archivo.removeEventListener('livewire-upload-error',error);};
             const fin=()=>{limpiar();resolve();},error=()=>{limpiar();reject(Error('Falló la subida local de la matriz QA'));};
@@ -523,7 +539,7 @@ export async function comprobarUIFocal(caso) {
             archivo.addEventListener('livewire-upload-finish',fin);archivo.addEventListener('livewire-upload-error',error);
             const data=new DataTransfer();data.items.add(new File(['occurrenceID;individualCount;eventDate\r\n'+codigo+';dos;sin fecha registrada\r\n'],nombre,{type:'text/csv'}));archivo.files=data.files;archivo.dispatchEvent(new Event('change',{bubbles:true}));
         });
-        await wait(()=>all('select').find(e=>e.getAttribute('wire:model.live')==='delimitador')?.value===';');
+        await wait(()=>q('#lov-delimitador-valor')?.textContent.trim()==='Punto y coma');
         checks.separator=document.body.textContent.includes('Separador detectado: Punto y coma');
         validar().click();await wait(()=>q('[aria-label="Vista previa de la matriz"]')?.textContent.includes(codigo));
         checks.preview=q('[aria-label="Vista previa de la matriz"]').textContent.includes('Observaciones de importación') && !!q('[aria-label="Vista previa de la matriz"] details[open]') && !q('[aria-label="Estado de la importación"]');
@@ -535,6 +551,9 @@ export async function comprobarUIFocal(caso) {
         checks.guide=cuantas>0 && filasGuia().filter(e=>e.getClientRects().length).some(e=>e.textContent.includes('decimalLatitude')) && filasGuia().every(e=>e.querySelector('dd')?.textContent.trim());
         checks.guideFits=guia.scrollWidth<=guia.clientWidth+1 && guia.getBoundingClientRect().width<=document.documentElement.clientWidth;
         guia.querySelector('button[aria-label="Cerrar guía de columnas"]').click();await wait(()=>!guia.open);checks.guide=checks.guide && document.activeElement===abrirGuia;
+        checks.separadorLov=await elegirLov('delimitador','Coma');
+        await wait(()=>!q('[aria-label="Vista previa de la matriz"]'));
+        checks.separadorLov=checks.separadorLov && await elegirLov('delimitador','Punto y coma');
         all('button').find(b=>b.getAttribute('wire:click')==='limpiar').click();await wait(()=>!q('[aria-label="Vista previa de la matriz"]'));
         metrics={columnas:cuantas,archivo:nombre,soloValidacion:true};
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;

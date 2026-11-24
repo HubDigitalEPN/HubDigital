@@ -117,9 +117,11 @@ final class ActualizacionCatalogo
         [$taxonomia, $provisional] = $this->taxonomia($datos);
         $cambios = [];
         $extras = [];
+        $personalizadas = [];
         foreach ($this->plantilla['columnas'] as $columnaExtra) {
             if (!($columnaExtra['personalizada'] ?? false)) continue;
             $claveExtra = $columnaExtra['campo'];
+            $personalizadas[$claveExtra] = true;
             if (!isset($datos[$claveExtra]) || trim((string) $datos[$claveExtra]) === '') continue;
             $valorExtra = trim((string) $datos[$claveExtra]);
             if (mb_strlen($valorExtra) > 5000) throw new DomainException("Fila {$fila}: el campo «{$columnaExtra['cabecera']}» supera los 5000 caracteres.");
@@ -175,8 +177,12 @@ final class ActualizacionCatalogo
                 $cambios['localidad_desglosada'] = !$localidad['requiere_revision'] && (!$conservaPartes || (bool)$anterior->localidad_desglosada);
             }
         }
-        foreach ($datos as $clave => $valor) {
-            if (!isset($columnas[$clave]) && !in_array($clave, ['kingdom','phylum','class','order','suborder','family','subfamily','tribe','genus','specific_epithet','scientific_name','taxon_rank','comment'], true)) $adicionales[$clave] = true;
+        foreach (array_keys($datos) as $clave) {
+            $destino = $clave === 'recorded_by' ? 'colector' : $clave;
+            if (!isset($columnas[$destino]) && !isset($personalizadas[$clave])
+                && !in_array($clave, ['kingdom','phylum','class','order','suborder','family','subfamily','tribe','genus','specific_epithet','scientific_name','taxon_rank','comment'], true)) {
+                $adicionales[$clave] = true;
+            }
         }
         $cambios = array_filter($cambios, static function ($valor, $clave) use ($anterior): bool {
             if (!$anterior) return true;

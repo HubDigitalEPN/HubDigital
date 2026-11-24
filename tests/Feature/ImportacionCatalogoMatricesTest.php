@@ -110,6 +110,19 @@ test('validar el catálogo no crea taxones muestras especímenes ni historial de
     expect($resumen['nuevos'])->toBe(1)->and(array_map(fn ($t) => DB::table($t)->count(), $tablas))->toBe($antes);
 });
 
+test('la vista previa distingue recordedBy de una cabecera incorrecta aunque el colector siga igual', function (): void {
+    $codigo = 'MEPN-INV-PRUEBA-CABECERAS';
+    $id = fichaVaciaMatriz($codigo);
+    DB::table('taxonomia.especimenes')->where('id', $id)->update(['colector' => 'Colector del catálogo']);
+    $ruta = matrizCatalogoPrueba(['occurrenceID', 'localityNmae', 'recordedBy'], [[$codigo, 'Localidad del archivo', 'Colector del catálogo']]);
+
+    $resumen = app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx', modo: 'actualizar');
+
+    expect($resumen['columnas_adicionales'])->toBe(['locality_nmae'])
+        ->and($resumen['sin_cambios'])->toBe(1)
+        ->and($resumen['actualizados'])->toBe(0);
+});
+
 test('se completan fichas existentes con prefijos equivalentes conservando uuid códigos estado y divulgación', function (): void {
     $id = fichaVaciaMatriz('MEPN-INV-900005', '1');
     $curador = User::factory()->curador()->create(['must_change_password' => false]);

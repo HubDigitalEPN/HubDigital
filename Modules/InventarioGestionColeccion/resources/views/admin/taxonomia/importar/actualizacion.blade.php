@@ -35,10 +35,8 @@
             </flux:field>
             <div class="flex items-start gap-2" data-catalogo-control-fila>
                 <div class="min-w-0 flex-1" data-catalogo-control>
-                    <flux:select wire:model.live="modo" label="Cómo incorporar los datos">
-                        <option value="completar">Completar datos vacíos</option>
-                        <option value="actualizar">Actualizar datos con la matriz</option>
-                    </flux:select>
+                    <x-gestionprestamosrecepciones::lov-popup campo="modo" label="Cómo incorporar los datos"
+                        :valor="$modo" :opciones="['completar' => 'Completar datos vacíos', 'actualizar' => 'Actualizar datos con la matriz']" />
                 </div>
                 <x-catalogo-ayuda campo="importacion-modo" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('modo')" />
             </div>
@@ -46,11 +44,8 @@
                 <div>
                     <div class="flex items-start gap-2" data-catalogo-control-fila>
                         <div class="min-w-0 flex-1" data-catalogo-control>
-                            <flux:select wire:model.live="delimitador" label="Separador CSV">
-                                <option value=",">Coma</option>
-                                <option value=";">Punto y coma</option>
-                                <option value="tab">Tabulación</option>
-                            </flux:select>
+                            <x-gestionprestamosrecepciones::lov-popup campo="delimitador" label="Separador CSV"
+                                :valor="$delimitador" :opciones="[',' => 'Coma', ';' => 'Punto y coma', 'tab' => 'Tabulación']" />
                         </div>
                         <x-catalogo-ayuda campo="importacion-delimitador" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('delimitador')" />
                     </div>
@@ -87,7 +82,13 @@
             <h2 class="text-lg font-semibold">Vista previa · {{ number_format($resultado['filas'], 0, ',', '.') }} registros</h2>
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">@foreach(['nuevos' => 'Nuevos', 'actualizados' => 'Por actualizar', 'sin_cambios' => 'Sin cambios', 'provisionales' => 'Identificación provisional'] as $key => $label)<div class="rounded border border-border bg-bg-main p-3"><strong class="block text-2xl">{{ number_format($resultado[$key], 0, ',', '.') }}</strong><span class="text-sm text-text-secondary">{{ $label }}</span></div>@endforeach</div>
             @if($resultado['provisionales'])@endif
-            @if($resultado['columnas_adicionales'])<details class="text-sm"><summary>Columnas adicionales conservadas ({{ count($resultado['columnas_adicionales']) }})</summary><p class="mt-2 break-words">{{ implode(', ', $resultado['columnas_adicionales']) }}</p></details>@endif
+            @if($resultado['columnas_adicionales'])
+                <details open class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <summary class="font-semibold">Columnas que requieren revisión ({{ count($resultado['columnas_adicionales']) }})</summary>
+                    <p class="mt-2 break-words">{{ implode(', ', $resultado['columnas_adicionales']) }}</p>
+                    <p class="mt-1">Revisa si las cabeceras corresponden a los campos de la plantilla. Los valores quedan disponibles en el archivo original.</p>
+                </details>
+            @endif
             @if($resultado['avisos'])
                 <div class="flex items-start gap-2" data-catalogo-control-fila>
                     <div class="min-w-0 flex-1 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-catalogo-control><details open><summary class="font-semibold">Observaciones de importación</summary><p class="mt-2">Revisa estos valores antes de guardar. Se conserva el texto original y no se inventan valores normalizados.</p>@foreach($resultado['avisos'] as $aviso => $cantidad)<p class="mt-1">{{ $cantidad }} · {{ $aviso }}</p>@endforeach</details></div>
