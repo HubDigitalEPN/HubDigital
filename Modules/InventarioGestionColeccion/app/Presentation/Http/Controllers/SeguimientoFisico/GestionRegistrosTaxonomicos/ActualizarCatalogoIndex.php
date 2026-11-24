@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos;
 
 use App\Support\AccesoCatalogo;
+use App\Support\MensajesSistema;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,6 +31,7 @@ class ActualizarCatalogoIndex extends Component
     #[Locked] public ?string $archivoSha256 = null;
     #[Locked] public ?string $parametrosValidados = null;
     #[Locked] public ?string $importacionId = null;
+    #[Locked] public bool $cargaAnterior = false;
     public ?string $errorMessage = null;
     public ?string $successMessage = null;
     public bool $detalleAbierto = false;
@@ -60,7 +62,16 @@ class ActualizarCatalogoIndex extends Component
 
     protected function messages(): array
     {
-        return ['archivo.required' => 'Selecciona la matriz que deseas cargar.', 'archivo.mimes' => 'Selecciona un archivo Excel o CSV.', 'archivo.max' => 'La matriz no debe superar los 20 MB.'];
+        return [
+            'archivo.required' => $this->mensaje('archivo_requerido'),
+            'archivo.mimes' => $this->mensaje('formato_archivo'),
+            'archivo.max' => $this->mensaje('tamano_archivo'),
+        ];
+    }
+
+    private function mensaje(string $tipo): string
+    {
+        return app(MensajesSistema::class)->texto('catalogo.importacion.'.$tipo);
     }
 
     public function updatedArchivo(): void
@@ -88,7 +99,7 @@ class ActualizarCatalogoIndex extends Component
     private function invalidar(): void
     {
         $this->autorizar();
-        $this->reset('resultado', 'archivoSha256', 'parametrosValidados', 'importacionId', 'errorMessage', 'successMessage');
+        $this->reset('resultado', 'archivoSha256', 'parametrosValidados', 'importacionId', 'cargaAnterior', 'errorMessage', 'successMessage');
     }
 
     public function validar(): void
@@ -101,9 +112,7 @@ class ActualizarCatalogoIndex extends Component
             $this->resultado = app(ActualizacionCatalogo::class)->analizar((string)$this->archivo->getRealPath(), strtolower($this->archivo->getClientOriginalExtension()), $this->delimitador === 'tab' ? "\t" : $this->delimitador, $this->modo);
             $this->archivoSha256 = hash_file('sha256', $this->archivo->getRealPath());
             $this->parametrosValidados = $this->modo.'|'.$this->delimitador;
-            $this->successMessage = $this->resultado['avisos']
-                ? 'Validación con observaciones. Revisa los valores originales que no pudieron normalizarse antes de guardar.'
-                : 'Validación completa. Revisa las altas y actualizaciones antes de guardar.';
+            $this->successMessage = $this->mensaje($this->resultado['avisos'] ? 'observaciones' : 'validacion');
         } catch (\Throwable $error) { $this->mostrarError($error); }
     }
 
@@ -112,33 +121,34 @@ class ActualizarCatalogoIndex extends Component
         $this->autorizar();
         $this->validate();
         if (!$this->resultado || !$this->archivoSha256 || !hash_equals($this->archivoSha256, hash_file('sha256', $this->archivo->getRealPath())) || $this->parametrosValidados !== $this->modo.'|'.$this->delimitador) {
-            $this->errorMessage = 'Valida primero este archivo y revisa el resumen.';
+            $this->errorMessage = $this->mensaje('revalidar');
             return;
         }
         try {
-            $this->importacionId = DB::transaction(function (): string {
-            DB::statement("SET LOCAL lock_timeout = '10s'");
-            DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [$this->archivoSha256.'|'.$this->modo]);
-            $existente = DB::table('taxonomia.importaciones_catalogo')->where('fuente_sha256', $this->archivoSha256)->where('modo', $this->modo)->lockForUpdate()->first();
-            if ($existente && in_array($existente->estado, ['en_cola', 'procesando', 'completada'], true)) {
-                $this->successMessage = $existente->estado === 'completada' ? 'Este archivo ya fue importado. Se conserva el resultado anterior, sin duplicar fichas.' : 'Este archivo ya se está procesando. Puedes consultar aquí su resultado.';
-                return $existente->id;
-            }
-            $id = $existente?->id ?? (string)Str::uuid();
-            $extension = strtolower($this->archivo->getClientOriginalExtension());
-            $ruta = 'catalogo/importaciones/'.$id.'/original.'.$extension;
-            $sha = app(AlmacenamientoDepositos::class)->guardarContenido($ruta, file_get_contents($this->archivo->getRealPath()), $this->archivo->getMimeType() ?: 'application/octet-stream');
-            if (!hash_equals($this->archivoSha256, $sha)) throw new DomainException('No se pudo conservar íntegro el archivo original.');
-            $datos = ['archivo_nombre' => basename($this->archivo->getClientOriginalName()), 'archivo_ruta' => $ruta, 'extension' => $extension, 'delimitador' => $this->delimitador === 'tab' ? "\t" : $this->delimitador, 'modo' => $this->modo,
-                'creado_por_id' => (string)auth()->id(), 'estado' => 'en_cola', 'plan_sha256' => $this->resultado['huella'], 'resumen' => json_encode($this->resultado + ['modo' => $this->modo], JSON_THROW_ON_ERROR), 'error' => null, 'updated_at' => now()];
-            if ($existente) DB::table('taxonomia.importaciones_catalogo')->where('id', $id)->update($datos);
-            else DB::table('taxonomia.importaciones_catalogo')->insert($datos + ['id' => $id, 'fuente_sha256' => $this->archivoSha256, 'created_at' => now()]);
-            ProcesarActualizacionCatalogo::dispatch($id)->onConnection('database')
-                ->onQueue(config('hubdigital.validation_mode') ? (string)config('hubdigital.validation_queue', 'validation') : 'default')->afterCommit();
-            $this->errorMessage = null;
-            $this->successMessage = 'Archivo recibido. La carga continúa en segundo plano; el resultado se actualizará aquí.';
-            return $id;
+            [$this->importacionId, $aviso] = DB::transaction(function (): array {
+                DB::statement("SET LOCAL lock_timeout = '10s'");
+                DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [$this->archivoSha256.'|'.$this->modo]);
+                $existente = DB::table('taxonomia.importaciones_catalogo')->where('fuente_sha256', $this->archivoSha256)->where('modo', $this->modo)->lockForUpdate()->first();
+                if ($existente && in_array($existente->estado, ['en_cola', 'procesando', 'completada'], true)) {
+                    return [$existente->id, $existente->estado === 'completada' ? 'duplicada' : 'en_proceso'];
+                }
+                $id = $existente?->id ?? (string)Str::uuid();
+                $extension = strtolower($this->archivo->getClientOriginalExtension());
+                $ruta = 'catalogo/importaciones/'.$id.'/original.'.$extension;
+                $sha = app(AlmacenamientoDepositos::class)->guardarContenido($ruta, file_get_contents($this->archivo->getRealPath()), $this->archivo->getMimeType() ?: 'application/octet-stream');
+                if (!hash_equals($this->archivoSha256, $sha)) throw new DomainException('No se pudo conservar íntegro el archivo original.');
+                $datos = ['archivo_nombre' => basename($this->archivo->getClientOriginalName()), 'archivo_ruta' => $ruta, 'extension' => $extension, 'delimitador' => $this->delimitador === 'tab' ? "\t" : $this->delimitador, 'modo' => $this->modo,
+                    'creado_por_id' => (string)auth()->id(), 'estado' => 'en_cola', 'plan_sha256' => $this->resultado['huella'], 'resumen' => json_encode($this->resultado + ['modo' => $this->modo], JSON_THROW_ON_ERROR), 'error' => null, 'updated_at' => now()];
+                if ($existente) DB::table('taxonomia.importaciones_catalogo')->where('id', $id)->update($datos);
+                else DB::table('taxonomia.importaciones_catalogo')->insert($datos + ['id' => $id, 'fuente_sha256' => $this->archivoSha256, 'created_at' => now()]);
+                ProcesarActualizacionCatalogo::dispatch($id)->onConnection('database')
+                    ->onQueue(config('hubdigital.validation_mode') ? (string)config('hubdigital.validation_queue', 'validation') : 'default')->afterCommit();
+
+                return [$id, 'recibida'];
             });
+            $this->errorMessage = null;
+            $this->cargaAnterior = $aviso === 'duplicada';
+            $this->successMessage = $this->mensaje($aviso);
         } catch (\Throwable $error) { $this->mostrarError($error); }
     }
 
@@ -148,7 +158,7 @@ class ActualizarCatalogoIndex extends Component
         $this->archivoSha256 = null;
         $this->successMessage = null;
         if (!$error instanceof DomainException) report($error);
-        $this->errorMessage = $error instanceof DomainException ? $error->getMessage() : 'No se pudo procesar la matriz. El catálogo se conserva sin cambios. Revisa el archivo y vuelve a intentar.';
+        $this->errorMessage = $error instanceof DomainException ? $error->getMessage() : $this->mensaje('error');
     }
 
     public function consultar(): void { $this->autorizar(); }

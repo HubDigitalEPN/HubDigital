@@ -7,7 +7,7 @@ namespace Modules\GestionPrestamosRecepciones\Infrastructure\Notifications;
 use App\Notifications\CanalesCampana;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\SentMessage;
-use Illuminate\Notifications\Messages\MailMessage;
+use App\Notifications\MensajeCorreo as MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Modules\GestionPrestamosRecepciones\Infrastructure\Services\DocumentoIngresoDeposito;

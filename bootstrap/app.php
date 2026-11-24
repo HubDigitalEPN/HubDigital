@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnsureInitialPasswordChanged;
 use App\Http\Middleware\NormalizeAuthenticationEmail;
+use App\Support\TextosSistema;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -86,6 +87,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 default => 'No fue posible completar la solicitud. Intenta nuevamente o solicita asistencia.',
             };
 
+            $mensaje = TextosSistema::mensaje($mensaje);
+
             return $request->expectsJson()
                 ? response()->json(['message' => $mensaje], $status)
                 : response($mensaje, $status, ['Content-Type' => 'text/plain; charset=UTF-8']);
@@ -93,7 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (DomainException $e, Request $request): ?JsonResponse {
             if ($request->expectsJson()) {
-                return response()->json(['message' => $e->getMessage()], 422);
+                return response()->json(['message' => TextosSistema::mensaje($e->getMessage())], 422);
             }
 
             return null;
@@ -101,7 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (InvalidArgumentException $e, Request $request): ?JsonResponse {
             if ($request->expectsJson()) {
-                return response()->json(['message' => $e->getMessage()], 422);
+                return response()->json(['message' => TextosSistema::mensaje($e->getMessage())], 422);
             }
 
             return null;

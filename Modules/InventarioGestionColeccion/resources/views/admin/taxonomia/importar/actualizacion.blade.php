@@ -1,3 +1,4 @@
+@inject('mensajes', 'App\Support\MensajesSistema')
 <div class="space-y-5 p-4 sm:p-6" data-hub-inline-feedback @if($carga && in_array($carga->estado, ['en_cola', 'procesando'])) wire:poll.3s="consultar" @endif>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">{{ \App\Support\PortalCopy::text('importacion.titulo') }}</flux:heading>
@@ -56,7 +57,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <flux:button wire:click="validar" wire:loading.attr="disabled" wire:target="archivo,validar,importar">Validar matriz</flux:button>
             <div>
-                <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar" :disabled="!$resultado || ($carga && in_array($carga->estado, ['en_cola', 'procesando']))" wire:confirm="Se aplicarán las altas y actualizaciones del resumen. ¿Continuar?">Importar al catálogo</flux:button>
+                <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar" :disabled="!$resultado || ($carga && in_array($carga->estado, ['en_cola', 'procesando']))" wire:confirm="{{ $mensajes->texto('catalogo.importacion.confirmacion') }}">Importar al catálogo</flux:button>
             </div>
             <flux:button wire:click="limpiar" wire:loading.attr="disabled">Cambiar archivo</flux:button>
             <p wire:loading wire:target="archivo,validar,importar" role="status" class="text-sm text-science-blue">Procesando la matriz…</p>
@@ -70,11 +71,19 @@
     </section>
     @if($carga)
         @php($guardado = json_decode($carga->resumen ?? '{}', true))
-        <section aria-label="Estado de la importación" class="rounded border border-border bg-surface p-5">
+        <section aria-label="{{ $cargaAnterior ? 'Resultado de la carga anterior' : 'Estado de la importación' }}" class="rounded border border-border bg-surface p-5">
             <h2 class="text-lg font-semibold">{{ $carga->archivo_nombre }}</h2>
-            @if($carga->estado === 'completada')<p role="status" class="mt-2 text-green-800">Carga completada: {{ $guardado['nuevos'] ?? 0 }} nuevos, {{ $guardado['actualizados'] ?? 0 }} actualizados y {{ $guardado['sin_cambios'] ?? 0 }} sin cambios.</p><button type="button" wire:click="verDetalle('{{ $carga->id }}')" class="hub-ig-button mt-3">Revisar registros importados</button>
+            @if($carga->estado === 'completada')
+                <p role="status" class="mt-2 {{ $cargaAnterior ? 'text-text-secondary' : 'text-green-800' }}">
+                    {{ $mensajes->texto($cargaAnterior ? 'catalogo.importacion.resultado_anterior' : 'catalogo.importacion.completada', [
+                        'nuevos' => $guardado['nuevos'] ?? 0,
+                        'actualizados' => $guardado['actualizados'] ?? 0,
+                        'sin_cambios' => $guardado['sin_cambios'] ?? 0,
+                    ]) }}
+                </p>
+                <button type="button" wire:click="verDetalle('{{ $carga->id }}')" class="hub-ig-button mt-3">{{ $cargaAnterior ? 'Ver cambios de la carga anterior' : 'Revisar registros importados' }}</button>
             @elseif($carga->estado === 'fallida')<p role="alert" class="mt-2 text-red-800">{{ $carga->error }}</p>
-            @else<p role="status" class="mt-2 text-science-blue">{{ $carga->estado === 'en_cola' ? 'Carga en cola.' : 'Incorporando registros.' }}</p>@endif
+            @else<p role="status" class="mt-2 text-science-blue">{{ $mensajes->texto($carga->estado === 'en_cola' ? 'catalogo.importacion.en_cola' : 'catalogo.importacion.procesando') }}</p>@endif
         </section>
     @endif
     @if($resultado)

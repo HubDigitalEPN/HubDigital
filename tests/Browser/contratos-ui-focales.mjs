@@ -505,6 +505,21 @@ export async function comprobarUIFocal(caso) {
         checks.duplicate=filas().length===1 && q('dialog[open]').textContent.includes('ya está registrado');
         const dialog=q('dialog[open]');checks.responsive=dialog.scrollWidth<=dialog.clientWidth+1 && document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
         all('dialog[open] button').find(x=>x.textContent.trim()==='Cancelar').click();metrics={nombre};
+    } else if(caso==='mensajes_sistema') {
+        const grilla = q('[aria-label="Mensajes del Sistema"][data-grid-scroll-only]');
+        checks.navegacion = location.pathname === '/administracion/mensajes'
+            && all('nav a, aside a').some(enlace => enlace.getAttribute('href')?.endsWith('/administracion/mensajes'));
+        checks.grilla = !!grilla?.querySelector('tbody tr [data-catalogo-menu-fila]') && !grilla.querySelector('.hub-ig-footer');
+        const nuevo = [...grilla.querySelectorAll('button')].find(boton => boton.textContent.trim() === 'Nuevo mensaje');
+        nuevo.click();
+        await wait(() => q('dialog[open] form[wire\\:submit="guardar"] textarea[wire\\:model="textoOriginal"]'));
+        const dialogo = q('dialog[open]');
+        checks.editor = dialogo.querySelectorAll('textarea[required]').length === 2
+            && dialogo.querySelectorAll('[data-catalogo-ayuda] > button').length === 2;
+        checks.ajuste = dialogo.scrollWidth <= dialogo.clientWidth + 1;
+        [...dialogo.querySelectorAll('button')].find(boton => boton.textContent.trim() === 'Cancelar').click();
+        await wait(() => !dialogo.open);
+        checks.cancelar = true;
     } else if(caso==='catalogo_importacion') {
         checks.page=!!all('h1,h2').find(e=>e.textContent.includes('Importar'));
         checks.canonical=all('a').some(a=>{const u=new URL(a.href);return u.pathname==='/administracion/contenidos' && u.searchParams.get('grupo')==='importacion';});

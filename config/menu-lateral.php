@@ -40,6 +40,7 @@ return [
         'catalogos' => $opcion('Tablas de catálogos', 'table-cells', 'admin.catalogos', $equipo, 'administracion'),
         'matrices' => $opcion('Matrices', 'document-text', 'admin.matrices', $equipo, 'administracion'),
         'contenidos' => $opcion('Contenidos y textos', 'pencil-square', 'admin.contenidos', $equipo, 'administracion'),
+        'mensajes-sistema' => $opcion('Mensajes del Sistema', 'document-text', 'admin.mensajes', $admin, 'administracion'),
         'usuarios' => $opcion('Usuarios y perfiles', 'users', 'admin.usuarios', $admin, 'administracion'),
         'botones' => $opcion('Botones y permisos', 'key', 'admin.botones', $admin, 'administracion'),
         'administrar-menu' => $opcion('Menú lateral', 'bars-3', 'admin.menu-lateral', $admin, 'administracion'),

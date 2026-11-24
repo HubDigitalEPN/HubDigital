@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Support\TextosSistema;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -30,7 +31,7 @@ trait CanalesCampana
     public function toMail(object $destinatario): MailMessage
     {
         $datos = $this->toArray($destinatario);
-        return (new MailMessage)->subject('HubDigital · Actualización de tu trámite')
+        return (new MensajeCorreo)->subject('HubDigital · Actualización de tu trámite')
             ->greeting('Hola'.(filled($destinatario->name ?? null) ? ', '.$destinatario->name : '').':')
             ->line((string) ($datos['mensaje'] ?? 'Tienes una actualización disponible en HubDigital.'))
             ->action('Consultar en HubDigital', $datos['url'] ?? route('dashboard'))
@@ -61,7 +62,7 @@ trait CanalesCampana
             default => ['Actualización de trámite', 'Tienes una actualización en tu expediente. Entra a HubDigital para consultar el detalle.'],
         };
         $evento = (string) ($datos['eventoId'] ?? $this->id ?? ($tipo.'-'.($datos['solicitudId'] ?? 'aviso')));
-        return (new WebPushMessage)->title('HubDigital · '.$titulo)->body($resumen)
+        return (new WebPushMessage)->title('HubDigital · '.TextosSistema::mensaje($titulo))->body(TextosSistema::mensaje($resumen))
             ->icon('/images/hub-icon.png')->badge('/images/hub-icon.png')->tag($evento)
             ->data(['notificationId' => $evento, 'url' => $datos['url'] ?? route('dashboard')])
             ->options(['TTL' => (int) config('webpush.ttl', 604800), 'urgency' => ($datos['prioridad'] ?? '') === 'alta' ? 'high' : 'normal']);

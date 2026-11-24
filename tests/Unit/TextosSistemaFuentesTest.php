@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\TextosSistema;
+use App\Support\MensajesSistema;
 
 test('el inventario editorial encuentra fuentes propias sin recorrer dependencias ni compilados', function (): void {
     $directorio=sys_get_temp_dir().DIRECTORY_SEPARATOR.'hd-editorial-'.bin2hex(random_bytes(8));
@@ -20,4 +21,22 @@ test('el inventario editorial encuentra fuentes propias sin recorrer dependencia
             foreach($iterador as $archivo){if($archivo->isDir())rmdir($archivo->getPathname());else unlink($archivo->getPathname());}rmdir($resuelto);
         }
     }
+});
+
+test('las confirmaciones literales se resuelven al renderizar y conservan la respuesta requerida', function (): void {
+    $vista = <<<'BLADE'
+    <button wire:confirm="¿Continuar?">Continuar</button>
+    <button wire:confirm.prompt="¿Eliminar?|ELIMINAR">Eliminar</button>
+    <button wire:confirm="{{ $aviso }}">Confirmar</button>
+    BLADE;
+
+    expect(TextosSistema::compilarConfirmaciones($vista))
+        ->toContain("TextosSistema::confirmacion('¿Continuar?', false)")
+        ->toContain("TextosSistema::confirmacion('¿Eliminar?|ELIMINAR', true)")
+        ->toContain('wire:confirm="{{ $aviso }}"');
+});
+
+test('el editor identifica los valores dinámicos de Laravel y de los procesos', function (): void {
+    expect(MensajesSistema::marcadores('El campo :attribute tiene {total} valores. Dato: {total}.'))
+        ->toBe([':attribute', '{total}']);
 });

@@ -357,6 +357,11 @@ Object.assign(contracts, {
 
 definitions.catalogo_importacion = {sources:['Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/importar/actualizacion.blade.php','Modules/InventarioGestionColeccion/resources/views/admin/taxonomia/importar/index.blade.php'], checks:['page','canonical','noReview','input','responsive']};
 for(const file of definitions.catalogo_importacion.sources) owner[file]=['catalogo_importacion'];
+definitions.mensajes_sistema = {
+    sources:['app/Livewire/Administracion/GestionMensajesSistema.php','resources/views/livewire/administracion/gestion-mensajes-sistema.blade.php'],
+    checks:['navegacion','grilla','editor','ajuste','cancelar'],
+};
+for (const file of definitions.mensajes_sistema.sources) (owner[file] ??= []).push('mensajes_sistema');
 owner['Modules/GestionPrestamosRecepciones/resources/views/investigador/portal-depositos.blade.php']=['contenidos_unificados'];
 owner['Modules/InventarioGestionColeccion/app/Presentation/Http/Controllers/SeguimientoFisico/GestionRegistrosTaxonomicos/ConfiguracionColumnasIndex.php']=['menu_curaduria'];
 definitions.catalogo_alta.checks.push('noRevision');

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\GestionPrestamosRecepciones\Infrastructure\Notifications;
 
-use Illuminate\Notifications\Messages\MailMessage;
+use App\Notifications\MensajeCorreo as MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**

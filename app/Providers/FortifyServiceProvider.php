@@ -11,7 +11,7 @@ use App\Services\Security\TurnstileVerifier;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\Messages\MailMessage;
+use App\Notifications\MensajeCorreo as MailMessage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;

@@ -1,14 +1,24 @@
 (() => {
     if (window.hubTextosSistema) return;
     window.hubTextosSistema = true;
-    let diccionario = Object.create(null), patron = null, pendientes = new Set(), programado = false;
+    let diccionario = Object.create(null), patron = null, plantillas = [], pendientes = new Set(), programado = false;
     const originales = new WeakMap(), atributosOriginales = new WeakMap();
     const normalizar = texto => texto.replace(/\s+/gu, ' ').trim();
     const excluido = elemento => !elemento || elemento.closest('script,style,textarea,pre,code,dd,[scope=row],[data-copy-preserve],[contenteditable]');
     const ignorar = elemento => excluido(elemento) || (elemento.closest('td') && !elemento.closest('button,a,label') && elemento.closest('td').colSpan <= 1);
     const traducir = texto => {
-        const exacto = diccionario[normalizar(texto)];
-        if (exacto !== undefined) return texto.match(/^\s*/u)[0] + exacto + texto.match(/\s*$/u)[0];
+        const normalizado = normalizar(texto);
+        let coincidencia = diccionario[normalizado];
+        if (coincidencia === undefined && normalizado.length <= 5000) {
+            for (const {patron, marcadores, contenido} of plantillas) {
+                const match = normalizado.match(patron);
+                if (!match) continue;
+                const valores = Object.fromEntries(marcadores.map((marcador, i) => [marcador, match[i + 1]]));
+                coincidencia = contenido.replace(/\{[a-z][a-z0-9_]*\}/gu, clave => valores[clave] ?? clave);
+                break;
+            }
+        }
+        if (coincidencia !== undefined) return texto.match(/^\s*/u)[0] + coincidencia + texto.match(/\s*$/u)[0];
         return patron ? texto.replace(patron, original => diccionario[normalizar(original)] ?? original) : texto;
     };
     window.hubTexto = traducir;
@@ -39,8 +49,18 @@
         }
     };
     const iniciar = () => {
-        diccionario = Object.assign(Object.create(null), JSON.parse(document.getElementById('textos-sistema-datos')?.textContent || '{}'), JSON.parse(document.getElementById('textos-editoriales-datos')?.textContent || '{}'));
+        const textosSistema = JSON.parse(document.getElementById('textos-sistema-datos')?.textContent || '{}');
+        diccionario = Object.assign(Object.create(null), textosSistema, JSON.parse(document.getElementById('textos-editoriales-datos')?.textContent || '{}'));
         const escapar = texto => texto.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&').replace(/\s+/gu, '\\s+');
+        plantillas = [];
+        for (const [original, contenido] of Object.entries(textosSistema)) {
+            const partes = original.split(/(\{[a-z][a-z0-9_]*\})/gu);
+            const marcadores = partes.filter((_, i) => i % 2 === 1);
+            const fijo = partes.filter((_, i) => i % 2 === 0).join('').trim();
+            if (marcadores.length > 0 && marcadores.length <= 6 && fijo.length >= 10) {
+                plantillas.push({patron: new RegExp('^' + partes.map((parte, i) => i % 2 === 0 ? escapar(parte) : '(.*?)').join('') + '$', 'u'), marcadores, contenido});
+            }
+        }
         const claves = Object.keys(diccionario).sort((a,b) => b.length-a.length).map(escapar);
         patron = claves.length ? new RegExp('(?<![\\p{L}\\p{N}_])(?:'+claves.join('|')+')(?![\\p{L}\\p{N}_])', 'gu') : null;
         aplicar(document.documentElement);

@@ -22,6 +22,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(\App\Support\PortalCopy::class);
+        $this->app->scoped(\App\Support\MensajesSistema::class);
+        $this->app->scoped(\App\Support\TextosSistema::class);
+        $this->app->extend('translation.loader', fn ($archivos) => new \App\Support\CargadorTraduccionesMensajes($archivos));
     }
 
     /**
@@ -31,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureTranslations();
+        \Illuminate\Support\Facades\Blade::precompiler(\App\Support\TextosSistema::compilarConfirmaciones(...));
         $this->configureUploadRules();
         $this->configureSystemMail();
         $this->preventExternalNotificationsDuringValidation();

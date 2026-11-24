@@ -16,6 +16,7 @@
         request()->routeIs('admin.catalogos') => [['Tablas de catálogos', null]],
         request()->routeIs('admin.matrices') => [['Matrices', null]],
         request()->routeIs('admin.botones') => [['Botones y permisos', null]],
+        request()->routeIs('admin.mensajes') => [['Mensajes del Sistema', null]],
         request()->routeIs('admin.menu-lateral') => [['Menú lateral', null]],
         request()->routeIs('admin.contenidos') => [['Contenidos y textos', null]],
         request()->routeIs('admin.usuarios') => [
