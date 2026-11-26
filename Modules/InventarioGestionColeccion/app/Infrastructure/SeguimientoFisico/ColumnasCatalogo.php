@@ -73,7 +73,7 @@ final class ColumnasCatalogo
 
     public function guardarValor(string $id, string $campo, ?string $valor): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        \App\Support\AccesoCatalogo::autorizarPantalla(\App\Support\AccesoCatalogo::CONSULTA, 'editar');
         abort_unless(Str::isUuid($id) && DB::table('taxonomia.especimenes')->where('id', $id)->exists(), 404);
         abort_unless(in_array($campo, array_column($this->personalizadas(), 'campo'), true), 422);
         if (mb_strlen($valor ?? '') > 5000) throw new DomainException('El campo admite hasta 5000 caracteres.');

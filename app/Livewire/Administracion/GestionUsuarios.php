@@ -7,11 +7,14 @@ namespace App\Livewire\Administracion;
 use App\Livewire\Concerns\WithInteractiveGrid;
 
 use App\Enums\RolUsuario;
+use App\Models\PerfilPersonalizado;
 use App\Models\User;
 use App\Support\Administracion\CreadorUsuario;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +36,8 @@ final class GestionUsuarios extends Component
     public string $filtroRol = '';
 
     public bool $mostrarFormulario = false;
+
+    public string $nombrePerfil = '';
 
     public string $first_name = '';
 
@@ -68,7 +73,7 @@ final class GestionUsuarios extends Component
     public function boot(): void
     {
         request()->attributes->set('administracion_sensible', true);
-        $this->autorizarAdministracion();
+        app(\App\Support\AccesoMenu::class)->autorizar('admin.usuarios');
     }
 
     public function updatedBusqueda(): void
@@ -85,6 +90,39 @@ final class GestionUsuarios extends Component
     {
         $this->mostrarFormulario = ! $this->mostrarFormulario;
         $this->resetValidation();
+    }
+
+    public function abrirNuevoPerfil(): void
+    {
+        $this->reset('nombrePerfil');
+        $this->resetValidation('nombrePerfil');
+        $this->modal('nuevo-perfil')->show();
+    }
+
+    public function crearPerfil(): void
+    {
+        $this->autorizarAdministracion();
+        $this->nombrePerfil = trim($this->nombrePerfil);
+        $this->validate(['nombrePerfil' => ['required', 'string', 'max:80']], [], ['nombrePerfil' => 'nombre del perfil']);
+
+        foreach (RolUsuario::cases() as $rol) {
+            if (mb_strtolower($rol->etiqueta()) === mb_strtolower($this->nombrePerfil)) {
+                throw ValidationException::withMessages(['nombrePerfil' => 'Ya existe un perfil con ese nombre.']);
+            }
+        }
+
+        try {
+            PerfilPersonalizado::create([
+                'codigo' => 'PERFIL_'.strtoupper((string) Str::ulid()),
+                'nombre' => $this->nombrePerfil,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages(['nombrePerfil' => 'Ya existe un perfil con ese nombre.']);
+        }
+
+        $this->modal('nuevo-perfil')->close();
+        $this->reset('nombrePerfil');
+        session()->flash('usuario-actualizado', 'Perfil creado. Ya puedes asignarlo a usuarios y configurar su menú.');
     }
 
     public function crear(
@@ -113,13 +151,15 @@ final class GestionUsuarios extends Component
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email:rfc', 'max:255', Rule::unique(User::class, 'email_normalizado')],
             'password' => ['required', 'string', 'max:72', Password::min(12)->mixedCase()->numbers()->symbols(), 'confirmed'],
-            'rol' => ['required', Rule::enum(RolUsuario::class)],
+            'rol' => ['required', Rule::in(PerfilPersonalizado::perfiles()->keys()->all())],
             'cargo' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
             'institucion' => [Rule::requiredIf($this->rol === RolUsuario::DEPOSITANTE->value), 'nullable', 'string', 'max:255'],
         ])->validate();
 
         abort_if($this->rol === RolUsuario::CURADOR->value && !auth()->user()->esAdministrador(), 403);
-        $creador->crear($datos, RolUsuario::from($datos['rol']), creadoPorAdministrador: true);
+        $perfil = PerfilPersonalizado::resolver($datos['rol']);
+        abort_unless($perfil, 422);
+        $creador->crear($datos, $perfil, creadoPorAdministrador: true);
 
         $this->reset([
             'first_name',
@@ -147,7 +187,7 @@ final class GestionUsuarios extends Component
         $this->edicionEmail = $usuario->email;
         $this->edicionRol = $usuario->rol->value;
         $this->edicionRoles = $usuario->rolesAsignados()
-            ->map(fn (RolUsuario $rol): string => $rol->value)
+            ->pluck('value')
             ->values()
             ->all();
         $this->edicionCargo = $usuario->cargo ?? '';
@@ -166,43 +206,38 @@ final class GestionUsuarios extends Component
 
         $usuario = User::query()->with('roles')->findOrFail($this->usuarioEnEdicion);
         abort_if(($usuario->esAdministrador() || in_array(RolUsuario::CURADOR->value, $this->edicionRoles, true)) && !auth()->user()->esAdministrador(), 403);
-        $rol = RolUsuario::tryFrom($this->edicionRol);
-        $rolesSeleccionados = collect($this->edicionRoles)
-            ->map(static fn (mixed $valor): ?RolUsuario => is_string($valor) ? RolUsuario::tryFrom($valor) : null)
-            ->filter()
-            ->values();
+        $perfiles = PerfilPersonalizado::perfiles();
+        $rol = $perfiles->get($this->edicionRol);
 
         $datos = Validator::make([
             'first_name' => trim($this->edicionFirstName),
             'last_name' => trim($this->edicionLastName),
             'email' => User::normalizarEmail($this->edicionEmail),
             'rol' => $this->edicionRol,
-            'roles' => $rolesSeleccionados->map(fn (RolUsuario $rol): string => $rol->value)->all(),
+            'roles' => $this->edicionRoles,
             'cargo' => trim($this->edicionCargo),
             'institucion' => trim($this->edicionInstitucion),
         ], [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email:rfc', 'max:255', Rule::unique(User::class, 'email_normalizado')->ignore($usuario->id)],
-            'rol' => ['required', Rule::enum(RolUsuario::class)],
+            'rol' => ['required', Rule::in($perfiles->keys()->all())],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => [Rule::enum(RolUsuario::class)],
-            'cargo' => [Rule::requiredIf($rolesSeleccionados->contains(RolUsuario::DEPOSITANTE)), 'nullable', 'string', 'max:255'],
-            'institucion' => [Rule::requiredIf($rolesSeleccionados->contains(RolUsuario::DEPOSITANTE)), 'nullable', 'string', 'max:255'],
+            'roles.*' => ['required', 'distinct', Rule::in($perfiles->keys()->all())],
+            'cargo' => [Rule::requiredIf(in_array(RolUsuario::DEPOSITANTE->value, $this->edicionRoles, true)), 'nullable', 'string', 'max:255'],
+            'institucion' => [Rule::requiredIf(in_array(RolUsuario::DEPOSITANTE->value, $this->edicionRoles, true)), 'nullable', 'string', 'max:255'],
         ])->validate();
 
-        if ($rol === null || ! $rolesSeleccionados->contains($rol)) {
+        if ($rol === null || ! in_array($rol->value, $datos['roles'], true)) {
             throw ValidationException::withMessages([
                 'edicionRol' => 'El rol operativo principal debe formar parte de los roles asignados.',
             ]);
         }
 
+        $rolesSeleccionados = $perfiles->only($datos['roles'])->values();
         $internos = $rolesSeleccionados->filter(
-            fn (RolUsuario $asignado): bool => in_array($asignado, RolUsuario::rolesInternos(), true),
+            fn (RolUsuario|PerfilPersonalizado $asignado): bool => in_array($asignado, RolUsuario::rolesInternos(), true),
         );
-        if ($rolesSeleccionados->isEmpty()) {
-            return;
-        }
 
         if ($internos->contains(fn (RolUsuario $asignado): bool => ! in_array($asignado, [RolUsuario::CURADOR, RolUsuario::PASANTE], true))
             && ! $this->esCorreoInstitucional($datos['email'])) {
@@ -311,7 +346,7 @@ final class GestionUsuarios extends Component
     {
         return view('livewire.administracion.gestion-usuarios', [
             'usuarios' => $this->usuarios(),
-            'roles' => RolUsuario::cases(),
+            'roles' => PerfilPersonalizado::perfiles(),
         ]);
     }
 
@@ -380,7 +415,7 @@ final class GestionUsuarios extends Component
                 });
             })
             ->when($this->filtroRol !== '', function ($consulta): void {
-                $rol = RolUsuario::tryFrom($this->filtroRol);
+                $rol = PerfilPersonalizado::resolver($this->filtroRol);
                 if ($rol !== null) {
                     $consulta->whereHas('roles', fn ($roles) => $roles->where('rol', $rol->value));
                 }

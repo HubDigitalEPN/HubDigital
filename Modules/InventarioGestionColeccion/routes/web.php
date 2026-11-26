@@ -23,9 +23,10 @@ Route::middleware(['web', 'auth', 'verified', 'role:curador'])
 
             Route::get('/localidades', RedirigirTablaCatalogo::class)->defaults('tablaCatalogo', 'localidades-coleccion')->name('localidades');
 
-            Route::get('/especimenes', EspecimenIndex::class)->name('especimenes');
-            Route::get('/importar', ActualizarCatalogoIndex::class)->name('importar');
-            Route::get('/importar/plantilla', DescargarPlantillaImportController::class)->name('importar.plantilla');
+            Route::get('/especimenes', EspecimenIndex::class)->withoutMiddleware('role:curador')->name('especimenes');
+            Route::get('/importar', ActualizarCatalogoIndex::class)->withoutMiddleware('role:curador')->name('importar');
+            Route::get('/importar/plantilla', DescargarPlantillaImportController::class)
+                ->withoutMiddleware('role:curador')->name('importar.plantilla');
             Route::get('/importar/plantilla/configurar', RedirigirTablaCatalogo::class)
                 ->defaults('tablaCatalogo', 'plantilla-catalogo')->defaults('destinoCatalogo', 'admin.matrices')->name('importar.plantilla.configurar');
             Route::get('/importar/{importacion}/original', \Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos\DescargarOriginalImportacionController::class)->whereUuid('importacion')->name('importar.original');

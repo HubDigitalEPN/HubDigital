@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\RolUsuario;
+use App\Models\PerfilPersonalizado;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -16,7 +17,7 @@ final class UserIdentityService
     /**
      * Roles asignados a la cuenta (membresía).
      *
-     * @return Collection<int, RolUsuario>
+     * @return Collection<int, RolUsuario|PerfilPersonalizado>
      */
     public function obtenerRoles(string $uuid): Collection
     {
@@ -31,7 +32,7 @@ final class UserIdentityService
     /**
      * Rol primario de la cuenta (columna escalar). No depende de la sesión.
      */
-    public function obtenerRolPrimario(string $uuid): ?RolUsuario
+    public function obtenerRolPrimario(string $uuid): RolUsuario|PerfilPersonalizado|null
     {
         return User::find($uuid)?->rol;
     }
@@ -39,7 +40,7 @@ final class UserIdentityService
     /**
      * @deprecated Ambiguo con multi-rol; usar obtenerRolPrimario() o tieneRol().
      */
-    public function obtenerRol(string $uuid): ?RolUsuario
+    public function obtenerRol(string $uuid): RolUsuario|PerfilPersonalizado|null
     {
         return $this->obtenerRolPrimario($uuid);
     }

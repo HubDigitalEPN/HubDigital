@@ -111,6 +111,7 @@
                                         RolUsuario::PRESTAMISTA => ['bg-science-blue/10 text-science-blue', 'document-text'],
                                         RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => ['bg-blue-navy/10 text-blue-navy', 'shield-check'],
                                         RolUsuario::PASANTE => ['bg-amber-100 text-amber-800', 'clipboard-document-check'],
+                                        default => ['bg-blue-navy/10 text-blue-navy', 'user-circle'],
                                     };
                                 @endphp
                                 <div class="grid flex-1 text-start text-sm leading-tight">

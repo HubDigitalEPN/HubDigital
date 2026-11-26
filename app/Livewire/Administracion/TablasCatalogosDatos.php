@@ -45,7 +45,7 @@ final class TablasCatalogosDatos extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        app(\App\Support\AccesoMenu::class)->autorizar('admin.catalogos');
     }
 
     public function seleccionarTabla(string $tabla): void

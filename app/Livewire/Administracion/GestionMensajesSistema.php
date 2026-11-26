@@ -32,7 +32,7 @@ final class GestionMensajesSistema extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esAdministrador(), 403);
+        app(\App\Support\AccesoMenu::class)->autorizar('admin.mensajes');
     }
 
     public function buscar(): void

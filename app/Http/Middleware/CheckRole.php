@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Enums\RolUsuario;
+use App\Support\AccesoMenu;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,7 +34,9 @@ final class CheckRole
         // y puede operar todas las áreas. El resto se autoriza por membresía
         // persistida, nunca por un valor enviado por el navegador.
         if (! $user->esAdministrador() && ! $user->tieneAlgunRol(...$esperados)) {
-            abort(403, 'No tienes permiso para acceder a esta sección.');
+            $ruta = $request->route()?->getName();
+            abort_unless($ruta && app(AccesoMenu::class)->permiteRuta($ruta, $user), 403,
+                'No tienes permiso para acceder a esta sección.');
         }
 
         return $next($request);

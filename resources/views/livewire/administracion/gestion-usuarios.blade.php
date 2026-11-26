@@ -122,12 +122,34 @@
         </section>
     @endif
 
+    <flux:modal name="nuevo-perfil" class="w-full max-w-md">
+        <form wire:submit="crearPerfil" class="space-y-4">
+            <flux:heading size="lg">Nuevo perfil</flux:heading>
+            <div class="flex items-end gap-2">
+                <flux:input wire:model="nombrePerfil" label="Nombre del perfil" maxlength="80" required class="grow" />
+                <x-catalogo-ayuda campo="nombrePerfil" :detalle="[
+                    'titulo' => 'Nombre del perfil',
+                    'descripcion' => 'Identifica el perfil en Usuarios y perfiles y en Menú lateral.',
+                    'ejemplo' => 'Asistente de Colecciones',
+                    'regla' => 'Cada perfil debe tener un nombre único.',
+                ]" />
+            </div>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close><flux:button>Cancelar</flux:button></flux:modal.close>
+                <flux:button type="submit" variant="primary">Guardar</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
     <x-interactive-grid :rows="$usuarios" label="Usuarios y perfiles" :columns="['Acciones', 'Persona', 'Perfil', 'Rol', 'Estado', 'Alta']" data-grid-resizable>
         <x-slot:toolbarActions>
+            @if(auth()->user()->esAdministrador())
+            <flux:button icon="plus" wire:click="abrirNuevoPerfil">Nuevo perfil</flux:button>
             <flux:button class="hub-ig-new-record" variant="primary" icon="user-plus" wire:click="alternarFormulario"
                 x-on:click="closeMenu(false)" data-testid="admin-user-create-toggle">
                 {{ $mostrarFormulario ? 'Cerrar formulario' : 'Crear usuario' }}
             </flux:button>
+            @endif
         </x-slot:toolbarActions>
         <x-slot:filters>
             <flux:select x-model="filterValues.filtroRol" data-grid-filter="filtroRol" label="Rol" aria-label="Filtrar por rol" data-testid="admin-user-role-filter">
@@ -142,6 +164,7 @@
                     @forelse ($usuarios as $usuario)
                         <tr wire:key="fila-usuario-{{ $usuario->id }}" data-testid="admin-user-row" class="hover:bg-bg-main/50">
                             <td data-grid-action>
+                                @if(auth()->user()->esAdministrador())
                                 <x-catalogo-menu-fila :id="'usuario-acciones-'.$usuario->id" :etiqueta="$usuario->name">
                                     @if (!$usuario->hasVerifiedEmail())
                                         <button type="button" role="menuitem" wire:click="reenviarVerificacion(@js((string) $usuario->id))" title="Reenviar verificación"><flux:icon name="envelope" />Verificar</button>
@@ -151,6 +174,7 @@
                                         <button type="button" role="menuitem" wire:click="confirmarEliminacion(@js((string) $usuario->id))" aria-label="Eliminar usuario"><flux:icon name="trash" />Eliminar</button>
                                     @endif
                                 </x-catalogo-menu-fila>
+                                @endif
                             </td>
                             <td class="px-4 py-4">
                                 <p class="font-medium text-text-primary">{{ $usuario->name }}</p>

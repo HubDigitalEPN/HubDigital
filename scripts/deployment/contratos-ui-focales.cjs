@@ -547,4 +547,14 @@ for(const f of ['Modules/CatalogoPublico/app/Presentation/Http/Controllers/Porta
     (contracts[f]??=[]).push('tests/Feature/EditorPresentacionDirectaTest.php');
 }
 owner['public/css/pagina-laboratorio.css']=['laboratorio_editor'];
+definitions.perfiles_catalogo = {
+    sources: ['config/menu-lateral.php', 'config/permisos-menu.php', 'app/Support/AccesoMenu.php', 'app/Support/MenuLateral.php', 'app/Models/PerfilPersonalizado.php',
+        'app/Livewire/Administracion/GestionMenuLateral.php', 'resources/views/livewire/administracion/gestion-menu-lateral.blade.php',
+        'resources/views/livewire/administracion/menu-lateral-nodo.blade.php'],
+    checks: ['pantalla', 'indicador', 'consulta', 'edicion', 'validacion', 'importacion', 'rolesActuales', 'dialogo', 'registroPrestamos', 'administracion', 'cancelado'],
+};
+for(const file of definitions.perfiles_catalogo.sources) {
+    (owner[file] ??= []).push('perfiles_catalogo');
+    (contracts[file] ??= []).push('tests/Unit/AccesoDelegadoMenuLateralTest.php');
+}
 module.exports={definitions,owner,contracts,inputs,status,verify,approve,preserveCompatible,runnerFragment};

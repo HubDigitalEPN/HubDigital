@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\SeguimientoFisico\GestionRegistrosTaxonomicos;
 
+use App\Support\AccesoCatalogo;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -468,7 +470,7 @@ final class EspecimenIndex extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::CONSULTA);
     }
 
     // ── Columnas ──────────────────────────────────────────────────────────────
@@ -739,6 +741,7 @@ final class EspecimenIndex extends Component
 
     public function registrarEspecimen(RegistrarEspecimenHandler $handler): void
     {
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::CONSULTA, 'crear');
         // Validar todos los datos de alta antes de convertirlos. Un cast a int
         // o float no debe convertir texto o fracciones en datos científicos.
         // Las reglas de edición pertenecen a otro modal, normalmente vacío.
@@ -812,6 +815,7 @@ final class EspecimenIndex extends Component
      */
     public function abrirEditModal(ObtenerFichaEspecimenHandler $handler, string $id): void
     {
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::CONSULTA, 'editar');
         $ficha = $handler->handle(new ObtenerFichaEspecimenInput(especimenId: $id));
 
         if (! $ficha->encontrado) {
@@ -851,6 +855,7 @@ final class EspecimenIndex extends Component
 
     public function actualizarEspecimen(ActualizarEspecimenHandler $handler): void
     {
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::CONSULTA, 'editar');
         // Las fichas históricas pueden no tener fecha o colector. Corregir su
         // ubicación no debe obligar a inventar esos datos ni validar el alta vacía.
         $this->validate([
@@ -929,6 +934,7 @@ final class EspecimenIndex extends Component
      */
     public function abrirPanelMasivo(array $ids = []): void
     {
+        AccesoCatalogo::autorizar();
         $this->seleccionados = array_values(array_unique(array_filter(
             $ids,
             fn ($id) => is_string($id) && EspecimenId::esValido($id),
@@ -1006,6 +1012,7 @@ final class EspecimenIndex extends Component
         ReemplazarTextoEnEspecimenesHandler $reemplazar,
         bool $simular,
     ): void {
+        AccesoCatalogo::autorizar();
         $ids = $this->idsSeleccionados();
         if ($ids === []) {
             $this->errorMessage = 'No hay especímenes seleccionados.';
@@ -1092,6 +1099,7 @@ final class EspecimenIndex extends Component
         string $clave,
         string $valor,
     ): void {
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::CONSULTA, 'editar');
         if (str_starts_with($clave, 'extra_')) {
             try { app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->guardarValor($id, $clave, trim($valor) ?: null); $this->errorMessage = null; }
             catch (\Throwable $e) { $this->errorMessage = $this->traducirErrorParaUsuario($e); }
@@ -1171,6 +1179,7 @@ final class EspecimenIndex extends Component
      */
     public function guardarFicha(AplicarEdicionMasivaEspecimenesHandler $handler): void
     {
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::CONSULTA, 'editar');
         if ($this->fichaId === '') {
             return;
         }
@@ -1228,6 +1237,7 @@ final class EspecimenIndex extends Component
 
     public function abrirHistorial(ListarEdicionesMasivasHandler $handler): void
     {
+        AccesoCatalogo::autorizar();
         $this->historial = $handler->handle(new ListarEdicionesMasivasInput)->items;
         $this->historialAbierto = true;
     }
@@ -1237,6 +1247,7 @@ final class EspecimenIndex extends Component
         ListarEdicionesMasivasHandler $listar,
         string $edicionId,
     ): void {
+        AccesoCatalogo::autorizar();
         try {
             $salida = $handler->handle(new DeshacerEdicionMasivaInput($edicionId));
 
@@ -1298,6 +1309,7 @@ final class EspecimenIndex extends Component
         GenerarCodigoQrHandler $generarHandler,
         ObtenerFichaEspecimenHandler $fichaHandler,
     ): void {
+        AccesoCatalogo::autorizar();
         try {
             $existente = $obtenerHandler->handle(new ObtenerCodigoQrInput(especimenId: $id));
 
@@ -1425,6 +1437,9 @@ final class EspecimenIndex extends Component
         $filas = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\ColumnasCatalogo::class)->completar($items);
 
         return view('inventariogestioncoleccion::admin.taxonomia.especimenes.index', [
+            'puedeCrear' => AccesoCatalogo::permitido(AccesoCatalogo::CONSULTA, 'crear'),
+            'puedeEditar' => AccesoCatalogo::permitido(AccesoCatalogo::CONSULTA, 'editar'),
+            'accesoCompleto' => AccesoCatalogo::completo(),
             'filas' => $filas,
             'continuidad'=>$this->gridVentana,
             'definicionColumnas' => app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'],

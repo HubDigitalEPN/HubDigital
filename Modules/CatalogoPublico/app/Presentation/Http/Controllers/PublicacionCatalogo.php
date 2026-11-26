@@ -18,7 +18,7 @@ final class PublicacionCatalogo extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        app(\App\Support\AccesoMenu::class)->autorizar('divulgacion.index');
     }
 
     public function render()

@@ -24,7 +24,7 @@ final class GestionBotones extends Component
     public function boot(): void
     {
         request()->attributes->set('administracion_sensible', true);
-        $this->autorizar();
+        app(\App\Support\AccesoMenu::class)->autorizar('admin.botones');
     }
 
     private function autorizar(): void

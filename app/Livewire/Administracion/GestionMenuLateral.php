@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Administracion;
 
-use App\Enums\RolUsuario;
+use App\Models\PerfilPersonalizado;
 use App\Support\MenuLateral;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -34,42 +34,48 @@ final class GestionMenuLateral extends Component
     public string $ruta = '';
     public string $grupo = '';
     public array $roles = [];
+    public array $permisos = [];
     public bool $visible = true;
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esAdministrador(), 403);
+        app(\App\Support\AccesoMenu::class)->autorizar('admin.menu-lateral');
     }
 
     public function mount(): void
     {
         if ($this->rolVista !== self::TODAS_LAS_OPCIONES) {
-            $this->rolVista = (RolUsuario::desdeHistorico($this->rolVista) ?? auth()->user()->rolActivo())->value;
+            $this->rolVista = (PerfilPersonalizado::resolver($this->rolVista) ?? auth()->user()->rolActivo())->value;
         }
     }
 
     public function seleccionarRol(string $rol): void
     {
-        abort_unless($rol === self::TODAS_LAS_OPCIONES || RolUsuario::tryFrom($rol) !== null, 422);
+        abort_unless($rol === self::TODAS_LAS_OPCIONES || PerfilPersonalizado::resolver($rol) !== null, 422);
         $this->rolVista = $rol;
     }
 
     public function nueva(): void
     {
-        $this->reset('edicion', 'tipo', 'texto', 'ruta', 'grupo', 'roles', 'visible');
+        abort_unless(auth()->user()?->esAdministrador(), 403);
+        $this->reset('edicion', 'tipo', 'texto', 'ruta', 'grupo', 'roles', 'permisos', 'visible');
         $this->resetValidation();
         $this->modal('editor-menu-lateral')->show();
     }
 
     public function editar(string $clave, MenuLateral $menu): void
     {
+        abort_unless(auth()->user()?->esAdministrador(), 403);
         $opcion = $menu->opciones()[$clave] ?? abort(404);
         $this->edicion = $clave;
         $this->tipo = $opcion['ruta'] === null ? 'grupo' : 'enlace';
         $this->texto = $opcion['texto'];
         $this->ruta = $opcion['ruta'] ?? '';
         $this->grupo = $opcion['grupo'] ?? '';
-        $this->roles = $opcion['roles'];
+        $this->roles = ($opcion['todosLosPerfiles'] ?? false)
+            ? PerfilPersonalizado::perfiles()->keys()->all()
+            : $opcion['roles'];
+        $this->permisos = array_map(fn (array $acciones): array => array_fill_keys($acciones, true), $opcion['permisos'] ?? []);
         $this->visible = $opcion['visible'];
         $this->resetValidation();
         $this->modal('editor-menu-lateral')->show();
@@ -77,12 +83,14 @@ final class GestionMenuLateral extends Component
 
     public function guardar(MenuLateral $menu): void
     {
+        abort_unless(auth()->user()?->esAdministrador(), 403);
         $this->texto = trim($this->texto);
 
         DB::transaction(function () use ($menu): void {
             DB::statement('lock table usuarios.menu_lateral in share row exclusive mode');
             $opciones = $menu->opciones();
-            $destinos = $menu->destinos();
+            $perfiles = PerfilPersonalizado::perfiles();
+            $destinos = $menu->destinos($perfiles);
             $original = $this->edicion === null ? null : ($opciones[$this->edicion] ?? abort(404));
             if ($original) {
                 $this->tipo = $original['ruta'] === null ? 'grupo' : 'enlace';
@@ -92,7 +100,7 @@ final class GestionMenuLateral extends Component
             }
             $grupos = array_keys(array_filter($opciones, static fn (array $opcion): bool => $opcion['ruta'] === null));
             $permitidos = $this->tipo === 'grupo'
-                ? array_column(RolUsuario::cases(), 'value')
+                ? $perfiles->keys()->all()
                 : ($destinos[$this->ruta]['rolesPermitidos'] ?? []);
 
             $this->validate([
@@ -102,17 +110,27 @@ final class GestionMenuLateral extends Component
                 'grupo' => ['nullable', Rule::in($grupos)],
                 'roles' => ['required', 'array', 'min:1'],
                 'roles.*' => ['required', 'distinct', Rule::in($permitidos)],
+                'permisos.*' => ['array'],
+                'permisos.*.*' => ['boolean'],
                 'visible' => ['boolean'],
             ], [
                 'roles.required' => 'Selecciona al menos un rol.',
                 'roles.*.in' => 'El rol seleccionado no tiene acceso a este destino.',
             ]);
 
+            $permisos = [];
+            $destino = $destinos[$this->ruta] ?? [];
+            foreach (array_intersect($this->roles, $destino['rolesDelegables'] ?? []) as $rol) {
+                $acciones = array_intersect_key(array_filter($this->permisos[$rol] ?? []), $destino['accionesDelegables']);
+                $permisos[$rol] = array_keys($acciones);
+            }
+
             $menu->guardar($this->edicion ?? Str::orderedUuid()->toString(), [
                 'texto' => $this->texto,
                 'ruta' => $this->ruta ?: null,
                 'grupo' => $this->grupo ?: null,
                 'roles' => array_values($this->roles),
+                'permisos' => $permisos,
                 'visible' => $this->visible,
             ]);
         });
@@ -125,10 +143,12 @@ final class GestionMenuLateral extends Component
     {
         $permitidos = app(MenuLateral::class)->destinos()[$this->ruta]['rolesPermitidos'] ?? [];
         $this->roles = array_values(array_intersect($this->roles, $permitidos));
+        $this->permisos = [];
     }
 
     public function eliminar(string $clave, MenuLateral $menu): void
     {
+        abort_unless(auth()->user()?->esAdministrador(), 403);
         DB::transaction(function () use ($clave, $menu): void {
             DB::statement('lock table usuarios.menu_lateral in share row exclusive mode');
             $opciones = $menu->opciones();
@@ -145,6 +165,7 @@ final class GestionMenuLateral extends Component
     public function render(MenuLateral $menu): View
     {
         $opciones = $menu->opciones();
+        $perfiles = PerfilPersonalizado::perfiles();
         $grupos = array_filter($opciones, static fn (array $opcion): bool => $opcion['ruta'] === null);
         if ($this->rolVista === self::TODAS_LAS_OPCIONES) {
             $raices = $hijosPorGrupo = [];
@@ -157,22 +178,24 @@ final class GestionMenuLateral extends Component
                 }
             }
         } else {
-            $rol = RolUsuario::tryFrom($this->rolVista) ?? auth()->user()->rolActivo();
+            $rol = $perfiles->get($this->rolVista) ?? auth()->user()->rolActivo();
             $raices = $menu->visiblePara($rol, $opciones);
             $hijosPorGrupo = array_filter(array_map(static fn (array $opcion): array => $opcion['hijos'], $raices));
         }
-        $rolesVista = array_combine(array_column(RolUsuario::cases(), 'value'),
-            array_map(static fn (RolUsuario $rol): string => $rol->etiqueta(), RolUsuario::cases()));
+        $etiquetasRoles = $perfiles->map(fn ($rol): string => $rol->etiqueta())->all();
+        $rolesVista = $etiquetasRoles;
         $rolesVista[self::TODAS_LAS_OPCIONES] = 'Todas las opciones';
         $gruposAbiertos = array_keys(array_filter($hijosPorGrupo, static fn (array $hijos): bool =>
             in_array('admin.menu-lateral', array_column($hijos, 'ruta'), true)));
-        $destinos = $menu->destinos();
+        $destinos = $menu->destinos($perfiles);
         $rolesDisponibles = $this->tipo === 'grupo'
-            ? RolUsuario::cases()
+            ? $perfiles->values()->all()
             : ($destinos[$this->ruta]['roles'] ?? []);
 
+        $puedeAdministrar = auth()->user()->esAdministrador();
         return view('livewire.administracion.gestion-menu-lateral', compact(
-            'raices', 'hijosPorGrupo', 'grupos', 'rolesVista', 'gruposAbiertos', 'destinos', 'rolesDisponibles',
+            'raices', 'hijosPorGrupo', 'grupos', 'rolesVista', 'gruposAbiertos', 'destinos', 'rolesDisponibles', 'etiquetasRoles',
+            'puedeAdministrar',
         ));
     }
 

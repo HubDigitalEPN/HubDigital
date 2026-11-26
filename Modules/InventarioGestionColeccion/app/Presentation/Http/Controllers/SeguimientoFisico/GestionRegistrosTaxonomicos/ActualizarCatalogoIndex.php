@@ -7,6 +7,7 @@ namespace Modules\InventarioGestionColeccion\Presentation\Http\Controllers\Segui
 use App\Support\AccesoCatalogo;
 use App\Support\MensajesSistema;
 use DomainException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -38,12 +39,12 @@ class ActualizarCatalogoIndex extends Component
     #[Locked] public ?array $detalle = null;
     public int $paginaDetalle = 1;
 
-    public function mount(): void { $this->autorizar(); }
+    public function boot(): void { $this->autorizar(); }
 
     public function exportarExcel(string $perfil = 'catalogo'): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         \App\Support\BotonesSistema::autorizar('inventario.exportar');
-        $this->autorizar();
+        AccesoCatalogo::autorizar();
         return app(\App\Support\ExportacionCatalogoExcel::class)->descargar(
             DB::table('taxonomia.especimenes')->orderBy('fila_origen_excel')->orderBy('id')->pluck('id')->all(), $perfil,
         );
@@ -52,7 +53,7 @@ class ActualizarCatalogoIndex extends Component
     private function autorizar(): void
     {
         auth()->user()?->unsetRelation('roles');
-        AccesoCatalogo::autorizar();
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::IMPORTACION);
     }
 
     protected function rules(): array
@@ -98,13 +99,11 @@ class ActualizarCatalogoIndex extends Component
 
     private function invalidar(): void
     {
-        $this->autorizar();
         $this->reset('resultado', 'archivoSha256', 'parametrosValidados', 'importacionId', 'cargaAnterior', 'errorMessage', 'successMessage');
     }
 
     public function validar(): void
     {
-        $this->autorizar();
         $this->validate();
         $this->errorMessage = null;
         $this->successMessage = null;
@@ -118,7 +117,7 @@ class ActualizarCatalogoIndex extends Component
 
     public function importar(): void
     {
-        $this->autorizar();
+        AccesoCatalogo::autorizarPantalla(AccesoCatalogo::IMPORTACION, 'importar');
         $this->validate();
         if (!$this->resultado || !$this->archivoSha256 || !hash_equals($this->archivoSha256, hash_file('sha256', $this->archivo->getRealPath())) || $this->parametrosValidados !== $this->modo.'|'.$this->delimitador) {
             $this->errorMessage = $this->mensaje('revalidar');
@@ -141,7 +140,7 @@ class ActualizarCatalogoIndex extends Component
                     'creado_por_id' => (string)auth()->id(), 'estado' => 'en_cola', 'plan_sha256' => $this->resultado['huella'], 'resumen' => json_encode($this->resultado + ['modo' => $this->modo], JSON_THROW_ON_ERROR), 'error' => null, 'updated_at' => now()];
                 if ($existente) DB::table('taxonomia.importaciones_catalogo')->where('id', $id)->update($datos);
                 else DB::table('taxonomia.importaciones_catalogo')->insert($datos + ['id' => $id, 'fuente_sha256' => $this->archivoSha256, 'created_at' => now()]);
-                ProcesarActualizacionCatalogo::dispatch($id)->onConnection('database')
+                ProcesarActualizacionCatalogo::dispatch($id, auth()->user()->rolActivo()->value)->onConnection('database')
                     ->onQueue(config('hubdigital.validation_mode') ? (string)config('hubdigital.validation_queue', 'validation') : 'default')->afterCommit();
 
                 return [$id, 'recibida'];
@@ -161,12 +160,11 @@ class ActualizarCatalogoIndex extends Component
         $this->errorMessage = $error instanceof DomainException ? $error->getMessage() : $this->mensaje('error');
     }
 
-    public function consultar(): void { $this->autorizar(); }
+    public function consultar(): void {}
 
     public function verDetalle(string $id): void
     {
-        $this->autorizar();
-        $carga = DB::table('taxonomia.importaciones_catalogo')->where('id', $id)->first();
+        $carga = $this->cargasPermitidas()->where('id', $id)->first();
         abort_unless($carga, 404);
         $this->detalle = ['id' => $carga->id, 'archivo' => $carga->archivo_nombre];
         $this->paginaDetalle = 1;
@@ -175,7 +173,6 @@ class ActualizarCatalogoIndex extends Component
 
     public function moverPaginaDetalle(int $delta): void
     {
-        $this->autorizar();
         $this->paginaDetalle = max(1, min(2500, $this->paginaDetalle + ($delta < 0 ? -1 : 1)));
     }
 
@@ -183,11 +180,23 @@ class ActualizarCatalogoIndex extends Component
 
     public function render(): View
     {
-        $this->autorizar();
-        $carga = $this->importacionId ? DB::table('taxonomia.importaciones_catalogo')->where('id', $this->importacionId)->first() : null;
-        $historial = DB::table('taxonomia.importaciones_catalogo')->orderByDesc('created_at')->limit(10)->get();
-        $filas = $this->detalle ? DB::table('taxonomia.importacion_filas_catalogo')->where('importacion_id', $this->detalle['id'])->orderBy('fila')->offset(($this->paginaDetalle - 1) * 20)->limit(21)->get() : collect();
+        $cargas = $this->cargasPermitidas();
+        $carga = $this->importacionId ? (clone $cargas)->where('id', $this->importacionId)->first() : null;
+        $historial = (clone $cargas)->orderByDesc('created_at')->limit(10)->get();
+        $filas = $this->detalle ? DB::table('taxonomia.importacion_filas_catalogo')
+            ->whereIn('importacion_id', $cargas->select('id')->where('id', $this->detalle['id']))
+            ->orderBy('fila')->offset(($this->paginaDetalle - 1) * 20)->limit(21)->get() : collect();
         $guiaCampos = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer()['columnas'];
-        return view('inventariogestioncoleccion::admin.taxonomia.importar.actualizacion', compact('carga', 'historial', 'filas', 'guiaCampos'));
+        $puedeImportar = AccesoCatalogo::permitido(AccesoCatalogo::IMPORTACION, 'importar');
+        $accesoCompleto = AccesoCatalogo::completo();
+
+        return view('inventariogestioncoleccion::admin.taxonomia.importar.actualizacion',
+            compact('carga', 'historial', 'filas', 'guiaCampos', 'puedeImportar', 'accesoCompleto'));
+    }
+
+    private function cargasPermitidas(): Builder
+    {
+        return DB::table('taxonomia.importaciones_catalogo')
+            ->when(!AccesoCatalogo::completo(), fn (Builder $cargas) => $cargas->where('creado_por_id', auth()->id()));
     }
 }

@@ -123,6 +123,7 @@ class Dashboard extends Component
                 'livewire.dashboard.depositante-panel',
                 $this->estadisticasDepositante((string) $user->id),
             ),
+            default => view('livewire.dashboard.perfil-panel', ['rol' => $user->rolActivo()]),
         };
         $this->inicioVista = microtime(true);
         if (app()->environment('local')) {
@@ -146,7 +147,7 @@ class Dashboard extends Component
             'pendientes' => User::query()->whereNull('email_verified_at')->count(),
             'porRol' => User::query()->with('roles')->get()
                 ->flatMap(fn (User $usuario) => $usuario->rolesAsignados())
-                ->countBy(fn (RolUsuario $rol) => $rol->value),
+                ->countBy('value'),
             'ingresosAprobados' => SolicitudDepositoEloquentModel::query()
                 ->where('estado', EstadoSolicitudDeposito::AprobadaDocumentalmente->value)->count(),
         ];

@@ -2,9 +2,9 @@
     @foreach ($roles as $rol)
         <button type="button" wire:click="cambiar('{{ $rol->value }}')"
             class="flex min-h-14 items-center justify-between rounded-lg border border-border bg-surface px-4 text-left text-sm text-text-primary transition hover:border-bio-green hover:bg-bg-main"
-            @if($rol === $rolActivo) aria-current="true" @endif>
+            @if($rol->value === $rolActivo->value) aria-current="true" @endif>
             <span>{{ $rol->etiqueta() }}</span>
-            @if($rol === $rolActivo)<span class="text-xs font-semibold text-bio-green">Rol activo</span>@endif
+            @if($rol->value === $rolActivo->value)<span class="text-xs font-semibold text-bio-green">Rol activo</span>@endif
         </button>
     @endforeach
     @if($rolActivable)

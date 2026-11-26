@@ -23,7 +23,7 @@ final class DescargarPlantillaImportController
 {
     public function __invoke(): Response
     {
-        \App\Support\AccesoCatalogo::autorizar();
+        \App\Support\AccesoCatalogo::autorizarPantalla(\App\Support\AccesoCatalogo::IMPORTACION);
         $definicion = app(\Modules\InventarioGestionColeccion\Infrastructure\SeguimientoFisico\Importers\ConfiguracionPlantillaCatalogo::class)->leer();
         if (class_exists(Spreadsheet::class)) {
             $xlsx = GeneradorPlantillaImportXlsx::generar($definicion);

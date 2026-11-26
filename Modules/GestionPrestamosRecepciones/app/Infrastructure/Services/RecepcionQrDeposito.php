@@ -16,7 +16,7 @@ final class RecepcionQrDeposito
 {
     public function decidir(string $id, string $codigo, User $tecnico, bool $aprobar, string $motivo = ''): void
     {
-        abort_unless($tecnico->esReceptor(), 403);
+        abort_unless(app(\App\Support\AccesoMenu::class)->permite('prestamos.receptor.depositos', 'recibir', $tecnico), 403);
         DB::transaction(function () use ($id, $codigo, $tecnico, $aprobar, $motivo): void {
             $solicitud = Solicitud::lockForUpdate()->findOrFail($id);
             abort_unless(hash_equals((string) $solicitud->codigo_qr, $codigo), 403);

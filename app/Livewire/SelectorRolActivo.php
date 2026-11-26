@@ -18,7 +18,8 @@ class SelectorRolActivo extends Component
         $user = Auth::user();
         abort_unless($user && $user->hasVerifiedEmail() && ! $user->must_change_password, 403);
         $user->load('roles');
-        $destino = RolUsuario::desdeHistorico($rol);
+        $codigo = RolUsuario::desdeHistorico($rol)?->value ?? $rol;
+        $destino = $user->rolesAsignados()->firstWhere('value', $codigo);
 
         if ($destino === null || ! $user->tieneRol($destino)) {
             return;

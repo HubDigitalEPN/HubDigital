@@ -22,14 +22,23 @@ final class ProcesarActualizacionCatalogo implements ShouldQueue
     // Menor que retry_after=90 del consumidor existente: no se reserva dos veces.
     public int $timeout = 60;
 
-    public function __construct(public readonly string $importacionId) {}
+    public function __construct(
+        public readonly string $importacionId,
+        public readonly ?string $rolSolicitante = null,
+    ) {}
 
     public function handle(ActualizacionCatalogo $importador, AlmacenamientoDepositos $almacenamiento): void
     {
         $carga = DB::table('taxonomia.importaciones_catalogo')->where('id', $this->importacionId)->first();
         if (!$carga || $carga->estado === 'completada') return;
         $actor = User::find($carga->creado_por_id);
-        if (!$actor || !AccesoCatalogo::completo($actor)) throw new DomainException('La cuenta que solicitó la carga ya no tiene acceso de curaduría.');
+        $rol = $this->rolSolicitante ?? null;
+        if (!$actor || !(AccesoCatalogo::completo($actor)
+            || ($rol !== null && AccesoCatalogo::permitido(AccesoCatalogo::IMPORTACION, 'importar', $actor, $rol)))) {
+            throw new DomainException($rol === null
+                ? 'La cuenta que solicitó la carga ya no tiene acceso de curaduría.'
+                : 'La cuenta que solicitó la carga ya no tiene permiso para importar el catálogo.');
+        }
         DB::table('taxonomia.importaciones_catalogo')->where('id', $this->importacionId)->update(['estado' => 'procesando', 'updated_at' => now()]);
         $archivo = $almacenamiento->copiaLocal($carga->archivo_ruta);
         try { $importador->aplicar($this->importacionId, $archivo->ruta()); }

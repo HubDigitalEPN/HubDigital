@@ -10,8 +10,10 @@
                 x-on:keydown.escape.stop="if (mostrarAcciones) { mostrarAcciones = false; $refs.acciones.focus() }">
                 <button type="button" class="hub-ig-button" x-ref="acciones" x-on:click="mostrarAcciones = !mostrarAcciones"
                     aria-controls="acciones-arbol-menu" x-bind:aria-expanded="mostrarAcciones.toString()">Acciones <flux:icon name="chevron-down" /></button>
-                <flux:button class="hub-ig-new-record" variant="primary" icon="plus" wire:click="nueva"
-                    x-on:click="mostrarAcciones = false">Nueva opción</flux:button>
+                @if($puedeAdministrar)
+                    <flux:button class="hub-ig-new-record" variant="primary" icon="plus" wire:click="nueva"
+                        x-on:click="mostrarAcciones = false">Nueva opción</flux:button>
+                @endif
                 <div id="acciones-arbol-menu" class="hub-ig-menu" x-cloak x-show="mostrarAcciones">
                     <button type="button" x-on:click="abiertos = @js(array_keys($hijosPorGrupo)); mostrarAcciones = false; $refs.acciones.focus()">Expandir todos</button>
                     <button type="button" x-on:click="abiertos = []; mostrarAcciones = false; $refs.acciones.focus()">Contraer todos</button>
@@ -53,15 +55,27 @@
             @if($rolesDisponibles !== [])
                 <fieldset class="space-y-2" wire:key="roles-menu-{{ $tipo }}-{{ $ruta }}">
                     <legend class="font-semibold">Roles con acceso a la opción</legend>
+                    @if($tipo === 'enlace' && ($destinos[$ruta]['rolesDelegables'] ?? []) !== [])
+                        <p class="text-sm text-text-secondary">Marcar un perfil adicional le da acceso a la pantalla. «Mostrar en el menú» controla la visibilidad del enlace.</p>
+                    @endif
                     <div class="flex flex-wrap gap-4">
                         @foreach($rolesDisponibles as $rol)
-                            <flux:checkbox wire:model="roles" :value="$rol->value" :label="$rol->etiqueta()" />
+                            <flux:checkbox wire:model.live="roles" :value="$rol->value" :label="$rol->etiqueta()" />
                         @endforeach
                     </div>
                     <flux:error name="roles" />
                     <flux:error name="roles.*" />
                 </fieldset>
             @endif
+            @foreach(array_intersect($roles, $destinos[$ruta]['rolesDelegables'] ?? []) as $rol)
+                <fieldset class="space-y-2" wire:key="permisos-menu-{{ $ruta }}-{{ $rol }}">
+                    <legend class="font-semibold">Funciones de {{ $etiquetasRoles[$rol] }}</legend>
+                    <p class="text-sm text-text-secondary">{{ $destinos[$ruta]['accesoDelegado'] }} incluido con el acceso.</p>
+                    @foreach($destinos[$ruta]['accionesDelegables'] as $accion => $etiqueta)
+                        <flux:checkbox wire:model="permisos.{{ $rol }}.{{ $accion }}" :label="$etiqueta" />
+                    @endforeach
+                </fieldset>
+            @endforeach
             <flux:checkbox wire:model="visible" label="Mostrar en el menú" />
             <div class="flex justify-end gap-2">
                 <flux:modal.close><flux:button>Cancelar</flux:button></flux:modal.close>

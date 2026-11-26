@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\RolUsuario;
+use App\Models\PerfilPersonalizado;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +18,7 @@ final class BotonesSistema
         return config('botones', []);
     }
 
-    public static function permisos(string $boton, RolUsuario $rol): array
+    public static function permisos(string $boton, RolUsuario|PerfilPersonalizado $rol): array
     {
         $def = self::definiciones()[$boton] ?? null;
         if ($def && $rol === RolUsuario::CURADOR) {

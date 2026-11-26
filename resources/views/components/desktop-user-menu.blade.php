@@ -10,6 +10,7 @@
         RolUsuario::DEPOSITANTE => 'archive-box',
         RolUsuario::CURADOR, RolUsuario::AYUDANTE_CURADOR => 'shield-check',
         RolUsuario::PASANTE => 'pencil-square',
+        default => 'user-circle',
     };
 @endphp
 

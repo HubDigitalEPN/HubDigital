@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
-use App\Enums\RolUsuario;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -27,7 +26,7 @@ final class CapturaDarwinCore extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->tieneAlgunRol(RolUsuario::PASANTE, RolUsuario::CURADOR), 403);
+        app(\App\Support\AccesoMenu::class)->autorizar('inventario.captura-dwc');
     }
 
     public function campos(): array

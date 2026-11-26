@@ -904,6 +904,52 @@ export async function comprobarUIFocal(caso) {
         all('button').find(x=>x.textContent.trim()==='Guardar datos').click();await wait(()=>q('[data-captura-dwc] [role=status]')?.textContent.includes('Datos Darwin Core guardados'));
         checks.saved=true;
         checks.labels=all('input').filter(x=>x.getAttribute('wire:model')?.startsWith('datos.')).every(x=>x.labels?.length>0 || x.getAttribute('aria-label') || (x.getAttribute('aria-labelledby')?.split(' ').every(id=>document.getElementById(id)?.textContent.trim())));
+    } else if(caso==='perfiles_catalogo') {
+        await wait(()=>q('[data-menu-lateral-arbol]'));
+        checks.pantalla = location.pathname === '/administracion/menu-lateral' && new URL(location.href).searchParams.get('rol') === 'todas';
+        const catalogo = q('[aria-controls="menu-hijos-catalogo"]');
+        if(catalogo.getAttribute('aria-expanded')!=='true') catalogo.click();
+        await wait(()=>catalogo.querySelector('span[aria-hidden="true"]')?.classList.contains('rotate-90'));
+        checks.indicador=true;
+        const abrirEdicion = async clave => {
+            const fila=q('[data-menu-nodo="'+clave+'"]');
+            fila.querySelector('[aria-haspopup="menu"]').click();
+            const editar=[...fila.querySelectorAll('[role="menuitem"]')].find(elemento=>elemento.textContent.trim()==='Editar');
+            await wait(()=>editar.getClientRects().length);
+            editar.click();
+            await wait(()=>q('dialog[open] fieldset'));
+            return q('dialog[open]');
+        };
+        const elegirPasante = async dialogo => {
+            const rol=dialogo.querySelector('[value="PASANTE"]');
+            if(rol.getAttribute('aria-checked')!=='true' && !rol.checked) rol.click();
+            await wait(()=>[...q('dialog[open]').querySelectorAll('legend')].some(leyenda=>leyenda.textContent.trim()==='Funciones de Pasante'));
+            return q('dialog[open]');
+        };
+        const cancelar = async dialogo => {
+            [...dialogo.querySelectorAll('button')].find(boton=>boton.textContent.trim()==='Cancelar').click();
+            await wait(()=>!q('dialog[open]'));
+        };
+        let dialogo=await elegirPasante(await abrirEdicion('especimenes'));
+        checks.consulta=dialogo.textContent.includes('Consultar especímenes');
+        checks.edicion=dialogo.textContent.includes('Crear especímenes') && dialogo.textContent.includes('Editar especímenes');
+        await cancelar(dialogo);
+        dialogo=await elegirPasante(await abrirEdicion('importar-catalogo'));
+        checks.validacion=dialogo.textContent.includes('Validar matrices');
+        checks.importacion=dialogo.textContent.includes('Importar al catálogo');
+        checks.rolesActuales=!!dialogo.querySelector('[value="DEPOSITANTE"]');
+        checks.dialogo=dialogo.scrollWidth<=dialogo.clientWidth+1;
+        await cancelar(dialogo);
+        const prestamos = q('[aria-controls="menu-hijos-prestamos-equipo"]');
+        if(prestamos.getAttribute('aria-expanded')!=='true') prestamos.click();
+        dialogo=await elegirPasante(await abrirEdicion('solicitudes'));
+        checks.registroPrestamos=dialogo.textContent.includes('Revisar solicitudes de préstamo');
+        await cancelar(dialogo);
+        dialogo=await elegirPasante(await abrirEdicion('usuarios'));
+        checks.administracion=dialogo.textContent.includes('Abrir la pantalla')
+            && ![...dialogo.querySelectorAll('input')].some(input=>input.name?.startsWith('permisos.'));
+        await cancelar(dialogo);
+        checks.cancelado=!q('dialog[open]');
     } else throw Error('Contrato desconocido.');
     if(caso.startsWith('depositos_') || caso==='captura_dwc') checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     return {caso,checks,metrics};

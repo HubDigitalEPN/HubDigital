@@ -4,13 +4,17 @@
         <flux:heading size="xl" level="1" class="font-display text-blue-navy font-bold">{{ \App\Support\PortalCopy::text('importacion.titulo') }}</flux:heading>
         <div class="flex flex-wrap items-center gap-3">
             <x-catalogo-excel-menu accion="exportarExcel" />
-            <flux:button :href="route('inventario.taxonomia.especimenes')">Ver catálogo</flux:button>
+            @if(\App\Support\AccesoCatalogo::permitido(\App\Support\AccesoCatalogo::CONSULTA))
+                <flux:button :href="route('inventario.taxonomia.especimenes')">Ver catálogo</flux:button>
+            @endif
         </div>
     </div>
     @if($errorMessage)<div role="alert" class="rounded border border-red-200 bg-red-50 p-4 text-red-900">{{ $errorMessage }}</div>@endif
     @if($successMessage)<div role="status" class="rounded border p-4 {{ $resultado && $resultado['avisos'] ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-green-200 bg-green-50 text-green-900' }}">{{ $successMessage }}</div>@endif
     <section class="space-y-4 rounded border border-border bg-surface p-5 shadow-sm" aria-label="Cargar matriz del catálogo">
-        <p class="text-sm text-text-secondary">1. Selecciona la matriz. 2. Valida y revisa la vista previa. 3. Importa y espera la confirmación de guardado.</p>
+        <p class="text-sm text-text-secondary">1. Selecciona la matriz. 2. Valida y revisa la vista previa.
+            @if($puedeImportar) 3. Importa y espera la confirmación de guardado. @endif
+        </p>
         <div class="grid items-start gap-5 md:grid-cols-2">
             <flux:field>
                 <div class="flex items-start gap-2" data-catalogo-control-fila>
@@ -56,17 +60,21 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <flux:button wire:click="validar" wire:loading.attr="disabled" wire:target="archivo,validar,importar">Validar matriz</flux:button>
-            <div>
-                <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar" :disabled="!$resultado || ($carga && in_array($carga->estado, ['en_cola', 'procesando']))" wire:confirm="{{ $mensajes->texto('catalogo.importacion.confirmacion') }}">Importar al catálogo</flux:button>
-            </div>
+            @if($puedeImportar)
+                <div>
+                    <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar" :disabled="!$resultado || ($carga && in_array($carga->estado, ['en_cola', 'procesando']))" wire:confirm="{{ $mensajes->texto('catalogo.importacion.confirmacion') }}">Importar al catálogo</flux:button>
+                </div>
+            @endif
             <flux:button wire:click="limpiar" wire:loading.attr="disabled">Cambiar archivo</flux:button>
             <p wire:loading wire:target="archivo,validar,importar" role="status" class="text-sm text-science-blue">Procesando la matriz…</p>
         </div>
         <div class="flex flex-wrap items-center gap-3 border-t border-border pt-3">
             <x-catalogo-guia-columnas :columnas="$guiaCampos" />
             <flux:button :href="route('inventario.taxonomia.importar.plantilla')">Ver o descargar plantilla</flux:button>
-            <flux:button :href="route('inventario.taxonomia.importar.plantilla.configurar')">Configurar columnas de la plantilla</flux:button>
-            <flux:button :href="route('admin.contenidos', ['seccion' => 'portal', 'grupo' => 'importacion'])">Editar textos informativos</flux:button>
+            @if($accesoCompleto)
+                <flux:button :href="route('inventario.taxonomia.importar.plantilla.configurar')">Configurar columnas de la plantilla</flux:button>
+                <flux:button :href="route('admin.contenidos', ['seccion' => 'portal', 'grupo' => 'importacion'])">Editar textos informativos</flux:button>
+            @endif
         </div>
     </section>
     @if($carga)
@@ -110,7 +118,7 @@
     @endif
     <section class="space-y-3 rounded border border-border bg-surface p-5" aria-label="Historial de cargas">
         <h2 class="text-lg font-semibold">Historial de cargas</h2>
-        <x-grid-frame label="Historial de matrices"><table><thead><tr><th scope="col">Archivo</th><th scope="col">Estado</th><th scope="col">Fecha</th><th scope="col">Detalle</th></tr></thead><tbody>@forelse($historial as $h)<tr><td>{{ $h->archivo_nombre }}</td><td>{{ ['en_cola' => 'En cola', 'procesando' => 'Procesando', 'completada' => 'Completada', 'fallida' => 'No completada'][$h->estado] ?? $h->estado }}</td><td>{{ \Carbon\Carbon::parse($h->created_at)->timezone('America/Guayaquil')->format('d/m/Y H:i') }}</td><td><a class="hub-ig-button" href="{{ route('inventario.taxonomia.importar.original', ['importacion' => $h->id]) }}" download title="Descargar archivo original completo">Ver detalle</a> <button type="button" class="hub-ig-button" wire:click="verDetalle('{{ $h->id }}')">Ver cambios</button></td></tr>@empty<tr><td colspan="4">Las matrices incorporadas aparecerán aquí.</td></tr>@endforelse</tbody></table></x-grid-frame>
+        <x-grid-frame label="Historial de matrices"><table><thead><tr><th scope="col">Archivo</th><th scope="col">Estado</th><th scope="col">Fecha</th><th scope="col">Detalle</th></tr></thead><tbody>@forelse($historial as $h)<tr><td>{{ $h->archivo_nombre }}</td><td>{{ ['en_cola' => 'En cola', 'procesando' => 'Procesando', 'completada' => 'Completada', 'fallida' => 'No completada'][$h->estado] ?? $h->estado }}</td><td>{{ \Carbon\Carbon::parse($h->created_at)->timezone('America/Guayaquil')->format('d/m/Y H:i') }}</td><td>@if($accesoCompleto)<a class="hub-ig-button" href="{{ route('inventario.taxonomia.importar.original', ['importacion' => $h->id]) }}" download title="Descargar archivo original completo">Ver detalle</a> @endif<button type="button" class="hub-ig-button" wire:click="verDetalle('{{ $h->id }}')">Ver cambios</button></td></tr>@empty<tr><td colspan="4">Las matrices incorporadas aparecerán aquí.</td></tr>@endforelse</tbody></table></x-grid-frame>
     </section>
     <flux:modal wire:model="detalleAbierto" name="detalle-importacion-catalogo" :closable="false" aria-labelledby="detalle-importacion-titulo" class="w-full md:max-w-4xl">
         <div class="flex items-start justify-between gap-3"><h2 id="detalle-importacion-titulo" class="break-words text-xl font-semibold">{{ $detalle['archivo'] ?? 'Detalle de carga' }}</h2><flux:button autofocus variant="ghost" icon="x-mark" size="sm" wire:click="$set('detalleAbierto', false)" aria-label="Cerrar detalle de importación"/></div>

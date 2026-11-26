@@ -38,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
         $this->configureUploadRules();
         $this->configureSystemMail();
         $this->preventExternalNotificationsDuringValidation();
+        \Livewire\Livewire::addPersistentMiddleware(\App\Http\Middleware\CheckRole::class);
+        \Livewire\before('call', fn ($componente, $metodo) =>
+            app(\App\Support\AccesoMenu::class)->autorizarLlamada($componente, $metodo));
+        \Livewire\before('update', fn ($componente, $propiedad) =>
+            app(\App\Support\AccesoMenu::class)->autorizarCambio($componente, $propiedad));
     }
 
     /** La base prevalece sobre .env tras la primera configuración administrativa. */

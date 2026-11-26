@@ -6,7 +6,9 @@
     <form wire:submit="guardar">
         <x-grid-frame label="Permisos de botones por perfil">
             <x-slot:toolbarActions>
+                @if(auth()->user()->esAdministrador())
                 <flux:button type="submit" class="hub-ig-new-record" variant="primary" wire:loading.attr="disabled" x-on:click="closeMenu(false)">Guardar permisos</flux:button>
+                @endif
             </x-slot:toolbarActions>
             <table class="w-full min-w-[65rem] text-sm">
                 <caption class="sr-only">Permisos para ver y usar botones según el perfil activo</caption>
@@ -17,7 +19,7 @@
                             <span class="text-text-secondary">Acceso completo</span>
                         @elseif(in_array($rol->value, $boton['elegibles'], true))
                             @foreach(['ver' => 'Ver', 'usar' => 'Usar'] as $accion => $etiqueta)
-                                <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model="permisos.{{ str_replace('.', '_', $clave) }}.{{ $rol->value }}.{{ $accion }}" aria-label="{{ $etiqueta }} {{ $boton['nombre'] }}: {{ $rol->etiqueta() }}" class="size-4 rounded border-border text-science-blue" />{{ $etiqueta }}</label>
+                                <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model="permisos.{{ str_replace('.', '_', $clave) }}.{{ $rol->value }}.{{ $accion }}" aria-label="{{ $etiqueta }} {{ $boton['nombre'] }}: {{ $rol->etiqueta() }}" @disabled(!auth()->user()->esAdministrador()) class="size-4 rounded border-border text-science-blue" />{{ $etiqueta }}</label>
                             @endforeach
                         @else<span class="text-text-secondary">Reservado al equipo</span>@endif
                     </td>@endforeach

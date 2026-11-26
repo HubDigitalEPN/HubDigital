@@ -460,11 +460,13 @@
                 {{ $totalItems === 1 ? 'espécimen' : 'especímenes' }}
                 @if(count($filtrosActivos) > 0)<span class="text-text-secondary">(filtrado)</span>@endif
             </span>
+            @if($accesoCompleto)
             <div class="flex flex-wrap items-center gap-2">
                 <flux:button size="sm" variant="ghost" icon="clock" wire:click="abrirHistorial">
                     Historial
                 </flux:button>
             </div>
+            @endif
         </div>
 
         <div class="relative" x-ref="hoja" x-on:scroll.capture="cerrarCelda(); cerrarMenuFila(false)">
@@ -496,9 +498,11 @@
                     <button type="button" role="menuitem" tabindex="-1" @click="limpiar(); closeMenu()" :disabled="n === 0">
                         <flux:icon name="x-mark" /><span>Quitar selección</span>
                     </button>
-                    <button type="button" role="menuitem" tabindex="-1" @click="closeMenu(); $wire.abrirPanelMasivo(ids())" :disabled="n === 0">
-                        <flux:icon name="pencil-square" /><span>Editar en bloque</span><span class="hub-ig-menu-hint" x-text="n || ''"></span>
-                    </button>
+                    @if($accesoCompleto)
+                        <button type="button" role="menuitem" tabindex="-1" @click="closeMenu(); $wire.abrirPanelMasivo(ids())" :disabled="n === 0">
+                            <flux:icon name="pencil-square" /><span>Editar en bloque</span><span class="hub-ig-menu-hint" x-text="n || ''"></span>
+                        </button>
+                    @endif
                     @if($puedeBorrar)
                         <button type="button" role="menuitem" tabindex="-1" @click="closeMenu(); $wire.abrirBorrado(ids())" :disabled="n === 0">
                             <flux:icon name="trash" /><span>Borrar selección</span>
@@ -519,12 +523,16 @@
                     @endif
                     <x-catalogo-excel-menu accion="exportarExcel" :en-grilla="true" />
                     <div class="hub-ig-menu-separator" role="separator"></div>
-                    <button type="button" role="menuitem" tabindex="-1" x-on:click="closeMenu(); abrirAlta()">
-                        <flux:icon name="plus" /><span>Nuevo espécimen</span>
-                    </button>
-                    <a href="{{ route('divulgacion.index') }}" wire:navigate role="menuitem" tabindex="-1">
-                        <flux:icon name="eye" /><span>Administrar publicación</span>
-                    </a>
+                    @if($puedeCrear)
+                        <button type="button" role="menuitem" tabindex="-1" x-on:click="closeMenu(); abrirAlta()">
+                            <flux:icon name="plus" /><span>Nuevo espécimen</span>
+                        </button>
+                    @endif
+                    @if($accesoCompleto)
+                        <a href="{{ route('divulgacion.index') }}" wire:navigate role="menuitem" tabindex="-1">
+                            <flux:icon name="eye" /><span>Administrar publicación</span>
+                        </a>
+                    @endif
                 </x-slot:actions>
             <div class="hidden md:block">
             <table class="hub-ig-movable w-full border-separate border-spacing-0 font-mono text-xs">
@@ -586,7 +594,7 @@
                             @foreach($columnasTabla as $col)
                                 @php
                                     $texto = $textoCelda($especimen, $col['clave']);
-                                    $editable = in_array($col['clave'], $clavesEditables, true);
+                                    $editable = $puedeEditar && in_array($col['clave'], $clavesEditables, true);
                                     $esCodigo = $col['clave'] === 'codigoCatalogo';
                                     $titulo = $texto.($editable ? ' · clic o Enter para editar' : '');
                                     $clasesCelda = trim(
@@ -681,12 +689,16 @@
             <div popover="auto" class="hub-ig-menu" x-ref="accionesFila" role="menu" aria-label="Acciones del espécimen"
                  data-especimen-acciones-fila @toggle="if ($event.newState === 'closed') menuFila = {}"
                  @keydown="teclaMenuFila($event)">
-                <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirEditModal')"><flux:icon name="pencil" /> Editar</button>
+                @if($puedeEditar)
+                    <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirEditModal')"><flux:icon name="pencil" /> Editar</button>
+                @endif
                 <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirFicha')"><flux:icon name="eye" /> Ver ficha</button>
                 @if($puedeBorrar)
                     <button type="button" role="menuitem" @click="ejecutarAccionFila('abrirBorrado')"><flux:icon name="trash" /> Borrar definitivamente</button>
                 @endif
-                <button type="button" role="menuitem" @click="ejecutarAccionFila('mostrarQr')"><flux:icon name="qr-code" /> Código QR</button>
+                @if($accesoCompleto)
+                    <button type="button" role="menuitem" @click="ejecutarAccionFila('mostrarQr')"><flux:icon name="qr-code" /> Código QR</button>
+                @endif
             </div>
             </x-grid-frame>
         </div>
@@ -743,7 +755,7 @@
                                 @foreach($columnas as $col)
                                     @php
                                         $clave = $col['clave'];
-                                        $editable = array_key_exists($clave, $fichaBorrador);
+                                        $editable = $puedeEditar && array_key_exists($clave, $fichaBorrador);
                                         $texto = $textoCelda($fichaDatos, $clave);
                                     @endphp
                                     <div class="min-w-0">
@@ -772,15 +784,19 @@
                 </div>
 
                 <div class="flex flex-col justify-end gap-3 border-t border-border pt-3 sm:flex-row">
-                    <flux:button variant="ghost" icon="qr-code" wire:click="mostrarQr('{{ $fichaId }}')">
-                        Código QR
-                    </flux:button>
+                    @if($accesoCompleto)
+                        <flux:button variant="ghost" icon="qr-code" wire:click="mostrarQr('{{ $fichaId }}')">
+                            Código QR
+                        </flux:button>
+                    @endif
                     <flux:button variant="ghost" wire:click="cerrarFicha">Cerrar</flux:button>
-                    <flux:button variant="primary" icon="check" wire:click="guardarFicha"
-                                 wire:loading.attr="disabled" wire:target="guardarFicha">
-                        <span wire:loading.remove wire:target="guardarFicha">Guardar cambios</span>
-                        <span wire:loading wire:target="guardarFicha">Guardando…</span>
-                    </flux:button>
+                    @if($puedeEditar)
+                        <flux:button variant="primary" icon="check" wire:click="guardarFicha"
+                                     wire:loading.attr="disabled" wire:target="guardarFicha">
+                            <span wire:loading.remove wire:target="guardarFicha">Guardar cambios</span>
+                            <span wire:loading wire:target="guardarFicha">Guardando…</span>
+                        </flux:button>
+                    @endif
                 </div>
             </div>
         @endif
@@ -788,7 +804,7 @@
 
     {{-- ── Modal: Edición masiva ───────────────────────────────────────────── --}}
     <flux:modal wire:model="panelMasivoAbierto" class="w-full max-w-3xl">
-        @if($panelMasivoAbierto)
+        @if($accesoCompleto && $panelMasivoAbierto)
             @php
                 $campos = $this->camposEditables();
                 $nSeleccion = $this->contarSeleccionados();
@@ -937,7 +953,7 @@
 
     {{-- ── Modal: Historial de ediciones ───────────────────────────────────── --}}
     <flux:modal wire:model="historialAbierto" class="w-full max-w-3xl">
-        @if($historialAbierto)
+        @if($accesoCompleto && $historialAbierto)
             <div class="space-y-4 p-1">
                 <div>
                     <flux:heading size="lg" class="text-text-primary">Historial de ediciones</flux:heading>
@@ -1045,7 +1061,7 @@
 
     {{-- ── Modal: Editar ───────────────────────────────────────────────────── --}}
     <flux:modal wire:model="showEditModal" aria-labelledby="edicion-especimen-titulo" class="w-full max-w-4xl">
-        @if($showEditModal)
+        @if($puedeEditar && $showEditModal)
         <div class="space-y-4 p-1" data-hub-inline-feedback>
             <flux:heading id="edicion-especimen-titulo" size="lg" class="text-text-primary">Editar espécimen</flux:heading>
             <p class="text-sm text-text-secondary">Conserva los datos de la etiqueta. Una ficha histórica puede mantener vacíos los datos que se desconocen.</p>

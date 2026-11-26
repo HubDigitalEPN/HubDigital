@@ -42,7 +42,7 @@ final class FichasTaxonomicasPortal extends Component
     public $foto;
     public bool $editorFichaAbierto = false;
 
-    public function boot(): void { abort_unless(auth()->user()?->esCurador(), 403); }
+    public function boot(): void { app(\App\Support\AccesoMenu::class)->autorizar('admin.contenidos'); }
     public function updatedBusqueda(): void { $this->resetPage(); }
 
     public function seleccionar(string $id): void
@@ -62,7 +62,7 @@ final class FichasTaxonomicasPortal extends Component
 
     public function guardar(): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        abort_unless(app(\App\Support\AccesoMenu::class)->permite('admin.contenidos', 'editar'), 403);
         abort_unless($this->taxonId !== '' && Schema::hasTable(FichasTaxonomicas::TABLA), 409);
         $nombre = trim($this->nombreCientifico);
         $renombrar = $this->nombreCientifico !== $this->nombreOriginal && $nombre !== $this->nombreOriginal;

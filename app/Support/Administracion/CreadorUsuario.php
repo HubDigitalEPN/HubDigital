@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Administracion;
 
 use App\Enums\RolUsuario;
+use App\Models\PerfilPersonalizado;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -18,7 +19,7 @@ final class CreadorUsuario
     /**
      * @param  array{first_name:string,last_name:string,email:string,password:string,cargo?:?string,institucion?:?string}  $datos
      */
-    public function crear(#[\SensitiveParameter] array $datos, RolUsuario $rol, bool $creadoPorAdministrador = false): User
+    public function crear(#[\SensitiveParameter] array $datos, RolUsuario|PerfilPersonalizado $rol, bool $creadoPorAdministrador = false): User
     {
         $email = User::normalizarEmail($datos['email']);
 

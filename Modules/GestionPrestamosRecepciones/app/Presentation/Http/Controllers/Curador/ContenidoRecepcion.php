@@ -30,7 +30,7 @@ final class ContenidoRecepcion extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esReceptor(), 403);
+        abort_unless(app(\App\Support\AccesoMenu::class)->permite('prestamos.receptor.depositos', 'recibir'), 403);
     }
 
     public function mount(string $id): void

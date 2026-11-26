@@ -107,16 +107,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * @return Collection<int, RolUsuario>
+     * @return Collection<int, RolUsuario|PerfilPersonalizado>
      */
     public function rolesAsignados(): Collection
     {
-        return $this->roles->pluck('rol')->unique()->values();
+        return $this->roles->pluck('rol')->unique('value')->values();
     }
 
-    public function tieneRol(RolUsuario $rol): bool
+    public function tieneRol(RolUsuario|PerfilPersonalizado $rol): bool
     {
-        return $this->rolesAsignados()->contains($rol);
+        return $this->rolesAsignados()->contains('value', $rol->value);
     }
 
     public function tieneAlgunRol(RolUsuario ...$roles): bool
@@ -135,14 +135,15 @@ class User extends Authenticatable implements MustVerifyEmail
      * Se guarda en sesión; si falta o ya no pertenece a la cuenta, cae al rol
      * primario (columna) o al primer rol asignado y re-guarda (auto-sana).
      */
-    public function rolActivo(): RolUsuario
+    public function rolActivo(): RolUsuario|PerfilPersonalizado
     {
         $asignados = $this->rolesAsignados();
 
         $enSesion = session('rol_activo');
         if ($enSesion !== null) {
-            $rol = RolUsuario::desdeHistorico($enSesion);
-            if ($rol !== null && $asignados->contains($rol)) {
+            $codigo = RolUsuario::desdeHistorico($enSesion)?->value ?? $enSesion;
+            $rol = $asignados->firstWhere('value', $codigo);
+            if ($rol !== null) {
                 if ($enSesion !== $rol->value) {
                     session(['rol_activo' => $rol->value]);
                 }
@@ -151,7 +152,7 @@ class User extends Authenticatable implements MustVerifyEmail
             }
         }
 
-        $porDefecto = $asignados->contains($this->rol)
+        $porDefecto = $asignados->contains('value', $this->rol->value)
             ? $this->rol
             : ($asignados->first() ?? $this->rol);
 
@@ -163,7 +164,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Conmuta el rol activo (solo entre roles que la cuenta posee).
      */
-    public function activarRol(RolUsuario $rol): void
+    public function activarRol(RolUsuario|PerfilPersonalizado $rol): void
     {
         if (! $this->tieneRol($rol)) {
             return;
@@ -176,7 +177,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * Añade una membresía idempotente. La autorización para asignar perfiles
      * internos corresponde a administración; el registro público no los ofrece.
      */
-    public function asignarRol(RolUsuario $rol): void
+    public function asignarRol(RolUsuario|PerfilPersonalizado $rol): void
     {
         if ($this->tieneRol($rol)) {
             return;
@@ -193,21 +194,21 @@ class User extends Authenticatable implements MustVerifyEmail
      * compatibilidad de la columna histórica `rol`. Permite perfiles internos
      * y de autoservicio en la misma cuenta, asignados por administración.
      *
-     * @param  list<RolUsuario>  $roles
+     * @param  list<RolUsuario|PerfilPersonalizado>  $roles
      */
-    public function sincronizarRoles(array $roles, RolUsuario $rolPrimario): void
+    public function sincronizarRoles(array $roles, RolUsuario|PerfilPersonalizado $rolPrimario): void
     {
         $roles = collect($roles)
-            ->filter(static fn (mixed $rol): bool => $rol instanceof RolUsuario)
-            ->unique(fn (RolUsuario $rol): string => $rol->value)
+            ->filter(static fn (mixed $rol): bool => $rol instanceof RolUsuario || $rol instanceof PerfilPersonalizado)
+            ->unique('value')
             ->values();
 
-        if ($roles->isEmpty() || ! $roles->contains($rolPrimario)) {
+        if (! $roles->contains('value', $rolPrimario->value)) {
             throw new \DomainException('Selecciona al menos un rol y define un rol operativo principal.');
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($roles, $rolPrimario): void {
-            $this->roles()->whereNotIn('rol', $roles->map(fn (RolUsuario $rol): string => $rol->value))->delete();
+            $this->roles()->whereNotIn('rol', $roles->pluck('value'))->delete();
             $this->fill(['rol' => $rolPrimario])->save();
             foreach ($roles as $rol) {
                 $this->roles()->firstOrCreate(['rol' => $rol->value]);

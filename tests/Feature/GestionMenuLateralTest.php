@@ -79,8 +79,8 @@ test('Administrador-Curador configura textos, grupos y visibilidad del menú seg
 test('la gestión del menú respeta los permisos del destino y protege grupos con opciones', function (): void {
     $this->actingAs(User::factory()->administrador()->create(['must_change_password' => false]));
     Livewire::test(GestionMenuLateral::class)->call('nueva')
-        ->set('texto', 'Acceso inválido')->set('ruta', 'admin.usuarios')->set('roles', ['PASANTE'])
-        ->call('guardar')->assertHasErrors(['roles.0' => 'in']);
+        ->set('texto', 'Acceso inválido')->set('ruta', 'admin.bootstrap.store')->set('roles', ['PASANTE'])
+        ->call('guardar')->assertHasErrors(['ruta' => 'in']);
     Livewire::test(GestionMenuLateral::class)->call('eliminar', 'catalogo')->assertHasErrors('eliminar');
     $this->actingAs(User::factory()->receptor()->create());
     $this->get(route('admin.menu-lateral'))->assertForbidden();

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\RolUsuario as Rol;
+use App\Support\AccesoCatalogo;
 
 $equipo = [Rol::CURADOR, Rol::AYUDANTE_CURADOR];
 $admin = [Rol::CURADOR];
@@ -12,7 +13,7 @@ $creacion = 'Creación de especímenes';
 
 return [
     'opciones' => [
-        'dashboard' => $opcion('Dashboard', 'home', 'dashboard', Rol::cases()),
+        'dashboard' => $opcion('Dashboard', 'home', 'dashboard', Rol::cases()) + ['todosLosPerfiles' => true],
         'prestamos-depositante' => $grupo('Préstamos', 'document-text', $depositante),
         'mis-solicitudes' => $opcion('Mis solicitudes', 'document-text', 'prestamos.investigador.mis-solicitudes', $depositante, 'prestamos-depositante', ['prestamos.investigador.mis-solicitudes', 'prestamos.investigador.solicitud.*']),
         'mis-actas' => $opcion('Mis actas', 'clipboard-document', 'prestamos.investigador.mis-actas', $depositante, 'prestamos-depositante'),
@@ -29,7 +30,7 @@ return [
         'revision-documental' => $opcion('Revisión documental y actas', 'inbox-arrow-down', 'prestamos.curador.depositos', $equipo, 'depositos-equipo', ['prestamos.curador.depositos', 'prestamos.curador.deposito.*']),
         'recepcion-fisica' => $opcion('Recepción física', 'clipboard-document-check', 'prestamos.receptor.depositos', $equipo, 'depositos-equipo', ['prestamos.receptor.*']),
         'catalogo' => $grupo('Catálogo', 'rectangle-stack', [...$equipo, Rol::PASANTE]),
-        'especimenes' => $opcion($creacion, 'magnifying-glass', 'inventario.taxonomia.especimenes', $equipo, 'catalogo'),
+        'especimenes' => $opcion('Administrar catálogo', 'magnifying-glass', 'inventario.taxonomia.especimenes', $equipo, 'catalogo'),
         'captura-dwc' => $opcion($creacion, 'pencil-square', 'inventario.captura-dwc', [Rol::PASANTE], 'catalogo'),
         'importar-catalogo' => $opcion('Importar catálogo', 'arrow-up-tray', 'inventario.taxonomia.importar', $equipo, 'catalogo'),
         'etiquetado-qr' => $opcion('Etiquetado QR', 'qr-code', 'inventario.taxonomia.etiquetas', $equipo, 'catalogo'),
@@ -48,7 +49,24 @@ return [
     'destinos-adicionales' => [
         $opcion('Nueva solicitud de préstamo', 'plus-circle', 'prestamos.investigador.solicitud.crear', $depositante),
         $opcion('Análisis de diversidad', 'chart-bar', 'divulgacion.analisis-diversidad', $equipo),
-        $opcion('Explorar la colección', 'magnifying-glass', 'portal.catalogo', Rol::cases()),
-        $opcion('El Laboratorio', 'academic-cap', 'laboratorio', Rol::cases()),
+        $opcion('Explorar la colección', 'magnifying-glass', 'portal.catalogo', Rol::cases()) + ['todosLosPerfiles' => true],
+        $opcion('El Laboratorio', 'academic-cap', 'laboratorio', Rol::cases()) + ['todosLosPerfiles' => true],
+    ],
+    'accesos-delegables' => [
+        AccesoCatalogo::CONSULTA => [
+            'roles' => [Rol::PASANTE],
+            'acceso' => 'Consultar especímenes',
+            'acciones' => [
+                'crear' => 'Crear especímenes',
+                'editar' => 'Editar especímenes',
+            ],
+        ],
+        AccesoCatalogo::IMPORTACION => [
+            'roles' => [Rol::PASANTE],
+            'acceso' => 'Validar matrices',
+            'acciones' => [
+                'importar' => 'Importar al catálogo',
+            ],
+        ],
     ],
 ];

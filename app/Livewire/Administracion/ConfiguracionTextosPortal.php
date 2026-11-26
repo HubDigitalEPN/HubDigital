@@ -110,7 +110,7 @@ final class ConfiguracionTextosPortal extends Component
 
     public function boot(): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        app(\App\Support\AccesoMenu::class)->autorizar('admin.contenidos');
     }
 
     public function mount(): void
@@ -123,7 +123,7 @@ final class ConfiguracionTextosPortal extends Component
 
     public function restaurar(string $grupo, string $clave): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        abort_unless(app(\App\Support\AccesoMenu::class)->permite('admin.contenidos', 'editar'), 403);
         $defecto = config('portal-copy.'.$grupo.'.'.$clave);
         abort_unless(is_string($defecto), 422);
         $this->textos[$grupo][$clave] = $defecto;
@@ -131,7 +131,7 @@ final class ConfiguracionTextosPortal extends Component
 
     public function guardar(): void
     {
-        abort_unless(auth()->user()?->esCurador(), 403);
+        abort_unless(app(\App\Support\AccesoMenu::class)->permite('admin.contenidos', 'editar'), 403);
         $reglas = ['textos' => ['required', 'array']];
         foreach (config('portal-copy', []) as $grupo => $campos) {
             foreach ($campos as $clave => $defecto) $reglas['textos.'.$grupo.'.'.$clave] = ['required', 'string', 'max:5000', 'not_regex:/^\s*$/u'];
