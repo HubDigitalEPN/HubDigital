@@ -38,7 +38,7 @@ it('la recuperación tiene un único encabezado principal con nombre identificab
 it('cada control de visibilidad nombra su campo y conserva oculto el valor inicial', function (string $ruta, array $campos, array $parametros) {
     if ($ruta === 'register') $this->skipUnlessFortifyFeature(Features::registration());
     if ($ruta === 'password.reset') $this->skipUnlessFortifyFeature(Features::resetPasswords());
-    if ($ruta === 'password.confirm') $this->actingAs(User::factory()->create());
+    if ($ruta === 'password.initial.edit') $this->actingAs(User::factory()->create(['must_change_password' => true]));
     $dom = documentoFormularioPortal($this->get(route($ruta, $parametros))->assertOk()->getContent());
     foreach ($campos as $campo => $etiqueta) {
         $boton = $dom->query('//button[@aria-label="'.$etiqueta.'"]');
@@ -57,5 +57,9 @@ it('cada control de visibilidad nombra su campo y conserva oculto el valor inici
     ['login', ['password' => 'Mostrar contraseña'], []],
     ['register', ['password' => 'Mostrar contraseña', 'password_confirmation' => 'Mostrar confirmación de contraseña'], []],
     ['password.reset', ['password' => 'Mostrar nueva contraseña', 'password_confirmation' => 'Mostrar confirmación de contraseña'], ['token' => 'qa3-token', 'email' => 'qa3@example.test']],
-    ['password.confirm', ['password' => 'Mostrar contraseña'], []],
+    ['password.initial.edit', [
+        'current_password' => 'Mostrar contraseña actual',
+        'password' => 'Mostrar nueva contraseña',
+        'password_confirmation' => 'Mostrar confirmación de contraseña',
+    ], []],
 ]);

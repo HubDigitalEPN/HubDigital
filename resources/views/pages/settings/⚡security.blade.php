@@ -2,6 +2,8 @@
 
 use App\Concerns\PasswordValidationRules;
 use App\Services\Security\InvalidateUserAccess;
+use App\Services\Security\TwoFactorAccess;
+use App\Services\Security\UpdateAuthenticatedPassword;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
@@ -27,12 +29,12 @@ new #[Title('Configuración de seguridad')] class extends Component {
     /**
      * Mount the component.
      */
-    public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
+    public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication, TwoFactorAccess $twoFactorAccess): void
     {
         $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
 
         if ($this->canManageTwoFactor) {
-            if (Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
+            if ($twoFactorAccess->allowed() && Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
                 $disableTwoFactorAuthentication(auth()->user());
             }
 
@@ -44,7 +46,7 @@ new #[Title('Configuración de seguridad')] class extends Component {
     /**
      * Update the password for the currently authenticated user.
      */
-    public function updatePassword(InvalidateUserAccess $invalidateUserAccess): void
+    public function updatePassword(UpdateAuthenticatedPassword $updatePassword): void
     {
         try {
             $validated = $this->validate([
@@ -57,13 +59,7 @@ new #[Title('Configuración de seguridad')] class extends Component {
             throw $e;
         }
 
-        $user = Auth::user();
-        $user->forceFill([
-            'password' => $validated['password'],
-            'must_change_password' => false,
-        ])->save();
-
-        $invalidateUserAccess->keepingCurrentRequest($user);
+        $updatePassword->update(Auth::user(), $validated['password']);
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
@@ -85,8 +81,11 @@ new #[Title('Configuración de seguridad')] class extends Component {
     public function disable(
         DisableTwoFactorAuthentication $disableTwoFactorAuthentication,
         InvalidateUserAccess $invalidateUserAccess,
+        TwoFactorAccess $twoFactorAccess,
     ): void
     {
+        $twoFactorAccess->authorize();
+
         $disableTwoFactorAuthentication(auth()->user());
         $invalidateUserAccess->keepingCurrentRequest(auth()->user());
 
@@ -96,10 +95,6 @@ new #[Title('Configuración de seguridad')] class extends Component {
 
 <section class="w-full">
     @include('partials.settings-heading')
-
-    @if(auth()->user()->must_change_password)
-        <flux:callout data-hub-feedback="warning" variant="warning" icon="key">Debes cambiar la contraseña inicial asignada por el administrador para continuar.</flux:callout>
-    @endif
 
     <flux:heading class="sr-only">{{ __('Configuración de seguridad') }}</flux:heading>
 
@@ -148,7 +143,18 @@ new #[Title('Configuración de seguridad')] class extends Component {
                 <flux:heading>{{ __('Autenticación de dos factores') }}</flux:heading>
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
-                    @if ($twoFactorEnabled)
+                    @if (! app(\App\Services\Security\TwoFactorAccess::class)->allowed())
+                        <details>
+                            <summary class="cursor-pointer font-medium">Administrar autenticación de dos factores</summary>
+                            <form method="POST" action="{{ route('password.confirm.store') }}"
+                                data-async-auth data-success-url="{{ route('security.edit') }}" class="mt-4 max-w-md space-y-4">
+                                @csrf
+                                <x-auth-password name="password" label="Contraseña actual" required />
+                                <p data-auth-feedback role="status" aria-live="polite" class="text-sm text-text-secondary" hidden></p>
+                                <flux:button type="submit" variant="primary">Continuar</flux:button>
+                            </form>
+                        </details>
+                    @elseif ($twoFactorEnabled)
                         <div class="space-y-4">
 
                             <div class="flex justify-start">

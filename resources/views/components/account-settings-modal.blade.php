@@ -1,3 +1,9 @@
+@php
+    $usuario = auth()->user();
+    $mostrarRoles = $usuario->hasVerifiedEmail() && ! $usuario->must_change_password
+        && (! $usuario->esUsuarioInterno() || $usuario->rolesAsignados()->count() > 1);
+@endphp
+
 <flux:modal name="account-settings" class="hub-account-settings-modal w-full max-w-5xl" x-data="{ section: 'profile' }">
     <div class="space-y-6">
         <header class="flex items-start justify-between gap-5 border-b border-border pb-5">
@@ -18,7 +24,7 @@
                     <flux:icon name="user" class="size-5" />
                     <span><strong>Perfil</strong></span>
                 </button>
-                @if(!auth()->user()->esUsuarioInterno() || auth()->user()->rolesAsignados()->count() > 1)
+                @if($mostrarRoles)
                     <button type="button" x-on:click="section = 'roles'" x-bind:aria-current="section === 'roles' ? 'page' : null" class="hub-settings-rail__item">
                         <flux:icon name="arrows-right-left" class="size-5" />
                         <span><strong>Roles</strong></span>
@@ -43,7 +49,7 @@
                     <livewire:pages::settings.profile :modal-mode="true" :key="'account-settings-profile-'.auth()->id()" />
                 </section>
 
-                @if(!auth()->user()->esUsuarioInterno() || auth()->user()->rolesAsignados()->count() > 1)
+                @if($mostrarRoles)
                     <section x-show="section === 'roles'" x-cloak aria-labelledby="settings-roles-title">
                         <h3 id="settings-roles-title" class="font-display text-xl font-semibold text-blue-navy">Cambiar de rol</h3>
 

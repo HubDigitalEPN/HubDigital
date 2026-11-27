@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Security\InvalidateUserAccess;
+use App\Services\Security\TwoFactorAccess;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Illuminate\Support\Facades\RateLimiter;
@@ -25,6 +26,11 @@ new class extends Component {
 
     #[Validate('required|string|size:6', onUpdate: false)]
     public string $code = '';
+
+    public function boot(TwoFactorAccess $twoFactorAccess): void
+    {
+        $twoFactorAccess->authorize();
+    }
 
     /**
      * Mount the component.

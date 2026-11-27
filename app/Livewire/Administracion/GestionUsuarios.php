@@ -171,7 +171,7 @@ final class GestionUsuarios extends Component
         $this->rol = RolUsuario::DEPOSITANTE->value;
         $this->mostrarFormulario = false;
         $this->resetPage();
-        session()->flash('usuario-creado', 'Cuenta creada y habilitada. Al iniciar sesion debera cambiar su contrasena inicial.');
+        session()->flash('usuario-creado', 'Cuenta creada. El usuario debe verificar su correo para acceder.');
     }
 
     public function editar(string $usuarioId): void

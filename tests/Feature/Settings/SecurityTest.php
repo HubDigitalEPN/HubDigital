@@ -27,13 +27,16 @@ test('security settings page can be rendered', function () {
         ->assertSee('Activar 2FA');
 });
 
-test('security settings page requires password confirmation when enabled', function () {
+test('security settings opens directly and protects only two factor management with password confirmation', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
         ->get(route('security.edit'));
 
-    $response->assertRedirect(route('password.confirm'));
+    $response->assertOk()
+        ->assertSee('Actualizar contraseña')
+        ->assertSee('Administrar autenticación de dos factores')
+        ->assertDontSee('Activar 2FA');
 });
 
 test('security settings page renders without two factor when feature is disabled', function () {
@@ -58,7 +61,7 @@ test('two factor authentication disabled when confirmation abandoned between req
         'two_factor_confirmed_at' => null,
     ])->save();
 
-    $this->actingAs($user);
+    $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()]);
 
     $component = Livewire::test('pages::settings.security');
 
@@ -122,7 +125,7 @@ test('disabling two factor authentication revokes previous tokens and sessions',
         'last_activity' => time(),
     ]);
 
-    $this->actingAs($user);
+    $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()]);
 
     Livewire::test('pages::settings.security')
         ->call('disable')
@@ -158,7 +161,7 @@ test('confirming two factor authentication revokes tokens and prior sessions', f
         'last_activity' => time(),
     ]);
 
-    $this->actingAs($user);
+    $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()]);
 
     Livewire::test('pages::settings.two-factor-setup-modal', [
         'requiresConfirmation' => true,

@@ -16,25 +16,19 @@ final class EnsureInitialPasswordChanged
             return $next($request);
         }
 
-        if ($request->is('logout', 'api/logout', 'settings/security', 'user/confirm-password', 'livewire-*/livewire.js', 'livewire-*/livewire.min.js')) {
+        if ($request->is('logout', 'api/logout', 'livewire-*/livewire.js', 'livewire-*/livewire.min.js')
+            || $request->routeIs('verification.notice', 'verification.verify', 'verification.send', 'password.initial.*')) {
             return $next($request);
         }
 
         if ($request->is('livewire-*/update')) {
-            foreach ((array) $request->input('components', []) as $component) {
-                $snapshot = json_decode((string) ($component['snapshot'] ?? ''), true);
-                if (($snapshot['memo']['name'] ?? null) !== 'pages::settings.security') {
-                    abort(403, 'Debes cambiar la contrasena inicial antes de continuar.');
-                }
-            }
-
-            return $next($request);
+            abort(403, 'Debes cambiar la contrasena inicial antes de continuar.');
         }
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Debes cambiar la contrasena inicial antes de continuar.'], 403);
         }
 
-        return redirect()->route('security.edit');
+        return redirect()->route($user->hasVerifiedEmail() ? 'password.initial.edit' : 'verification.notice');
     }
 }

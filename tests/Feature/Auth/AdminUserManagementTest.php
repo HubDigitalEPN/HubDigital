@@ -5,6 +5,7 @@ use App\Livewire\Administracion\GestionUsuarios;
 use App\Models\User;
 use App\Services\UserIdentityService;
 use App\Support\Administracion\CreadorUsuario;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +34,7 @@ test('only an administrator can open user management', function () {
     $this->actingAs($depositante)->get(route('admin.usuarios'))->assertForbidden();
 });
 
-test('administrator creates an internal user without email verification and requires an initial password change', function () {
+test('administrator creates an internal user and sends email verification', function () {
     $admin = User::factory()->administrador()->create();
 
     Livewire::actingAs($admin)
@@ -48,17 +49,17 @@ test('administrator creates an internal user without email verification and requ
         ->call('crear', 'Inicial-Segura-2026!', 'Inicial-Segura-2026!')
         ->assertHasNoErrors()
         ->assertSet('mostrarFormulario', false)
-        ->assertSee('Cuenta creada y habilitada. Al iniciar sesion debera cambiar su contrasena inicial.');
+        ->assertSee('Cuenta creada. El usuario debe verificar su correo para acceder.');
 
     $usuario = User::query()->where('email_normalizado', 'recepcion.prueba@epn.edu.ec')->sole();
 
     expect($usuario->rolesAsignados()->all())->toBe([RolUsuario::RECEPTOR])
-        ->and($usuario->hasVerifiedEmail())->toBeTrue()
-        ->and($usuario->must_change_password)->toBeTrue()
+        ->and($usuario->hasVerifiedEmail())->toBeFalse()
+        ->and($usuario->must_change_password)->toBeFalse()
         ->and(Hash::check('Inicial-Segura-2026!', $usuario->password))->toBeTrue()
         ->and($usuario->password)->not->toBe('Inicial-Segura-2026!');
 
-    Notification::assertNothingSent();
+    Notification::assertSentToTimes($usuario, VerifyEmail::class, 1);
 });
 
 test('user management prevents duplicates and external emails for technician accounts', function () {

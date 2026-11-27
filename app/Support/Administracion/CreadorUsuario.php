@@ -51,14 +51,14 @@ final class CreadorUsuario
         }
 
         try {
-            $usuario = DB::transaction(function () use ($datos, $email, $rol, $creadoPorAdministrador): User {
+            $usuario = DB::transaction(function () use ($datos, $email, $rol): User {
                 $usuario = User::create([
                     'first_name' => trim($datos['first_name']),
                     'last_name' => trim($datos['last_name']),
                     'email' => $email,
                     'password' => Hash::make($datos['password']),
-                    'email_verified_at' => $creadoPorAdministrador ? now() : null,
-                    'must_change_password' => $creadoPorAdministrador,
+                    'email_verified_at' => null,
+                    'must_change_password' => false,
                     'rol' => $rol,
                     'cargo' => $this->valorOpcional($datos['cargo'] ?? null),
                     'institucion' => $this->valorOpcional($datos['institucion'] ?? null),
@@ -74,12 +74,7 @@ final class CreadorUsuario
             ]);
         }
 
-        // También las altas administrativas deben demostrar control del correo.
-        // En el bootstrap esta transacción puede estar anidada: el mensaje solo
-        // se envía después de confirmar definitivamente la cuenta y su rol.
-        if (! $creadoPorAdministrador) {
-            DB::afterCommit(static fn () => event(new Registered($usuario)));
-        }
+        DB::afterCommit(static fn () => event(new Registered($usuario)));
 
         return $usuario;
     }

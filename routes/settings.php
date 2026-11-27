@@ -1,7 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\InitialPasswordController;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
@@ -10,16 +10,10 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('settings/initial-password', [InitialPasswordController::class, 'show'])->name('password.initial.edit');
+    Route::post('settings/initial-password', [InitialPasswordController::class, 'update'])->name('password.initial.update');
+
     Route::livewire('settings/appearance', 'pages::settings.appearance')->name('appearance.edit');
 
-    Route::livewire('settings/security', 'pages::settings.security')
-        ->middleware(
-            when(
-                Features::canManageTwoFactorAuthentication()
-                    && Features::optionEnabled(Features::twoFactorAuthentication(), 'confirmPassword'),
-                ['password.confirm'],
-                [],
-            ),
-        )
-        ->name('security.edit');
+    Route::livewire('settings/security', 'pages::settings.security')->name('security.edit');
 });

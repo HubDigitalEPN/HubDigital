@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Security\TwoFactorAccess;
 use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -7,6 +8,11 @@ use Livewire\Component;
 new class extends Component {
     #[Locked]
     public array $recoveryCodes = [];
+
+    public function boot(TwoFactorAccess $twoFactorAccess): void
+    {
+        $twoFactorAccess->authorize();
+    }
 
     /**
      * Mount the component.
