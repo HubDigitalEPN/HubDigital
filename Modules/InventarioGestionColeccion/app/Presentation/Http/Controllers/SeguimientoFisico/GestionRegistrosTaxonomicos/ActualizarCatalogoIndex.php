@@ -29,6 +29,7 @@ class ActualizarCatalogoIndex extends Component
     public string $modo = 'completar';
     public ?string $separadorDetectado = null;
     #[Locked] public ?array $resultado = null;
+    public bool $vistaPreviaAbierta = false;
     #[Locked] public ?string $archivoSha256 = null;
     #[Locked] public ?string $parametrosValidados = null;
     #[Locked] public ?string $importacionId = null;
@@ -99,7 +100,7 @@ class ActualizarCatalogoIndex extends Component
 
     private function invalidar(): void
     {
-        $this->reset('resultado', 'archivoSha256', 'parametrosValidados', 'importacionId', 'cargaAnterior', 'errorMessage', 'successMessage');
+        $this->reset('resultado', 'vistaPreviaAbierta', 'archivoSha256', 'parametrosValidados', 'importacionId', 'cargaAnterior', 'errorMessage', 'successMessage');
     }
 
     public function validar(): void
@@ -112,6 +113,7 @@ class ActualizarCatalogoIndex extends Component
             $this->archivoSha256 = hash_file('sha256', $this->archivo->getRealPath());
             $this->parametrosValidados = $this->modo.'|'.$this->delimitador;
             $this->successMessage = $this->mensaje($this->resultado['avisos'] ? 'observaciones' : 'validacion');
+            $this->vistaPreviaAbierta = true;
         } catch (\Throwable $error) { $this->mostrarError($error); }
     }
 
@@ -119,7 +121,8 @@ class ActualizarCatalogoIndex extends Component
     {
         AccesoCatalogo::autorizarPantalla(AccesoCatalogo::IMPORTACION, 'importar');
         $this->validate();
-        if (!$this->resultado || !$this->archivoSha256 || !hash_equals($this->archivoSha256, hash_file('sha256', $this->archivo->getRealPath())) || $this->parametrosValidados !== $this->modo.'|'.$this->delimitador) {
+        if (!$this->vistaPreviaAbierta || !$this->resultado || !$this->archivoSha256 || !hash_equals($this->archivoSha256, hash_file('sha256', $this->archivo->getRealPath())) || $this->parametrosValidados !== $this->modo.'|'.$this->delimitador) {
+            $this->vistaPreviaAbierta = false;
             $this->errorMessage = $this->mensaje('revalidar');
             return;
         }
@@ -148,12 +151,14 @@ class ActualizarCatalogoIndex extends Component
             $this->errorMessage = null;
             $this->cargaAnterior = $aviso === 'duplicada';
             $this->successMessage = $this->mensaje($aviso);
+            $this->vistaPreviaAbierta = false;
         } catch (\Throwable $error) { $this->mostrarError($error); }
     }
 
     private function mostrarError(\Throwable $error): void
     {
         $this->resultado = null;
+        $this->vistaPreviaAbierta = false;
         $this->archivoSha256 = null;
         $this->successMessage = null;
         if (!$error instanceof DomainException) report($error);
@@ -175,8 +180,6 @@ class ActualizarCatalogoIndex extends Component
     {
         $this->paginaDetalle = max(1, min(2500, $this->paginaDetalle + ($delta < 0 ? -1 : 1)));
     }
-
-    public function limpiar(): void { $this->invalidar(); $this->reset('archivo', 'separadorDetectado'); $this->resetValidation(); }
 
     public function render(): View
     {

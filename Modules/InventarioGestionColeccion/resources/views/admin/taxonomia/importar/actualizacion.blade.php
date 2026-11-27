@@ -12,8 +12,12 @@
     @if($errorMessage)<div role="alert" class="rounded border border-red-200 bg-red-50 p-4 text-red-900">{{ $errorMessage }}</div>@endif
     @if($successMessage)<div role="status" class="rounded border p-4 {{ $resultado && $resultado['avisos'] ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-green-200 bg-green-50 text-green-900' }}">{{ $successMessage }}</div>@endif
     <section class="space-y-4 rounded border border-border bg-surface p-5 shadow-sm" aria-label="Cargar matriz del catálogo">
-        <p class="text-sm text-text-secondary">1. Selecciona la matriz. 2. Valida y revisa la vista previa.
-            @if($puedeImportar) 3. Importa y espera la confirmación de guardado. @endif
+        <p class="text-sm text-text-secondary">
+            @if($puedeImportar)
+                Selecciona la matriz y pulsa «Importar al catálogo». Revisa la vista previa y confirma para guardar.
+            @else
+                Selecciona la matriz para revisar su vista previa.
+            @endif
         </p>
         <div class="grid items-start gap-5 md:grid-cols-2">
             <flux:field>
@@ -59,13 +63,10 @@
             @endif
         </div>
         <div class="flex flex-wrap items-center gap-3">
-            <flux:button wire:click="validar" wire:loading.attr="disabled" wire:target="archivo,validar,importar">Validar matriz</flux:button>
-            @if($puedeImportar)
-                <div>
-                    <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar" :disabled="!$resultado || ($carga && in_array($carga->estado, ['en_cola', 'procesando']))" wire:confirm="{{ $mensajes->texto('catalogo.importacion.confirmacion') }}">Importar al catálogo</flux:button>
-                </div>
-            @endif
-            <flux:button wire:click="limpiar" wire:loading.attr="disabled">Cambiar archivo</flux:button>
+            <flux:button variant="primary" wire:click="validar" wire:loading.attr="disabled" wire:target="archivo,validar,importar"
+                :disabled="$carga && in_array($carga->estado, ['en_cola', 'procesando'])">
+                {{ $puedeImportar ? 'Importar al catálogo' : 'Ver vista previa' }}
+            </flux:button>
             <p wire:loading wire:target="archivo,validar,importar" role="status" class="text-sm text-science-blue">Procesando la matriz…</p>
         </div>
         <div class="flex flex-wrap items-center gap-3 border-t border-border pt-3">
@@ -94,11 +95,17 @@
             @else<p role="status" class="mt-2 text-science-blue">{{ $mensajes->texto($carga->estado === 'en_cola' ? 'catalogo.importacion.en_cola' : 'catalogo.importacion.procesando') }}</p>@endif
         </section>
     @endif
-    @if($resultado)
-        <section class="space-y-4 rounded border border-border bg-surface p-5" aria-label="Vista previa de la matriz">
-            <h2 class="text-lg font-semibold">Vista previa · {{ number_format($resultado['filas'], 0, ',', '.') }} registros</h2>
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">@foreach(['nuevos' => 'Nuevos', 'actualizados' => 'Por actualizar', 'sin_cambios' => 'Sin cambios', 'provisionales' => 'Identificación provisional'] as $key => $label)<div class="rounded border border-border bg-bg-main p-3"><strong class="block text-2xl">{{ number_format($resultado[$key], 0, ',', '.') }}</strong><span class="text-sm text-text-secondary">{{ $label }}</span></div>@endforeach</div>
-            @if($resultado['provisionales'])@endif
+    <flux:modal wire:model="vistaPreviaAbierta" name="vista-previa-importacion-catalogo" :closable="false"
+        aria-labelledby="matriz-catalogo-previa-titulo" class="w-full md:max-w-4xl">
+        @if($resultado)
+        <section class="space-y-4" aria-label="Vista previa de la matriz">
+            <h2 id="matriz-catalogo-previa-titulo" class="text-lg font-semibold">Vista previa · {{ number_format($resultado['filas'], 0, ',', '.') }} registros</h2>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">@foreach(['nuevos' => 'Nuevos', 'actualizados' => 'Por actualizar', 'sin_cambios' => 'Sin cambios'] as $key => $label)<div class="rounded border border-border bg-bg-main p-3"><strong class="block text-2xl">{{ number_format($resultado[$key], 0, ',', '.') }}</strong><span class="text-sm text-text-secondary">{{ $label }}</span></div>@endforeach</div>
+            @if($resultado['nuevos'] === 0 && $resultado['actualizados'] > 0)
+                <p role="status" class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    Esta carga solo actualizará {{ number_format($resultado['actualizados'], 0, ',', '.') }} {{ $resultado['actualizados'] === 1 ? 'ficha existente' : 'fichas existentes' }}.
+                </p>
+            @endif
             @if($resultado['columnas_adicionales'])
                 <details open class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                     <summary class="font-semibold">Columnas que requieren revisión ({{ count($resultado['columnas_adicionales']) }})</summary>
@@ -108,14 +115,35 @@
             @endif
             @if($resultado['avisos'])
                 <div class="flex items-start gap-2" data-catalogo-control-fila>
-                    <div class="min-w-0 flex-1 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-catalogo-control><details open><summary class="font-semibold">Observaciones de importación</summary><p class="mt-2">Revisa estos valores antes de guardar. Se conserva el texto original y no se inventan valores normalizados.</p>@foreach($resultado['avisos'] as $aviso => $cantidad)<p class="mt-1">{{ $cantidad }} · {{ $aviso }}</p>@endforeach</details></div>
+                    <div class="min-w-0 flex-1 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-catalogo-control>
+                        <details open>
+                            <summary class="font-semibold">Observaciones de importación</summary>
+                            @foreach($resultado['avisos'] as $aviso => $cantidad)
+                                <p class="mt-1">{{ number_format($cantidad, 0, ',', '.') }} {{ $cantidad === 1 ? 'fila' : 'filas' }} · {{ $aviso }}</p>
+                            @endforeach
+                        </details>
+                    </div>
                     <x-catalogo-ayuda campo="importacion-observaciones" :detalle="\Modules\InventarioGestionColeccion\Presentation\Support\AyudasCapturaCatalogo::importacion('observaciones')" />
                 </div>
             @endif
             <x-grid-frame label="Vista previa del catálogo"><table><thead><tr><th scope="col">Fila</th><th scope="col">Identificador</th><th scope="col">Acción</th><th scope="col">Campos con cambios</th></tr></thead><tbody>@foreach($resultado['muestra'] as $r)<tr><td>{{ $r['fila'] }}</td><td>{{ $r['codigo'] }}</td><td>{{ ['nuevos' => 'Crear', 'actualizados' => 'Actualizar', 'sin_cambios' => 'Sin cambios'][$r['accion']] }}</td><td>{{ implode(', ', $r['campos']) }}</td></tr>@endforeach</tbody></table></x-grid-frame>
             <p class="text-xs text-text-secondary">Se muestran los primeros {{ count($resultado['muestra']) }} registros del archivo.</p>
+            @if($puedeImportar)
+                <p>{{ $mensajes->texto('catalogo.importacion.confirmacion') }}</p>
+            @endif
+            <div class="flex flex-wrap justify-end gap-3">
+                <flux:modal.close>
+                    <flux:button autofocus wire:loading.attr="disabled" wire:target="importar">{{ $puedeImportar ? 'Cancelar' : 'Cerrar' }}</flux:button>
+                </flux:modal.close>
+                @if($puedeImportar)
+                    <flux:button variant="primary" wire:click="importar" wire:loading.attr="disabled" wire:target="archivo,validar,importar">
+                        Confirmar importación
+                    </flux:button>
+                @endif
+            </div>
         </section>
-    @endif
+        @endif
+    </flux:modal>
     <section class="space-y-3 rounded border border-border bg-surface p-5" aria-label="Historial de cargas">
         <h2 class="text-lg font-semibold">Historial de cargas</h2>
         <x-grid-frame label="Historial de matrices"><table><thead><tr><th scope="col">Archivo</th><th scope="col">Estado</th><th scope="col">Fecha</th><th scope="col">Detalle</th></tr></thead><tbody>@forelse($historial as $h)<tr><td>{{ $h->archivo_nombre }}</td><td>{{ ['en_cola' => 'En cola', 'procesando' => 'Procesando', 'completada' => 'Completada', 'fallida' => 'No completada'][$h->estado] ?? $h->estado }}</td><td>{{ \Carbon\Carbon::parse($h->created_at)->timezone('America/Guayaquil')->format('d/m/Y H:i') }}</td><td>@if($accesoCompleto)<a class="hub-ig-button" href="{{ route('inventario.taxonomia.importar.original', ['importacion' => $h->id]) }}" download title="Descargar archivo original completo">Ver detalle</a> @endif<button type="button" class="hub-ig-button" wire:click="verDetalle('{{ $h->id }}')">Ver cambios</button></td></tr>@empty<tr><td colspan="4">Las matrices incorporadas aparecerán aquí.</td></tr>@endforelse</tbody></table></x-grid-frame>

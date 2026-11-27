@@ -23,14 +23,14 @@ function entries(current, target = '/workspace') {
 }
 test('los nueve cuerpos vigentes tienen huellas y aserciones verificadas sin lanzar Neon', () => {
     const parts = browser.runnerParts(runner);
-    // portal-casos.json conserva las huellas de la migración histórica. El
+    // portal-casos.json conserva las huellas de la migración histórica.
     // Los casos revisados exigen una ejecución propia sobre sus aserciones vigentes.
     const revised = {
         'apertura-sesion': {
             body_sha256: 'd31d14effa433bd9ae56e60bd0055f54b0d4bf82d0db4bbc6881cdd3e4783acd', assertions: 23,
         },
         'administracion-importacion': {
-            body_sha256: '8a3a0bb580f7602da779ee986b33d04f50cfaa923eb38b9915cb6c736f4d6e27', assertions: 8,
+            body_sha256: '5ecb5ca491c2a5671f700185cefe1446100342be69692ccd9b0b3504c1bde6e7', assertions: 8,
         },
         'tooltip-livewire': {
             body_sha256: '210cbb1ed4cf837a5229617b979161a50d68ef4045d2d32e24e725d3542b2927', assertions: 4,

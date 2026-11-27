@@ -110,11 +110,20 @@ test('validar el catálogo no crea taxones muestras especímenes ni historial de
     expect($resumen['nuevos'])->toBe(1)->and(array_map(fn ($t) => DB::table($t)->count(), $tablas))->toBe($antes);
 });
 
-test('la vista previa distingue recordedBy de una cabecera incorrecta aunque el colector siga igual', function (): void {
+test('la vista previa distingue cabeceras reconocidas de una incorrecta aunque los valores sigan iguales', function (): void {
     $codigo = 'MEPN-INV-PRUEBA-CABECERAS';
     $id = fichaVaciaMatriz($codigo);
-    DB::table('taxonomia.especimenes')->where('id', $id)->update(['colector' => 'Colector del catálogo']);
-    $ruta = matrizCatalogoPrueba(['occurrenceID', 'localityNmae', 'recordedBy'], [[$codigo, 'Localidad del archivo', 'Colector del catálogo']]);
+    DB::table('taxonomia.especimenes')->where('id', $id)->update([
+        'colector' => 'Colector del catálogo',
+        'fecha_verbatim' => '2002-02-12',
+        'fecha_colecta' => '2002-02-12',
+        'elevation_min_m' => 125.5,
+        'record_created_by' => 'Preparador',
+    ]);
+    $ruta = matrizCatalogoPrueba(
+        ['occurrenceID', 'localityNmae', 'recordedBy', 'eventDate', 'minimumElevationInMeters', 'record created by,month-year'],
+        [[$codigo, 'Localidad del archivo', 'Colector del catálogo', '2002-02-12', '125.5', 'Preparador']],
+    );
 
     $resumen = app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx', modo: 'actualizar');
 
@@ -173,9 +182,32 @@ test('una identidad duplicada entre fichas o entre filas se informa sin elegir a
     fichaVaciaMatriz('MEPN-INV-900009');
     fichaVaciaMatriz('MEPN:INV:900009');
     $ruta = matrizCatalogoPrueba(['occurrenceID','notesGeneral'], [['MEPN:INV:900009','Revisar']]);
-    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))->toThrow(DomainException::class, 'coincide con varias fichas');
+    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))
+        ->toThrow(DomainException::class, 'Fila 2. «MEPN-INV-900009» coincide con 2 fichas del catálogo. Revisa occurrenceID, catalogNumber');
     $repetida = matrizCatalogoPrueba(['occurrenceID'], [['MEPN:INV:900010'], ['MEPN-INV-900010']]);
     expect(fn () => app(ActualizacionCatalogo::class)->analizar($repetida, 'xlsx'))->toThrow(DomainException::class, 'ya aparece en la fila 2');
+});
+
+test('la pantalla avisa las actualizaciones de fichas existentes y las cantidades de un encabezado incorrecto', function (): void {
+    $curador = User::factory()->curador()->create(['must_change_password' => false]);
+    $codigo = 'MEPN-INV-AVISOS-MATRIZ';
+    fichaVaciaMatriz($codigo);
+    $ruta = matrizCatalogoPrueba(['occurrenceID', 'notesGeneral', 'indvidualCount'], [[$codigo, 'Nota nueva', 5]]);
+    Livewire::actingAs($curador)->test(ActualizarCatalogoIndex::class)
+        ->set('archivo', UploadedFile::fake()->createWithContent('avisos.xlsx', file_get_contents($ruta)))
+        ->call('validar')->assertSet('resultado.nuevos', 0)->assertSet('resultado.actualizados', 1)
+        ->assertSet('resultado.columnas_adicionales', [])
+        ->assertSee('Esta carga solo actualizará 1 ficha existente.')
+        ->assertSee('Cambia el encabezado «indvidualCount» por «individualCount» para importar esas cantidades.')
+        ->assertSee('sus valores quedarán solo en el archivo original.')
+        ->assertSee('Confirmar importación')
+        ->assertSet('importacionId', null);
+});
+
+test('una fila con solo colector indica el identificador faltante y cómo corregirlo', function (): void {
+    $ruta = matrizCatalogoPrueba(['occurrenceID', 'recordedBy'], [[null, 'Colector sin ficha']]);
+    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))
+        ->toThrow(DomainException::class, 'Fila 2: campos obligatorios sin completar: occurrenceID. Esta fila solo contiene recordedBy (colector). Completa el identificador de la ficha.');
 });
 
 test('la pantalla exige curaduría y una vista previa vigente antes de archivar y encolar la importación', function (): void {
@@ -187,14 +219,19 @@ test('la pantalla exige curaduría y una vista previa vigente antes de archivar 
     $ruta = matrizCatalogoPrueba(['occurrenceID','notesGeneral','taxonomicNotes'], [['MEPN:INV:900011','General de práctica','Taxonomía de práctica']]);
     $panel = Livewire::actingAs($curador)->test(ActualizarCatalogoIndex::class)->set('archivo', UploadedFile::fake()->createWithContent('practica.xlsx', file_get_contents($ruta)))
         ->call('importar')->assertSet('errorMessage', 'Valida primero este archivo y revisa el resumen.')
-        ->call('validar')->assertSet('resultado.nuevos', 1)->call('importar')->assertHasNoErrors();
+        ->call('validar')->assertSet('resultado.nuevos', 1)->assertSet('vistaPreviaAbierta', true)->assertSee('Confirmar importación');
+    Bus::assertNotDispatched(ProcesarActualizacionCatalogo::class);
+    $panel->set('vistaPreviaAbierta', false)->call('importar')->assertSet('importacionId', null)
+        ->call('validar')->set('archivo', UploadedFile::fake()->createWithContent('practica-reemplazo.xlsx', file_get_contents($ruta)))
+        ->assertSet('vistaPreviaAbierta', false)->assertSet('resultado', null)
+        ->call('validar')->call('importar')->assertHasNoErrors()->assertSet('vistaPreviaAbierta', false);
     $id = $panel->get('importacionId');
     expect($id)->not->toBeNull()->and(DB::table('taxonomia.importaciones_catalogo')->where('id', $id)->value('estado'))->toBe('en_cola');
     Bus::assertDispatched(ProcesarActualizacionCatalogo::class);
     app()->call([new ProcesarActualizacionCatalogo($id), 'handle']);
     $panel->call('consultar')->assertSee('Carga completada:');
     $n = DB::table('taxonomia.especimenes')->where('occurrence_id', 'MEPN-INV-900011')->count();
-    $panel->call('importar')->assertSee('Este archivo ya fue importado');
+    $panel->call('validar')->call('importar')->assertSee('Este archivo ya fue importado');
     expect(DB::table('taxonomia.especimenes')->where('occurrence_id', 'MEPN-INV-900011')->count())->toBe($n);
 });
 
@@ -301,13 +338,20 @@ test('las notas generales importadas permanecen al hidratar y volver a guardar l
     expect(DB::table('taxonomia.especimenes')->where('id', $id)->value('notes_general'))->toBe('Nota original de la matriz');
 });
 
-test('una clasificación incompatible con un género existente exige revisión antes de persistir', function (): void {
+test('la matriz importa clasificaciones incompatibles y conserva el linaje del género existente', function (): void {
     $curador = User::factory()->curador()->create(['must_change_password' => false]);
     $base = matrizCatalogoPrueba(['occurrenceID','family','genus'], [['MEPN:INV:900016','FamiliaPracticaQa','GeneroPracticaQa']]);
     $batch = cargaMatrizPreparada($base, $curador);
     app(ActualizacionCatalogo::class)->aplicar($batch, $base);
-    $contradictoria = matrizCatalogoPrueba(['occurrenceID','family','genus'], [['MEPN:INV:900017','OtraFamiliaPracticaQa','GeneroPracticaQa']]);
-    expect(fn () => app(ActualizacionCatalogo::class)->analizar($contradictoria, 'xlsx'))->toThrow(DomainException::class, 'no pertenece a «OtraFamiliaPracticaQa»');
+    $genero = DB::table('taxonomia.taxones')->where('nombre_cientifico', 'GeneroPracticaQa')->first();
+    $contradictoria = matrizCatalogoPrueba(['occurrenceID','family','genus'], [
+        ['MEPN:INV:900017','OtraFamiliaPracticaQa','GeneroPracticaQa'],
+        ['MEPN:INV:900024','TerceraFamiliaPracticaQa','GeneroPracticaQa'],
+    ]);
+    $batch = cargaMatrizPreparada($contradictoria, $curador);
+    app(ActualizacionCatalogo::class)->aplicar($batch, $contradictoria);
+    expect(DB::table('taxonomia.especimenes')->whereIn('occurrence_id', ['MEPN-INV-900017', 'MEPN-INV-900024'])->where('taxon_id', $genero->id)->count())->toBe(2)
+        ->and(DB::table('taxonomia.taxones')->where('id', $genero->id)->value('padre_id'))->toBe($genero->padre_id);
 });
 
 test('un CSV tabulado se valida desde la pantalla sin rechazar su separador', function (): void {
@@ -350,7 +394,8 @@ test('occurrenceID y catalogNumber que señalan fichas distintas bloquean la car
     fichaVaciaMatriz('MEPN-INV-900022');
     fichaVaciaMatriz('MEPN-INV-900023');
     $ruta = matrizCatalogoPrueba(['occurrenceID','catalogNumber'], [['MEPN:INV:900022','MEPN:INV:900023']]);
-    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))->toThrow(DomainException::class, 'coincide con varias fichas');
+    expect(fn () => app(ActualizacionCatalogo::class)->analizar($ruta, 'xlsx'))
+        ->toThrow(DomainException::class, 'Fila 2. «MEPN-INV-900022» coincide con 2 fichas del catálogo.');
 });
 
 test('dos alias históricos de la misma ficha no permiten actualizarla dos veces dentro de una matriz', function (): void {

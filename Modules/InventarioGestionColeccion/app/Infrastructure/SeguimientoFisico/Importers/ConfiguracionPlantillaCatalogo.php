@@ -58,6 +58,7 @@ final class ConfiguracionPlantillaCatalogo
     public static function validarFila(array $datos, int $fila, array $definicion): void
     {
         $faltantes = [];
+        $faltaIdentificador = false;
         $mapper = new FilaCatalogoMapper;
         foreach ($definicion['columnas'] as $c) {
             if ($c['requisito'] !== 'obligatorio') continue;
@@ -65,9 +66,20 @@ final class ConfiguracionPlantillaCatalogo
             $valor = $datos[$clave] ?? '';
             // Las matrices históricas pueden identificar la misma ficha con catalogNumber.
             if ($c['campo'] === 'occurrenceID' && trim((string)$valor) === '') $valor = $datos['catalog_number'] ?? '';
-            if (trim((string)$valor) === '' || trim((string)$valor) === '_') $faltantes[] = $c['cabecera'];
+            if (trim((string)$valor) === '' || trim((string)$valor) === '_') {
+                $faltantes[] = $c['cabecera'];
+                $faltaIdentificador = $faltaIdentificador || $c['campo'] === 'occurrenceID';
+            }
         }
-        if ($faltantes !== []) throw new DomainException('Fila '.$fila.': campos obligatorios sin completar: '.implode(', ', $faltantes).'.');
+        if ($faltantes === []) return;
+
+        $mensaje = 'Fila '.$fila.': campos obligatorios sin completar: '.implode(', ', $faltantes).'.';
+        if ($faltaIdentificador) {
+            $camposConDatos = array_filter($datos, static fn ($valor) => !in_array(trim((string)$valor), ['', '_'], true));
+            if (array_keys($camposConDatos) === ['recorded_by']) $mensaje .= ' Esta fila solo contiene recordedBy (colector).';
+            $mensaje .= ' Completa el identificador de la ficha. Si la fila solo contiene una nota, muévela fuera de la hoja de datos.';
+        }
+        throw new DomainException($mensaje);
     }
 
     public static function validar(array $definicion): void

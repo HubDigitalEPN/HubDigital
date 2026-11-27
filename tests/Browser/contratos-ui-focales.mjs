@@ -27,8 +27,8 @@ export async function comprobarUIFocal(caso) {
         q('dialog[open] form').requestSubmit();
         await wait(()=>!q('dialog[open]'));
     };
-    const comprobarAyudas=async cantidad=>{
-        const botones=all('[data-catalogo-ayuda] > button');
+    const comprobarAyudas=async (cantidad, raiz=document)=>{
+        const botones=[...raiz.querySelectorAll('[data-catalogo-ayuda] > button')];
         let textos=botones.length===cantidad,foco=true,ajuste=true,posicion=true;
         for(const boton of botones) {
             const fila=boton.closest('[data-catalogo-control-fila]'),control=fila?.querySelector('[data-catalogo-control]');
@@ -541,24 +541,36 @@ export async function comprobarUIFocal(caso) {
             return boton().getAttribute('aria-haspopup')==='dialog';
         };
         checks.modoLov=await elegirLov('modo','Actualizar datos con la matriz');
-        const validar=()=>all('button').find(b=>b.getAttribute('wire:click')==='validar');
+        const validar=()=>all('button').find(b=>b.textContent.trim()==='Importar al catálogo');
         validar().click();
         await wait(()=>all('[data-flux-error]').some(e=>e.textContent.includes('Selecciona la matriz') && e.getClientRects().length));
         await new Promise(resolve=>setTimeout(resolve,4500));
         checks.errorVisible=all('[data-flux-error]').some(e=>e.textContent.includes('Selecciona la matriz') && e.getClientRects().length && !e.hidden);
         const nombre='qa-ayudas-'+Date.now()+'.csv',codigo='QA-UI-ARCHIVO-'+Date.now();
-        await new Promise((resolve,reject)=>{
+        const subir=async (nombre, contenido)=>new Promise((resolve,reject)=>{
             const limpiar=()=>{clearTimeout(timer);archivo.removeEventListener('livewire-upload-finish',fin);archivo.removeEventListener('livewire-upload-error',error);};
             const fin=()=>{limpiar();resolve();},error=()=>{limpiar();reject(Error('Falló la subida local de la matriz QA'));};
             const timer=setTimeout(()=>{limpiar();reject(Error('La subida local no finalizó dentro de 20 segundos'));},20000);
             archivo.addEventListener('livewire-upload-finish',fin);archivo.addEventListener('livewire-upload-error',error);
-            const data=new DataTransfer();data.items.add(new File(['occurrenceID;individualCount;eventDate\r\n'+codigo+';dos;sin fecha registrada\r\n'],nombre,{type:'text/csv'}));archivo.files=data.files;archivo.dispatchEvent(new Event('change',{bubbles:true}));
+            const data=new DataTransfer();data.items.add(new File([contenido],nombre,{type:'text/csv'}));archivo.files=data.files;archivo.dispatchEvent(new Event('change',{bubbles:true}));
         });
+        await subir(nombre,'occurrenceID;individualCount;eventDate;indvidualCount\r\n'+codigo+';dos;sin fecha registrada;4\r\n');
         await wait(()=>q('#lov-delimitador-valor')?.textContent.trim()==='Punto y coma');
         checks.separator=document.body.textContent.includes('Separador detectado: Punto y coma');
-        validar().click();await wait(()=>q('[aria-label="Vista previa de la matriz"]')?.textContent.includes(codigo));
-        checks.preview=q('[aria-label="Vista previa de la matriz"]').textContent.includes('Observaciones de importación') && !!q('[aria-label="Vista previa de la matriz"] details[open]') && !q('[aria-label="Estado de la importación"]');
-        const ayuda=await comprobarAyudas(4);checks.help=ayuda.textos;checks.helpFocus=ayuda.foco;checks.helpFits=ayuda.ajuste;checks.helpPosition=ayuda.posicion;
+        const campos=await comprobarAyudas(3,q('section[aria-label="Cargar matriz del catálogo"]'));
+        const previa=()=>q('dialog[open] [aria-label="Vista previa de la matriz"]');
+        const cancelarPrevia=()=>[...previa().querySelectorAll('button')].find(b=>b.textContent.trim()==='Cancelar' && b.getClientRects().length).click();
+        validar().click();await wait(()=>previa()?.textContent.includes(codigo));
+        checks.preview=previa().textContent.includes('Observaciones de importación') && !!previa().querySelector('details[open]')
+            && previa().textContent.includes('Cambia el encabezado «indvidualCount» por «individualCount»')
+            && [...previa().querySelectorAll('button')].some(b=>b.textContent.trim()==='Confirmar importación')
+            && !q('[aria-label="Estado de la importación"]')
+            && !all('button').some(b=>['Validar matriz','Cambiar archivo'].includes(b.textContent.trim()));
+        const observaciones=await comprobarAyudas(1,previa());
+        checks.help=campos.textos && observaciones.textos;checks.helpFocus=campos.foco && observaciones.foco;
+        checks.helpFits=campos.ajuste && observaciones.ajuste;checks.helpPosition=campos.posicion && observaciones.posicion;
+        cancelarPrevia();
+        await wait(()=>!previa());
         const abrirGuia=all('button').find(b=>b.textContent.includes('Ayuda de las columnas de la matriz'));abrirGuia.focus();abrirGuia.click();
         const guia=q('#guia-columnas-catalogo');await wait(()=>guia.open);await frame();
         const filasGuia=()=>[...guia.querySelectorAll('[data-busqueda]')],cuantas=filasGuia().length,buscar=q('#buscar-guia-catalogo');
@@ -569,7 +581,19 @@ export async function comprobarUIFocal(caso) {
         checks.separadorLov=await elegirLov('delimitador','Coma');
         await wait(()=>!q('[aria-label="Vista previa de la matriz"]'));
         checks.separadorLov=checks.separadorLov && await elegirLov('delimitador','Punto y coma');
-        all('button').find(b=>b.getAttribute('wire:click')==='limpiar').click();await wait(()=>!q('[aria-label="Vista previa de la matriz"]'));
+        const reemplazo='reemplazo-'+nombre;
+        await subir(reemplazo,'occurrenceID;individualCount\r\n'+codigo+'-2;2\r\n');
+        await wait(()=>q('#matriz-catalogo-seleccion')?.textContent.includes(reemplazo));
+        validar().click();await wait(()=>previa()?.textContent.includes(codigo+'-2'));
+        checks.preview=checks.preview && !previa().textContent.includes('Observaciones de importación');
+        cancelarPrevia();
+        await wait(()=>!previa());
+        const sinIdentificador='sin-identificador-'+nombre;
+        await subir(sinIdentificador,'occurrenceID;recordedBy\r\n;Colector sin ficha\r\n');
+        await wait(()=>q('#matriz-catalogo-seleccion')?.textContent.includes(sinIdentificador));
+        validar().click();
+        await wait(()=>all('[role="alert"]').some(e=>e.getClientRects().length && e.textContent.includes('Esta fila solo contiene recordedBy')));
+        checks.preview=checks.preview && !previa();
         metrics={columnas:cuantas,archivo:nombre,soloValidacion:true};
         checks.responsive=document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;
     } else if(caso==='catalogo_taxones') {

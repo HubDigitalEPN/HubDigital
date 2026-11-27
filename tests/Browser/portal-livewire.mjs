@@ -1102,10 +1102,10 @@ try {
     await visible("!document.querySelector('[data-editor-matrices] dialog[open]')");
     await reposo();
     // La pantalla real de carga muestra el conflicto de columnas sin una
-    // navegación de error y conserva el botón de guardar deshabilitado.
+    // navegación de error y no ofrece confirmar el guardado.
     await conexion.send('Page.navigate',{url:origen+'/inventario/taxonomia/importar'});
     await visible("document.querySelector('input[aria-label=\"Matriz del catálogo\"]') && window.Livewire");await reposo();
-    assert.ok(await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Importar al catálogo').disabled"));
+    assert.ok(await evaluar("[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Importar al catálogo' && !b.disabled)"));
     assert.ok(await evaluar("Boolean(document.querySelector('[aria-label=\"Historial de matrices\"].hub-ig'))"));
     const matrizConflicto = path.join(temporal, 'matriz-columnas-conflicto.csv');
     writeFileSync(matrizConflicto,'occurrenceID,catalogNumber,catalogNumber\nQA-BROWSER-MATRIZ,CAT-UNO,CAT-DOS\n','utf8');
@@ -1117,10 +1117,10 @@ try {
         await conexion.send('DOM.setFileInputFiles',{nodeId:inputMatriz.nodeId,files:[matrizConflicto]});
     }
     await reposo();
-    await visible("!([...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').disabled)");
-    await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Validar matriz').click()");
+    await visible("[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Importar al catálogo' && !b.disabled)");
+    await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Importar al catálogo').click()");
     await visible("[...document.querySelectorAll('[role=alert]')].some(e=>e.textContent.includes('Fila 2') && e.textContent.includes('catalogNumber'))");await reposo();
-    assert.ok(await evaluar("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Importar al catálogo').disabled"),'El conflicto visible impide guardar y conserva la pantalla de carga.');
+    assert.ok(await evaluar("![...document.querySelectorAll('dialog[open] button')].some(b=>b.textContent.trim()==='Confirmar importación')"),'El conflicto visible impide guardar y conserva la pantalla de carga.');
     // Alternar cargas con celdas opcionales distintas y paginar debe renovar
     // todas las filas del modal, incluso tras abrir una de la carga anterior.
     for (const carga of [datos.cargas[1], datos.cargas[0], datos.cargas[1]]) {

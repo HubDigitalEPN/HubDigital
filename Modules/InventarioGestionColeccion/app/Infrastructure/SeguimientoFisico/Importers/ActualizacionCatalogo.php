@@ -15,9 +15,6 @@ use Modules\InventarioGestionColeccion\Domain\SeguimientoFisico\Services\Desglos
 /** El plan no escribe; la aplicación es atómica y conserva identidad, custodia y divulgación. */
 final class ActualizacionCatalogo
 {
-    private array $taxonesPorClave = [];
-    private array $taxonesPorId = [];
-    private array $linajesPropuestos = [];
     private array $plantilla = [];
     public function __construct(private readonly LectorActualizacionCatalogo $lector, private readonly FilaCatalogoMapper $mapper, private readonly CatalogoTerritoriosDesglose $territorios) {}
 
@@ -178,7 +175,13 @@ final class ActualizacionCatalogo
             }
         }
         foreach (array_keys($datos) as $clave) {
-            $destino = $clave === 'recorded_by' ? 'colector' : $clave;
+            $destino = match ($clave) {
+                'recorded_by' => 'colector',
+                'event_date' => 'fecha_verbatim',
+                'minimum_elevation_in_meters' => 'elevation_min_m',
+                'record_created_by,month-year' => 'record_created_by',
+                default => $clave,
+            };
             if (!isset($columnas[$destino]) && !isset($personalizadas[$clave])
                 && !in_array($clave, ['kingdom','phylum','class','order','suborder','family','subfamily','tribe','genus','specific_epithet','scientific_name','taxon_rank','comment'], true)) {
                 $adicionales[$clave] = true;
@@ -194,7 +197,12 @@ final class ActualizacionCatalogo
         }, ARRAY_FILTER_USE_BOTH);
         $tieneTaxonomia = count(array_intersect_key($taxonomia, array_flip(['kingdom','phylum','class','order','suborder','family','subfamily','tribe','genus','specific_epithet']))) > 0;
         $aplicarTaxonomia = $tieneTaxonomia && (!$anterior || $anterior->taxon_id === null || $modo === 'actualizar');
-        return compact('codigo', 'cambios', 'taxonomia', 'provisional', 'adicionales', 'aplicarTaxonomia', 'extras') + ['avisos' => $mapeada->warnings];
+        $avisos = $mapeada->warnings;
+        if (isset($adicionales['indvidual_count'])) {
+            $avisos[] = 'Cambia el encabezado «indvidualCount» por «individualCount» para importar esas cantidades. Si continúas, sus valores quedarán solo en el archivo original.';
+            unset($adicionales['indvidual_count']);
+        }
+        return compact('codigo', 'cambios', 'taxonomia', 'provisional', 'adicionales', 'aplicarTaxonomia', 'extras', 'avisos');
     }
 
     private function columnas(): array
@@ -202,51 +210,13 @@ final class ActualizacionCatalogo
         return DB::table('information_schema.columns')->where('table_schema', 'taxonomia')->where('table_name', 'especimenes')->get()->keyBy('column_name')->map(static fn ($v) => (array)$v)->all();
     }
 
-    private function cargarTaxonomia(): string
+    private function huellaTaxonomia(): string
     {
-        $this->taxonesPorClave = $this->taxonesPorId = $this->linajesPropuestos = [];
         $hash = hash_init('sha256');
         foreach (DB::table('taxonomia.taxones')->orderBy('id')->get(['id','nombre_cientifico','rango','padre_id']) as $taxon) {
-            $this->taxonesPorId[$taxon->id] = $taxon;
-            $this->taxonesPorClave[$taxon->rango.'|'.$taxon->nombre_cientifico][] = $taxon;
             hash_update($hash, json_encode($taxon, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
         }
         return hash_final($hash);
-    }
-
-    private function validarLinaje(array $datos, int $fila): void
-    {
-        $datos = ReconciliacionCientificaQa6::taxonomia($datos);
-        $ancestros = [];
-        foreach (['kingdom' => 'reino', 'phylum' => 'phylum', 'class' => 'clase', 'order' => 'orden', 'suborder' => 'suborden', 'family' => 'familia', 'subfamily' => 'subfamilia', 'tribe' => 'tribu', 'genus' => 'genero', 'specific_epithet' => 'especie'] as $campo => $rango) {
-            $nombre = trim($datos[$campo] ?? '');
-            if ($nombre === '' || in_array(mb_strtolower($nombre), ['na','-'], true)) continue;
-            if ($campo === 'specific_epithet') $nombre = trim(($datos['genus'] ?? '').' '.$nombre);
-            $coincidencias = $this->taxonesPorClave[$rango.'|'.$nombre] ?? [];
-            if (count($coincidencias) > 1) throw new DomainException("Fila {$fila}: el taxón «{$nombre}» tiene varias fichas. Revisa la taxonomía del catálogo antes de importar.");
-            $actual = $coincidencias[0] ?? null;
-            $clave = $rango.'|'.$nombre;
-            foreach ($ancestros as $nivel => $nombreAncestro) {
-                $propuesto = $this->linajesPropuestos[$clave][$nivel] ?? null;
-                if ($propuesto !== null && $propuesto !== $nombreAncestro) throw new DomainException("Fila {$fila}: el taxón «{$nombre}» tiene clasificaciones incompatibles dentro de la matriz.");
-                $this->linajesPropuestos[$clave][$nivel] = $nombreAncestro;
-            }
-            if ($actual) {
-                $padre = $actual->padre_id;
-                $visitados = [];
-                while ($padre !== null && !isset($visitados[$padre])) {
-                    $visitados[$padre] = true;
-                    $taxonPadre = $this->taxonesPorId[$padre] ?? null;
-                    if (!$taxonPadre) break;
-                    if (isset($ancestros[$taxonPadre->rango]) && $ancestros[$taxonPadre->rango] !== $taxonPadre->nombre_cientifico) {
-                        $nombreAnterior = $ancestros[$taxonPadre->rango];
-                        throw new DomainException("Fila {$fila}: «{$nombre}» no pertenece a «{$nombreAnterior}» en el catálogo actual. Revisa la clasificación antes de importar.");
-                    }
-                    $padre = $taxonPadre->padre_id;
-                }
-            }
-            $ancestros[$rango] = $nombre;
-        }
     }
 
     /** Añade niveles ausentes sin sustituir un ancestro de otro nombre. */
@@ -287,7 +257,7 @@ final class ActualizacionCatalogo
         $vistas = [];
         $hash = hash_init('sha256');
         $this->plantilla = app(ConfiguracionPlantillaCatalogo::class)->leer();
-        hash_update($hash, hash_file('sha256', $ruta).':'.$modo.':'.$separador.':'.$this->cargarTaxonomia().':'.ConfiguracionPlantillaCatalogo::huella($this->plantilla));
+        hash_update($hash, hash_file('sha256', $ruta).':'.$modo.':'.$separador.':'.$this->huellaTaxonomia().':'.ConfiguracionPlantillaCatalogo::huella($this->plantilla));
         foreach ($this->lotes($ruta, $extension, $separador) as $lote) {
             $destinos = $this->destinos($lote);
             foreach ($lote as $fila => $registro) {
@@ -297,7 +267,10 @@ final class ActualizacionCatalogo
                     $vistas[$clave] = $fila;
                 }
                 $coincidencias = $this->coincidenciasFila($registro['datos'], $destinos);
-                if (count($coincidencias) > 1) throw new DomainException("Fila {$fila}: «{$codigo}» coincide con varias fichas. Resuelve la identidad en el catálogo antes de cargar la actualización.");
+                $cantidadCoincidencias = count($coincidencias);
+                if ($cantidadCoincidencias > 1) {
+                    throw new DomainException("Fila {$fila}. «{$codigo}» coincide con {$cantidadCoincidencias} fichas del catálogo. Revisa occurrenceID, catalogNumber y los códigos del catálogo para identificar una sola ficha antes de importar.");
+                }
                 $anterior = $coincidencias === [] ? null : reset($coincidencias);
                 if ($anterior) {
                     $claveFicha = 'uuid:'.$anterior->id;
@@ -305,7 +278,6 @@ final class ActualizacionCatalogo
                     $vistas[$claveFicha] = $fila;
                 }
                 $plan = $this->preparar($registro, $anterior, $fila, $modo, $columnas);
-                $this->validarLinaje($plan['taxonomia'], $fila);
                 $accion = !$anterior ? 'nuevos' : (($plan['cambios'] !== [] || $plan['extras'] !== [] || $plan['aplicarTaxonomia']) ? 'actualizados' : 'sin_cambios');
                 $resumen['filas']++;
                 $resumen[$accion]++;
